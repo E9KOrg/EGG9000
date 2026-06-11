@@ -139,6 +139,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool PublicScoreGrid { get; set; }
         [GuildConfig("Remove Find Coop Spot", "Toggles", GuildConfigKind.Bool, Description = "Hide Find Coop Spot buttons")]
         public bool RemoveFindCoopSpot { get; set; }
+        [GuildConfig("Show Contract Stats Embeds", "Toggles", GuildConfigKind.Bool, Description = "Show a live co-op stats embed inside each contract channel")]
+        public bool ShowContractStatsEmbeds { get; set; }
     }
 
     [NotMapped]
@@ -164,9 +166,7 @@ namespace EGG9000.Common.Database.Entities {
         [Description("Get notified when someone adds/removes a Tachyon Deflector")]
         PingOnTachyonChange = 6,
         [Description("Get notified when your co-op will complete as soon as everyone checks in")]
-        PingOnCompleteOnCheckIn = 7,
-        [Description("Show a live co-op stats embed inside each contract channel")]
-        ShowContractStatsEmbeds = 8
+        PingOnCompleteOnCheckIn = 7
     }
 
     [NotMapped]

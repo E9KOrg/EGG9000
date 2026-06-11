@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Automated {
                         }
                     } catch(Exception e) {
                         _bugSnag.Notify(e);
-                        _logger.LogError(e, "Error checking for grade update");
+                        _logger.LogError(e, "Error checking for grade update for {user}", user.DiscordUsername);
                     }
                 });
                 await _db.SaveChangesAsync(CancellationToken.None);

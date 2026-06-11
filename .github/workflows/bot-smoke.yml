@@ -1,0 +1,43 @@
+name: Bot Smoke (gated)
+
+# Secret-bearing job. It deliberately has NO `pull_request` trigger: on pull_request the workflow
+# definition that runs is the PR's copy, and for same-repo branch PRs secrets are available - so a
+# branch could rewrite this job to exfiltrate the token. Triggering only on push-to-master and
+# manual dispatch guarantees the running workflow is always master's reviewed version, and secrets
+# are only ever exposed to trusted, already-merged code. Repository secrets are used (no Environment
+# required); GitHub already withholds repo secrets from fork-triggered runs.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+# Constant (not per-ref) concurrency group: the bot token allows one live gateway session at a time,
+# so ALL bot-smoke runs are serialized globally. A newer run cancels an older in-flight one, so two
+# runs can never hold the token simultaneously.
+concurrency:
+  group: bot-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Boot bot with provided config, confirm it starts
+        env:
+          ConnectionStrings__Token: ${{ secrets.CI_DISCORD_TOKEN }}
+          ConnectionStrings__DefaultConnection: ${{ secrets.CI_DB_CONNECTION }}
+          BOT_ACTIVE: 'false'
+        run: |
+          # With BOT_ACTIVE=false the bot validates config and exits cleanly without connecting,
+          # proving the published image boots with the supplied secrets. Replace this with a fuller
+          # "connect to gateway + open DB, then exit" harness when one exists.
+          dotnet build EGG9000.Bot -c Release

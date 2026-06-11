@@ -178,5 +178,53 @@ namespace EGG9000.Common.Helpers {
         public static bool HasMaxedShips(this CustomBackup backup) {
             return MaxShipLevels.All(x => backup.GetShipLevel(x.Key) == x.Value);
         }
+
+        public static string GetShipEmojiId(Spaceship ship) {
+            return ship switch {
+                Spaceship.ChickenOne => "807223532747620373",
+                Spaceship.ChickenNine => "801748829212508161",
+                Spaceship.ChickenHeavy => "801748846455554088",
+                Spaceship.Bcr => "801748795498430464",
+                Spaceship.MilleniumChicken => "801748939354931200",
+                Spaceship.CorellihenCorvette => "801748884061159465",
+                Spaceship.Galeggtica => "801748910607171644",
+                Spaceship.Chickfiant => "801748897243987978",
+                Spaceship.Voyegger => "801748952814845962",
+                Spaceship.Henerprise => "801748924146384906",
+                Spaceship.Atreggies => "1215022229826314380",
+                _ => ""
+            };
+        }
+
+        public static string GetShipEmojiUrl(Spaceship ship) {
+            var id = GetShipEmojiId(ship);
+            return id == "" ? "" : $"https://cdn.discordapp.com/emojis/{id}.png?v=1";
+        }
+
+        public static string GetShipEmojiTag(Spaceship ship) {
+            var id = GetShipEmojiId(ship);
+            return id == "" ? "" : $"<:s:{id}>";
+        }
+
+        public static double GetTankCapacity(uint tankLevel) {
+            return tankLevel switch {
+                0 => 2_000_000_000,
+                1 => 200_000_000_000,
+                2 => 10_000_000_000_000,
+                3 => 100_000_000_000_000,
+                4 => 200_000_000_000_000,
+                5 => 300_000_000_000_000,
+                6 => 400_000_000_000_000,
+                7 => 500_000_000_000_000,
+                _ => 0
+            };
+        }
+
+        public static bool NeedsFuel(this CustomBackup backup) {
+            var currentShip = backup.SpaceMissions?.FirstOrDefault(x => x.Status == Status.Fueling);
+            if(currentShip == null) return true;
+            var fuelTargets = Ei.MissionInfo.GetFuelTargets(currentShip.Ship, currentShip.Duration);
+            return fuelTargets.Any(ft => ft.Value > (currentShip.Fuels.FirstOrDefault(f => f.Egg == ft.Key)?.Amount ?? 0));
+        }
     }
 }
