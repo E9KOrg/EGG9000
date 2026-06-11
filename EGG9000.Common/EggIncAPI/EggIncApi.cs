@@ -174,6 +174,18 @@ namespace EGG9000.Common.EggIncAPI {
             return Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
         }
 
+        // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
+        // base64-decode the body. Returns null on a non-success status. body may be null.
+        private static async Task<(byte[], string Error)> PostRawWithError(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
+            using var client = NewClient(http2);
+            ApplyHeaders(client, profile);
+            var response = await client.PostCounted(path, body, cancellationToken);
+            if(!response.IsSuccessStatusCode) {
+                return (null, $"HTTP Error: {response.StatusCode}");
+            }
+            return (Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken)), null);
+        }
+
         // Builds the base64 form payload: populates Rinfo (or replaces a BasicRequestInfo body with
         // GetInfo), then signs into an AuthenticatedMessage when the endpoint requires it.
         private static string BuildPayload(IMessage data, string userId, EndpointDescriptor d) {
@@ -228,6 +240,27 @@ namespace EGG9000.Common.EggIncAPI {
                 return new MessageParser<TResponse>(() => new TResponse()).ParseFrom(responseBytes);
             } catch(Exception) {
                 return default;
+            }
+        }
+
+        // Like Post, but returns the error message on failure instead of swallowing it to default.
+        public static async Task<ApiResult<TResponse>> PostResult<TResponse, TRequest>(TRequest data, string UserId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage {
+            var descriptor = ResolveEndpoint(typeof(TRequest), typeof(TResponse)) ?? throw new Exception($"Missing Info for {typeof(TRequest).Name}");
+            if(descriptor.SignRequest && !EggIncApiSecrets.IsSaltAvailable) {
+                WarnSaltUnavailableOnce(descriptor.Path);
+                return ApiResult<TResponse>.Fail($"API salt not configured for {descriptor.Path}");
+            }
+            try {
+                var body = await GetBAC(BuildPayload(data, UserId, descriptor));
+                var (responseBytes, error) = await PostRawWithError(descriptor.Path, body, descriptor.Headers);
+                if(responseBytes == null) {
+                    return ApiResult<TResponse>.Fail(error ?? "No response");
+                }
+                return (descriptor.AuthenticatedResponse || authenticated)
+                    ? GetFromAuthenticatedMessage<TResponse>(responseBytes)
+                    : new MessageParser<TResponse>(() => new TResponse()).ParseFrom(responseBytes);
+            } catch(Exception e) {
+                return ApiResult<TResponse>.Fail("Bot Exception: " + e.Message);
             }
         }
 

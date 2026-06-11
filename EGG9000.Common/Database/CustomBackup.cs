@@ -30,15 +30,19 @@ namespace EGG9000.Common.Database {
             return DateTimeOffset.FromUnixTimeSeconds(LastBackupTime);
         }
 
-        // Grade of the most recently accepted contract. last_cpi is no longer in backups, so this
-        // is how we read a player's current grade.
-        public Ei.Contract.Types.PlayerGrade GetMostRecentContractGrade() {
+        // Grade of the most recently accepted contract, with when it was accepted. last_cpi is no
+        // longer in backups, so this is how we read a player's current grade. The accept time lets
+        // callers ignore it when a known promotion is newer than any contract.
+        public (Ei.Contract.Types.PlayerGrade Grade, DateTimeOffset Accepted) GetMostRecentContractGrade() {
             var graded = new List<(double time, Ei.Contract.Types.PlayerGrade grade)>();
             if(Farms is not null)
                 graded.AddRange(Farms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
             if(ArchivedFarms is not null)
                 graded.AddRange(ArchivedFarms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
-            return graded.OrderByDescending(x => x.time).Select(x => x.grade).FirstOrDefault();
+            var latest = graded.OrderByDescending(x => x.time).FirstOrDefault();
+            if(latest.grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
+                return (Ei.Contract.Types.PlayerGrade.GradeUnset, DateTimeOffset.MinValue);
+            return (latest.grade, DateTimeOffset.FromUnixTimeSeconds((long)latest.time));
         }
         [Key(5)]
         public List<CustomResearch> EpicResearch { get; set; }

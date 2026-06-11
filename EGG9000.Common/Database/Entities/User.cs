@@ -169,13 +169,10 @@ namespace EGG9000.Common.Database.Entities {
                         _accounts.ForEach(account => {
                             if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
                                 account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
-                            var backupGrade = account.Backup?.GetMostRecentContractGrade() ?? Ei.Contract.Types.PlayerGrade.GradeUnset;
-                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade != account.LastGrade) {
-                                var backupTime = DateTimeOffset.FromUnixTimeSeconds(account.Backup.LastBackupTime);
-                                if(backupTime > account.PromotionTime) {
-                                    account.LastGrade = backupGrade;
-                                    needsUpdate = true;
-                                }
+                            var (backupGrade, backupGradeAccepted) = account.Backup?.GetMostRecentContractGrade() ?? (Ei.Contract.Types.PlayerGrade.GradeUnset, DateTimeOffset.MinValue);
+                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade != account.LastGrade && backupGradeAccepted > account.PromotionTime) {
+                                account.LastGrade = backupGrade;
+                                needsUpdate = true;
                             }
                             //Sync account's Device ID from backup
                             if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
@@ -422,18 +419,17 @@ namespace EGG9000.Common.Database.Entities {
 
 
         public Ei.Contract.Types.PlayerGrade GetGrade() {
-            // A manual promotion newer than the backup wins.
-            if(Backup != null && PromotionTime > Backup.GetLastBackupDateTime())
+            if(Backup is null)
                 return LastGrade;
 
-            // Backup grade beats LastGrade, which can be stale.
-            if(Backup is not null) {
-                var backupGrade = Backup.GetMostRecentContractGrade();
-                if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)
-                    return backupGrade;
-            }
+            // The backup's contract grade beats a possibly-stale LastGrade, but only when that
+            // contract was accepted after the last known promotion. Otherwise the promotion is newer
+            // than any contract has caught up to, so LastGrade is the truth.
+            var (backupGrade, accepted) = Backup.GetMostRecentContractGrade();
+            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && accepted > PromotionTime)
+                return backupGrade;
 
-            return LastGrade;
+            return LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset ? LastGrade : backupGrade;
         }
 
 

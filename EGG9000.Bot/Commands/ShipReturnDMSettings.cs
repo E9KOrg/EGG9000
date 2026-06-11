@@ -1,10 +1,13 @@
-﻿using Discord;
+using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 using System;
 using System.Linq;
@@ -13,14 +16,14 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Commands {
     public class ShipReturnDMSettings {
         [ComponentCommand]
-        public static async Task SRDMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task SRDMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var props = MainMenu(dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            var props = await MainMenuAsync(dbuser, db, configuration);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
         }
 
-        public static MessageProperties MainMenu(DBUser user, Color color = default) {
+        public static async Task<MessageProperties> MainMenuAsync(DBUser user, ApplicationDbContext db, IConfiguration configuration, Color color = default) {
             var props = new MessageProperties();
 
             var eBuilder = new EmbedBuilder()
@@ -52,39 +55,47 @@ namespace EGG9000.Bot.Commands {
             builder.WithButton("↵ Contract Settings", $"MCSAccounts:{user.DiscordId}", ButtonStyle.Secondary);
 
             props.Components = builder.Build();
-            props.Embed = eBuilder.Build();
+
+            if(user.DMOnShipReturn) {
+                var dbEggs = await db.GetCustomEggsAsync();
+                var siteBaseUrl = configuration["Site:BaseUrl"] ?? "https://egg9000.com";
+                var (previewEmbed, _) = ShipReturnDmBuilder.Build(ShipReturnDmBuilder.SampleModel(user.DiscordId, dbEggs, siteBaseUrl));
+                props.Embeds = new[] { eBuilder.Build(), previewEmbed };
+            } else {
+                props.Embed = eBuilder.Build();
+            }
 
             return props;
         }
 
         [ComponentCommand]
-        public static async Task SRDEnable(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task SRDEnable(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = true;
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            var props = await MainMenuAsync(dbuser, db, configuration);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
         }
 
         [ComponentCommand]
-        public static async Task SRDDisable(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task SRDDisable(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = false;
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            var props = await MainMenuAsync(dbuser, db, configuration);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
         }
 
         [ComponentCommand]
-        public static async Task SRDSecondDM(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task SRDSecondDM(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.ShipReturnDMAfterFuel = !dbuser.ShipReturnDMAfterFuel;
             await db.SaveChangesAsync();
-            var props = MainMenu(dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            var props = await MainMenuAsync(dbuser, db, configuration);
+            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
         }
 
         [ComponentCommand]
@@ -96,7 +107,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [Modal]
-        public static async Task SRDFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task SRDFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
             await modal.DeferAsync();
             var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
             var isNum = int.TryParse(minsText, out var mins);
@@ -111,8 +122,8 @@ namespace EGG9000.Bot.Commands {
             } else {
                 dbuser.ShipReturnMinutes = mins;
                 await db.SaveChangesAsync();
-                var props = MainMenu(dbuser);
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+                var props = await MainMenuAsync(dbuser, db, configuration);
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
             }
         }
 
@@ -126,7 +137,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [Modal]
-        public static async Task SRDNotFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task SRDNotFueledTime(SocketModal modal, [ComponentData] string data, ApplicationDbContext db, IConfiguration configuration) {
             await modal.DeferAsync();
             var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
             var isNum = int.TryParse(minsText, out var mins);
@@ -145,8 +156,8 @@ namespace EGG9000.Bot.Commands {
             } else {
                 dbuser.ShipReturnStillFuelingMinutes = mins;
                 await db.SaveChangesAsync();
-                var props = MainMenu(dbuser);
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+                var props = await MainMenuAsync(dbuser, db, configuration);
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); x.Embeds = props.Embeds.GetValueOrDefault(null); });
             }
         }
 
@@ -155,4 +166,3 @@ namespace EGG9000.Bot.Commands {
         }
     }
 }
-

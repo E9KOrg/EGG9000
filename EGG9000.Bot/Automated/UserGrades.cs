@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,23 +21,28 @@ namespace EGG9000.Bot.Automated {
             var users = await _db.DBUsers.Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
 
 
+#if DEBUG
             var throttler = new SemaphoreSlim(8);
-
+            users  = [.. users.Where(x => x.DiscordUsername.StartsWith("heimdallr"))];
+#else
+            var throttler = new SemaphoreSlim(8);
+#endif
             var tasks = new List<Task>();
 
+            Random.Shared.Shuffle(CollectionsMarshal.AsSpan(users));
             foreach(var user in users) {
                 await throttler.WaitAsync(cancellationToken);
                 tasks.Add(Task.Run(async () => {
                     foreach(var account in user.EggIncAccounts) {
                         try {
-                            var response = await EggIncApi.GetContractPlayerInfo(account.Id);
-                            if(response == null) {
-                                _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}");
-                            } else if(response.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
-                                _logger.LogTrace($"Skipping non-final grade ({response.Status}) for user {user.DiscordUsername} {account.Name}");
-                            } else if(response.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && response.Grade != account.LastGrade) {
-                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {response.Grade}");
-                                account.LastGrade = response.Grade;
+                            var (info, error) = await EggIncApi.GetContractPlayerInfo(account.Id);
+                            if(info == null) {
+                                _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}: {error}");
+                            } else if(info.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
+                                _logger.LogTrace($"Skipping non-final grade ({info.Status}) for user {user.DiscordUsername} {account.Name}");
+                            } else if(info.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && info.Grade != account.LastGrade) {
+                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {info.Grade}");
+                                account.LastGrade = info.Grade;
                                 user.UpdateAccounts();
 
                                 using var writeScope = _provider.CreateScope();
@@ -45,11 +51,12 @@ namespace EGG9000.Bot.Automated {
                                     .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
                                 writeDb.Dispose();
                             } else {
-                                _logger.LogTrace($"No grade change for user {user.DiscordUsername} {account.Name} grade: {response.Grade}");
+                                _logger.LogInformation($"No grade change for user {user.DiscordUsername} {account.Name} grade: {info.Grade}");
                             }
                         } catch(Exception ex) {
                             _logger.LogError(ex, $"Error getting grade for user {user.DiscordUsername} {account.Name}");
                         } finally {
+                            await Task.Delay(Random.Shared.Next(200) + 1500);
                             throttler.Release();
                         }
                     }

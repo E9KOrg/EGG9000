@@ -70,11 +70,11 @@ public class ApiBackupGradeTests {
             return;
         }
 
-        var info = await EggIncApi.GetContractPlayerInfo(Eid);
+        var (info, error) = await EggIncApi.GetContractPlayerInfo(Eid);
         if(info is not null)
             TestContext.WriteLine($"grade: {info.Grade}, status: {info.Status}");
 
-        Assert.IsNotNull(info, "get_contract_player_info returned null");
+        Assert.IsNotNull(info, $"get_contract_player_info returned null: {error}");
         Assert.AreNotEqual(Ei.Contract.Types.PlayerGrade.GradeUnset, info.Grade, "grade is unset");
     }
 
