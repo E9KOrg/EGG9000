@@ -7,6 +7,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Common.Test {
     [TestClass]
+    [TestCategory("Unit")]
     public class ArtifactSetsTests {
         private static readonly string[] expectedFirst = ["a", "b"];
         private static readonly string[] expectedSecond = ["c", "d", "e", "f"];
