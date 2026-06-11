@@ -1,22 +1,22 @@
 using DotNet.Testcontainers.Builders;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Testcontainers.MsSql;
+using Testcontainers.PostgreSql;
 
 namespace EGG9000.Common.IntegrationTests;
 
 [TestClass]
-public static class SqlServerFixture {
-    private static MsSqlContainer? _container;
+public static class PostgresFixture {
+    private static PostgreSqlContainer? _container;
 
     public static string ConnectionString =>
         _container?.GetConnectionString()
-        ?? throw new InvalidOperationException("SQL Server container not started.");
+        ?? throw new InvalidOperationException("Postgres container not started.");
 
     [AssemblyInitialize]
     public static async Task AssemblyInit(TestContext _) {
-        _container = new MsSqlBuilder()
-            .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(1433))
+        _container = new PostgreSqlBuilder()
+            .WithImage("postgres:16-alpine")
+            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(5432))
             .Build();
         await _container.StartAsync();
     }

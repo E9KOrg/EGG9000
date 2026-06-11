@@ -14,7 +14,7 @@ public class DbLaunchTests {
     // here to keep the two checks independent.
     private static DbContextOptions<ApplicationDbContext> Options() =>
         new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlServer(SqlServerFixture.ConnectionString, o => o.MigrationsAssembly("EGG9000.Common"))
+            .UseNpgsql(PostgresFixture.ConnectionString, o => o.MigrationsAssembly("EGG9000.Common"))
             .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
 
