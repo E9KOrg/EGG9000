@@ -15,7 +15,7 @@ public class BotHostWiringTests {
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?> {
                 ["ConnectionStrings:DefaultConnection"] =
-                    "Server=localhost;Database=ci;User Id=sa;Password=Doesnt_Matter1;TrustServerCertificate=true",
+                    "Host=localhost;Database=ci;Username=postgres;Password=Doesnt_Matter1",
                 ["ConnectionStrings:Token"] = "ci-dummy-token",
             })
             .Build();
