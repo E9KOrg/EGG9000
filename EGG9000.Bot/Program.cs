@@ -32,6 +32,7 @@ try
     logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
     logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
 
+
     if (!botActive)
     {
         logger.Log(NLog.LogLevel.Info, "Bot set to not active. Exiting gracefully without starting services.");

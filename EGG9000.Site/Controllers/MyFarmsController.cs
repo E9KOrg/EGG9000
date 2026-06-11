@@ -178,7 +178,7 @@ namespace EGG9000.Site.Controllers {
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
             foreach(var account in user.EggIncAccounts) {
-                var backup = await EggIncApi.GetBackupAsync(account.Id, await _db.CachedEiContractsAsync());
+                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, await _db.CachedEiContractsAsync());
                 if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
                     account.Backup = backup;
                 }
