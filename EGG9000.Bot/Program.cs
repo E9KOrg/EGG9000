@@ -54,6 +54,7 @@ try
     logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
     logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
 
+
     if (!botActive)
     {
         logger.Log(NLog.LogLevel.Info, "Bot set to not active. Exiting gracefully without starting services.");
@@ -185,6 +186,13 @@ void ConfigureServices(HostBuilderContext hostContext, IServiceCollection servic
                 options.AppVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
                 options.ReleaseStage = "production";
             });
+
+            var salt = SecretsHelper.GetConfigOrSecret(hostContext.Configuration, "ConnectionStrings:ApiSalt", "egg_inc_api_salt");
+            if(String.IsNullOrEmpty(salt)) {
+                bs.Notify(new Exception("ApiSalt not found in secrets or configuration"));
+            }
+            logger.Log(NLog.LogLevel.Info, String.IsNullOrEmpty(salt) ? "ApiSalt not found" : "ApiSalt found");
+
 
             var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,

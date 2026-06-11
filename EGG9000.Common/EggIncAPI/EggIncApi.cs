@@ -174,6 +174,18 @@ namespace EGG9000.Common.EggIncAPI {
             return Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
         }
 
+        // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
+        // base64-decode the body. Returns null on a non-success status. body may be null.
+        private static async Task<(byte[], string Error)> PostRawWithError(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
+            using var client = NewClient(http2);
+            ApplyHeaders(client, profile);
+            var response = await client.PostCounted(path, body, cancellationToken);
+            if(!response.IsSuccessStatusCode) {
+                return (null, $"HTTP Error: {response.StatusCode}");
+            }
+            return (Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken)), null);
+        }
+
         // Builds the base64 form payload: populates Rinfo (or replaces a BasicRequestInfo body with
         // GetInfo), then signs into an AuthenticatedMessage when the endpoint requires it.
         private static string BuildPayload(IMessage data, string userId, EndpointDescriptor d) {
