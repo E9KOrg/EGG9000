@@ -79,41 +79,7 @@
         </tr>
     }
 
-    string getShipEmoji(Spaceship ship) {
-        var shipEmoji = ship switch {
-            Spaceship.ChickenOne => "807223532747620373",
-            Spaceship.ChickenNine => "801748829212508161",
-            Spaceship.ChickenHeavy => "801748846455554088",
-            Spaceship.Bcr => "801748795498430464",
-            Spaceship.MilleniumChicken => "801748939354931200",
-            Spaceship.CorellihenCorvette => "801748884061159465",
-            Spaceship.Galeggtica => "801748910607171644",
-            Spaceship.Chickfiant => "801748897243987978",
-            Spaceship.Voyegger => "801748952814845962",
-            Spaceship.Henerprise => "801748924146384906",
-            Spaceship.Atreggies => "1215022229826314380",
-            _ => ""
-        };
-        if(shipEmoji == "") {
-            return shipEmoji;
-        }
-        var shipEmojiLink = "https://cdn.discordapp.com/emojis/" + shipEmoji + ".png?v=1";
-        return shipEmojiLink;
-    }
-
     int index = Model.Index;
-
-    string fuelAmountsToText(double value){
-        if (value >= 1_000_000_000_000) { // Trillions or more
-            return (value / 1_000_000_000_000).ToString("N1") + "T";
-        } else if (value >= 1_000_000_000) { // Billions
-            return (value / 1_000_000_000).ToString("N1") + "B";
-        } else if (value >= 1_000_000) { // Millions
-            return (value / 1_000_000).ToString("N1") + "M";
-        } else {
-            return value.ToString("N2");
-        }
-    }
 
     string durationColor(DurationType duration){
         return duration switch {
@@ -797,7 +763,7 @@
         var epochReturns = (long)(returns.ToUnixTimeSeconds());
         var epochCurrent = (long)(DateTimeOffset.Now.ToUnixTimeSeconds());
         var epochStarted = (long)(DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime).ToUnixTimeSeconds());
-        var shipEmojiLink = getShipEmoji(mission.Ship);
+        var shipEmojiLink = GetShipEmojiUrl(mission.Ship);
         var capacityModifier = (int)(mission.Capacity / Model.Backup.GetNominalCapacity(mission));
 
         var initialPercentDone = mission.Status == Status.Fueling ? 0 : 100 - ((((double)(epochReturns - epochCurrent) / (double)(epochReturns - epochStarted)) * 100));
@@ -854,9 +820,9 @@
                                                     <img style="height: 20px; width: 20px;" src="@(eggEmojiUrl)" title="@(eggName)" />&nbsp;
                                                     <span style="width: @barWidth; height: 15px;" class="fuel-progress-bar tooltip-custom @progressClass"></span>
                                                     @if (percent.ToString("N0") == "100"){
-                                                        <span class="fuel-progress-text">100% - @fuelAmountsToText(target)</span>
+                                                        <span class="fuel-progress-text">100% - @target.ToEggString()</span>
                                             } else{
-                                                        <span class="fuel-progress-text">@(percent.ToString("N0"))% - @fuelAmountsToText(fuel.Amount) / @fuelAmountsToText(target)</span>
+                                                        <span class="fuel-progress-text">@(percent.ToString("N0"))% - @fuel.Amount.ToEggString() / @target.ToEggString()</span>
                                             }
                                                 </span>
                                             </div>
@@ -927,7 +893,7 @@
             <tbody>
                 @foreach (var ship in MissionHelpers.MaxShipLevels) {
                     var currentStars = Model.Backup.GetShipLevel(ship.Key);
-                    var shipEmojiLink = getShipEmoji(ship.Key);
+                    var shipEmojiLink = GetShipEmojiUrl(ship.Key);
                     <tr id="@ship.Key-overall-row" style="height: 38px;">
                         <td align="center">
                             @if (shipEmojiLink != "") {
@@ -1045,7 +1011,7 @@
                             var alreadyMaxed = (Model.Backup.GetShipProgressTotal(ship.Key) >= 1);
 
                             var currentStars = Model.Backup.GetShipLevel(ship.Key);
-                            var shipEmojiLink = getShipEmoji(ship.Key);
+                            var shipEmojiLink = GetShipEmojiUrl(ship.Key);
 
                             var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
                             var shortsToMax = shipsToMax.ContainsKey(DurationType.Short) ? shipsToMax[DurationType.Short] : 0;
