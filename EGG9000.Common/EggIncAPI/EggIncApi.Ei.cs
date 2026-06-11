@@ -214,28 +214,28 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
-        public static async Task<ContractsInfoResponse> GetContractsInfoAsync(string userId, params string[] contractIdentifiers) {
+        public static async Task<ApiResult<ContractsInfoResponse>> GetContractsInfoAsync(string userId, params string[] contractIdentifiers) {
             var request = new ContractsInfoRequest { ClientVersion = ClientVersion };
             request.ContractIdentifiers.AddRange(contractIdentifiers);
-            return await Post<ContractsInfoResponse, ContractsInfoRequest>(request, userId);
+            return await PostResult<ContractsInfoResponse, ContractsInfoRequest>(request, userId);
         }
 
-        public static async Task<ContractsArchive> GetContractsArchive(string UserId) {
+        public static async Task<ApiResult<ContractsArchive>> GetContractsArchive(string UserId) {
             try {
                 var request = GetInfo(UserId);
                 var body = await GetBAC(GetEncodedMessage(request));
-                var responseBytes = await PostRaw("ei_ctx/get_contracts_archive", body, HeaderProfile.Android);
+                var (responseBytes, error) = await PostRawWithError("ei_ctx/get_contracts_archive", body, HeaderProfile.Android);
                 if(responseBytes == null) {
-                    return null;
+                    return ApiResult<ContractsArchive>.Fail(error ?? "No response");
                 }
                 return GetFromAuthenticatedMessage<ContractsArchive>(responseBytes);
             } catch(Exception e) {
-                return null;
+                return ApiResult<ContractsArchive>.Fail("Bot Exception: " + e.Message);
             }
         }
 
 
-        public static async Task<(ContractPlayerInfo Info, string Error)> GetContractPlayerInfo(string UserId) {
+        public static async Task<ApiResult<ContractPlayerInfo>> GetContractPlayerInfo(string UserId) {
             try {
                 var info = GetInfo(UserId);
 
@@ -246,22 +246,21 @@ namespace EGG9000.Common.EggIncAPI {
 
                 var (responseBytes, error) = await PostRawWithError("ei_ctx/get_contract_player_info", body, HeaderProfile.Android);
                 if(responseBytes == null) {
-                    return (null, error);
+                    return ApiResult<ContractPlayerInfo>.Fail(error ?? "No response");
                 }
                 return (GetFromAuthenticatedMessage<ContractPlayerInfo>(responseBytes), null);
             } catch(Exception e) {
-                return (null, "Bot Exception: " + e.Message);
+                return ApiResult<ContractPlayerInfo>.Fail("Bot Exception: " + e.Message);
             }
         }
 
 
-        public static async Task<CustomBackup> GetBackupAsync(string EggIncId, FrozenSet<Ei.Contract> cachedContracts) {
+        public static async Task<ApiResult<CustomBackup>> GetBackupAsync(string EggIncId, FrozenSet<Ei.Contract> cachedContracts) {
             var firstContact = await FirstContact(EggIncId);
             if(firstContact.Success) {
                 return new CustomBackup(firstContact.Backup, cachedContracts, null);
-            } else {
-                return null;
             }
+            return ApiResult<CustomBackup>.Fail(firstContact.Error ?? "first_contact failed");
         }
     }
 }

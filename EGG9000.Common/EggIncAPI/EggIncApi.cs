@@ -243,6 +243,27 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
+        // Like Post, but returns the error message on failure instead of swallowing it to default.
+        public static async Task<ApiResult<TResponse>> PostResult<TResponse, TRequest>(TRequest data, string UserId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage {
+            var descriptor = ResolveEndpoint(typeof(TRequest), typeof(TResponse)) ?? throw new Exception($"Missing Info for {typeof(TRequest).Name}");
+            if(descriptor.SignRequest && !EggIncApiSecrets.IsSaltAvailable) {
+                WarnSaltUnavailableOnce(descriptor.Path);
+                return ApiResult<TResponse>.Fail($"API salt not configured for {descriptor.Path}");
+            }
+            try {
+                var body = await GetBAC(BuildPayload(data, UserId, descriptor));
+                var (responseBytes, error) = await PostRawWithError(descriptor.Path, body, descriptor.Headers);
+                if(responseBytes == null) {
+                    return ApiResult<TResponse>.Fail(error ?? "No response");
+                }
+                return (descriptor.AuthenticatedResponse || authenticated)
+                    ? GetFromAuthenticatedMessage<TResponse>(responseBytes)
+                    : new MessageParser<TResponse>(() => new TResponse()).ParseFrom(responseBytes);
+            } catch(Exception e) {
+                return ApiResult<TResponse>.Fail("Bot Exception: " + e.Message);
+            }
+        }
+
         public static T GetFromAuthenticatedMessage<T>(byte[] authenticatedMessage) where T : IMessage, new() {
             var authMessageDecoded = AuthenticatedMessage.Parser.ParseFrom(authenticatedMessage);
 

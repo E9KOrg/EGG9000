@@ -35,12 +35,14 @@ namespace EGG9000.Bot.Automated {
                 tasks.Add(Task.Run(async () => {
                     foreach(var account in user.EggIncAccounts) {
                         try {
-                            var response = await EggIncApi.GetContractPlayerInfo(account.Id);
-                            if(response.Info == null) {
-                                _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}: {response.Error}");
-                            } else if(response.Info.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && response.Info.Grade != account.LastGrade) {
-                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {response.Info.Grade}");
-                                account.LastGrade = response.Info.Grade;
+                            var (info, error) = await EggIncApi.GetContractPlayerInfo(account.Id);
+                            if(info == null) {
+                                _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}: {error}");
+                            } else if(info.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
+                                _logger.LogTrace($"Skipping non-final grade ({info.Status}) for user {user.DiscordUsername} {account.Name}");
+                            } else if(info.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && info.Grade != account.LastGrade) {
+                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {info.Grade}");
+                                account.LastGrade = info.Grade;
                                 user.UpdateAccounts();
 
                                 using var writeScope = _provider.CreateScope();
@@ -49,7 +51,7 @@ namespace EGG9000.Bot.Automated {
                                     .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
                                 writeDb.Dispose();
                             } else {
-                                _logger.LogInformation($"No grade change for user {user.DiscordUsername} {account.Name} grade: {response.Info.Grade}");
+                                _logger.LogInformation($"No grade change for user {user.DiscordUsername} {account.Name} grade: {info.Grade}");
                             }
                         } catch(Exception ex) {
                             _logger.LogError(ex, $"Error getting grade for user {user.DiscordUsername} {account.Name}");
