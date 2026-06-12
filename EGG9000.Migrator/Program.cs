@@ -58,8 +58,10 @@ static async Task RunEfMigration(string sourceCs, string targetCs) {
     await using var src = new ApplicationDbContext(sourceOptions);
     await using var tgt = new ApplicationDbContext(targetOptions);
     
-    // Add timeout for source as well:
+    // Large tables (Coops blobs, DBUsers) exceed the 30s default on both the source read
+    // and the target clear/insert, so raise both before any work runs.
     src.Database.SetCommandTimeout(TimeSpan.FromMinutes(10));
+    tgt.Database.SetCommandTimeout(TimeSpan.FromMinutes(10));
     tgt.ChangeTracker.AutoDetectChangesEnabled = false;
 
     Console.WriteLine("Clearing target tables (reverse FK order)...");
