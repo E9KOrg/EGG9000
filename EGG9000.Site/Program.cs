@@ -42,7 +42,8 @@ using System.Threading.Tasks;
 
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
-NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Bot");
+NLog.GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}");
+NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Site");
 logger.Debug("init main");
 
 var builder = WebApplication.CreateBuilder(args);

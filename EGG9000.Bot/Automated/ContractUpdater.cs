@@ -96,7 +96,7 @@ namespace EGG9000.Bot.Automated {
 
                 foreach(var (contractid, coopname, userids, guildid, grade, endtime) in potentialCoops.Where(x => x.userids.Count > 1)) {
                     var contract = contracts.First(x => x.ID == contractid);
-                    var exisitingCoop = await _db.Coops.FirstOrDefaultAsync(x => x.GuildId == guildid && x.ContractID == contractid && EF.Functions.Like(x.Name, coopname), CancellationToken.None);
+                    var exisitingCoop = await _db.Coops.FirstOrDefaultAsync(x => x.GuildId == guildid && x.ContractID == contractid && EF.Functions.ILike(x.Name, coopname), CancellationToken.None);
                     if(exisitingCoop is not null) {
                         _logger.LogInformation("Co-op {coopname} already exists, skipping", coopname);
                         continue;
