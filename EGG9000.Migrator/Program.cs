@@ -62,6 +62,13 @@ static async Task RunEfMigration(string sourceCs, string targetCs) {
 
     Console.WriteLine("Clearing target tables (reverse FK order)...");
     // Reverse of the migration order so FK constraints are not violated.
+    await tgt.UserTokens.ExecuteDeleteAsync();
+    await tgt.UserLogins.ExecuteDeleteAsync();
+    await tgt.UserClaims.ExecuteDeleteAsync();
+    await tgt.UserRoles.ExecuteDeleteAsync();
+    await tgt.RoleClaims.ExecuteDeleteAsync();
+    await tgt.Users.ExecuteDeleteAsync();
+    await tgt.Roles.ExecuteDeleteAsync();
     await tgt.UserCoopStatuses.ExecuteDeleteAsync();
     await tgt.UserCoopXrefs.ExecuteDeleteAsync();
     await tgt.Merit.ExecuteDeleteAsync();
@@ -95,9 +102,17 @@ static async Task RunEfMigration(string sourceCs, string targetCs) {
     // Migrate in FK-safe order: later groups reference rows in earlier groups.
     // ulong columns (DiscordId, channel IDs): SQL Server stores decimal(20,0), Npgsql maps
     // to numeric; all current Discord snowflakes fit in int64.
-    // Identity tables (AspNetUsers, AspNetRoles, DataProtectionKeys) are not migrated:
-    // Discord OAuth re-creates user records on first login, and DataProtectionKeys
-    // should be generated fresh per environment.
+    // Identity tables (AspNet*) MUST be migrated. A re-login does not recreate the same user:
+    // without AspNetUserLogins/AspNetUserRoles, Discord OAuth provisions a fresh, role-less user
+    // and admins lose access. Migrated in FK-safe order (roles/users first, then their joins).
+    // DataProtectionKeys are intentionally skipped - environment-specific; existing cookies just re-auth.
+    await EntityMigrator.Migrate(src.Roles, tgt, tgt.Roles, "AspNetRoles");
+    await EntityMigrator.Migrate(src.Users, tgt, tgt.Users, "AspNetUsers");
+    await EntityMigrator.Migrate(src.RoleClaims, tgt, tgt.RoleClaims, "AspNetRoleClaims");
+    await EntityMigrator.Migrate(src.UserRoles, tgt, tgt.UserRoles, "AspNetUserRoles");
+    await EntityMigrator.Migrate(src.UserClaims, tgt, tgt.UserClaims, "AspNetUserClaims");
+    await EntityMigrator.Migrate(src.UserLogins, tgt, tgt.UserLogins, "AspNetUserLogins");
+    await EntityMigrator.Migrate(src.UserTokens, tgt, tgt.UserTokens, "AspNetUserTokens");
 
     await EntityMigrator.Migrate(src.Guilds, tgt, tgt.Guilds, "Guilds");
     await EntityMigrator.Migrate(src.Contracts, tgt, tgt.Contracts, "Contracts");
@@ -145,6 +160,13 @@ static async Task RunVerify(string sourceCs, string targetCs) {
     Console.WriteLine($"{"Table",-30} {"Source",8} {"Target",8}  {"Status"}");
     Console.WriteLine(new string('-', 60));
 
+    await Row("AspNetRoles", src.Roles, tgt.Roles);
+    await Row("AspNetUsers", src.Users, tgt.Users);
+    await Row("AspNetRoleClaims", src.RoleClaims, tgt.RoleClaims);
+    await Row("AspNetUserRoles", src.UserRoles, tgt.UserRoles);
+    await Row("AspNetUserClaims", src.UserClaims, tgt.UserClaims);
+    await Row("AspNetUserLogins", src.UserLogins, tgt.UserLogins);
+    await Row("AspNetUserTokens", src.UserTokens, tgt.UserTokens);
     await Row("Guilds", src.Guilds, tgt.Guilds);
     await Row("Contracts", src.Contracts, tgt.Contracts);
     await Row("DBUsers", src.DBUsers, tgt.DBUsers);
