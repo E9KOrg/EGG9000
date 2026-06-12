@@ -217,6 +217,21 @@ namespace EGG9000.Common.Database {
         }
 
 
+        // Npgsql 'timestamp with time zone' only accepts UTC (offset 0). Normalize every
+        // DateTimeOffset the model writes or compares (including query parameters - EF routes
+        // them through this converter) to UTC, so a stray local-offset value such as
+        // DateTimeOffset.Now can never crash a write or a query. The instant is preserved.
+        // Reads keep Npgsql's default materialization (local offset, same instant); the app
+        // compares DateTimeOffsets by instant, so the offset representation is irrelevant.
+        private sealed class UtcDateTimeOffsetConverter : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTimeOffset, DateTimeOffset> {
+            public UtcDateTimeOffsetConverter() : base(v => v.ToUniversalTime(), v => v) { }
+        }
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) {
+            base.ConfigureConventions(configurationBuilder);
+            configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcDateTimeOffsetConverter>();
+        }
+
         protected override void OnModelCreating(ModelBuilder builder) {
             base.OnModelCreating(builder);
             builder.Entity<UserCoopXref>().HasKey(x => new { x.UserId, x.CoopId, x.EggIncId });

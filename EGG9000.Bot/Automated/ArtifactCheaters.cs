@@ -153,7 +153,7 @@ namespace EGG9000.Bot.Automated {
 #endif
 
                     var (B64, Config) = await ArtifactHelpers.InventoryB64(outlier);
-                    if(string.IsNullOrEmpty(B64)) {
+                    if(string.IsNullOrEmpty(B64) || B64.StartsWith("$ERROR$:")) {
                         var sendResponse = await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread, new() {
                             Text = message
                         });
