@@ -66,5 +66,13 @@ if ($Site) {
     docker build -f EGG9000.Site/Dockerfile -t "kendrome/egg9000site:$timestamp" -t "kendrome/egg9000site:latest" .
     if ($LASTEXITCODE -ne 0) { Write-Host "Build failed: egg9000site" -ForegroundColor Red; exit 1 }
     Write-Host "Built: kendrome/egg9000site:latest" -ForegroundColor Green
-    Publish-Image "kendrome/egg9000site"
+#    Publish-Image "kendrome/egg9000site"
+    Write-Host "Pushing to Docker Hub..." -ForegroundColor Green
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $imageName = "kendrome/egg9000site"
+    $imageTag = "${imageName}:${timestamp}"
+    $imageLatest = "${imageName}:latest"
+    docker push $imageTag
+    docker push $imageLatest
+    Write-Host "Published: $imageTag" -ForegroundColor Green
 }
