@@ -309,36 +309,20 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 //** Verify if people have access to the parent channel
-                var gradeRoleEnum = coop.League switch {
-                    5 => GuildChannelType.GradeAAA,
-                    4 => GuildChannelType.GradeAA,
-                    3 => GuildChannelType.GradeA,
-                    2 => GuildChannelType.GradeB,
-                    1 => GuildChannelType.GradeC,
-                    _ => GuildChannelType.General,
-                };
-                SocketRole gradeRole = null;
-                if(gradeRoleEnum != GuildChannelType.General) {
-                    gradeRole = await _client.GetRoleAsync(gradeRoleEnum, guild);
-                }
-                foreach(var participant in coopDetails.CoopParticipants.Where(x => x.DBUser is not null)) {
-                    if(gradeRole is null) continue;
-                    var overflowGuildUser = guild.GetUser(participant.DBUser.DiscordId);
-                    if(overflowGuildUser is not null && !overflowGuildUser.Roles.Any(x => x.Id == gradeRole.Id || x.Name.Contains("ULTRA")) && participant.CoopStatus?.UserName != "[departed]") {
-                        var headChannel = guild.GetTextChannel(coopThread.CategoryId.Value);
-                        if(headChannel is null) continue;
-                        if(!headChannel.PermissionOverwrites.Any(x => x.TargetId == overflowGuildUser.Id)) {
-                            var capturedUser = overflowGuildUser;
-                            var capturedChannel = headChannel;
-                            _queue.EnqueueLow(() => capturedChannel.AddPermissionOverwriteAsync(capturedUser, new OverwritePermissions(viewChannel: PermValue.Allow)));
+                var headChannel = coopThread.CategoryId.HasValue ? guild.GetTextChannel(coopThread.CategoryId.Value) : null;
+                if(headChannel is not null) {
+                    foreach(var participant in coopDetails.CoopParticipants.Where(x => x.DBUser is not null)) {
+                        if(participant.CoopStatus?.UserName == "[departed]") continue;
+                        var overflowGuildUser = guild.GetUser(participant.DBUser.DiscordId);
+                        if(overflowGuildUser is null || overflowGuildUser.GetPermissions(headChannel).ViewChannel) continue;
+                        var capturedUser = overflowGuildUser;
+                        var capturedChannel = headChannel;
+                        _queue.EnqueueLow(() => capturedChannel.AddPermissionOverwriteAsync(capturedUser, new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Deny, sendMessagesInThreads: PermValue.Allow)));
 
-                            if(!coop.FinishedOrFailedOrExpired()) {
-                                _queue.EnqueueLow(() => coopThread.SendMessageAsync($"Fixing permission for {overflowGuildUser.Mention}"));
-                            }
+                        if(!coop.FinishedOrFailedOrExpired()) {
+                            _queue.EnqueueLow(() => coopThread.SendMessageAsync($"Fixing permission for {overflowGuildUser.Mention}"));
                         }
-
                     }
-
                 }
 
                 //** Handle creation account not being kicked from co-op

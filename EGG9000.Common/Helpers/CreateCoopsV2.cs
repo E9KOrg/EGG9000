@@ -202,6 +202,14 @@ namespace EGG9000.Common.Helpers {
             try {
                 if(targetChannel.GetChannelType() != ChannelType.PrivateThread) {
                     await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                } else if(targetChannel is SocketThreadChannel thread && thread.ParentChannel is SocketTextChannel header) {
+                    //Private threads are only visible if the user can view the parent header channel
+                    var guildUser = header.Guild.GetUser(user.Id);
+                    if(guildUser is null) throw new InvalidOperationException($"{user.Id} is not in guild {header.Guild.Id}");
+                    if(!guildUser.GetPermissions(header).ViewChannel) {
+                        await header.AddPermissionOverwriteAsync(guildUser,
+                            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Deny, sendMessagesInThreads: PermValue.Allow));
+                    }
                 }
             } catch(Exception) {
                 try {
