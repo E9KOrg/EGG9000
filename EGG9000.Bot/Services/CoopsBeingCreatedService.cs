@@ -19,7 +19,7 @@ namespace EGG9000.Bot.Services {
 
         public void SetCoopThreadsAreBeingCreated(bool beingCreated) {
             if(beingCreated) {
-                _coopThreadsAreBeingCreated = DateTimeOffset.Now;
+                _coopThreadsAreBeingCreated = DateTimeOffset.UtcNow;
             } else {
                 _coopThreadsAreBeingCreated = null;
             }
@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Services {
             if(_coopsAreBeingCreated.Value.AddMinutes(1) < DateTimeOffset.UtcNow) {
                 _coopsAreBeingCreated = null;
             }
-            if(_coopThreadsAreBeingCreated.HasValue && _coopThreadsAreBeingCreated.Value.AddMinutes(1) < DateTimeOffset.Now) {
+            if(_coopThreadsAreBeingCreated.HasValue && _coopThreadsAreBeingCreated.Value.AddMinutes(1) < DateTimeOffset.UtcNow) {
                 _coopThreadsAreBeingCreated = null;
             }
             if(_coopsAreBeingCreated is null && _coopThreadsAreBeingCreated is null)

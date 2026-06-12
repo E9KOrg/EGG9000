@@ -208,7 +208,7 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> UpdateDiscord() {
             var Model = await _db.DBUsers.AsQueryable().ToListAsync();
-            foreach(var user in Model.Where(x => x.Registered < DateTimeOffset.Now.AddDays(-14))) {
+            foreach(var user in Model.Where(x => x.Registered < DateTimeOffset.UtcNow.AddDays(-14))) {
                 var guilds = _discord.Guilds.Where(x => x.Users.Any(y => y.Id == user.DiscordId));
                 if(user.GuildId == 0 && guilds.Count() == 1) {
                     user.GuildId = guilds.First().Id;
@@ -389,11 +389,11 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-            var maxYearInt = (DateTimeOffset.Now.Month >= 7 && (DateTimeOffset.Now.Month >= 8 || DateTimeOffset.Now.Day >= 14)) ? DateTimeOffset.Now.Year : (DateTimeOffset.Now.Year - 1);
+            var maxYearInt = (DateTimeOffset.UtcNow.Month >= 7 && (DateTimeOffset.UtcNow.Month >= 8 || DateTimeOffset.UtcNow.Day >= 14)) ? DateTimeOffset.UtcNow.Year : (DateTimeOffset.UtcNow.Year - 1);
             if(!int.TryParse(year, out var yearInt)) {
                 yearInt = maxYearInt;
             }
-            if(yearInt >= DateTimeOffset.Now.Year) {
+            if(yearInt >= DateTimeOffset.UtcNow.Year) {
                 yearInt = maxYearInt;
             }
 
@@ -426,7 +426,7 @@ namespace EGG9000.Site.Controllers {
                 var eggincids = accounts.Select(x => x.Account.Id).ToList();
 
 
-                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.Now));
+                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow));
                 // Snapshots from 16th @ Midnight (after event is over)
 
                 var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
@@ -434,7 +434,7 @@ namespace EGG9000.Site.Controllers {
 
 
                 List<UserSnapShot> postEggDaySnapshots;
-                if(DateTimeOffset.Now.Date > eggDayDate && DateTimeOffset.Now.Date < eggDayDate.AddDays(1)) {
+                if(DateTimeOffset.UtcNow.Date > eggDayDate && DateTimeOffset.UtcNow.Date < eggDayDate.AddDays(1)) {
                     postEggDaySnapshots = accounts.Where(x => preEggDaySnapshots.Any(y => y.EggIncID == x.Account.Id)).Select(x => new UserSnapShot { EarningsBonus = x.Account.Backup.EarningsBonus, EggIncID = x.Account.Id, EggsOfProphecy = x.Account.Backup.EggsOfProphecy, Prestiges = x.Account.Backup.NumPrestiges, SoulEggs = x.Account.Backup.SoulEggs, UserId = x.User.Id, Date = DateTime.Now }).ToList();
                 } else {
                     var eggDayDateEnd = eggDayDate.AddDays(1).Date;
