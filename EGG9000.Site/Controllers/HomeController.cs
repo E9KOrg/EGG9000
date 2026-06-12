@@ -733,7 +733,7 @@ namespace EGG9000.Site.Controllers {
             CoopId = CoopId.ToLower();
             var model = new CoopModel {
 
-                DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.Like(x.Name, CoopId)),
+                DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.ILike(x.Name, CoopId)),
                 Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId),
                 CustomEggs = await _db.GetCustomEggsAsync()
             };

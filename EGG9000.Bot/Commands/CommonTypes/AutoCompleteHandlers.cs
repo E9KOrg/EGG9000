@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
                 var users = allusers
                     .Where(
                         x => x.GuildId == guild.Id && (
-                            (x.DiscordUsername?.Contains(arg.Data.Current.Value.ToString(), StringComparison.OrdinalIgnoreCase) ?? false) || // EF.Functions.Like(x.DiscordUsername, $"%{(string)arg.Data.Current.Value}%") || //Match discord username
+                            (x.DiscordUsername?.Contains(arg.Data.Current.Value.ToString(), StringComparison.OrdinalIgnoreCase) ?? false) ||  //Match discord username
                             (x.Usernames?.Contains((string)arg.Data.Current.Value) ?? false) //Or match egg inc username
                         )
                     )
