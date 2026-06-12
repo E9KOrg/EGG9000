@@ -589,11 +589,11 @@ namespace EGG9000.Bot.Commands {
             var pending = db.ChangeTracker.Entries().Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
             var tracked = db.ChangeTracker.Entries().Count();
 
-            var activeCoops = await db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.Now);
+            var activeCoops = await db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.UtcNow);
             var dbUsers = await db.DBUsers.CountAsync();
             var contracts = await db.Contracts.CountAsync();
             var events = await db.Events.CountAsync();
-            var autoLogs = await db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.Now.AddDays(-1));
+            var autoLogs = await db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1));
 
             var latency = client?.Latency ?? -1;
             var guilds = client?.Guilds?.Count ?? 0;
@@ -616,7 +616,7 @@ namespace EGG9000.Bot.Commands {
                 apiCalls, apiFails, RuntimeMetrics.DbQueries, commands, cmdFails, RuntimeMetrics.DiscordOps,
                 latency, guilds, qHigh, qLow, queue?.HighWorkers ?? 0, queue?.LowWorkers ?? 0,
                 runtimeHealth, discordHealth, processHealth, dbHealth,
-                RuntimeMetrics.StartedAt.ToUnixTimeSeconds(), DateTimeOffset.Now.ToUnixTimeSeconds());
+                RuntimeMetrics.StartedAt.ToUnixTimeSeconds(), DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         }
 
         private static string SysLoadContent(SysLoadSnapshot s) =>
@@ -724,9 +724,9 @@ namespace EGG9000.Bot.Commands {
 
             // Re-render the currently-shown section until Stop, deletion, or 30s cap.
             _ = Task.Run(async () => {
-                var deadline = DateTimeOffset.Now.AddSeconds(30);
+                var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
                 try {
-                    while(!cts.IsCancellationRequested && DateTimeOffset.Now < deadline) {
+                    while(!cts.IsCancellationRequested && DateTimeOffset.UtcNow < deadline) {
                         await Task.Delay(TimeSpan.FromSeconds(interval), cts.Token);
                         if(cts.IsCancellationRequested)
                             break;
@@ -821,7 +821,7 @@ namespace EGG9000.Bot.Commands {
             var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
             var cacheCount = db._cache is MemoryCache mc ? mc.Count : -1;
 
-            var statsAge = stats.LastRefresh is { } t ? (DateTimeOffset.Now - t).Humanize().ShortenTime() : "never";
+            var statsAge = stats.LastRefresh is { } t ? (DateTimeOffset.UtcNow - t).Humanize().ShortenTime() : "never";
             var server = command.GuildId.HasValue ? stats.GetServerStats(command.GuildId.Value) : null;
 
             var rows = new List<List<FixedWidthCell>> {

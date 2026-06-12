@@ -9,7 +9,7 @@ namespace EGG9000.Common.Services {
     /// EF <see cref="QueryCountingInterceptor"/>; commands in the command dispatcher.
     /// </summary>
     public static class RuntimeMetrics {
-        public static readonly DateTimeOffset StartedAt = DateTimeOffset.Now;
+        public static readonly DateTimeOffset StartedAt = DateTimeOffset.UtcNow;
 
         private static long _dbQueries;
         private static long _apiCalls;
@@ -33,7 +33,7 @@ namespace EGG9000.Common.Services {
         public static void AddCommandFailures(long n = 1) => Interlocked.Add(ref _commandFailures, n);
         public static void AddDiscordOps(long n = 1) => Interlocked.Add(ref _discordOps, n);
 
-        public static TimeSpan Uptime => DateTimeOffset.Now - StartedAt;
+        public static TimeSpan Uptime => DateTimeOffset.UtcNow - StartedAt;
 
         /// <summary>Average events per minute since process start (0 if no uptime yet).</summary>
         public static double PerMinute(long count) {

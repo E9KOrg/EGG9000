@@ -174,7 +174,7 @@ namespace EGG9000.Common.Database {
             foreach(var def in missing) {
                 Contracts.Add(new Contract {
                     ID = def.Identifier,
-                    Created = DateTime.Now,
+                    Created = DateTimeOffset.UtcNow,
                     Description = def.Description,
                     Name = def.Name,
                     goals = Newtonsoft.Json.JsonConvert.SerializeObject(def.Goals),

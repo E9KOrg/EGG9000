@@ -50,7 +50,7 @@ namespace EGG9000.Common.Database {
 
         public async Task RefreshAsync() {
             try {
-                var now = DateTimeOffset.Now;
+                var now = DateTimeOffset.UtcNow;
                 await using var db = await _dbContextFactory.CreateDbContextAsync();
 
                 var guildContracts = await db.GuildContracts.Include(g => g.Contract)
@@ -140,7 +140,7 @@ namespace EGG9000.Common.Database {
 
                 _contractStats = contractStats;
                 _serverStats = serverStats;
-                LastRefresh = DateTimeOffset.Now;
+                LastRefresh = DateTimeOffset.UtcNow;
                 _logger.LogInformation("Refreshed CoopStatsCache: {Contracts} contract entries across {Guilds} guilds",
                     contractStats.Count, serverStats.Count);
             } catch(Exception e) {

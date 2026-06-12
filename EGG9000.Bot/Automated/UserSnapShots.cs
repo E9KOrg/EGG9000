@@ -14,7 +14,7 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var hasSnapshots = await _db.UserSnapShots.AsQueryable().AnyAsync(x => x.Date == DateTime.Now.Date, cancellationToken);
+            var hasSnapshots = await _db.UserSnapShots.AsQueryable().AnyAsync(x => x.Date == DateTime.UtcNow.Date, cancellationToken);
 
 
             var eggDayDate = new DateTimeOffset(DateTimeOffset.UtcNow.Year, 07, 14, 10, 55, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow));
@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Automated {
                                 .Where(x => x.UserId == user.Id && x.EggIncID == account.Id)
                                 .OrderByDescending(x => x.Date)
                                 .FirstOrDefaultAsync(cancellationToken);
-                            if(lastSnapshot?.Date == DateTime.Now.Date) continue;
+                            if(lastSnapshot?.Date == DateTime.UtcNow.Date) continue;
 
                             // Skip when nothing changed since the last snapshot; a date gap
                             // in the table means "unchanged", not "missing".
@@ -59,7 +59,7 @@ namespace EGG9000.Bot.Automated {
                             if(unchanged && !forceWrite) continue;
 
                             _db.UserSnapShots.Add(new UserSnapShot {
-                                Date = DateTime.Now.Date,
+                                Date = DateTime.UtcNow.Date,
                                 UserId = user.Id,
                                 Prestiges = backup.NumPrestiges,
                                 EarningsBonus = backup.EarningsBonus,

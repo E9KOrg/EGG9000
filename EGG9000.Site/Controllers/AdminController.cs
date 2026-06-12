@@ -216,7 +216,7 @@ namespace EGG9000.Site.Controllers {
                         End = x.UserCoopXrefs.Where(y => y.JoinedCoop).OrderByDescending(y => y.CreatedOn).First().CreatedOn
                     }).ToListAsync();
 
-                for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.Now; start = start.AddDays(1)) {
+                for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.UtcNow; start = start.AddDays(1)) {
                     var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
                     var accountsCount = userDates.Count(x => x.Start < start && x.End > start.AddDays(-14));
                     days.Add(start, [count, accountsCount]);
@@ -233,9 +233,9 @@ namespace EGG9000.Site.Controllers {
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
 
             var guildContractsToScore = await _db.GuildContracts.Include(x => x.Contract).AsQueryable()
-                .Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.Now.AddMonths(-3) && !x.HasScores)
+                .Where(x => x.Contract.MaxUsers > 1 && x.GuildID == 656455567858073601 && x.Created > DateTimeOffset.UtcNow.AddMonths(-3) && !x.HasScores)
                 .OrderBy(x => x.Created).ToListAsync();
-            var contractsToScore = guildContractsToScore.GroupBy(x => x.ContractID).Where(x => x.All(y => y.Contract.Details.GradeSpecs.Any(gs => gs.LengthSeconds > TimeSpan.FromDays(1).TotalSeconds) && y.Created < DateTimeOffset.Now - y.Contract.ContractTime - TimeSpan.FromDays(3))).Select(x => x.First().Contract).ToList();
+            var contractsToScore = guildContractsToScore.GroupBy(x => x.ContractID).Where(x => x.All(y => y.Contract.Details.GradeSpecs.Any(gs => gs.LengthSeconds > TimeSpan.FromDays(1).TotalSeconds) && y.Created < DateTimeOffset.UtcNow - y.Contract.ContractTime - TimeSpan.FromDays(3))).Select(x => x.First().Contract).ToList();
 
             return View(new IndexViewModel {
                 Contracts = await _db.Contracts.AsQueryable().OrderByDescending(x => x.Created).Take(10).ToListAsync(),
@@ -247,7 +247,7 @@ namespace EGG9000.Site.Controllers {
                 }).ToList(),
                 Guild = guild,
                 ContractsToScore = contractsToScore,
-                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now)
+                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.UtcNow)
             });
         }
 
@@ -517,7 +517,7 @@ namespace EGG9000.Site.Controllers {
                 Id = x.Id,
             }).ToListAsync();
 
-            slackers = slackers.Where(x => x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold && y.Date > DateTimeOffset.Now.AddMonths(-4))).ToList();
+            slackers = slackers.Where(x => x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold && y.Date > DateTimeOffset.UtcNow.AddMonths(-4))).ToList();
 
 
             var ids = slackers.Select(x => x.Id).ToList();
@@ -528,7 +528,7 @@ namespace EGG9000.Site.Controllers {
                 item.Standard = account.EggIncAccounts.Any(y => y.Backup.PermitLevel == 0);
             }
 
-            ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => x.Created > DateTimeOffset.Now.AddMonths(-6)).ToListAsync();
+            ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => x.Created > DateTimeOffset.UtcNow.AddMonths(-6)).ToListAsync();
 
             return View(slackers);
         }
@@ -576,7 +576,7 @@ namespace EGG9000.Site.Controllers {
                 .Where(x =>
                     x.ContractID == contractid &&
                     x.GuildId == guildId &&
-                    x.Created > DateTimeOffset.Now.AddMonths(-6)
+                    x.Created > DateTimeOffset.UtcNow.AddMonths(-6)
                 ).ToListAsync();
             Console.WriteLine($"Processing {contractid}");
             var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
@@ -646,7 +646,7 @@ namespace EGG9000.Site.Controllers {
 
             foreach(var topxref in usersForRole) {
                 topxref.DiscordUser ??= await _discord.Rest.GetGuildUserAsync(guildId, topxref.DiscordId);
-                var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.Now);
+                var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.UtcNow);
                 if(tempRole == null) {
                     tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.UtcNow, UserId = topxref.DiscordId, GuildId = guildId };
                     _db.Add(tempRole);
@@ -664,10 +664,10 @@ namespace EGG9000.Site.Controllers {
 
             await guild.GetTextChannel(656455568353132546)
                 .SendMessageAsync(
-                    text: $"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f> " +
+                    text: $"Added the role {beastModeRole.Emoji} {beastModeRole.Name} to the following users until <t:{DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds()}:f> " +
                         $"for the contract {guildContracts.First().Contract.Name} \n{string.Join("\n", topXrefs.Select(x => $"{Math.Round(x.Score)} <@{x.DiscordId}>"))}" +
                         $"{(topEachGrade.Count == 0 ? "" :
-                            $"\n\nTop users in Grades C, B, and A also received {beastModeRole.Emoji} {beastModeRole.Name} until <t:{DateTimeOffset.Now.AddDays(7).ToUnixTimeSeconds()}:f>:\n" +
+                            $"\n\nTop users in Grades C, B, and A also received {beastModeRole.Emoji} {beastModeRole.Name} until <t:{DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds()}:f>:\n" +
                             $"{string.Join("\n", topEachGrade.Select(x => $"{PlayerGradeDetails.GetEmoji(x.Grade)}: {Math.Round(x.Score)} <@{x.DiscordId}>"))}")}",
                     components: new ComponentBuilder().WithButton("What is this?", "WhatIsRSC", ButtonStyle.Primary).Build()
                 );
@@ -680,7 +680,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> ReCalculateRunningScore() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
 
-            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && x.Created > DateTimeOffset.Now.AddMonths(-6)).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && x.Created > DateTimeOffset.UtcNow.AddMonths(-6)).ToListAsync();
 
             var userXrefs = coops.SelectMany(x => x.UserCoopsXrefs).Where(x => x.JoinedCoop).GroupBy(x => x.UserId);
 
@@ -727,7 +727,7 @@ namespace EGG9000.Site.Controllers {
                 DiscordChannelId = x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId,
                 GuildId = guildId,
                 Demerits = x.User.Demerits.Where(y => y.When > demeritExpires).ToList(),
-                FreshEgg = x.User.Registered > DateTimeOffset.Now.AddDays(-7)
+                FreshEgg = x.User.Registered > DateTimeOffset.UtcNow.AddDays(-7)
             }).Where(x => x.CurrentSleep > 17 || x.TotalCoopSleep >= 24).ToListAsync();
 
 
@@ -997,7 +997,7 @@ namespace EGG9000.Site.Controllers {
 
 
         public async Task<ActionResult> AutomatedTasks() {
-            return View(await _db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-5)).OrderBy(x => x.StartTime).ToListAsync());
+            return View(await _db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-5)).OrderBy(x => x.StartTime).ToListAsync());
         }
 
         public class BackupWithUser {

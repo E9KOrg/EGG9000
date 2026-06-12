@@ -76,7 +76,7 @@ namespace EGG9000.Common.EggIncAPI {
                     Rinfo = GetInfo(EIID ?? UserId),
                     UserId = EIID ?? UserId,
                     ClientVersion = ClientVersion,
-                    ClientTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    ClientTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 };
                 var body = await GetBAC(GetEncodedMessage(model));
                 var responseBytes = await PostRaw("ei/coop_status", body, HeaderProfile.CoopStatus, http2: true, cancellationToken);
@@ -104,7 +104,7 @@ namespace EGG9000.Common.EggIncAPI {
                     Rinfo = GetInfo(EIID),
                     UserId = EIID,
                     ClientVersion = ClientVersion,
-                    ClientTimestamp = DateTimeOffset.Now.ToUnixTimeSeconds(),
+                    ClientTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                 };
                 var body = await GetBAC(GetEncodedMessage(model));
                 var responseBytes = await PostRaw("ei/coop_status_bot", body, HeaderProfile.Android, cancellationToken: cancellationToken);

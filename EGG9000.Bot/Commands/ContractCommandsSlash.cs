@@ -833,7 +833,7 @@ namespace EGG9000.Bot.Commands {
                              && !x.JoinedCoop
                              && x.Coop.ContractID == guildContract.ContractID
                              && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
-                             && x.Coop.CoopEnds > DateTimeOffset.Now && !x.Coop.PseudoExpired)
+                             && x.Coop.CoopEnds > DateTimeOffset.UtcNow && !x.Coop.PseudoExpired)
                     .Select(x => new AssignedCoop(x.Coop.Id, x.Coop.ThreadID, x.Coop.DiscordChannelId, x.Coop.Name, x.Coop.ContractID))
                     .ToListAsync())
                     .GroupBy(c => c.CoopId).Select(g => g.First()).ToList();
