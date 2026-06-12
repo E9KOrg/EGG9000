@@ -30,6 +30,10 @@ namespace EGG9000.Bot.Automated {
                 if(eggDay2 && eggDay)
                     return;
 
+                // Egg-day gains compare the last snapshot before the event against the first
+                // one after, so those boundary rows are written even when nothing changed.
+                var forceWrite = eggDay1 || eggDay2;
+
                 var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
                 var snapshots = 0;
                 foreach(var user in users) {
@@ -38,29 +42,37 @@ namespace EGG9000.Bot.Automated {
                     try {
                         foreach(var account in user.EggIncAccounts) {
                             var backup = account.Backup;
-                            var lastSnapshot = await _db.UserSnapShots.AsQueryable().FirstOrDefaultAsync(x => 
-                                x.UserId == user.Id &&
-                                x.Date == DateTime.Now.Date && 
-                                x.EggIncID == account.Id,
-                                cancellationToken
-                            );
-                            if(lastSnapshot == null) {
-                                _db.UserSnapShots.Add(new UserSnapShot {
-                                    Date = DateTime.Now.Date,
-                                    UserId = user.Id,
-                                    Prestiges = backup.NumPrestiges,
-                                    EarningsBonus = backup.EarningsBonus,
-                                    EggIncID = backup.EggIncId,
-                                    EggsOfProphecy = backup.EggsOfProphecy,
-                                    SoulEggs = backup.SoulEggs,
-                                    EggsOfTruth = backup.EggsOfTruth,
+                            var lastSnapshot = await _db.UserSnapShots.AsQueryable()
+                                .Where(x => x.UserId == user.Id && x.EggIncID == account.Id)
+                                .OrderByDescending(x => x.Date)
+                                .FirstOrDefaultAsync(cancellationToken);
+                            if(lastSnapshot?.Date == DateTime.Now.Date) continue;
 
-                                });
-                                _logger.LogTrace("Adding Snapshot for {user}", user.Id);
-                                if(snapshots++ >= 50) {
-                                    snapshots = 0;
-                                    await _db.SaveChangesAsync(CancellationToken.None);
-                                }
+                            // Skip when nothing changed since the last snapshot; a date gap
+                            // in the table means "unchanged", not "missing".
+                            var unchanged = lastSnapshot is not null
+                                && lastSnapshot.Prestiges == backup.NumPrestiges
+                                && lastSnapshot.EarningsBonus == backup.EarningsBonus
+                                && lastSnapshot.EggsOfProphecy == backup.EggsOfProphecy
+                                && lastSnapshot.SoulEggs == backup.SoulEggs
+                                && lastSnapshot.EggsOfTruth == backup.EggsOfTruth;
+                            if(unchanged && !forceWrite) continue;
+
+                            _db.UserSnapShots.Add(new UserSnapShot {
+                                Date = DateTime.Now.Date,
+                                UserId = user.Id,
+                                Prestiges = backup.NumPrestiges,
+                                EarningsBonus = backup.EarningsBonus,
+                                EggIncID = backup.EggIncId,
+                                EggsOfProphecy = backup.EggsOfProphecy,
+                                SoulEggs = backup.SoulEggs,
+                                EggsOfTruth = backup.EggsOfTruth,
+
+                            });
+                            _logger.LogTrace("Adding Snapshot for {user}", user.Id);
+                            if(snapshots++ >= 50) {
+                                snapshots = 0;
+                                await _db.SaveChangesAsync(CancellationToken.None);
                             }
                         }
                     } catch(Exception e) {
