@@ -62,8 +62,8 @@ namespace EGG9000.Bot.Commands {
                     MaxUsers = maxUsers,
                     CurrentUsers = status == CoopStatusEnum.WaitingOnThread ? 0 : 1 + (i % maxUsers),
                     ThreadID = status == CoopStatusEnum.WaitingOnThread ? 0ul : (ulong)(1_000_000 + i),
-                    CoopEnds = DateTimeOffset.Now.AddDays(2),
-                    Created = DateTimeOffset.Now,
+                    CoopEnds = DateTimeOffset.UtcNow.AddDays(2),
+                    Created = DateTimeOffset.UtcNow,
                     AddedFromBackup = true,
                     // Sentinel so automated services never touch these (no API, no auto-threads).
                     CreatorID = Coop.TestSeedCreatorId,
@@ -167,8 +167,8 @@ namespace EGG9000.Bot.Commands {
                 MaxUsers = contract.MaxUsers > 0 ? contract.MaxUsers : 10,
                 CurrentUsers = 1,
                 ThreadID = (ulong)(2_000_000 + Environment.TickCount64 % 1_000_000),
-                CoopEnds = DateTimeOffset.Now.AddDays(2),
-                Created = DateTimeOffset.Now,
+                CoopEnds = DateTimeOffset.UtcNow.AddDays(2),
+                Created = DateTimeOffset.UtcNow,
                 AddedFromBackup = true,
                 CreatorID = Coop.TestSeedCreatorId,
             };
@@ -182,8 +182,8 @@ namespace EGG9000.Bot.Commands {
                 EggIncId = eggIncId,
                 // Intentionally false so that "Find my Coop" doesn't filter this out as already-joined
                 JoinedCoop = false,
-                CreatedOn = DateTimeOffset.Now,
-                Joined = DateTimeOffset.Now,
+                CreatedOn = DateTimeOffset.UtcNow,
+                Joined = DateTimeOffset.UtcNow,
             });
             await db.SaveChangesAsync();
 

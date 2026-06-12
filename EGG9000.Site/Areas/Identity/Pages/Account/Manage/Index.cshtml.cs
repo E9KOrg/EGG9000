@@ -116,7 +116,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             dbuser.SkipNoPiggyDouble = Input.SkipNoPiggyDouble;
             dbuser.showEB = Input.ShowEB;
             if(Input.OnBreak && !dbuser.OnBreakSince.HasValue) {
-                dbuser.OnBreakSince = DateTimeOffset.Now;
+                dbuser.OnBreakSince = DateTimeOffset.UtcNow;
             }
             await _db.SaveChangesAsync();
 
