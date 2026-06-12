@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -27,15 +28,21 @@ namespace EGG9000.Bot.Automated {
                     continue;
                 await mainServer.DownloadUsersAsync();
 
-                var members = users.Where(x => x.GuildId == guild.Id);
+                var members = users.Where(x => x.GuildId == guild.Id).ToList();
                 var missingFromServer = members.Where(x => mainServer.GetUser(x.DiscordId) is null).Select(x => x.Id).ToList();
 
-                var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(CancellationToken.None);
-                membersMissing.ForEach(x => {
-                    x.GuildId = 0; x.LastGuild = guild.Id;
-                    _logger.LogInformation("Removing member from the guild {name}", x.DiscordUsername);
-                    StillAlive();
-                });
+                if(mainServer.Users.Count == 0 || DepartureSpikeTooLarge(members.Count, missingFromServer.Count)) {
+                    _logger.LogWarning("Skipping departure handling for {name}: {missing}/{members} members flagged missing, likely an incomplete member download", guild.Name, missingFromServer.Count, members.Count);
+                } else {
+                    var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(CancellationToken.None);
+                    membersMissing.ForEach(x => {
+                        x.GuildId = 0; x.LastGuild = guild.Id;
+                        _logger.LogInformation("Removing member from the guild {name}", x.DiscordUsername);
+                        StillAlive();
+                    });
+
+                    await PurgePendingAssignments(_db, missingFromServer, guild.Id);
+                }
 
                 var returned = users.Where(x => x.GuildId == 0 && x.LastGuild == guild.Id && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
                 var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync(CancellationToken.None);
@@ -152,6 +159,44 @@ namespace EGG9000.Bot.Automated {
                         }
                     }
                 }
+                StillAlive();
+            }
+        }
+
+        public static bool DepartureSpikeTooLarge(int memberCount, int missingCount) {
+            if(missingCount == 0)
+                return false;
+            var threshold = Math.Max(10, (int)(memberCount * 0.20));
+            return missingCount > threshold;
+        }
+
+        // Pending coop assignments (never joined) on still-active coops for users who left the guild.
+        // Status range and CoopEnds/PseudoExpired checks mirror CoopAssignmentLookup.RefreshAsync so
+        // we purge exactly what that lookup would otherwise keep resurfacing.
+        public static Expression<Func<UserCoopXref, bool>> PendingAssignmentPurgeFilter(List<Guid> departedUserIds, ulong guildId, DateTimeOffset now) =>
+            x => departedUserIds.Contains(x.UserId)
+              && !x.JoinedCoop
+              && x.Coop.GuildId == guildId
+              && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
+              && x.Coop.CoopEnds > now && !x.Coop.PseudoExpired;
+
+        private async Task PurgePendingAssignments(ApplicationDbContext db, List<Guid> departedUserIds, ulong guildId) {
+            if(departedUserIds.Count == 0)
+                return;
+
+            var staleXrefs = await db.UserCoopXrefs
+                .Where(PendingAssignmentPurgeFilter(departedUserIds, guildId, DateTimeOffset.UtcNow))
+                .Select(x => new { x.UserId, x.Coop.ContractID, Xref = x })
+                .ToListAsync(CancellationToken.None);
+
+            if(staleXrefs.Count == 0)
+                return;
+
+            db.UserCoopXrefs.RemoveRange(staleXrefs.Select(x => x.Xref));
+            var lookup = _provider.GetService<CoopAssignmentLookup>();
+            foreach(var stale in staleXrefs) {
+                lookup?.Remove(stale.UserId, stale.ContractID);
+                _logger.LogInformation("Purged pending coop assignment for departed user {user} in contract {contract}", stale.UserId, stale.ContractID);
                 StillAlive();
             }
         }
