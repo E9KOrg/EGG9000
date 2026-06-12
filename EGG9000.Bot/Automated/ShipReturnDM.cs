@@ -41,6 +41,15 @@ namespace EGG9000.Bot.Automated {
                             continue;
                         }
 
+                        var shipReturnTime = DateTimeOffset.FromUnixTimeSeconds(shipDm.ShipReturnTime);
+                        if(shipReturnTime <= DateTimeOffset.Now.AddMinutes(-5)) {
+                            _logger.LogWarning("Skipping stale ShipReturnDM for {user}, ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
+                            shipDm.Sent = true;
+                            user.ShipDMs = user.ShipDMs;
+                            await _db.SaveChangesAsync(CancellationToken.None);
+                            continue;
+                        }
+
                         var needsFuel = backup.NeedsFuel();
                         var nextShipDue = DateTimeOffset.FromUnixTimeSeconds(mission.ReturnTime);
                         var hasReturned = nextShipDue <= DateTimeOffset.UtcNow;
@@ -73,8 +82,7 @@ namespace EGG9000.Bot.Automated {
 
                         var (embed, components) = ShipReturnDmBuilder.Build(model);
 
-                        var shipReturnTime = DateTimeOffset.FromUnixTimeSeconds(shipDm.ShipReturnTime);
-                        if(shipReturnTime > DateTimeOffset.UtcNow) {
+                        if(shipReturnTime > DateTimeOffset.Now) {
                             _logger.LogInformation("Sending on time ShipReturnDM to {user}", user.DiscordUsername);
                         } else {
                             _logger.LogInformation("Sending ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.UtcNow - shipReturnTime).Humanize().ShortenTime());

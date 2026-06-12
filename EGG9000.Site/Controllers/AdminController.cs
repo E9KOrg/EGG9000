@@ -648,7 +648,7 @@ namespace EGG9000.Site.Controllers {
                 topxref.DiscordUser ??= await _discord.Rest.GetGuildUserAsync(guildId, topxref.DiscordId);
                 var tempRole = await _db.TemporaryRoles.FirstOrDefaultAsync(x => x.RoleId == beastModeRole.Id && topxref.DiscordId == x.UserId && x.Expires > DateTimeOffset.Now);
                 if(tempRole == null) {
-                    tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.Now, UserId = topxref.DiscordId, GuildId = guildId };
+                    tempRole = new TemporaryRole { RoleId = beastModeRole.Id, Created = DateTimeOffset.UtcNow, UserId = topxref.DiscordId, GuildId = guildId };
                     _db.Add(tempRole);
                     try {
                         await topxref.DiscordUser.AddRoleAsync(beastModeRole);
@@ -657,7 +657,7 @@ namespace EGG9000.Site.Controllers {
                     } finally { }
                 }
                 tempRole.Reason = $"{beastModeRole.Name} awarded for {guildContracts.First().Contract.Name}";
-                tempRole.Expires = DateTimeOffset.Now.AddDays(7);
+                tempRole.Expires = DateTimeOffset.UtcNow.AddDays(7);
             }
 
             await _db.SaveChangesAsync();
@@ -717,7 +717,7 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> Sleepers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var demeritExpires = DateTimeOffset.Now.AddDays(-2);
+            var demeritExpires = DateTimeOffset.UtcNow.AddDays(-2);
             var sleepers = await _db.UserCoopXrefs.AsQueryable().Where(x => x.User.GuildId == guildId && !x.Coop.DeletedChannel && !x.Coop.ThreadArchived).Select(x => new SleeperDetail {
                 DiscordName = x.User.DiscordUsername,
                 CurrentSleep = x.HoursSleeping - (x.SiloTimeHours ?? 0),
@@ -764,7 +764,7 @@ namespace EGG9000.Site.Controllers {
             foreach(var overflowGuildId in dbguild.OverflowServers) {
                 var overflowGuild = _discord.Guilds.First(x => x.Id == overflowGuildId);
                 await overflowGuild.DownloadUsersAsync();
-                var oneWeekAgo = DateTimeOffset.Now.AddDays(-7);
+                var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7);
                 var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => !x.Coop.DeletedChannel && !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop).Select(x => new Ghost {
                     Coop = x.Coop.Name,
                     DiscordId = x.User.DiscordId,

@@ -53,7 +53,7 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
 
             if(NewCoopChecker.WaitingOnCoops) {
-                var weekAgo = DateTimeOffset.Now.AddDays(-7);
+                var weekAgo = DateTimeOffset.UtcNow.AddDays(-7);
                 var user = (await _databaseCache.GetDbUsers()).First(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
                 var xrefs = await _db.UserCoopXrefs.Where(y => y.UserId == user.Id && y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop).Include(y => y.Coop).ThenInclude(x => x.Contract).ToListAsync();
                 user.UserCoopXrefs = xrefs;
@@ -232,7 +232,7 @@ namespace EGG9000.Site.Controllers {
                 _db.ResearchCostSubmissions.Add(existing);
             } else {
                 existing.Cost = model.Cost;
-                existing.SubmittedAt = DateTimeOffset.Now;
+                existing.SubmittedAt = DateTimeOffset.UtcNow;
             }
             await _db.SaveChangesAsync();
             return Ok();
