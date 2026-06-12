@@ -25,9 +25,7 @@ Console.WriteLine($"Source (SQL Server): {Mask(sourceCs)}");
 Console.WriteLine($"Target (Postgres):   {Mask(targetCs)}");
 Console.WriteLine();
 
-// --- Quick path: pgLoader ---
-// Use this for the initial bulk migration. Run the command below on any Linux
-// machine (or WSL) that has pgloader installed.
+// Quick path for the initial bulk migration: run pgloader on any Linux/WSL machine.
 Console.WriteLine("pgLoader command (quick path):");
 Console.WriteLine("  pgloader mssql://<user>:<pass>@aws1.sglade.com/EGG9000Dev postgresql://<user>:<pass>@<pg-host>/EGG9000");
 Console.WriteLine();
@@ -36,15 +34,13 @@ Console.WriteLine("  --verify   Compare source vs target row counts (safe, read-
 Console.WriteLine("  --ef       Run the full EF data migration");
 Console.WriteLine();
 
-if (args.Contains("--verify")) {
+if(args.Contains("--verify")) {
     await RunVerify(sourceCs, targetCs);
-} else if (args.Contains("--ef")) {
+} else if(args.Contains("--ef")) {
     await RunEfMigration(sourceCs, targetCs);
 } else {
     Console.WriteLine("No flag provided. Use --verify or --ef.");
 }
-
-// ---------------------------------------------------------------------------
 
 static async Task RunEfMigration(string sourceCs, string targetCs) {
     var sourceOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -57,7 +53,7 @@ static async Task RunEfMigration(string sourceCs, string targetCs) {
 
     await using var src = new ApplicationDbContext(sourceOptions);
     await using var tgt = new ApplicationDbContext(targetOptions);
-    
+
     // Large tables (Coops blobs, DBUsers) exceed the 30s default on both the source read
     // and the target clear/insert, so raise both before any work runs.
     src.Database.SetCommandTimeout(TimeSpan.FromMinutes(10));
@@ -96,48 +92,40 @@ static async Task RunEfMigration(string sourceCs, string targetCs) {
     Console.WriteLine("Starting EF migration...");
     Console.WriteLine();
 
-    // Migrate in FK-safe order. Each group must complete before the next
-    // because later groups contain rows that reference rows in earlier groups.
-    //
-    // Note on ulong columns (DiscordId, channel IDs, etc.):
-    //   SQL Server stores them as decimal(20,0); Npgsql maps them to numeric.
-    //   All current Discord snowflakes fit in int64, so this is safe in practice.
-    //
-    // Note on Identity tables (AspNetUsers, AspNetRoles, DataProtectionKeys):
-    //   Not migrated - Discord OAuth re-creates user records on first login,
-    //   and DataProtectionKeys should be generated fresh per environment.
+    // Migrate in FK-safe order: later groups reference rows in earlier groups.
+    // ulong columns (DiscordId, channel IDs): SQL Server stores decimal(20,0), Npgsql maps
+    // to numeric; all current Discord snowflakes fit in int64.
+    // Identity tables (AspNetUsers, AspNetRoles, DataProtectionKeys) are not migrated:
+    // Discord OAuth re-creates user records on first login, and DataProtectionKeys
+    // should be generated fresh per environment.
 
-    // --- Group 1: no inbound FKs ---
-    await EntityMigrator.Migrate(src.Guilds,                  tgt, tgt.Guilds,                  "Guilds");
-    await EntityMigrator.Migrate(src.Contracts,               tgt, tgt.Contracts,               "Contracts");
-    await EntityMigrator.Migrate(src.DBUsers,                 tgt, tgt.DBUsers,                 "DBUsers");
-    await EntityMigrator.Migrate(src.Events,                  tgt, tgt.Events,                  "Events");
-    await EntityMigrator.Migrate(src.EventCustomizations,     tgt, tgt.EventCustomizations,     "EventCustomizations");
-    await EntityMigrator.Migrate(src.Donations,               tgt, tgt.Donations,               "Donations");
-    await EntityMigrator.Migrate(src.CustomEggs,              tgt, tgt.CustomEggs,              "CustomEggs");
-    await EntityMigrator.Migrate(src.GlobalLeaderboardCoops,  tgt, tgt.GlobalLeaderboardCoops,  "GlobalLeaderboardCoops");
-    await EntityMigrator.Migrate(src.GlobalLeaderboardUsers,  tgt, tgt.GlobalLeaderboardUsers,  "GlobalLeaderboardUsers");
-    await EntityMigrator.Migrate(src.TemporaryRoles,          tgt, tgt.TemporaryRoles,          "TemporaryRoles");
-    await EntityMigrator.Migrate(src.ExpiringShells,          tgt, tgt.ExpiringShells,          "ExpiringShells");
-    await EntityMigrator.Migrate(src.AutomationLogs,          tgt, tgt.AutomationLogs,          "AutomationLogs");
-    await EntityMigrator.Migrate(src.UpcomingContracts,       tgt, tgt.UpcomingContracts,       "UpcomingContracts");
-    await EntityMigrator.Migrate(src.FAQTopics,               tgt, tgt.FAQTopics,               "FAQTopics");
+    await EntityMigrator.Migrate(src.Guilds, tgt, tgt.Guilds, "Guilds");
+    await EntityMigrator.Migrate(src.Contracts, tgt, tgt.Contracts, "Contracts");
+    await EntityMigrator.Migrate(src.DBUsers, tgt, tgt.DBUsers, "DBUsers");
+    await EntityMigrator.Migrate(src.Events, tgt, tgt.Events, "Events");
+    await EntityMigrator.Migrate(src.EventCustomizations, tgt, tgt.EventCustomizations, "EventCustomizations");
+    await EntityMigrator.Migrate(src.Donations, tgt, tgt.Donations, "Donations");
+    await EntityMigrator.Migrate(src.CustomEggs, tgt, tgt.CustomEggs, "CustomEggs");
+    await EntityMigrator.Migrate(src.GlobalLeaderboardCoops, tgt, tgt.GlobalLeaderboardCoops, "GlobalLeaderboardCoops");
+    await EntityMigrator.Migrate(src.GlobalLeaderboardUsers, tgt, tgt.GlobalLeaderboardUsers, "GlobalLeaderboardUsers");
+    await EntityMigrator.Migrate(src.TemporaryRoles, tgt, tgt.TemporaryRoles, "TemporaryRoles");
+    await EntityMigrator.Migrate(src.ExpiringShells, tgt, tgt.ExpiringShells, "ExpiringShells");
+    await EntityMigrator.Migrate(src.AutomationLogs, tgt, tgt.AutomationLogs, "AutomationLogs");
+    await EntityMigrator.Migrate(src.UpcomingContracts, tgt, tgt.UpcomingContracts, "UpcomingContracts");
+    await EntityMigrator.Migrate(src.FAQTopics, tgt, tgt.FAQTopics, "FAQTopics");
     await EntityMigrator.Migrate(src.ResearchCostSubmissions, tgt, tgt.ResearchCostSubmissions, "ResearchCostSubmissions");
-    await EntityMigrator.Migrate(src.NasaApods,               tgt, tgt.NasaApods,               "NasaApods");
-    await EntityMigrator.Migrate(src.UserSnapShots,           tgt, tgt.UserSnapShots,           "UserSnapShots");
-    await EntityMigrator.Migrate(src.UserCsHistoryEntries,    tgt, tgt.UserCsHistoryEntries,    "UserCsHistoryEntries");
+    await EntityMigrator.Migrate(src.NasaApods, tgt, tgt.NasaApods, "NasaApods");
+    await EntityMigrator.Migrate(src.UserSnapShots, tgt, tgt.UserSnapShots, "UserSnapShots");
+    await EntityMigrator.Migrate(src.UserCsHistoryEntries, tgt, tgt.UserCsHistoryEntries, "UserCsHistoryEntries");
 
-    // --- Group 2: FK to Contracts ---
-    await EntityMigrator.Migrate(src.Coops,                   tgt, tgt.Coops,                   "Coops");
-    await EntityMigrator.Migrate(src.GuildContracts,          tgt, tgt.GuildContracts,          "GuildContracts");
+    await EntityMigrator.Migrate(src.Coops, tgt, tgt.Coops, "Coops");
+    await EntityMigrator.Migrate(src.GuildContracts, tgt, tgt.GuildContracts, "GuildContracts");
 
-    // --- Group 3: FK to DBUsers ---
-    await EntityMigrator.Migrate(src.Demerit,                 tgt, tgt.Demerit,                 "Demerits");
-    await EntityMigrator.Migrate(src.Merit,                   tgt, tgt.Merit,                   "Merits");
+    await EntityMigrator.Migrate(src.Demerit, tgt, tgt.Demerit, "Demerits");
+    await EntityMigrator.Migrate(src.Merit, tgt, tgt.Merit, "Merits");
 
-    // --- Group 4: FK to both Coops and DBUsers ---
-    await EntityMigrator.Migrate(src.UserCoopXrefs,           tgt, tgt.UserCoopXrefs,           "UserCoopXrefs");
-    await EntityMigrator.Migrate(src.UserCoopStatuses,        tgt, tgt.UserCoopStatuses,        "UserCoopStatuses");
+    await EntityMigrator.Migrate(src.UserCoopXrefs, tgt, tgt.UserCoopXrefs, "UserCoopXrefs");
+    await EntityMigrator.Migrate(src.UserCoopStatuses, tgt, tgt.UserCoopStatuses, "UserCoopStatuses");
 
     Console.WriteLine();
     Console.WriteLine("EF migration complete.");
@@ -157,30 +145,30 @@ static async Task RunVerify(string sourceCs, string targetCs) {
     Console.WriteLine($"{"Table",-30} {"Source",8} {"Target",8}  {"Status"}");
     Console.WriteLine(new string('-', 60));
 
-    await Row("Guilds",                  src.Guilds,                  tgt.Guilds);
-    await Row("Contracts",               src.Contracts,               tgt.Contracts);
-    await Row("DBUsers",                 src.DBUsers,                 tgt.DBUsers);
-    await Row("Events",                  src.Events,                  tgt.Events);
-    await Row("EventCustomizations",     src.EventCustomizations,     tgt.EventCustomizations);
-    await Row("Donations",               src.Donations,               tgt.Donations);
-    await Row("CustomEggs",              src.CustomEggs,              tgt.CustomEggs);
-    await Row("GlobalLeaderboardCoops",  src.GlobalLeaderboardCoops,  tgt.GlobalLeaderboardCoops);
-    await Row("GlobalLeaderboardUsers",  src.GlobalLeaderboardUsers,  tgt.GlobalLeaderboardUsers);
-    await Row("TemporaryRoles",          src.TemporaryRoles,          tgt.TemporaryRoles);
-    await Row("ExpiringShells",          src.ExpiringShells,          tgt.ExpiringShells);
-    await Row("AutomationLogs",          src.AutomationLogs,          tgt.AutomationLogs);
-    await Row("UpcomingContracts",       src.UpcomingContracts,       tgt.UpcomingContracts);
-    await Row("FAQTopics",               src.FAQTopics,               tgt.FAQTopics);
+    await Row("Guilds", src.Guilds, tgt.Guilds);
+    await Row("Contracts", src.Contracts, tgt.Contracts);
+    await Row("DBUsers", src.DBUsers, tgt.DBUsers);
+    await Row("Events", src.Events, tgt.Events);
+    await Row("EventCustomizations", src.EventCustomizations, tgt.EventCustomizations);
+    await Row("Donations", src.Donations, tgt.Donations);
+    await Row("CustomEggs", src.CustomEggs, tgt.CustomEggs);
+    await Row("GlobalLeaderboardCoops", src.GlobalLeaderboardCoops, tgt.GlobalLeaderboardCoops);
+    await Row("GlobalLeaderboardUsers", src.GlobalLeaderboardUsers, tgt.GlobalLeaderboardUsers);
+    await Row("TemporaryRoles", src.TemporaryRoles, tgt.TemporaryRoles);
+    await Row("ExpiringShells", src.ExpiringShells, tgt.ExpiringShells);
+    await Row("AutomationLogs", src.AutomationLogs, tgt.AutomationLogs);
+    await Row("UpcomingContracts", src.UpcomingContracts, tgt.UpcomingContracts);
+    await Row("FAQTopics", src.FAQTopics, tgt.FAQTopics);
     await Row("ResearchCostSubmissions", src.ResearchCostSubmissions, tgt.ResearchCostSubmissions);
-    await Row("NasaApods",               src.NasaApods,               tgt.NasaApods);
-    await Row("UserSnapShots",           src.UserSnapShots,           tgt.UserSnapShots);
-    await Row("UserCsHistoryEntries",    src.UserCsHistoryEntries,    tgt.UserCsHistoryEntries);
-    await Row("Coops",                   src.Coops,                   tgt.Coops);
-    await Row("GuildContracts",          src.GuildContracts,          tgt.GuildContracts);
-    await Row("Demerits",                src.Demerit,                 tgt.Demerit);
-    await Row("Merits",                  src.Merit,                   tgt.Merit);
-    await Row("UserCoopXrefs",           src.UserCoopXrefs,           tgt.UserCoopXrefs);
-    await Row("UserCoopStatuses",        src.UserCoopStatuses,        tgt.UserCoopStatuses);
+    await Row("NasaApods", src.NasaApods, tgt.NasaApods);
+    await Row("UserSnapShots", src.UserSnapShots, tgt.UserSnapShots);
+    await Row("UserCsHistoryEntries", src.UserCsHistoryEntries, tgt.UserCsHistoryEntries);
+    await Row("Coops", src.Coops, tgt.Coops);
+    await Row("GuildContracts", src.GuildContracts, tgt.GuildContracts);
+    await Row("Demerits", src.Demerit, tgt.Demerit);
+    await Row("Merits", src.Merit, tgt.Merit);
+    await Row("UserCoopXrefs", src.UserCoopXrefs, tgt.UserCoopXrefs);
+    await Row("UserCoopStatuses", src.UserCoopStatuses, tgt.UserCoopStatuses);
 
     static async Task Row<T>(string label, IQueryable<T> source, IQueryable<T> target) where T : class {
         int s = await source.CountAsync();

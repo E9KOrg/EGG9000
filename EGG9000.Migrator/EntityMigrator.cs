@@ -13,7 +13,7 @@ internal static class EntityMigrator {
     private static readonly Dictionary<Type, PropertyInfo[]> _dtoProps = [];
 
     private static PropertyInfo[] GetDtoProps(Type t) {
-        if (_dtoProps.TryGetValue(t, out var cached)) return cached;
+        if(_dtoProps.TryGetValue(t, out var cached)) return cached;
         var props = t.GetProperties()
             .Where(p => p.CanRead && p.CanWrite &&
                         (p.PropertyType == typeof(DateTimeOffset) ||
@@ -27,16 +27,16 @@ internal static class EntityMigrator {
     // SQL Server stores DateTimeOffset with local offsets, so normalize before writing.
     private static void NormalizeToUtc<T>(List<T> batch) where T : class {
         var props = GetDtoProps(typeof(T));
-        if (props.Length == 0) return;
-        foreach (var entity in batch) {
-            foreach (var prop in props) {
-                if (prop.PropertyType == typeof(DateTimeOffset)) {
+        if(props.Length == 0) return;
+        foreach(var entity in batch) {
+            foreach(var prop in props) {
+                if(prop.PropertyType == typeof(DateTimeOffset)) {
                     var v = (DateTimeOffset)prop.GetValue(entity)!;
-                    if (v.Offset != TimeSpan.Zero)
+                    if(v.Offset != TimeSpan.Zero)
                         prop.SetValue(entity, v.ToUniversalTime());
                 } else {
                     var v = (DateTimeOffset?)prop.GetValue(entity);
-                    if (v.HasValue && v.Value.Offset != TimeSpan.Zero)
+                    if(v.HasValue && v.Value.Offset != TimeSpan.Zero)
                         prop.SetValue(entity, v.Value.ToUniversalTime());
                 }
             }
@@ -58,7 +58,7 @@ internal static class EntityMigrator {
         int total = 0;
         var batch = new List<T>(BatchSize);
 
-        await foreach (var row in source.AsNoTracking().AsAsyncEnumerable()) {
+        await foreach(var row in source.AsNoTracking().AsAsyncEnumerable()) {
             if(row is Demerit demerit && demerit.AdminUserId == Guid.Empty) {
                 demerit.AdminUserId = null;
             }
@@ -75,7 +75,7 @@ internal static class EntityMigrator {
             }
         }
 
-        if (batch.Count > 0) {
+        if(batch.Count > 0) {
             await Flush(batch, target, targetSet);
             total += batch.Count;
         }
@@ -84,10 +84,9 @@ internal static class EntityMigrator {
     }
 
     private static async Task Flush<T>(List<T> batch, ApplicationDbContext target, DbSet<T> targetSet) where T : class {
-        // Normalize all DateTimeOffset values to UTC before writing - Npgsql requires offset 0.
         NormalizeToUtc(batch);
-        
-        // Remove null bytes from all string properties - PostgreSQL rejects 0x00 in UTF-8 text
+
+        // Remove null bytes from all string properties - PostgreSQL rejects 0x00 in UTF-8 text.
         SanitizeStrings(batch);
 
         // Capture LastModified after normalization so the restored value is already UTC.
@@ -99,7 +98,7 @@ internal static class EntityMigrator {
         targetSet.AddRange(batch);
 
         // Restore the original timestamps from the source DB.
-        foreach (var (entity, ts) in timestamps)
+        foreach(var (entity, ts) in timestamps)
             entity.LastModified = ts;
 
         await target.SaveChangesAsync();
@@ -107,13 +106,13 @@ internal static class EntityMigrator {
     }
 
     private static void SanitizeStrings<T>(List<T> batch) where T : class {
-        foreach (var entity in batch) {
+        foreach(var entity in batch) {
             var stringProps = typeof(T).GetProperties()
                 .Where(p => p.PropertyType == typeof(string) && p.CanWrite);
-            
-            foreach (var prop in stringProps) {
+
+            foreach(var prop in stringProps) {
                 var value = (string)prop.GetValue(entity);
-                if (value != null && value.Contains('\0')) {
+                if(value != null && value.Contains('\0')) {
                     prop.SetValue(entity, value.Replace("\0", ""));
                 }
             }
