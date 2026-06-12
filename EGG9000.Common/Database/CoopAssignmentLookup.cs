@@ -56,7 +56,7 @@ namespace EGG9000.Common.Database {
 
         public async Task RefreshAsync() {
             try {
-                var now = DateTimeOffset.Now;
+                var now = DateTimeOffset.UtcNow;
                 await using var db = await _dbContextFactory.CreateDbContextAsync();
 
                 var rows = await db.UserCoopXrefs
@@ -68,7 +68,7 @@ namespace EGG9000.Common.Database {
                     .ToListAsync();
 
                 _map = Build(rows);
-                LastRefresh = DateTimeOffset.Now;
+                LastRefresh = DateTimeOffset.UtcNow;
                 _logger.LogInformation("Refreshed CoopAssignmentLookup: {Count} user/contract entries", _map.Count);
             } catch(Exception e) {
                 _logger.LogError(e, "Error refreshing CoopAssignmentLookup");
