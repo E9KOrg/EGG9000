@@ -1,6 +1,7 @@
 ﻿@model MyFarmsModel
 @using Discord.WebSocket
 @using EGG9000.Common.Helpers
+@using EGG9000.Common.JsonData
 @using Microsoft.AspNetCore.Html
 @using static EGG9000.Site.Controllers.MyFarmsController
 @using EGG9000.Common.JsonData.EIEpicResearch;
@@ -75,7 +76,7 @@
             display: inline-block;
             z-index: 3;
             position: absolute;
-            bottom: 25px; /* Adjust this value as needed */
+            bottom: 25px;
             left: 50%;
             transform: translateX(-50%); /* Center the tooltip */
         }
@@ -108,7 +109,7 @@
 
     .speech-bubble {
         position: relative;
-        padding: 10px; /* Adjust the padding to your preference */
+        padding: 10px;
         margin: 10px auto; /* Center the bubble horizontally */
         border-radius: 5px; /* Rounded corners for the bubble */
     }
@@ -120,11 +121,10 @@
             top: 100%;
             left: 50%;
             margin-left: -15px; /* Half of the triangle's width */
-            border-width: 15px; /* Adjust the size of the triangle */
+            border-width: 15px;
             border-style: solid;
             border-color: #ccc transparent transparent transparent;
         }
-
 </style>
 
 <script>
@@ -172,7 +172,7 @@
             ((minutes > 0 && (months == 0 && weeks == 0 && days == 0 && hours < 10 || full)) ? `${minutes}m` : "") +
             ((seconds > 0 && ((minutes < 10 && hours == 0 && days == 0 && weeks == 0 && months == 0) || full)) ? `${seconds}s` : "")
         ) ?? "0s";
-        if (result == "") result = "0s"; // If the time is empty, display "0s"
+        if (result == "") result = "0s";
 
         return result;
     }
@@ -205,10 +205,6 @@
                         <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.ThreadID/">
                             <img src="/images/discordicon.png" style="max-height: 1em;" />
                         </a>
-                    } else if(xref.Coop.DiscordChannelId != 0){
-                    <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.DiscordChannelId/">
-                        <img src="/images/discordicon.png" style="max-height: 1em;" />
-                    </a>
                     }
                 </div>
             }
@@ -509,13 +505,7 @@
                         newModel.CustomEggs = Model.CustomEggs;
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
                     }
-                </div> 
-                <!--<div class="tab-pane; justify-content-center" id="inventoryview@(index)" role="tabpanel">
-                    /*@{
-                        //await Html.RenderPartialAsync("-InventoryView", (account, index));
-                    }*/
-                </div>-->
-
+                </div>
             </div>
         </div>
     }
@@ -585,7 +575,6 @@
                 if (hash.substring(1, 5) == "user")
                     return;
                 newUrl = url.split("#")[0] + hash;
-                //newUrl += "/";
                 history.replaceState(null, null, newUrl);
             });
 
@@ -604,7 +593,6 @@
                         }
                     });
                     var show = showAll || matches == terms.length;
-                    //console.log(matches);
                     if (show) {
                         $(this).show();
                     } else {
