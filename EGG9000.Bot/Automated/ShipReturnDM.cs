@@ -22,14 +22,14 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbEggs = await _db.GetCustomEggsAsync();
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.Now).ToListAsync(CancellationToken.None);
+            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
             foreach(var user in users) {
                 var discordUser = _client.GetUser(user.DiscordId);
                 if(discordUser == null) {
                     continue;
                 }
 
-                foreach(var shipDm in user.ShipDMs.Where(x => x.DMTime <= DateTimeOffset.Now.AddSeconds(30) && !x.Sent)) {
+                foreach(var shipDm in user.ShipDMs.Where(x => x.DMTime <= DateTimeOffset.UtcNow.AddSeconds(30) && !x.Sent)) {
                     try {
                         var account = user.EggIncAccounts.First(x => shipDm.EggIncID == null || x.Id == shipDm.EggIncID);
                         var backup = account.Backup;
@@ -42,8 +42,8 @@ namespace EGG9000.Bot.Automated {
                         }
 
                         var shipReturnTime = DateTimeOffset.FromUnixTimeSeconds(shipDm.ShipReturnTime);
-                        if(shipReturnTime <= DateTimeOffset.Now.AddMinutes(-5)) {
-                            _logger.LogWarning("Skipping stale ShipReturnDM for {user}, ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
+                        if(shipReturnTime <= DateTimeOffset.UtcNow.AddMinutes(-5)) {
+                            _logger.LogWarning("Skipping stale ShipReturnDM for {user}, ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.UtcNow - shipReturnTime).Humanize().ShortenTime());
                             shipDm.Sent = true;
                             user.ShipDMs = user.ShipDMs;
                             await _db.SaveChangesAsync(CancellationToken.None);
@@ -52,7 +52,7 @@ namespace EGG9000.Bot.Automated {
 
                         var needsFuel = backup.NeedsFuel();
                         var nextShipDue = DateTimeOffset.FromUnixTimeSeconds(mission.ReturnTime);
-                        var hasReturned = nextShipDue <= DateTimeOffset.Now;
+                        var hasReturned = nextShipDue <= DateTimeOffset.UtcNow;
 
                         var fuelTank = new List<ShipReturnDmBuilder.FuelLine>();
                         if(backup.FuelAmounts is not null && backup.FuelAmounts.Count > 0) {
@@ -82,10 +82,10 @@ namespace EGG9000.Bot.Automated {
 
                         var (embed, components) = ShipReturnDmBuilder.Build(model);
 
-                        if(shipReturnTime > DateTimeOffset.Now) {
+                        if(shipReturnTime > DateTimeOffset.UtcNow) {
                             _logger.LogInformation("Sending on time ShipReturnDM to {user}", user.DiscordUsername);
                         } else {
-                            _logger.LogInformation("Sending ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.Now - shipReturnTime).Humanize().ShortenTime());
+                            _logger.LogInformation("Sending ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.UtcNow - shipReturnTime).Humanize().ShortenTime());
                         }
 
                         var capturedUser = discordUser;
@@ -142,8 +142,13 @@ namespace EGG9000.Bot.Automated {
                     }
 
 
-                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.Now || !x.Sent).ToList();
-                    var NextShipReturnDMDue = currentShipDMs.Where(x => !x.Sent).OrderBy(x => x.DMTime).FirstOrDefault()?.DMTime;
+                    // Keep future DMs and still-pending recent ones. Drop sent DMs and any unsent DM
+                    // whose ship returned more than 5 minutes ago - Run() would only stale-skip those,
+                    // so dropping them here clears the backlog silently instead of leaving it to pile up
+                    // (the failure mode that spammed users once saves started succeeding again).
+                    var staleReturnUnix = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds();
+                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.UtcNow || (!x.Sent && x.ShipReturnTime > staleReturnUnix)).ToList();
+                    var NextShipReturnDMDue = currentShipDMs.Where(x => !x.Sent && x.ShipReturnTime > staleReturnUnix).OrderBy(x => x.DMTime).FirstOrDefault()?.DMTime;
 
                     if(NextShipReturnDMDue != user.NextShipReturnDMDue) {
                         var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == user.Id);
@@ -153,9 +158,9 @@ namespace EGG9000.Bot.Automated {
             }
             await _db.SaveChangesAsync();
 
-            var earliestNextTime = dbusers.Where(x => x.DMOnShipReturn && x.NextShipReturnDMDue is not null && x.NextShipReturnDMDue > DateTimeOffset.Now).OrderBy(x => x.NextShipReturnDMDue).FirstOrDefault();
+            var earliestNextTime = dbusers.Where(x => x.DMOnShipReturn && x.NextShipReturnDMDue is not null && x.NextShipReturnDMDue > DateTimeOffset.UtcNow).OrderBy(x => x.NextShipReturnDMDue).FirstOrDefault();
             if(earliestNextTime is not null) {
-                var timeToNext = (earliestNextTime.NextShipReturnDMDue.Value - DateTimeOffset.Now);
+                var timeToNext = (earliestNextTime.NextShipReturnDMDue.Value - DateTimeOffset.UtcNow);
                 if(timeToNext > TimeSpan.Zero && timeToNext < TimeSpan.FromMinutes(5)) {
                     return timeToNext;
                 }

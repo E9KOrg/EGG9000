@@ -67,11 +67,11 @@ if ($Site) {
     if ($LASTEXITCODE -ne 0) { Write-Host "Build failed: egg9000site" -ForegroundColor Red; exit 1 }
     Write-Host "Built: kendrome/egg9000site:latest" -ForegroundColor Green
 #    Publish-Image "kendrome/egg9000site"
-        Write-Host "Pushing to Docker Hub..." -ForegroundColor Green
-$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$imageName = "kendrome/egg9000site"
-$imageTag = "${imageName}:${timestamp}"
-$imageLatest = "${imageName}:latest"
+    Write-Host "Pushing to Docker Hub..." -ForegroundColor Green
+    $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $imageName = "kendrome/egg9000site"
+    $imageTag = "${imageName}:${timestamp}"
+    $imageLatest = "${imageName}:latest"
     docker push $imageTag
     docker push $imageLatest
     Write-Host "Published: $imageTag" -ForegroundColor Green

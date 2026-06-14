@@ -30,8 +30,8 @@ namespace EGG9000.Bot.Commands {
             return new EmbedBuilder().WithTitle(title).WithDescription(userText + description);
         }
 
-        public static readonly TimeSpan TimeZoneOffset = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.Now);
-        private static readonly DateTimeOffset StaticToday = DateTimeOffset.Now;
+        public static readonly TimeSpan TimeZoneOffset = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow);
+        private static readonly DateTimeOffset StaticToday = DateTimeOffset.UtcNow;
         public static readonly List<(int bg, long time)> BoardingGroupTimes = [
             (1, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).ToUnixTimeSeconds()),
             (2, new DateTimeOffset(StaticToday.Year, StaticToday.Month, StaticToday.Day, 11, 0, 0 , TimeZoneOffset).AddHours(8).ToUnixTimeSeconds()),
@@ -585,7 +585,7 @@ namespace EGG9000.Bot.Commands {
                    .WithButton("Add 1 Week to Break", $"BreakAddWeek:{index},{dbuser.DiscordId}");
             }
 
-            if(account.OnBreakUntil != default && account.OnBreakUntil > DateTimeOffset.Now) {
+            if(account.OnBreakUntil != default && account.OnBreakUntil > DateTimeOffset.UtcNow) {
                 row.WithButton("Stop Break Early", $"StopBreakEarly:{index},{dbuser.DiscordId}");
             }
 
@@ -597,7 +597,7 @@ namespace EGG9000.Bot.Commands {
         public static string MCSBreakMessage(EggIncAccount account) {
             if(account.OnBreakUntil == default) {
                 return "Not on break";
-            } else if(account.OnBreakUntil < DateTimeOffset.Now) {
+            } else if(account.OnBreakUntil < DateTimeOffset.UtcNow) {
                 return $"\nBreak Ended <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R> on <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:D>\n";
             } else {
                 return $"\nEnds <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:R> on <t:{account.OnBreakUntil.ToUnixTimeSeconds()}:D>\n";
@@ -611,7 +611,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             //Add 1 day to the DTO
-            account.SetBreak(AddCappedDays(account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil, 1), dbuser);
+            account.SetBreak(AddCappedDays(account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.UtcNow ? DateTimeOffset.UtcNow : account.OnBreakUntil, 1), dbuser);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
@@ -625,7 +625,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             //Add 7 days to the DTO
-            account.SetBreak(AddCappedDays(account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.Now ? DateTimeOffset.Now : account.OnBreakUntil, 7), dbuser);
+            account.SetBreak(AddCappedDays(account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.UtcNow ? DateTimeOffset.UtcNow : account.OnBreakUntil, 7), dbuser);
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
@@ -647,7 +647,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static DateTimeOffset AddCappedDays(DateTimeOffset currentDtOffset, int daysToAdd) {
-            var dayDifferential = (currentDtOffset - DateTimeOffset.Now).Days;
+            var dayDifferential = (currentDtOffset - DateTimeOffset.UtcNow).Days;
             if(dayDifferential >= 60) return currentDtOffset;
             else {
                 if(dayDifferential + daysToAdd >= 60) daysToAdd = 60 - dayDifferential; //Cap to 60 days

@@ -1,9 +1,10 @@
 ﻿using EGG9000.Common.Database.Entities;
 
+using Npgsql;
+
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
@@ -14,6 +15,7 @@ using System;
 using System.Collections.Frozen;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database {
@@ -57,10 +59,10 @@ namespace EGG9000.Common.Database {
             LogResolvedConnection(connectionString, environment, basePath, connectionSource);
 
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-            optionsBuilder.UseSqlServer(connectionString, options => {
+            optionsBuilder.UseNpgsql(connectionString, options => {
                 options.MigrationsAssembly("EGG9000.Common");
                 options.EnableRetryOnFailure();
-                options.CommandTimeout(120);
+                options.CommandTimeout(30);
             });
 
             return new ApplicationDbContext(optionsBuilder.Options);
@@ -68,8 +70,8 @@ namespace EGG9000.Common.Database {
 
         private static void LogResolvedConnection(string connectionString, string environment, string basePath, string connectionSource) {
             try {
-                var builder = new SqlConnectionStringBuilder(connectionString);
-                Console.WriteLine($"[EF DesignTime] Using DefaultConnection from '{connectionSource}'. Environment='{environment}', BasePath='{basePath}', Server='{builder.DataSource}', Database='{builder.InitialCatalog}', IntegratedSecurity='{builder.IntegratedSecurity}', Encrypt='{builder.Encrypt}'.");
+                var builder = new NpgsqlConnectionStringBuilder(connectionString);
+                Console.WriteLine($"[EF DesignTime] Using DefaultConnection from '{connectionSource}'. Environment='{environment}', BasePath='{basePath}', Host='{builder.Host}', Database='{builder.Database}', SslMode='{builder.SslMode}'.");
             } catch(Exception ex) {
                 Console.WriteLine($"[EF DesignTime] Using DefaultConnection from '{connectionSource}'. Environment='{environment}', BasePath='{basePath}'. Connection string parse failed ({ex.GetType().Name}).");
             }
@@ -173,7 +175,7 @@ namespace EGG9000.Common.Database {
             foreach(var def in missing) {
                 Contracts.Add(new Contract {
                     ID = def.Identifier,
-                    Created = DateTime.Now,
+                    Created = DateTimeOffset.UtcNow,
                     Description = def.Description,
                     Name = def.Name,
                     goals = Newtonsoft.Json.JsonConvert.SerializeObject(def.Goals),
@@ -207,14 +209,57 @@ namespace EGG9000.Common.Database {
 
         void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
             if(!e.FromQuery && e.Entry.State == EntityState.Added && e.Entry.Entity is ILastModified entity)
-                entity.LastModified = DateTimeOffset.Now;
+                entity.LastModified = DateTimeOffset.UtcNow;
         }
 
         void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
             if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
-                entity.LastModified = DateTimeOffset.Now;
+                entity.LastModified = DateTimeOffset.UtcNow;
         }
 
+        // AdminUserId is a nullable FK to a DBUser (the staff member who issued a merit/demerit).
+        // Automated merits/demerits have no admin and historically used Guid.Empty as a sentinel.
+        // SQL Server did not enforce the FK on that value, but Postgres does: inserting Guid.Empty
+        // references a non-existent user and the whole SaveChanges fails, which (because the Discord
+        // message is sent first) causes infinite re-sends. Normalize the sentinel to null at the
+        // boundary so the FK is satisfied, mirroring the same conversion the data migrator applies.
+        private void NormalizeAdminUserIds() {
+            foreach(var entry in ChangeTracker.Entries()) {
+                if(entry.State is not (EntityState.Added or EntityState.Modified)) continue;
+                switch(entry.Entity) {
+                    case Demerit { AdminUserId: { } d } when d == Guid.Empty:
+                        ((Demerit)entry.Entity).AdminUserId = null; break;
+                    case Merit { AdminUserId: { } m } when m == Guid.Empty:
+                        ((Merit)entry.Entity).AdminUserId = null; break;
+                }
+            }
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess) {
+            NormalizeAdminUserIds();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) {
+            NormalizeAdminUserIds();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+
+        // Npgsql 'timestamp with time zone' only accepts UTC (offset 0). Normalize every
+        // DateTimeOffset the model writes or compares (including query parameters - EF routes
+        // them through this converter) to UTC, so a stray local-offset value such as
+        // DateTimeOffset.Now can never crash a write or a query. The instant is preserved.
+        // Reads keep Npgsql's default materialization (local offset, same instant); the app
+        // compares DateTimeOffsets by instant, so the offset representation is irrelevant.
+        private sealed class UtcDateTimeOffsetConverter : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTimeOffset, DateTimeOffset> {
+            public UtcDateTimeOffsetConverter() : base(v => v.ToUniversalTime(), v => v) { }
+        }
+
+        protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) {
+            base.ConfigureConventions(configurationBuilder);
+            configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcDateTimeOffsetConverter>();
+        }
 
         protected override void OnModelCreating(ModelBuilder builder) {
             base.OnModelCreating(builder);
@@ -231,7 +276,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<Merit>().HasOne(x => x.AdminUser).WithMany(x => x.MeritsGiven).IsRequired(false).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);
 
             builder.Entity<NasaApod>().HasKey(x => x.ID);
-            builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("CONVERT(varchar(10), GETUTCDATE(), 23)");
+            builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD')");
 
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
             builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });

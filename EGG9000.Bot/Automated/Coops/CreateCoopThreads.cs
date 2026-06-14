@@ -164,7 +164,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     .SetProperty(c => c.OverflowGuildId, coop.OverflowGuildId));
                                 timings.Set("Updated db");
 
-                                guildWithOverflow.LastAccessed = DateTimeOffset.Now;
+                                guildWithOverflow.LastAccessed = DateTimeOffset.UtcNow;
                                 var dbguild = dbguilds.FirstOrDefault(x => x.Id == guildWithOverflow.Guild.Id);
                                 var overflowGuild = coop.OverflowGuildId > 0 ? _client.GetGuild(coop.OverflowGuildId) : guildWithOverflow.Guild;
 
@@ -320,11 +320,11 @@ namespace EGG9000.Bot.Automated.Coops {
                 var serverHeaderChannel = currentChannels.First(x => x.ServerId == lastAccessedObject.ServerId);
                 headerChannel = serverHeaderChannel.HeaderChannel;
                 lastAccessed = lastAccessedObject.LastAccessed;
-                lastAccessedObject.LastAccessed = DateTimeOffset.Now;
+                lastAccessedObject.LastAccessed = DateTimeOffset.UtcNow;
             }
 
-            if(lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) > DateTimeOffset.Now) {
-                var timeToDelay = lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) - DateTimeOffset.Now;
+            if(lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) > DateTimeOffset.UtcNow) {
+                var timeToDelay = lastAccessed.AddMilliseconds(THREAD_CREATION_DELAY_MS) - DateTimeOffset.UtcNow;
                 _logger.LogInformation("Delaying for {delay} on {guild}", timeToDelay.Humanize(precision: 2).ShortenTime(), headerChannel?.Guild?.Name);
                 await Task.Delay(timeToDelay);
             }

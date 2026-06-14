@@ -77,8 +77,8 @@ namespace EGG9000.Bot.Automated {
             _initiate(provider);
             _cronExpression = cronExpression;
             _nextRunFromCron = _options.DelayStart.HasValue ?
-                DateTimeOffset.Now + _options.DelayStart.Value :
-                cronExpression.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
+                DateTimeOffset.UtcNow + _options.DelayStart.Value :
+                cronExpression.GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
         }
 
         private void _initiate(IServiceProvider provider) {
@@ -94,7 +94,7 @@ namespace EGG9000.Bot.Automated {
             _ = ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out _CPGuildId);
 
             initialStart = true;
-            _lastAlive = DateTimeOffset.Now;
+            _lastAlive = DateTimeOffset.UtcNow;
             _options = provider.GetService<IOptionsMonitor<UpdaterOptions<T>>>().CurrentValue;
 
         }
@@ -109,7 +109,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public void StillAlive() {
-            _lastAlive = DateTimeOffset.Now;
+            _lastAlive = DateTimeOffset.UtcNow;
         }
 
         public async Task WaitOnCoopsBeingCreated(CancellationToken cancellationToken) {
@@ -139,12 +139,12 @@ namespace EGG9000.Bot.Automated {
                     var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     _logger.LogInformation("Running");
                     LastStarted = DateTime.Now;
-                    _lastAlive = DateTimeOffset.Now;
-                    var log = new AutomationLog { Type = GetType().Name, StartTime = DateTimeOffset.Now };
+                    _lastAlive = DateTimeOffset.UtcNow;
+                    var log = new AutomationLog { Type = GetType().Name, StartTime = DateTimeOffset.UtcNow };
                     _db.AutomationLogs.Add(log);
                     await _db.SaveChangesAsync();
                     await Run(state, _cts.Token);
-                    log.EndTime = DateTimeOffset.Now;
+                    log.EndTime = DateTimeOffset.UtcNow;
                     await _db.SaveChangesAsync();
 
                     LastCompleted = DateTime.Now;
@@ -163,7 +163,7 @@ namespace EGG9000.Bot.Automated {
                 }
             } else {
                 var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                _db.AutomationLogs.Add(new AutomationLog { Type = GetType().Name, StartTime = DateTimeOffset.Now, Skipped = true });
+                _db.AutomationLogs.Add(new AutomationLog { Type = GetType().Name, StartTime = DateTimeOffset.UtcNow, Skipped = true });
                 await _db.SaveChangesAsync();
                 _logger.LogWarning("Unable to run, already running for {time}", (DateTime.Now - LastStarted).Humanize());
             }
@@ -201,18 +201,18 @@ namespace EGG9000.Bot.Automated {
             while(_cts?.IsCancellationRequested == false) {
                 try {
 
-                    if(_nextRunFromCron < DateTimeOffset.Now) {
-                        _logger.LogInformation("Running, Current time: {currentTime}, next run at {nextRun}", DateTimeOffset.Now.ToString("h:mm:ss:ff"), _nextRunFromCron);
+                    if(_nextRunFromCron < DateTimeOffset.UtcNow) {
+                        _logger.LogInformation("Running, Current time: {currentTime}, next run at {nextRun}", DateTimeOffset.UtcNow.ToString("h:mm:ss:ff"), _nextRunFromCron);
 
                         var timer = System.Diagnostics.Stopwatch.StartNew();
                         await _run(null);
                         _logger.LogInformation("Update took {updateTime}", timer.Elapsed.Humanize());
-                        _lastAlive = DateTimeOffset.Now;
+                        _lastAlive = DateTimeOffset.UtcNow;
                     }
 
 
-                    _nextRunFromCron = _cronExpression.GetNextOccurrence(DateTimeOffset.Now, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
-                    var delay = (_nextRunFromCron - DateTimeOffset.Now) + TimeSpan.FromMilliseconds(10);
+                    _nextRunFromCron = _cronExpression.GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time")).Value;
+                    var delay = (_nextRunFromCron - DateTimeOffset.UtcNow) + TimeSpan.FromMilliseconds(10);
                     if(delay < TimeSpan.Zero) {
                         delay = TimeSpan.FromSeconds(1);
                     }
@@ -276,8 +276,8 @@ namespace EGG9000.Bot.Automated {
             if(watchDogDue < _this._lastAlive.AddMinutes(5))
                 watchDogDue = _this._lastAlive + TimeSpan.FromMinutes(5);
 
-            if(watchDogDue < DateTimeOffset.Now) {
-                var lastAlive = DateTimeOffset.Now - _this._lastAlive;
+            if(watchDogDue < DateTimeOffset.UtcNow) {
+                var lastAlive = DateTimeOffset.UtcNow - _this._lastAlive;
                 _this._logger.LogWarning("Watchdog Ran, last start {time}, last alive {lastalive}", (DateTime.Now - _this.LastStarted).Humanize(), _this._lastAlive.Humanize());
                 if(lastAlive > TimeSpan.FromMinutes(5) && (_this._lastMessageSent == null || (DateTime.Now - _this._lastMessageSent).Value.TotalHours > 1)) {
                     await _this._client.SendDMToKendrome($"Watchdog for {_this.GetType().Name}, last started {_this.LastStarted.ToShortTimeString()}, last completed {_this.LastCompleted.ToShortTimeString()}, last alive {_this._lastAlive.DateTime.ToShortTimeString()}.");

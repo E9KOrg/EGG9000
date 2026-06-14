@@ -11,7 +11,7 @@ namespace EGG9000.Common.Database.Entities {
         public int Level { get; set; }
         public double Cost { get; set; }
         public Guid UserId { get; set; }
-        public DateTimeOffset SubmittedAt { get; set; } = DateTimeOffset.Now;
+        public DateTimeOffset SubmittedAt { get; set; } = DateTimeOffset.UtcNow;
     }
 
 }

@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Helpers {
 
         public static async Task DeleteMessagesBatchAsync(this ITextChannel channel, IEnumerable<IMessage> messages) {
             if(!messages.Any()) return;
-            var timeSplit = DateTimeOffset.Now.AddDays(-14).AddHours(1);
+            var timeSplit = DateTimeOffset.UtcNow.AddDays(-14).AddHours(1);
             var oldMessages = messages.Where(x => x.Timestamp <= timeSplit);
             var recentMessages = messages.Where((x) => x.Timestamp > timeSplit);
             await channel.DeleteMessagesAsync(recentMessages);
@@ -350,7 +350,7 @@ namespace EGG9000.Bot.Helpers {
             if(time.TotalDays > 365) {
                 return "\\> Year";
             }
-            return TimeStamper(DateTimeOffset.Now.AddSeconds(time.TotalSeconds), format);
+            return TimeStamper(DateTimeOffset.UtcNow.AddSeconds(time.TotalSeconds), format);
         }
         public static string TimeStamper(DateTimeOffset time, DiscordTimestampFormat format = DiscordTimestampFormat.Relative) {
             var ender = format switch {
@@ -441,7 +441,7 @@ namespace EGG9000.Bot.Helpers {
 
         private static async Task CheckHatchlingRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             if(Guild.Roles.Any(x => x.Name.ToLower().Contains("hatchling"))) {
-                var needsRole = user.Registered > DateTimeOffset.Now.AddDays(-21);
+                var needsRole = user.Registered > DateTimeOffset.UtcNow.AddDays(-21);
                 var hatchlingRole = Guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("hatchling"));
                 var hasRole = DiscordUser.RoleIds.Any(x => x == hatchlingRole.Id);
 
@@ -572,7 +572,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckFreshEggsRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
             var freshEggRole = Guild.Roles.FirstOrDefault(x => x.Id == 761005564615983152);
             if(freshEggRole != null) {
-                var needsRole = user.Registered is not null && user.Registered > DateTimeOffset.Now.AddDays(-7);
+                var needsRole = user.Registered is not null && user.Registered > DateTimeOffset.UtcNow.AddDays(-7);
                 var hasRole = DiscordUser.RoleIds.Any(x => x == freshEggRole.Id);
 
                 if(!hasRole && needsRole) {

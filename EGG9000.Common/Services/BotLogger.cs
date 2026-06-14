@@ -78,7 +78,7 @@ namespace EGG9000.Common.Services {
                     ContractId = contract.ID,
                     ContractName = contract.Name,
                     GuildId = guild.Id,
-                    Since = DateTimeOffset.Now,
+                    Since = DateTimeOffset.UtcNow,
                     Assigning = true,
                     ChannelId = channelId,
                     EggImageUrl = eggImageUrl
@@ -138,7 +138,7 @@ namespace EGG9000.Common.Services {
             var allMatch = !status.Assigning && status.CoopCount > 0
                 && status.StartedCount == status.CoopCount && status.ThreadCreatedCount == status.CoopCount;
 
-            var lastUpdated = DiscordHelpers.TimeStamper(DateTimeOffset.Now);
+            var lastUpdated = DiscordHelpers.TimeStamper(DateTimeOffset.UtcNow);
             var body = allMatch
                 ? $"Coop Count: {status.CoopCount}\nAll co-ops created and started"
                 : $"Coop Count: {coopCountText}\nStarted Count: {status.StartedCount}\nThread Created Count: {status.ThreadCreatedCount}";

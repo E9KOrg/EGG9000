@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Automated {
 
             var response = await EggIncApi.GetPeriodicalsAsync();
             var responseDateTime = DateTimeOffset.UtcNow;
-            var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.Now.AddDays(-1)).ToListAsync(CancellationToken.None);
+            var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.UtcNow.AddDays(-1)).ToListAsync(CancellationToken.None);
 
             if(response?.Events?.Events == null) {
                 _logger.LogWarning("Response is null for Event Updater");
@@ -426,7 +426,7 @@ namespace EGG9000.Bot.Automated {
             if(config is null) return; // This randomly failed while I was working
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();
 
-            var expiringShells = db.ExpiringShells.Where(x => x.Expires > DateTimeOffset.Now.AddHours(-1));
+            var expiringShells = db.ExpiringShells.Where(x => x.Expires > DateTimeOffset.UtcNow.AddHours(-1));
 
 
             var shellsToUpdate = new List<ExpiringShell>();
@@ -444,7 +444,7 @@ namespace EGG9000.Bot.Automated {
 
                 } else {
                     var nameChanged = expiringShell.Name != shell.Name;
-                    var timeChanged = (expiringShell.Expires - DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining)).Duration() > TimeSpan.FromMinutes(1);
+                    var timeChanged = (expiringShell.Expires - DateTimeOffset.UtcNow.AddSeconds(shell.SecondsRemaining)).Duration() > TimeSpan.FromMinutes(1);
                     var priceChanged = expiringShell.Price != shell.Price;
                     var assetTypeChanged = expiringShell.AssetType != shell.AssetType;
                     var expired = shell.SecondsRemaining < 0;
@@ -456,7 +456,7 @@ namespace EGG9000.Bot.Automated {
                             shell.Identifier, nameChanged, timeChanged, priceChanged, assetTypeChanged, expired);
 
                         expiringShell.Name = shell.Name;
-                        expiringShell.Expires = DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining);
+                        expiringShell.Expires = DateTimeOffset.UtcNow.AddSeconds(shell.SecondsRemaining);
                         expiringShell.Price = shell.Price;
                         expiringShell.AssetType = shell.AssetType;
                         expiringShell.Json = JsonConvert.SerializeObject(shell);
@@ -479,7 +479,7 @@ namespace EGG9000.Bot.Automated {
             var embed = new EmbedBuilder()
                 .WithColor(shell.SecondsRemaining > 0 ? Color.Blue : Color.DarkGrey)
                 .WithAuthor("Egg, Inc Limited Time Shell", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751")
-                .WithDescription($"New {expiringShell.AssetType}: {expiringShell.Name} for {expiringShell.Price}<:tickets:998630687831769189>\nExpires <t:{DateTimeOffset.Now.AddSeconds(shell.SecondsRemaining).ToUnixTimeSeconds()}:R>")
+                .WithDescription($"New {expiringShell.AssetType}: {expiringShell.Name} for {expiringShell.Price}<:tickets:998630687831769189>\nExpires <t:{DateTimeOffset.UtcNow.AddSeconds(shell.SecondsRemaining).ToUnixTimeSeconds()}:R>")
                 ;
             return embed.Build();
 

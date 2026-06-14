@@ -5,6 +5,17 @@
         var result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
         return String.Format(result % 1 == 0 ? "{0:0}" : "{0:0.00}", result);
     }
+
+    string displayKey(UserSnapShot s) =>
+        $"{s.EggsOfProphecy}|{s.EggsOfTruth}|{s.SoulEggs.ToEggString(numberOfDecimalPlaces: 3)}|{s.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3)}|{s.Prestiges}";
+
+    // Collapse consecutive snapshots that render identically at the table's precision.
+    // Each surviving row keeps the earliest date its values appeared.
+    var collapsedSnapshots = new List<UserSnapShot>();
+    foreach (var s in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
+        if (collapsedSnapshots.Count > 0 && displayKey(collapsedSnapshots[^1]) == displayKey(s)) collapsedSnapshots[^1] = s;
+        else collapsedSnapshots.Add(s);
+    }
 }
 
 <div class="container">
@@ -111,8 +122,7 @@
                                 <td align="right">@calculateMER(Model.backup.SoulEggs, Model.backup.EggsOfProphecy).ToString()</td>
                                 <td>@Model.backup.NumPrestiges</td>
                             </tr>
-                            @foreach (var snapshot in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)
-                            .DistinctBy(snapshot => new { snapshot.EggsOfProphecy, snapshot.SoulEggs, snapshot.EarningsBonus, snapshot.Prestiges })) {
+                            @foreach (var snapshot in collapsedSnapshots) {
                                 <tr>
                                     <td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
                                     <td>@snapshot.EggsOfProphecy</td>

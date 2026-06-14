@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Automated {
         // as Discord subtext. Reflects the last time the stats body actually changed,
         // since the embed is only rewritten on change.
         private string TimestampLine() {
-            var unix = (_statsCache.LastRefresh ?? DateTimeOffset.Now).ToUnixTimeSeconds();
+            var unix = (_statsCache.LastRefresh ?? DateTimeOffset.UtcNow).ToUnixTimeSeconds();
             return $"{TimestampSep}Last updated <t:{unix}:R>";
         }
 

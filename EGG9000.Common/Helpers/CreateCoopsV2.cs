@@ -56,11 +56,11 @@ namespace EGG9000.Common.Helpers {
             }
 
             var secondsRemaining = Math.Max(contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
-            var coopEnds = DateTimeOffset.Now.AddSeconds(secondsRemaining);
+            var coopEnds = DateTimeOffset.UtcNow.AddSeconds(secondsRemaining);
 
             var coop = new Coop {
                 ContractID = contract.ID,
-                Created = DateTimeOffset.Now,
+                Created = DateTimeOffset.UtcNow,
                 GuildId = guild.Id,
                 Name = words.GetCoopName(accounts, guild, dbGuild),
                 MaxUsers = contract.MaxUsers,
@@ -77,7 +77,7 @@ namespace EGG9000.Common.Helpers {
             foreach(var user in accounts) {
                 db.UserCoopXrefs.Add(new UserCoopXref {
                     AddedToChannel = false,
-                    CreatedOn = DateTimeOffset.Now,
+                    CreatedOn = DateTimeOffset.UtcNow,
                     CoopId = coop.Id,
                     JoinedCoop = false,
                     WaitingOnStarter = false,
@@ -185,7 +185,7 @@ namespace EGG9000.Common.Helpers {
             var newxref = new UserCoopXref {
                 AddedToChannel = true,
                 CoopId = targetCoop.Id,
-                CreatedOn = DateTimeOffset.Now,
+                CreatedOn = DateTimeOffset.UtcNow,
                 JoinedCoop = false,
                 Starter = false,
                 UserId = dbUserId,
@@ -202,6 +202,14 @@ namespace EGG9000.Common.Helpers {
             try {
                 if(targetChannel.GetChannelType() != ChannelType.PrivateThread) {
                     await targetChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
+                } else if(targetChannel is SocketThreadChannel thread && thread.ParentChannel is SocketTextChannel header) {
+                    //Private threads are only visible if the user can view the parent header channel
+                    var guildUser = header.Guild.GetUser(user.Id);
+                    if(guildUser is null) throw new InvalidOperationException($"{user.Id} is not in guild {header.Guild.Id}");
+                    if(!guildUser.GetPermissions(header).ViewChannel) {
+                        await header.AddPermissionOverwriteAsync(guildUser,
+                            new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Deny, sendMessagesInThreads: PermValue.Allow));
+                    }
                 }
             } catch(Exception) {
                 try {

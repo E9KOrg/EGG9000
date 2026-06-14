@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Automated {
                             }
                             if(r.Status == ContractPlayerInfo.Types.Status.Complete && r.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && r.Grade != account.LastGrade) {
                                 _logger.LogInformation("Update grade for {user} ({account}) Prev {LastGrade} New {NewGrade}", user.DiscordUsername, account.Backup?.UserName, account.LastGrade, r.Grade);
-                                account.PromotionTime = DateTimeOffset.Now;
+                                account.PromotionTime = DateTimeOffset.UtcNow;
                                 account.LastGrade = r.Grade;
                                 user.UpdateAccounts();
                             }

@@ -276,7 +276,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task TemporaryPrefix(FauxCommand command, ApplicationDbContext db, [SlashParam] SocketGuildUser user, [SlashParam] string prefix, [SlashParam] string timespan) {
             DateTimeOffset expireTime;
             try {
-                expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
             } catch(Exception ex) {
                 await command.RespondAsync(content: "", embed: EmbedError($"Unable to parse the timespan `{timespan}`, {ex.Message}"));
                 return;
@@ -299,7 +299,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Get the bot's status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task Status(FauxCommand command, ApplicationDbContext db, IServiceProvider serviceProvider) {
             var lastComplete = await db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
-            var last24 = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.Now.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
+            var last24 = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
             var averages = last24.GroupBy(x => x.Type).Select(x => new { Type = x.Key, Avg = x.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()) }).ToList();
             var table = new List<List<FixedWidthCell>> {new() {
                 new("Name"),
@@ -319,12 +319,12 @@ namespace EGG9000.Bot.Commands {
                         averages.Any(x => x.Type == log.Type) ?
                         TimeSpan.FromSeconds(averages.First(x => x.Type == log.Type).Avg).Humanize().ShortenTime()
                         : ""),
-                    new((DateTimeOffset.Now - log.EndTime.Value).Humanize().ShortenTime()),
+                    new((DateTimeOffset.UtcNow - log.EndTime.Value).Humanize().ShortenTime()),
                     new(incompletes.Count.ToString()),
                     new(
                         castedService.Running() ?
                             (incompletes.Any(x => !x.Skipped) ?
-                            $"Current run {(DateTimeOffset.Now - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
+                            $"Current run {(DateTimeOffset.UtcNow - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
                             : "Started"
                             )
                         : "Stopped"
@@ -589,11 +589,11 @@ namespace EGG9000.Bot.Commands {
             var pending = db.ChangeTracker.Entries().Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
             var tracked = db.ChangeTracker.Entries().Count();
 
-            var activeCoops = await db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.Now);
+            var activeCoops = await db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.UtcNow);
             var dbUsers = await db.DBUsers.CountAsync();
             var contracts = await db.Contracts.CountAsync();
             var events = await db.Events.CountAsync();
-            var autoLogs = await db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.Now.AddDays(-1));
+            var autoLogs = await db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1));
 
             var latency = client?.Latency ?? -1;
             var guilds = client?.Guilds?.Count ?? 0;
@@ -616,7 +616,7 @@ namespace EGG9000.Bot.Commands {
                 apiCalls, apiFails, RuntimeMetrics.DbQueries, commands, cmdFails, RuntimeMetrics.DiscordOps,
                 latency, guilds, qHigh, qLow, queue?.HighWorkers ?? 0, queue?.LowWorkers ?? 0,
                 runtimeHealth, discordHealth, processHealth, dbHealth,
-                RuntimeMetrics.StartedAt.ToUnixTimeSeconds(), DateTimeOffset.Now.ToUnixTimeSeconds());
+                RuntimeMetrics.StartedAt.ToUnixTimeSeconds(), DateTimeOffset.UtcNow.ToUnixTimeSeconds());
         }
 
         private static string SysLoadContent(SysLoadSnapshot s) =>
@@ -724,9 +724,9 @@ namespace EGG9000.Bot.Commands {
 
             // Re-render the currently-shown section until Stop, deletion, or 30s cap.
             _ = Task.Run(async () => {
-                var deadline = DateTimeOffset.Now.AddSeconds(30);
+                var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
                 try {
-                    while(!cts.IsCancellationRequested && DateTimeOffset.Now < deadline) {
+                    while(!cts.IsCancellationRequested && DateTimeOffset.UtcNow < deadline) {
                         await Task.Delay(TimeSpan.FromSeconds(interval), cts.Token);
                         if(cts.IsCancellationRequested)
                             break;
@@ -821,7 +821,7 @@ namespace EGG9000.Bot.Commands {
             var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
             var cacheCount = db._cache is MemoryCache mc ? mc.Count : -1;
 
-            var statsAge = stats.LastRefresh is { } t ? (DateTimeOffset.Now - t).Humanize().ShortenTime() : "never";
+            var statsAge = stats.LastRefresh is { } t ? (DateTimeOffset.UtcNow - t).Humanize().ShortenTime() : "never";
             var server = command.GuildId.HasValue ? stats.GetServerStats(command.GuildId.Value) : null;
 
             var rows = new List<List<FixedWidthCell>> {
@@ -854,10 +854,10 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand(Description = "Active Co-op Stats", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task CoopStats(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync();
-            var coops = await db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.Now).ToListAsync();
+            var coops = await db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
             var stats = new StringBuilder();
             stats.AppendLine($"**Coop Threads Last Updated**");
-            var coopGroups = coops.Where(x => x.LastUpdateToChannel is not null).GroupBy(x => Math.Ceiling((DateTimeOffset.Now - x.LastUpdateToChannel.Value).TotalHours));
+            var coopGroups = coops.Where(x => x.LastUpdateToChannel is not null).GroupBy(x => Math.Ceiling((DateTimeOffset.UtcNow - x.LastUpdateToChannel.Value).TotalHours));
 
             foreach(var group in coopGroups) {
                 stats.AppendLine($"<{group.Key}h: {group.Count()}");
@@ -905,7 +905,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.TempDisabled = false;
             await db.SaveChangesAsync();
 
-            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.Now) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
+            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.UtcNow) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
 
             await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }

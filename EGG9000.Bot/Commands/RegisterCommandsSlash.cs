@@ -169,7 +169,7 @@ namespace EGG9000.Bot.Commands {
                 DiscordId = targetUser.Id,
                 DiscordUsername = targetUser.Username,
                 AcceptedRules = true,
-                CreateOn = DateTimeOffset.Now,
+                CreateOn = DateTimeOffset.UtcNow,
                 GuildId = guild.Id,
                 showEB = true
             };
@@ -321,7 +321,7 @@ namespace EGG9000.Bot.Commands {
                     DiscordId = user.Id,
                     DiscordUsername = user.Username,
                     EggIncAccounts = [new EggIncAccount { Id = backup.EggIncId, Backup = backup, Group = 1 }],
-                    CreateOn = DateTimeOffset.Now,
+                    CreateOn = DateTimeOffset.UtcNow,
                     GuildId = _client.Guilds.First(x => x.TextChannels.Any(y => y.Id == command.Channel.Id)).Id,
                     showEB = true
                 };
@@ -346,7 +346,7 @@ namespace EGG9000.Bot.Commands {
                 ?? (IGuildUser)await _client.Rest.GetGuildUserAsync(guild.Id, user.Id);
 
             if(!dbuser.Registered.HasValue) {
-                dbuser.Registered = DateTimeOffset.Now;
+                dbuser.Registered = DateTimeOffset.UtcNow;
                 await db.SaveChangesAsync();
                 var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
                 if(unjoinedRole is not null) {

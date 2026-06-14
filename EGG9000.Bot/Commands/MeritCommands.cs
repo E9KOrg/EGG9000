@@ -36,7 +36,7 @@ namespace EGG9000.Bot.Commands {
             var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == target.Id);
 
             var merit = new Merit {
-                When = DateTimeOffset.Now,
+                When = DateTimeOffset.UtcNow,
                 AdminUserId = adminid,
                 UserId = user.Id,
                 //Id = Guid.NewGuid(),

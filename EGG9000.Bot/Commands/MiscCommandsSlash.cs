@@ -217,7 +217,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task TempRole(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] SocketRole role, [SlashParam] string timespan, [SlashParam] string reason, [SlashParam] SocketGuildUser[] users) {
             DateTimeOffset expireTime;
             try {
-                expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
             } catch(Exception ex) {
                 await command.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
                 return;
@@ -231,12 +231,12 @@ namespace EGG9000.Bot.Commands {
 
             await command.DeferAsync();
             var userids = users.Select(x => x.Id);
-            var existingTempRoles = await db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.Now && userids.Contains(x.UserId)).ToListAsync();
+            var existingTempRoles = await db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.UtcNow && userids.Contains(x.UserId)).ToListAsync();
             var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             foreach(var user in users) {
                 var tempRole = existingTempRoles.FirstOrDefault(x => x.RoleId == role.Id && user.Id == x.UserId);
                 if(tempRole == null) {
-                    tempRole = new TemporaryRole { RoleId = role.Id, Created = DateTimeOffset.Now, UserId = user.Id, GuildId = guild.Id };
+                    tempRole = new TemporaryRole { RoleId = role.Id, Created = DateTimeOffset.UtcNow, UserId = user.Id, GuildId = guild.Id };
                     db.Add(tempRole);
                     await user.AddRoleAsync(role);
                 }
@@ -254,7 +254,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task TempCustomCoopName(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, [SlashParam] string customName, [SlashParam] string timespan, [SlashParam] SocketGuildUser user) {
             DateTimeOffset expireTime;
             try {
-                expireTime = timespan.AddTimeSpanString(DateTimeOffset.Now);
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
             } catch(Exception ex) {
                 await command.RespondAsync($"Unable to parse the timespan `{timespan}`, {ex.Message}");
                 return;

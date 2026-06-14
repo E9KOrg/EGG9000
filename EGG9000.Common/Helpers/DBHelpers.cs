@@ -1,8 +1,9 @@
 ﻿using EGG9000.Common.Database;
 
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+
+using Npgsql;
 
 using System;
 using System.Threading;
@@ -24,8 +25,8 @@ namespace EGG9000.Common.Helpers {
                         return (true, await db.SaveChangesAsync(cancellationToken));
                     } catch(Exception e) {
                         // Fail fast so the caller can release resources
-                        if(e is SqlException { Number: -2 or 20 } || e.InnerException is SqlException { Number: -2 or 20 }) {
-                            logger?.LogWarning("SaveChangesAsyncRetry: SQL timeout/connection error, not retrying");
+                        if(e is NpgsqlException { IsTransient: true } || e.InnerException is NpgsqlException { IsTransient: true }) {
+                            logger?.LogWarning("SaveChangesAsyncRetry: Postgres transient error, not retrying");
                             return (false, -1);
                         }
                         //If we reached max retry count, exit

@@ -13,7 +13,7 @@ namespace EGG9000.Bot.Automated {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var rolesToRemove = await _db.TemporaryRoles.Where(x => x.Expires < DateTimeOffset.Now && !x.IsRemoved).ToListAsync(CancellationToken.None);
+            var rolesToRemove = await _db.TemporaryRoles.Where(x => x.Expires < DateTimeOffset.UtcNow && !x.IsRemoved).ToListAsync(CancellationToken.None);
             foreach(var role in rolesToRemove) {
                 try {
                     var user = _client.Guilds.First(g => g.Id == role.GuildId).GetUser(role.UserId);

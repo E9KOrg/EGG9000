@@ -42,7 +42,8 @@ using System.Threading.Tasks;
 
 
 var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
-NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Bot");
+NLog.GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}");
+NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Site");
 logger.Debug("init main");
 
 var builder = WebApplication.CreateBuilder(args);
@@ -92,13 +93,13 @@ app.Run();
 void ConfigureServices(IServiceCollection services, IConfiguration Configuration) {
     services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>().SetApplicationName("EGG9000");
     services.AddDbContext<ApplicationDbContext>(
-        options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => x.CommandTimeout(30)),
+        options => options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), x => x.CommandTimeout(30)),
         contextLifetime: ServiceLifetime.Scoped,
         optionsLifetime: ServiceLifetime.Singleton);
 
 
     services.AddDbContextFactory<ApplicationDbContext>(options => {
-        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), x => {
+        options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), x => {
             x.MigrationsAssembly("EGG9000.Common");
             x.CommandTimeout(30);
         });

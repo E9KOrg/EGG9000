@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Commands {
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
                 var demerit = new Demerit {
-                    When = DateTimeOffset.Now,
+                    When = DateTimeOffset.UtcNow,
                     AdminUserId = admin.Id,
                     UserId = dbuser.Id,
                     Id = Guid.NewGuid(),
@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Commands {
                 db.Demerit.Add(demerit);
                 await db.SaveChangesAsync();
 
-                var count = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
+                var count = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).CountAsync();
 
                 var message = $"Demerit added to {user.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits";
                 await command.ModifyOriginalResponseAsync(x => { x.Content = message; });
@@ -62,7 +62,7 @@ namespace EGG9000.Bot.Commands {
                 var dbuser = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
 
-                var demerit = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).OrderByDescending(x => x.When).FirstOrDefaultAsync();
+                var demerit = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).OrderByDescending(x => x.When).FirstOrDefaultAsync();
                 if(demerit == null) {
                     await command.ModifyOriginalResponseAsync(x => x.Content = $"There are no recent demerits for {user.Mention}");
                     return;
@@ -70,7 +70,7 @@ namespace EGG9000.Bot.Commands {
                 db.Remove(demerit);
                 await db.SaveChangesAsync();
 
-                var count = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).CountAsync();
+                var count = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).CountAsync();
 
                 await command.ModifyOriginalResponseAsync(x => x.Content = $"Demerit removed for {user.Mention}, they currently have {count} demerits");
             } catch(Exception e) {
@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Commands {
                 var socketUser = command.User;
                 var user = await db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
 
-                var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
+                var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).ToListAsync();
                 if(demerits.Count == 0) {
                     string msg;
                     var msgs = new List<string> {
@@ -99,7 +99,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var demeritDesc = string.Join("\n", demerits.Select(x => {
-                    var monthAgo = DateTimeOffset.Now.AddMonths(-1);
+                    var monthAgo = DateTimeOffset.UtcNow.AddMonths(-1);
                     var timeLeft = monthAgo - x.When;
                     return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
                 }));
@@ -124,7 +124,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         public static async Task<string> GetDemerits(Guid dbuserid, ApplicationDbContext db) {
-            var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuserid && x.When > DateTimeOffset.Now.AddMonths(-1)).ToListAsync();
+            var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuserid && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).ToListAsync();
             if(demerits.Count == 0) {
                 string msg;
                 msg = $"There are no recent demerits";
@@ -132,7 +132,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var demeritDesc = string.Join("\n", demerits.Select(x => {
-                var monthAgo = DateTimeOffset.Now.AddMonths(-1);
+                var monthAgo = DateTimeOffset.UtcNow.AddMonths(-1);
                 var timeLeft = monthAgo - x.When;
                 return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
             }));

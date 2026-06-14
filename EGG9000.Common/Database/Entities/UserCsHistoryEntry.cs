@@ -9,7 +9,7 @@ namespace EGG9000.Common.Database.Entities {
         public string CoopIdentifier { get; set; } = coopIdentifier;
         public string EggIncId { get; set; } = eggIncId;
         public double Cxp { get; set; } = cxp;
-        public DateTimeOffset Created { get; set; } = DateTimeOffset.Now;
+        public DateTimeOffset Created { get; set; } = DateTimeOffset.UtcNow;
 
         public override bool Equals(object obj) {
             if(obj is Ei.Contract contract) {
