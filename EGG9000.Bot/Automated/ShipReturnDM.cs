@@ -142,8 +142,13 @@ namespace EGG9000.Bot.Automated {
                     }
 
 
-                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.UtcNow || !x.Sent).ToList();
-                    var NextShipReturnDMDue = currentShipDMs.Where(x => !x.Sent).OrderBy(x => x.DMTime).FirstOrDefault()?.DMTime;
+                    // Keep future DMs and still-pending recent ones. Drop sent DMs and any unsent DM
+                    // whose ship returned more than 5 minutes ago - Run() would only stale-skip those,
+                    // so dropping them here clears the backlog silently instead of leaving it to pile up
+                    // (the failure mode that spammed users once saves started succeeding again).
+                    var staleReturnUnix = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds();
+                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.UtcNow || (!x.Sent && x.ShipReturnTime > staleReturnUnix)).ToList();
+                    var NextShipReturnDMDue = currentShipDMs.Where(x => !x.Sent && x.ShipReturnTime > staleReturnUnix).OrderBy(x => x.DMTime).FirstOrDefault()?.DMTime;
 
                     if(NextShipReturnDMDue != user.NextShipReturnDMDue) {
                         var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == user.Id);

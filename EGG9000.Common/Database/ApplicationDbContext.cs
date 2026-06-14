@@ -15,6 +15,7 @@ using System;
 using System.Collections.Frozen;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database {
@@ -214,6 +215,34 @@ namespace EGG9000.Common.Database {
         void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
             if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
                 entity.LastModified = DateTimeOffset.UtcNow;
+        }
+
+        // AdminUserId is a nullable FK to a DBUser (the staff member who issued a merit/demerit).
+        // Automated merits/demerits have no admin and historically used Guid.Empty as a sentinel.
+        // SQL Server did not enforce the FK on that value, but Postgres does: inserting Guid.Empty
+        // references a non-existent user and the whole SaveChanges fails, which (because the Discord
+        // message is sent first) causes infinite re-sends. Normalize the sentinel to null at the
+        // boundary so the FK is satisfied, mirroring the same conversion the data migrator applies.
+        private void NormalizeAdminUserIds() {
+            foreach(var entry in ChangeTracker.Entries()) {
+                if(entry.State is not (EntityState.Added or EntityState.Modified)) continue;
+                switch(entry.Entity) {
+                    case Demerit { AdminUserId: { } d } when d == Guid.Empty:
+                        ((Demerit)entry.Entity).AdminUserId = null; break;
+                    case Merit { AdminUserId: { } m } when m == Guid.Empty:
+                        ((Merit)entry.Entity).AdminUserId = null; break;
+                }
+            }
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess) {
+            NormalizeAdminUserIds();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) {
+            NormalizeAdminUserIds();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
         }
 
 
