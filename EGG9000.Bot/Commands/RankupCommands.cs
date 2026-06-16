@@ -138,9 +138,10 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentCommand]
-        public static async Task RuBack(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task RuBack(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
+            var data = Tail(component.Data.CustomId);
             var (section, payload) = SplitFirst(string.IsNullOrEmpty(data) ? "overview" : data);
             var (embed, components) = await BuildViewAsync(db, section, g, payload);
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
@@ -218,9 +219,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [Modal]
-        public static async Task RuMsgModal(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
+        public static async Task RuMsgModal(SocketModal modal, ApplicationDbContext db) {
             var g = await LoadGuild(db, modal.GuildId);
-            var (op, arg) = SplitFirst(data);
+            var (op, arg) = SplitFirst(Tail(modal.Data.CustomId));
             var text = modal.Data.Components.FirstOrDefault(c => c.CustomId == "text")?.Value?.Trim() ?? "";
             string section = "pool";
             int scope = RankupMessage.GlobalPool;
@@ -256,6 +257,13 @@ namespace EGG9000.Bot.Commands {
         private static (string, string) SplitFirst(string s) {
             var i = s.IndexOf(':');
             return i < 0 ? (s, null) : (s[..i], s[(i + 1)..]);
+        }
+
+        // Everything after the command name. [ComponentData] only yields the first
+        // segment, so multi-segment payloads (e.g. RuBack:pool:5) must read the raw id.
+        private static string Tail(string customId) {
+            var i = customId.IndexOf(':');
+            return i < 0 ? "" : customId[(i + 1)..];
         }
     }
 }
