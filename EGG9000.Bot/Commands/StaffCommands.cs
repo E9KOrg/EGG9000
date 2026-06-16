@@ -608,7 +608,7 @@ namespace EGG9000.Bot.Commands {
 
             var runtimeHealth = Math.Min(apiCalls == 0 ? 1 : 1 - (double)apiFails / apiCalls, commands == 0 ? 1 : 1 - (double)cmdFails / commands);
             var discordHealth = Math.Min(latency < 0 ? 1 : HealthRange(latency, 150, 1000), HealthRange(backlog, 25, 500));
-            var processHealth = Math.Min(HealthRange(workingMb, 750, 4000), HealthRange(gcHeapMb, 500, 3000));
+            var processHealth = Math.Min(HealthRange(workingMb, 1200, 4000), HealthRange(gcHeapMb, 500, 3000));
             var dbHealth = Math.Min(HealthRange(pingMs, 50, 500), HealthRange(pending, 25, 250));
 
             return new SysLoadSnapshot(pingMs, workingMb, gcHeapMb, proc.Threads.Count, proc.TotalProcessorTime.TotalMinutes, cacheCount,
