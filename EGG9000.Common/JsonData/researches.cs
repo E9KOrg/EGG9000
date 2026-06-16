@@ -18,32 +18,11 @@ using System.Threading.Tasks;
 namespace EGG9000.Common.JsonData {
 
     public class EiResearch {
-        private static List<EiResearchItem> _Instance { get; set; }
-
-
-
-        public static List<EiResearchItem> GetData() {
-            if(_Instance != null) {
-                return _Instance;
-            }
-
-            var assembly = Assembly.GetExecutingAssembly();
-
-            var resourceName = assembly.GetManifestResourceNames()
-                .Single(str => str.EndsWith("researches.json"));
-
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            using var reader = new StreamReader(stream);
-            var json = reader.ReadToEnd();
-            _Instance = JsonConvert.DeserializeObject<List<EiResearchItem>>(json);
-            return _Instance;
-        }
+        private static readonly EmbeddedResource<List<EiResearchItem>> _res =
+            EmbeddedResource.Json<List<EiResearchItem>>("researches.json");
+        public static List<EiResearchItem> Get() => _res.Value;
 
         public static List<EiResearchItem> Get(List<ResearchCostSubmission> researchCostSubmissions) {
-            //if(_Instance != null) {
-            //    return _Instance;
-            //}
-
             var assembly = Assembly.GetExecutingAssembly();
 
             var resourceName = assembly.GetManifestResourceNames()
@@ -52,7 +31,7 @@ namespace EGG9000.Common.JsonData {
             using var stream = assembly.GetManifestResourceStream(resourceName);
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
-            _Instance = JsonConvert.DeserializeObject<List<EiResearchItem>>(json);
+            var data = JsonConvert.DeserializeObject<List<EiResearchItem>>(json);
 
 
             resourceName = assembly.GetManifestResourceNames()
@@ -67,7 +46,7 @@ namespace EGG9000.Common.JsonData {
                     var records = csv.GetRecords<dynamic>();
                     foreach(var record in records) {
                         if(int.TryParse(record.Tier, out int tier)) {
-                            var researchItem = _Instance.FirstOrDefault(r => r.Tier == tier && r.Name.Equals(record.Name, StringComparison.OrdinalIgnoreCase));
+                            var researchItem = data.FirstOrDefault(r => r.Tier == tier && r.Name.Equals(record.Name, StringComparison.OrdinalIgnoreCase));
                             if(researchItem != null) {
                                 if(researchItem.EoVPrices == null) researchItem.EoVPrices = new List<double>();
                                 // Ensure the list is large enough
@@ -96,7 +75,7 @@ namespace EGG9000.Common.JsonData {
                 }
             }
 
-            return _Instance;
+            return data;
         }
     }
     public class EiResearchItem {

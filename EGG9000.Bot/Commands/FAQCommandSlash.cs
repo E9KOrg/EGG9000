@@ -173,35 +173,7 @@ namespace EGG9000.Bot.Commands {
                 embedBuilder.WithImageUrl(currentItem.ImageUrl);
             }
 
-            var informationText = currentItem.Explanation;
-            var socketGuild = _client.Guilds.FirstOrDefault(g => g.Id == guildId);
-            if(socketGuild != null) {
-                var commandMatchRegex = @"\{\{command:([^\}]+)\}\}";
-                var commandMatches = Regex.Matches(informationText, commandMatchRegex);
-                Console.WriteLine("commandMatches count: " + commandMatches.Count);
-                foreach(Match commandMatch in commandMatches) {
-                    Console.WriteLine("commandMatch.Groups count: " + commandMatch.Groups.Count);
-                    if(commandMatch.Groups.Count < 2) continue;
-                    var commandName = commandMatch.Groups[1].Value;
-                    var commandString = await _client.GetSlashCommandStringAsync(socketGuild, commandName);
-                    // Replace the {{command:...}} with the commandString
-                    informationText = informationText.Replace(commandMatch.Value, commandString);
-                }
-
-                var emojiMatchRegex = @"\{\{emoji:([^\}]+)\}\}";
-                var emojiMatches = Regex.Matches(informationText, emojiMatchRegex);
-                var appEmojis = await _client.GetApplicationEmotesAsync();
-                foreach(Match emojiMatch in emojiMatches) {
-                    if(emojiMatch.Groups.Count < 2) continue;
-                    var emojiName = emojiMatch.Groups[1].Value;
-                    var emoji = appEmojis.FirstOrDefault(e => e.Name.ToLower() ==  emojiName.ToLower());
-                    emoji ??= socketGuild.Emotes.FirstOrDefault(e => e.Name.ToLower() == emojiName.ToLower());
-                    if(emoji is null) continue;
-                    var emojiString = $"<:{emoji.Name}:{emoji.Id}>";
-                    // Replace the {{emoji:...}} with the emojiString
-                    informationText = informationText.Replace(emojiMatch.Value, emojiString);
-                }
-            }
+            var informationText = await MessageFormatter.FormatAsync(currentItem.Explanation, _client, guildId);
 
             if (informationText.Length >= 1024) {
                 informationText = string.Concat(informationText.AsSpan(0, 950), "...\n\n**_(Topic was cut-off due to Discord's `1024` character limit)_**");

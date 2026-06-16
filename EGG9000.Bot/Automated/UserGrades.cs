@@ -1,6 +1,7 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Helpers;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,11 +41,7 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}: {error}");
                             } else if(info.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
                                 _logger.LogTrace($"Skipping non-final grade ({info.Status}) for user {user.DiscordUsername} {account.Name}");
-                            } else if(info.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && info.Grade != account.LastGrade) {
-                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {info.Grade}");
-                                account.LastGrade = info.Grade;
-                                user.UpdateAccounts();
-
+                            } else if(GradeSync.ApplyGradeChange(user, account, info.Grade, setPromotionTime: false, guardUnset: true, _logger)) {
                                 using var writeScope = _provider.CreateScope();
                                 var writeDb = writeScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                                 await writeDb.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s

@@ -37,6 +37,9 @@ namespace EGG9000.Common.Database.Entities {
         public bool DMSBlocked { get; set; } = false;
         public bool TempDisabled { get; set; }
         public bool showEB { get; set; }
+        // High-water mark of the highest rank (oom) we have already announced a rank-up for.
+        // Gates rank-up messages so an EB dip-and-recover spike does not re-announce. -1 = never announced.
+        public int HighestAnnouncedOom { get; set; } = -1;
 
         public DateTimeOffset? OnBreakSince { get; set; }
         public bool SkipNoPE { get; set; }
