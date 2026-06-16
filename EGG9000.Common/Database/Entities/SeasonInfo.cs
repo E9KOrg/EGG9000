@@ -35,6 +35,9 @@ namespace EGG9000.Common.Database.Entities {
             };
         }
 
+        public static bool HasPeRewards(ContractSeasonInfo proto) =>
+            proto.GradeGoals.Any(gs => gs.Goals.Any(g => g.RewardType == RewardType.EggsOfProphecy && g.Cxp > 0));
+
         public int GetPeEarned(Ei.Contract.Types.PlayerGrade grade, double totalCxp) {
             var goals = JsonConvert.DeserializeObject<Dictionary<int, List<SeasonPeGoal>>>(GoalsJson ?? "{}");
             if (goals == null || !goals.TryGetValue((int)grade, out var gradeGoals))
