@@ -217,7 +217,7 @@
 								userFarmDetails = GetCoopParticipants(coop, coopContract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm?.ContractId);
-							var score = Model.scores.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract.Identifier) == farm?.ContractId)?.Evaluation;
+							var score = Model.scores?.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract?.Identifier) == farm?.ContractId)?.Evaluation;
 							<tr data-name="@(contract?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
 								<td>@(score?.Cxp.ToString() ?? "")</td>
 								<td>@(contract?.Name ?? farm.ContractId)</td>
@@ -273,7 +273,7 @@
 								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-							var score = Model.scores.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract.Identifier) == farm.ContractId)?.Evaluation;
+							var score = Model.scores?.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract?.Identifier) == farm.ContractId)?.Evaluation;
 							<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
 								<td>@(score?.Cxp.ToString() ?? "")</td>
 								<td>@(contract?.Name ?? farm.ContractId)</td>
