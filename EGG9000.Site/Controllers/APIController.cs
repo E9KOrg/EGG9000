@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,7 @@ using static EGG9000.Common.Helpers.ArtifactHelpers;
 
 namespace EGG9000.Site.Controllers {
 
+    [AllowAnonymous]
     public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env) : Controller {
         private readonly ApplicationDbContext _db = db;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;

@@ -1,6 +1,7 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Stripe.Checkout;
@@ -10,6 +11,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Controllers {
+    [AllowAnonymous]
     public class DonationController(ApplicationDbContext db, DiscordSocketClient discord) : Controller {
         private readonly ApplicationDbContext _db = db;
         private readonly DiscordSocketClient _discord = discord;
