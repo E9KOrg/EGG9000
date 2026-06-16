@@ -700,7 +700,7 @@ namespace EGG9000.Bot.Commands {
             return cb.Build();
         }
 
-        [SlashCommand(Description = "System load: runtime, Discord, DB, process (health-colored)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
+        [SlashCommand(Description = "System load: runtime, Discord, DB, process (health-colored)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
         public static async Task SysLoad(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider,
             [SlashParam(Required = false, Description = "Auto-refresh every N seconds (1-30, stops after 30s total)")] int refreshseconds = 0,
             [SlashParam(Required = false, Description = "Post visibly in the channel instead of only to you")] bool showinchannel = false) {

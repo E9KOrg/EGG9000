@@ -96,7 +96,7 @@ namespace EGG9000.Bot.Commands {
                 .AddTextInput("Embed color (6-hex, optional)", customId: "color", value: existing?.EmbedColorHex, required: false, maxLength: 7)
                 .AddTextInput("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
 
-        [SlashCommand(Description = "Edit this server's FAQ topics", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
+        [SlashCommand(Description = "Edit this server's FAQ topics", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
         public static async Task EditFaq(FauxCommand command, ApplicationDbContext db, DiscordHostedService client) {
             await command.DeferAsync(ephemeral: true);
             var g = await LoadGuild(db, command.GuildId);

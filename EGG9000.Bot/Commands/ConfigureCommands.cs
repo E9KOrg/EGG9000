@@ -217,7 +217,7 @@ namespace EGG9000.Bot.Commands {
             return (eb.Build(), cb.Build());
         }
 
-        [SlashCommand(Description = "Configure this server (same as the website)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
+        [SlashCommand(Description = "Configure this server (same as the website)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
         public static async Task Configure(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync(ephemeral: true);
             var g = await LoadGuild(db, command.GuildId);
