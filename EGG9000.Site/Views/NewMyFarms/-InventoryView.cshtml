@@ -1,0 +1,60 @@
+﻿@model (EggIncAccount Account, int Index)
+
+@{
+    var (inventoryB64, inventoryConfig) = await ArtifactHelpers.InventoryB64(Model.Account); //Don't remove the b64 header, needed for <img> displaying
+
+    //var columnGapRatio = inventoryConfig.TotalHeight / 
+
+}
+
+<style>
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(@inventoryConfig.Columns, 45px); /* Change '3' to the number of columns you want */
+        grid-template-rows: repeat(@inventoryConfig.Rows, 45px); /* Change '3' to the number of rows you want */
+        gap: 10px;
+        background-repeat: no-repeat;
+
+        border-radius: 10px;
+        border: 1px solid rgba(255,255,255,.125);
+        border-top: none;
+    }
+
+    .grid-cell {
+        border: 1px solid #ccc; /* Add borders to the cells for visualization */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+</style>
+
+@{
+    // inventoryB64: raw b64 string which is the image of the inventory
+    // inventoryConfig: InventoryCreatoeConfig instance, which contains information about the sizing configuration of the instance
+    if(inventoryB64 == "") {
+        <div>
+            Your inventory could not be displayed. This either means your backup is missing, or you do not have any artifacts to show.
+        </div>
+    } else{
+
+        <div class="grid-container" id="inventory-container@(Model.Index)" style="background-image: url('@(inventoryB64)'); background-size: contain;">
+            <!-- Use a loop to generate the cells -->
+            @for (var row = 1; row <= inventoryConfig.Rows; row++)
+            {
+                <!-- Change '3' to the number of rows you want -->
+                @for (var col = 1; col <= inventoryConfig.Columns; col++)
+                {
+                    <!-- Change '3' to the number of columns you want -->
+                    <div class="grid-cell">
+                        <span id="r@(row)-c@(col)">Row @row, Col @col</span>
+                    </div>
+                }
+            }
+        </div>
+
+        <div style="display: flex; justify-items: center;">
+            <a id="downloadInventory@(Model.Index)" href="@inventoryB64" download="Inventory.jpeg" class="hide text-hide invisible"></a>
+            <button class="btn-m btn btn-primary w-25" style="padding-top: 10px; margin-top: 10px;" onclick="document.getElementById('downloadInventory@(Model.Index)').click()">Save Image</button>
+        </div>
+    }
+}

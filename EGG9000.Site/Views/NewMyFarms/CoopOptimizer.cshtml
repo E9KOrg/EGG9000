@@ -1,0 +1,13 @@
+﻿@using Discord.WebSocket;
+@model (Coop Coop, List<DBCustomEgg> CustomEggs)
+@inject DiscordSocketClient DiscordClient
+@{
+    ViewData["Title"] = "Coop Optimizer";
+
+    var usersWithBackups = Model.Coop.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
+    var coopDetails = new CoopDetails(Model.Coop, Model.Coop.Contract, Model.Coop.League, usersWithBackups, Model.CustomEggs, DiscordClient, Model.Coop.LastStatusUpdate);
+}
+
+@foreach(var user in coopDetails.CoopParticipants) {
+
+}

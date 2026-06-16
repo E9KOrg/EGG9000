@@ -1,0 +1,313 @@
+﻿@using Discord.WebSocket;
+@using static EGG9000.Common.Helpers.EggIncStatics;
+@using EGG9000.Common.JsonData
+@using EGG9000.Common.JsonData.EiStatics
+@using EGG9000.Site.Controllers;
+@using System.Globalization;
+@using EGG9000.Common.Coops;
+@inject DiscordSocketClient DiscordClient
+@model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
+
+@{
+    void artifactCell(EggIncArtifactInstance artifact, EggIncArtifactInstance current = null) {
+        var changed = current != null && !artifact.Equals(current);
+        <td style="padding-left: 5px;" class="@(changed ? "different" : "")">
+            @{
+                artifactBackground(artifact, false);
+            }
+            <div class="Stones">
+                @for (var s = 0; s < 4; s++) {
+                    if (artifact?.Stones.Count > s) {
+                        artifactBackground(artifact.Stones[s], true);
+                    }
+                }
+            </div>
+        </td>
+    }
+    string artifactTemplate(EggIncArtifactInstance artifact) {
+        if (artifact == null) {
+            return "";
+        } else if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+            return $"{Math.Round((artifact.Value) * 100)}%";
+        } else if (artifact.Additive) {
+            return $"+{artifact.Value}";
+        } else if (+artifact.Value < 2) {
+            return $"+{Math.Round((artifact.Value - 1) * 100)}%";
+        } else {
+            return $"{artifact.Value}x";
+        }
+    }
+
+    string artifactImage(EggIncArtifactInstance artifact, bool stone) {
+        if (artifact == null) {
+            return "";
+        } else {
+            var properName = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
+            return "/images/artifacts/" + properName + "/" + properName + "_" + (artifact.Tier + (stone ? 1 : 0)) + ".png";
+        }
+    }
+
+    void artifactBackground(EggIncArtifactInstance artifact, bool stone) {
+        if (artifact == null) {
+            <div></div>
+        } else {
+            var subClass = "afx-img";
+            var bgClass = artifact.Rarity switch {
+                1 => "bg-common afx-bg", //Common
+                2 => "bg-rare afx-bg", //Rare
+                3 => "bg-epic afx-bg", //Epic
+                4 => "bg-legendary afx-bg", //Legendary
+                _ => "bg-common afx-bg" //Default to gray
+            };
+            if (stone) {
+                bgClass = "afx-stone";
+                subClass = "afx-stone";
+            }
+            var image = artifactImage(artifact, stone);
+            var size = stone ? 15 : 70;
+            var textInfo = new CultureInfo("en-US", false).TextInfo;
+            var name = textInfo.ToTitleCase(EggIncArtifacts.GetProperNameFromJson(artifact)) + " " + artifactTemplate(artifact);
+            <div class="rounded-full @(bgClass)">
+                <img class="position-absolute @subClass" src="@image" title="@name" />
+            </div>
+        }
+    }
+
+    List<EggIncArtifactInstance> Sort(List<EggIncArtifactInstance> current, List<EggIncArtifactInstance> toSort) {
+        if (toSort is null) {
+            return current;
+        }
+        var newList = new List<EggIncArtifactInstance>();
+        foreach (var artifact in current) {
+            var newArtifactIndex = toSort.FindIndex(x => x.Artifact.Equals(artifact.Artifact));
+            if (newArtifactIndex >= 0) {
+                newList.Add(toSort[newArtifactIndex]);
+                toSort.RemoveAt(newArtifactIndex);
+            } else {
+                newList.Add(null);
+            }
+        }
+        for (var i = 0; i < newList.Count; i++) {
+            if (newList[i] is null) {
+                newList[i] = toSort[0];
+                toSort.RemoveAt(0);
+            }
+        }
+        if (toSort.Count > 0) {
+            newList.AddRange(toSort);
+        }
+        return newList;
+    }
+
+    (double myRate, double coopRate) GetChangedRate(CustomFarm farm, List<EggIncArtifactInstance> newArtifacts, Coop coop, CoopDetails coopDetails) {
+        var newFarm = new CustomFarm {
+                    CommonResearch = farm.CommonResearch,
+                    Habs = farm.Habs,
+                    TrainLength = farm.TrainLength,
+                    NumChickens = farm.NumChickens,
+                    EggType = farm.EggType,
+                    Artifacts = newArtifacts,
+                    Vehicles = farm.Vehicles
+                };
+        var stats = newFarm.WithStats(Model.Backup, coop, Model.CustomEggs, null, Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId));
+        var currentTachyon = farm.Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
+        var newTachyon = newArtifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1;
+        var tachyonDifference = (newTachyon - 1) - (currentTachyon - 1) + 1;
+        var coopNewRate = coopDetails is null ? stats.CurrentShippingRate : (coopDetails.CoopParticipants.Where(x => x.EggIncId != Model.Backup.EggIncId).Sum(x => x.Rate)) * tachyonDifference + stats.CurrentShippingRate;
+        return (stats.CurrentShippingRate, coopNewRate);
+    }
+}
+@{
+    var farms = Model.Backup.Farms.Where(x => x.FarmType == Ei.FarmType.Contract && x.CoopSimulationEndTime == 0).ToList();
+    if (farms.Count == 0) {
+        <div class="card" style="margin-top:15px">
+            <h4 class="card-header">ℹNo Active Contracts</h4>
+            <div class="card-body">
+                You are not currently participating in any contracts. When you do, suggested artifact combinations to maximize your co-op rates will appear here.
+            </div>
+        </div>
+    } else {
+        <div class="card" style="margin-top:15px">
+            <h4 class="card-header">Artifact Combos</h4>
+            <div class="card-body">
+                <ul>
+                    <li>These are the best artifact combos for each farm with the current chicken population</li>
+                    <li>Won't change your Gusset</li>
+                    <li>Doesn't verify other co-op members have the shipping capacity yet</li>
+                </ul>
+            </div>
+        </div>
+        <div class="flex afx-card-container">
+            @foreach (var farm in farms) {
+                var coop = Model.Coops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.OrdinalIgnoreCase));
+                var isHome = farm.FarmType == Ei.FarmType.Home;
+
+                var contract = Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId);
+                var farmStats = farm.WithStats(Model.Backup, coop, Model.CustomEggs, null, contract);
+                if (coop is null) {
+                    continue;
+                }
+                var usersWithBackups = isHome ? new List<UserWithBackup>() : coop.UserCoopsXrefs.SelectMany(x => x.User.EggIncAccounts.Select(y => new UserWithBackup { Account = y, Backup = y.Backup, User = x.User })).ToList();
+                var coopDetails = isHome ? null : new CoopDetails(coop, coop.Contract, coop.League, usersWithBackups, Model.CustomEggs, DiscordClient, coop.LastStatusUpdate);
+                var currentCoopRate = isHome ? 0 : coopDetails.CoopParticipants.Sum(x => x.Rate);
+
+                var bestWithoutTachyon = Sort(farm.Artifacts, ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, false, Model.CustomEggs, null));
+                var withoutTachyon = GetChangedRate(farm, bestWithoutTachyon, coop, coopDetails);
+                var bestWithTachyon = Sort(farm.Artifacts, ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, false, Model.CustomEggs, null));
+                var withTachyon = GetChangedRate(farm, bestWithTachyon, coop, coopDetails);
+
+                var bestWithoutTachyonS = Sort(farm.Artifacts, ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, false, true, Model.CustomEggs, null));
+                var withoutTachyonS = GetChangedRate(farm, bestWithoutTachyonS, coop, coopDetails);
+                var bestWithTachyonS = Sort(farm.Artifacts, ArtifactCombos.FindBestCombo(Model.Backup, farm, coop, true, true, Model.CustomEggs, null));
+                var withTachyonS = GetChangedRate(farm, bestWithTachyonS, coop, coopDetails);
+
+                <div class="card">
+                    @if (isHome) {
+                        <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
+                    } else {
+                        <h4 class="card-header"><img class="ei-egg" src="@(EggIncStatics.GetEggByContract(contract, Model.CustomEggs).image)" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+                    }
+
+                    <table class="table table-sm" style="margin-bottom: 0;">
+                        <tr>
+                            <th>Current</th>
+                            @for (var i = 0; i < 4; i++) {
+                                artifactCell(farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                            }
+                            <td>
+                                <b>Mine</b><br />@((farmStats.CurrentShippingRate * 60).ToEggString(true))/m
+                                @if (!isHome) {
+                                    <div><b>Coop</b><br />@((currentCoopRate * 60).ToEggString(true))/m</div>
+                                }
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="99">Without changing stones:</td>
+                        </tr>
+                        <tr>
+                            @{
+                                @if (isHome) {
+                                    <th>Suggested</th>
+                                } else {
+                                    <th>No<br />Deflector</th>
+                                }
+                                @for (var i = 0; i < 4; i++) {
+                                    artifactCell(bestWithoutTachyon.Count > i ? bestWithoutTachyon[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                                }
+                                <td>
+                                    <b>Mine</b><br />@((withoutTachyon.myRate * 60).ToEggString(true))/m<br />
+                                    @if (!isHome) {
+                                        <div class="@(withoutTachyon.coopRate > withTachyon.coopRate ? "better" : "")"><b>Coop</b><br />@((withoutTachyon.coopRate * 60).ToEggString(true))/m</div>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                        @if (!isHome) {
+                            <tr>
+                                <th>With<br />Deflector</th>
+                                @for (var i = 0; i < 4; i++) {
+                                    artifactCell(bestWithTachyon.Count > i ? bestWithTachyon[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                                }
+                                <td>
+                                    <b>Mine</b><br />@((withTachyon.myRate * 60).ToEggString(true))/m<br />
+                                    <div class="@(withoutTachyon.coopRate < withTachyon.coopRate ? "better" : "")"><b>Coop</b><br />@((withTachyon.coopRate * 60).ToEggString(true))/m</div>
+                                </td>
+                            </tr>
+                        }
+                        <td colspan="99">If you change stones:</td>
+                        <tr>
+                            @{
+                                @if (isHome) {
+                                    <th>Suggested</th>
+                                } else {
+                                    <th>No<br />Deflector<br />Stones<br />Changed</th>
+                                }
+                                @for (var i = 0; i < 4; i++) {
+                                    artifactCell(bestWithoutTachyonS.Count > i ? bestWithoutTachyonS[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                                }
+                                <td>
+                                    <b>Mine</b><br />@((withoutTachyonS.myRate * 60).ToEggString(true))/m<br />
+                                    @if (!isHome) {
+                                        <div class="@(withoutTachyonS.coopRate > withTachyonS.coopRate ? "better" : "")"><b>Coop</b><br />@((withoutTachyonS.coopRate * 60).ToEggString(true))/m</div>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                        @if (!isHome) {
+                            <tr>
+                                <th>With<br />Deflector<br />Stones<br />Changed</th>
+                                @for (var i = 0; i < 4; i++) {
+                                    artifactCell(bestWithTachyonS.Count > i ? bestWithTachyonS[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                                }
+                                <td>
+                                    <b>Mine</b><br />@((withTachyonS.myRate * 60).ToEggString(true))/m<br />
+                                    <div class="@(withoutTachyon.coopRate < withTachyonS.coopRate ? "better" : "")"><b>Coop</b><br />@((withTachyonS.coopRate * 60).ToEggString(true))/m</div>
+                                </td>
+                            </tr>
+                        }
+                    </table>
+
+                </div>
+
+            }
+        </div>
+
+    }
+}
+
+<style>
+    .different {
+        background-color: #fcffde;
+    }
+
+    .bootstrap-dark .different {
+        background-color: #2f301e;
+    }
+
+    .better {
+        background-color: #deffe0;
+    }
+
+    .bootstrap-dark .better {
+        background-color: #274629;
+    }
+
+    .Stones {
+        padding-left: 12px;
+        margin-top: -3px;
+    }
+
+        .Stones > div {
+            display: inline-block;
+        }
+
+    .card {
+        margin-bottom: 15px;
+    }
+
+    .table td, .table th {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+
+    .table thead th {
+        text-align: center;
+    }
+
+    .flex {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 15px;
+    }
+
+
+        .flex > div {
+            flex: 1;
+        }
+
+    tr th:first-child {
+        vertical-align: middle;
+        text-align: center;
+    }
+</style>

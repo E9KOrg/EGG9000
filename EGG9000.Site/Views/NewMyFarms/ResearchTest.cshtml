@@ -1,0 +1,173 @@
+﻿@using EGG9000.Common.JsonData
+@using EGG9000.Common.JsonData.EiStatics
+
+@model CustomBackup
+
+
+@{
+    var researchData = EiResearch.Get((List<ResearchCostSubmission>)ViewBag.ResearchCostSubmissions);
+
+    var farm = Model.Farms.First();
+    var researchDiscount = Research.GetCommonResearchCostMultiplier(farm, Model.EpicResearch);
+    var incompleteResearch = new List<(CustomResearch, EiResearchItem)>();
+    foreach (var research in farm.CommonResearch) {
+        var researchItem = researchData.FirstOrDefault(item => item.Id == research.Id);
+        if (researchItem != null && research.Level < researchItem.Levels) {
+            incompleteResearch.Add((research, researchItem));
+        }
+    }
+
+    var collegggtibleDiscount = Colleggtibles.GetCollectibleData((List<DBCustomEgg>)ViewBag.CustomEggs, Model);
+    var researchCostDisicountColleggtible = collegggtibleDiscount[Ei.GameModifier.Types.GameDimension.ResearchCost];
+    var artifactDiscount = EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.ResearchCost, farm);
+    <div>
+        Epic Lab Research Discount = @((1 - researchDiscount).ToString("P0"))<br />
+        Colleggtible Discount = @((1 - researchCostDisicountColleggtible).ToString("P0"))<br />
+        Artifact Discount = @((1 - artifactDiscount).ToString("P0"))<br />
+        Total Discount = @((1 - researchDiscount * researchCostDisicountColleggtible * artifactDiscount).ToString("P0"))
+    </div>
+
+    var allResearch = researchData.Select(x => {
+        var currentResearch = farm.CommonResearch.FirstOrDefault(r => r.Id == x.Id);
+            if (x.EoVPrices == null) {
+                x.EoVPrices = new List<double>();
+                foreach (var price in x.Prices) {
+                    x.EoVPrices.Add(0);
+                }
+            }
+        return new {
+            Name = x.Name,
+            EoVCosts = x.EoVPrices,
+            Levels = x.Levels,
+            Tier = x.Tier,
+            ID = x.Id,
+            CurrentLevel = currentResearch?.Level ?? 0,
+        };
+    });
+}
+
+<div ng-controller="Page">
+    {{  TotalDiscount }} 
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Tier</th>
+                <th>Name</th>
+                <th>Current Level</th>
+                <th>Next Cost</th>
+            </tr>
+        </thead>
+        <tr ng-repeat="research in allResearch" ng-if="research.CurrentLevel < research.Levels && research.Tier > 0">
+            <td>{{research.Tier}}</td>
+            <td>{{ research.Name }}</td>
+            <td>
+                <button ng-disabled="research.CurrentLevel == 0" ng-click="research.CurrentLevel = research.CurrentLevel - 1">-</button>
+                <button ng-disabled="research.CurrentLevel == research.Levels" ng-click="research.CurrentLevel = research.CurrentLevel + 1">+</button>
+
+                {{ research.CurrentLevel }}/{{research.Levels}}</td>
+            <td ng-if="research.EoVCosts[research.CurrentLevel] &gt; 0">{{ numberToString( research.EoVCosts[research.CurrentLevel] * TotalDiscount) }}</td>
+            <td ng-if="research.EoVCosts[research.CurrentLevel] &lt;= 0">-</td>
+            <td ng-if="research.EoVCosts[research.CurrentLevel] == null">Completed</td>
+            <td><input ng-model="research.V" />{{numberToString(numberFromString(research.V) / (TotalDiscount + 0.5))}}</td>
+            <td><button ng-click="Submit(research)">Submit</button></td>
+
+</tr>
+    </table>
+</div>
+
+@section Scripts {
+    <script>
+        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
+            .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+                $scope.allResearch = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(allResearch));
+                console.log($scope.allResearch);
+                $scope.TotalDiscount = @Html.Raw(researchDiscount * researchCostDisicountColleggtible * artifactDiscount);
+
+                const bignums = [
+                    [0, ""],
+                    [3, "K"],
+                    [6, "M"],
+                    [9, "B"],
+                    [12, "T"],
+                    [15, "q"],
+                    [18, "Q"],
+                    [21, "s"],
+                    [24, "S"],
+                    [27, "o"],
+                    [30, "N"],
+                    [33, "d"],
+                    [36, "U"],
+                    [39, "D"],
+                    [42, "Td"],
+                    [45, "qd"],
+                    [48, "Qd"],
+                    [51, "sd"],
+                    [54, "Sd"],
+                    [57, "Od"],
+                    [60, "Nd"],
+                    [63, "V"],
+                    [66, "uV"],
+                    [69, "dV"],
+                    [72, "tV"],
+                    [75, "qV"],
+                    [78, "QV"],
+                ];
+                $scope.Submit = function(research) {
+                    const value = $scope.numberFromString(research.V) / ($scope.TotalDiscount);
+                    research.EoVCosts[research.CurrentLevel] = value;
+                     if (value > 0) {
+                        $http.post('/MyFarms/SubmitResearchCost', {
+                            id: research.ID,
+                            cost: value,
+                            level: research.CurrentLevel + 1
+                        }).then(function(result) {
+                            alert('Submitted');
+                        }, function(err) {
+                            alert('Error: ' + err.data);
+                        });
+                    } else {
+                        alert('Invalid Value');
+                    }
+                }
+
+                $scope.numberToString = function(number, showDecimalPlaces = true, numberOfDecimalPlaces = 3) {
+                    const negative = number < 0;
+                    if (negative) number = -number;
+
+                    const oom = number === 0 ? 0 : Math.floor(Math.log10(number)) - (Math.floor(Math.log10(number)) % 3);
+
+                    const suffixEntry = bignums.find(x => x[0] === oom) || bignums[bignums.length - 1];
+
+                    number /= Math.pow(10, oom);
+
+                    let outString;
+                    if (showDecimalPlaces && numberOfDecimalPlaces >= 0) {
+                        outString = number.toFixed(numberOfDecimalPlaces);
+                    } else {
+                        outString = number.toString();
+                    }
+
+                    if (negative) outString = "-" + outString;
+                    outString += suffixEntry[1];
+
+                    return outString;
+                }
+
+                $scope.numberFromString = function(arg) {
+                    const regex = /([\d\.]+)(\w*)/;
+                    const match = regex.exec(arg);
+                    if (match) {
+                        const size = match[2];
+                        const numberPortion = match[1];
+
+                        const number = parseFloat(numberPortion);
+
+                        const value = bignums.find(x => x[1] === size);
+                        if (value) {
+                            return number * Math.pow(10, value[0]);
+                        }
+                    }
+                }
+            }]);
+    </script>
+}

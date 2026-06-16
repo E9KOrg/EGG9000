@@ -1,0 +1,332 @@
+﻿@using System.Collections.Frozen
+@using Discord.WebSocket
+@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, List<DBCustomEgg> CustomEggs, DBUser User, Ei.MyContracts scores, int index)
+@inject DiscordSocketClient discordClient
+@{
+	var backup = Model.backup;
+	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+	var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
+	var contracts = Model.contracts;
+
+	var farms = backup.Farms;
+	List<(object, DateTimeOffset)> allFarms = new List<(object, DateTimeOffset)>();
+	allFarms.AddRange(farms.Where(x => !string.IsNullOrEmpty(x.ContractId)).Select(x => ((object)x, x.Started)));
+	allFarms.AddRange(backup.ArchivedFarms?.Where(x => !farms.Any(y => y.ContractId == x.ContractId)).Select(x => ((object)x, x.Started)));
+
+	string LimitToThirty(string input){
+		return (input.Length > 30 ? $"{input.Substring(0, 30)}..." : input);
+	}
+}
+
+<style>
+	.bootstrap .tooltip-text {
+		color: black;
+	}
+
+	.bootstrap-dark .tooltip-text {
+		color: #ccc;
+	}
+
+	.tooltip-custom {
+		position: relative;
+		display: inline-block;
+	}
+
+		.tooltip-custom:hover.tooltiptext-custom {
+			display: inline-block;
+			z-index: 3;
+			position: absolute;
+			bottom: 25px;
+			left: 50%;
+			transform: translateX(-50%); /* Center the tooltip */
+		}
+
+		.tooltip-custom img {
+			height: 100%; /* Ensure the image's height is equal to the span */
+			max-height: 1em; /* Set a reasonable limit for the height based on the font size */
+			width: auto; /* Ensure the aspect ratio is maintained */
+			vertical-align: middle; /* Align the image vertically with the text */
+		}
+
+	.bootstrap-dark .tooltip-custom img {
+		filter: invert(1) !important;
+	}
+
+	.tooltiptext-custom {
+		display: none;
+		border: 1px solid #ccc;
+		padding: 10px;
+		border-radius: 4px;
+		white-space: nowrap;
+		text-align: center; /* Center the text within the tooltip */
+		position: absolute;
+	}
+
+	.bootstrap-dark .tooltiptext-custom {
+		background-color: rgba(33, 37, 41, 0.95);
+	}
+
+	.bootstrap .tooltiptext-custom {
+		background-color: rgba(235, 239, 242, 0.95);
+	}
+
+	.bootstrap-dark .speech-bubble {
+		background-color: rgba(33, 37, 41, 0.95);
+	}
+
+	.bootstrap .speech-bubble {
+		background-color: rgba(235, 239, 242, 0.95);
+	}
+
+	.speech-bubble {
+		position: relative;
+		padding: 10px;
+		margin: 10px auto; /* Center the bubble horizontally */
+		border-radius: 5px; /* Rounded corners for the bubble */
+	}
+
+		/* Create the triangle */
+		.speech-bubble :after {
+			content: "";
+			position: absolute;
+			top: 100%;
+			left: 50%;
+			margin-left: -15px; /* Half of the triangle's width */
+			border-width: 15px;
+			border-style: solid;
+			border-color: #ccc transparent transparent transparent;
+		}
+</style>
+
+<div class="card" style="margin-top:15px">
+	<h4 class="card-header">Active Farms</h4>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					@{
+						var fullColSpan = 9;
+					}
+					<th>Contract</th>
+					<th>Coop</th>
+					<th>Started</th>
+					<th data-toggle="tooltip" title="# of Chickens" class="text-right">🐔</th>
+					<th data-toggle="tooltip" title="# of Eggs" class="text-right">🥚</th>
+					<th class="text-right">%</th>
+					@if (isLesserAdmin) {
+						<th data-toggle="tooltip" title="Time Cheat" class="text-right">🕵</th>
+						<th data-toggle="tooltip" title="Cheat Time Debt" class="text-right">⏲️</th>
+						fullColSpan += 2;
+					}
+					<th data-toggle="tooltip" title="Tokens Received" class="text-right tight-emojis">🟡 📥</th>
+					<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡 💲</th>
+					<th data-toggle="tooltip" title="Tokens Given" class="text-right tight-emojis">🟡 📤</th>
+				</tr>
+			</thead>
+			<tbody>
+				@{
+					var activeFarms = allFarms.Where(x => x.Item1 is CustomFarm && (x.Item1 as CustomFarm).Cancelled == false && DateTimeOffset.FromUnixTimeSeconds((x.Item1 as CustomFarm).CoopSharedEndTime) > DateTimeOffset.Now).OrderByDescending(x => x.Item2);
+					if (activeFarms.Count() == 0) {
+						<tr>
+							<td colspan="@fullColSpan" style="text-align: center;">
+								<span style="font-weight: bold;">No active farms.</span>
+							</td>
+						</tr>
+					} else{
+						foreach (var tuple in activeFarms)
+						{
+							CustomFarm farm = (CustomFarm)tuple.Item1;
+							var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId)?.Coop;
+							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId);
+							var lastUpdate = xref?.Coop?.LastStatusUpdate?.Contributors.FirstOrDefault(c => c.UserId == xref.EggIncId);
+							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
+
+							<tr>
+								<td>@(contract?.Name ?? farm.ContractId)</td>
+								<td>
+									<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+										@(LimitToThirty(farm.CoopId ?? coop?.Name))
+									</a>
+									@if (coop is not null && coop.ThreadID != 0 && !coop.ThreadArchived) {
+										<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.ThreadID/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+									}
+								</td>
+								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
+								<td class="text-right">@farm.NumChickens.ToEggString()</td>
+								<td class="text-right">@farm.EggsPaidFor.ToEggString()</td>
+								<td class="text-right">
+									@if (lastUpdate != null)
+									{
+										var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
+										@percent.ToString("P0")
+									}
+								</td>
+								@if (isLesserAdmin)
+								{
+									<td class="text-right">@farm.TimeCheatsDetected</td>
+									<td class="text-right">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
+								}
+								<td class="text-right">@farm.BoostTokensReceived</td>
+								<td class="text-right">@farm.BoostTokensSpent</td>
+								<td class="text-right">@farm.BoostTokensGiven</td>
+							</tr>
+						}
+					}
+				}
+			</tbody>
+		</table>
+	</div>
+</div>
+
+<div class="card" style="margin-top:20px">
+	<h4 class="card-header">Archived Farms <input class="form-control" style="width: 150px; display: inline;" placeholder="Search" id="@("ArchivedFarmsSearch" + Model.index)" /></h4>
+	<div class="table-responsive">
+		<table class="table table-striped">
+			<thead>
+				<tr>
+					<th>CS</th>
+					<th>Contract</th>
+					<th>Coop</th>
+					<th>Started</th>
+					<th>🏁</th>
+					<th class="text-right">Score</th>
+					<th class="text-right">Running Score</th>
+					<th data-toggle="tooltip" title="# of Eggs" class="text-right">🥚</th>
+					<th class="text-right">%</th>
+					<th data-toggle="tooltip" title="Suspected Time Cheat" class="text-right">🕵</th>
+					<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡💲</th>
+				</tr>
+			</thead>
+			<tbody id="@("ArchivedFarmsTBody" + Model.index)">
+				@{
+					// Show completed farms, these could be 'active' and 'archived' farms.
+					foreach (var tuple in allFarms.Where(x =>
+					(x.Item1 is CustomFarm && (DateTimeOffset.FromUnixTimeSeconds((x.Item1 as CustomFarm).CoopSharedEndTime) > DateTimeOffset.Now || (x.Item1 as CustomFarm).Cancelled == true)) ||
+					(x.Item1 is CustomArchivedFarms)
+					).OrderByDescending(x => x.Item2)) {
+						if (tuple.Item1 is CustomFarm) {
+							CustomFarm farm = (CustomFarm)tuple.Item1;
+							var coop = Model.User.UserCoopXrefs.FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Coop.Name.ToLower() == farm.CoopId)?.Coop;
+
+							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.EggIncId == backup.EggIncId);
+							UserCoopXref pastXrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Score.HasValue && x.EggIncId == backup.EggIncId);
+
+							UserFarmDetails userFarmDetails = null;
+							if (coop is not null) {
+                                var coopContract = contracts.FirstOrDefault(x => x.ID == coop.ContractID);
+								userFarmDetails = GetCoopParticipants(coop, coopContract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
+							}
+							var contract = contracts.FirstOrDefault(x => x.ID == farm?.ContractId);
+							var score = Model.scores.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract.Identifier) == farm?.ContractId)?.Evaluation;
+							<tr data-name="@(contract?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
+								<td>@(score?.Cxp.ToString() ?? "")</td>
+								<td>@(contract?.Name ?? farm.ContractId)</td>
+								<td>
+									<a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+										@(LimitToThirty(farm.CoopId ?? coop?.Name))
+									</a>
+									@if (coop is not null && coop.ThreadID != 0 && !coop.ThreadArchived) {
+										<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.ThreadID/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+									}
+								</td>
+								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
+								<td>@(farm.Completed ? "✔️" : "")</td>
+								@if (pastXrefWithScore != null) {
+									<td class="text-right font-italic">
+										@pastXrefWithScore?.Score?.ToString("G2")
+										<span class="tooltip-custom">
+											<img src="/images/help_icon.png"/>
+											<span style="font-weight: normal;" class="tooltiptext-custom speech-bubble">
+												Score is from a previously completed coop for this contract:<br />
+												<a href="/coop/(@pastXrefWithScore.Coop.ContractID.ToLower())/(@pastXrefWithScore.Coop.Name.ToLower())">
+													@(LimitToThirty(pastXrefWithScore.Coop.Name))
+												</a>
+											</span>
+										</span>
+									</td>
+									<td class="text-right font-italic">--</td>
+								} else {
+									<td class="text-right"></td>
+									<td class="text-right"></td>
+								}
+
+								@if (userFarmDetails != null && xref != null) {
+									var percent = userFarmDetails.EggsShipped / (xref.Coop.LastStatusUpdate?.TotalAmount ?? 0);
+									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
+									<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
+									<td class="text-right">@(userFarmDetails.CoopStatus?.TimeCheatDetected ?? false ? "Yes" : "No")</td>
+									<td class="text-right">@userFarmDetails.CoopStatus?.BoostTokensSpent</td>
+								} else {
+									<td colspan="99"></td>
+								}
+							</tr>
+						} else {
+							CustomArchivedFarms farm = (CustomArchivedFarms)tuple.Item1;
+							var xref = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.EggIncId == backup.EggIncId);
+							var xrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Coop.Name.ToLower() == farm.CoopId.ToLower() && x.Score.HasValue && x.EggIncId == backup.EggIncId);
+							UserCoopXref pastXrefWithScore = null;
+							if (xrefWithScore == null) {
+								pastXrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Score.HasValue && x.EggIncId == backup.EggIncId);
+							}
+							UserFarmDetails userFarmDetails = null;
+							if (xref is not null) {
+								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
+							}
+							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
+							var score = Model.scores.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract.Identifier) == farm.ContractId)?.Evaluation;
+							<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
+								<td>@(score?.Cxp.ToString() ?? "")</td>
+								<td>@(contract?.Name ?? farm.ContractId)</td>
+								<td>
+									@if (!string.IsNullOrEmpty(farm.CoopId) || (contract?.MaxUsers ?? 0) > 1) {
+										<a href="/coop/@farm.ContractId/@(farm.CoopId)">
+											@(LimitToThirty(farm.CoopId))
+										</a>
+									} else {
+										<em>Solo</em>
+									}
+								</td>
+								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
+								<td>@(farm.Completed ? "✔️" : "")</td>
+
+								@if (xrefWithScore != null) {
+									<td class="text-right">@xrefWithScore?.Score?.ToString("G2")</td>
+									<td class="text-right">@xrefWithScore?.RunningScore?.ToString("G2")</td>
+								} else if (pastXrefWithScore != null) {
+									<td class="text-right font-italic">
+										@pastXrefWithScore?.Score?.ToString("G2")
+										<span class="tooltip-custom">
+											<img src="/images/help_icon.png" />
+											<span style="font-weight: normal;" class="tooltiptext-custom speech-bubble">
+												You had a previously scored coop for this contract:<br />
+												<a href="/coop/@(pastXrefWithScore.Coop.ContractID.ToLower())/@(pastXrefWithScore.Coop.Name.ToLower())">
+													@(LimitToThirty(pastXrefWithScore.Coop.Name))
+												</a>
+												<br />
+												As such, you did not receive another score for this coop.
+											</span>
+										</span>
+									</td>
+									<td class="text-right font-italic">--</td>
+								} else {
+									<td class="text-right"></td>
+									<td class="text-right"></td>
+								}
+
+								@if (userFarmDetails?.CoopStatus != null) {
+									var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
+									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
+									<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
+									<td class="text-right">@(userFarmDetails.CoopStatus.TimeCheatDetected ? "Yes" : "No")</td>
+									<td class="text-right">@userFarmDetails.CoopStatus.BoostTokensSpent</td>
+								} else {
+									<td colspan="99"></td>
+								}
+							</tr>
+						}
+					}
+				}
+			</tbody>
+		</table>
+	</div>
+</div>

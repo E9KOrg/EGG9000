@@ -1,0 +1,1273 @@
+﻿@using Discord.WebSocket;
+@using EGG9000.Common.JsonData
+@using EGG9000.Common.JsonData.EiStatics
+@using EGG9000.Site.Controllers;
+@using System.Globalization;
+@using System.Text;
+@using static EGG9000.Common.Coops.ArtifactCombos;
+@using static Ei.MissionInfo.Types;
+@using static EGG9000.Common.Helpers.MissionHelpers;
+@inject DiscordSocketClient DiscordClient
+@model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts, List<DBCustomEgg> CustomEggs)
+
+@{
+    string properCaseAndSuffix(string inputString, int number){
+        var suffix = (number == 0 || number > 1) ? "s" : "";
+        return inputString.FirstCharToUpper() + suffix;
+    }
+
+    string properSpacing(string input) {
+        StringBuilder result = new StringBuilder(input.Length * 2);
+        result.Append(input[0]); // Add the first character as is
+        for (int i = 1; i < input.Length; i++) {
+            if (char.IsUpper(input[i])) result.Append(' ');
+            result.Append(input[i]);
+        }
+        return result.ToString();
+    }
+
+    void artifactBackground(EggIncArtifactInstance artifact, bool stone) {
+        if (artifact == null) {
+            <div></div>
+        } else {
+            var subClass = "afx-img";
+            var bgClass = artifact.Rarity switch {
+                1 => "bg-common afx-bg", //Common
+                2 => "bg-rare afx-bg", //Rare
+                3 => "bg-epic afx-bg", //Epic
+                4 => "bg-legendary afx-bg", //Legendary
+                _ => "bg-common afx-bg" //Default to gray
+            };
+            if (stone) {
+                bgClass = "afx-stone";
+                subClass = "afx-stone";
+            }
+            var image = artifactImage(artifact, stone);
+            var size = stone ? 15 : 70;
+            var textInfo = new CultureInfo("en-US", false).TextInfo;
+            <div class="rounded-full @(bgClass)">
+                <img class="position-absolute @subClass" src="@image" />
+            </div>
+        }
+    }
+
+    string artifactImage(EggIncArtifactInstance artifact, bool stone) {
+        if (artifact == null) {
+            return "";
+        } else {
+            var properName = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
+            return "/images/artifacts/" + properName + "/" + properName + "_" + (artifact.Tier + (stone ? 1 : 0)) + ".png";
+        }
+    }
+
+    void artifactTemplate(EggIncArtifactInstance artifact, bool stone) {
+        <tr>
+            <td>@{artifactBackground(artifact, stone);}</td>
+            <td>@artifact.Artifact</td>
+                @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+                    <td>@Math.Round((artifact.Value) * 100)%</td>
+                } else if(artifact.Boost == EggIncBoostTypeEnum.ResearchCost) {
+                            <td>-@((artifact.Value - 1).ToString("P0"))</td>
+                } else if (artifact.Additive) {
+                            <td>+@artifact.Value</td>
+                } else if (+artifact.Value < 2) {
+                            <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
+                } else {
+                            <td>@(artifact.Value)x</td>
+                }
+            <td>@properSpacing(artifact.Boost.ToString().Replace("Members", ""))</td>
+        </tr>
+    }
+
+    int index = Model.Index;
+
+    string durationColor(DurationType duration){
+        return duration switch {
+            DurationType.Tutorial => "gray",
+            DurationType.Short => "#13589c",
+            DurationType.Long => "purple",
+            DurationType.Epic => "darkorange",
+            _ => "gray"
+        };
+    }
+
+    List<SpaceMission> iterableMissions = [
+        .. Model.Backup?.SpaceMissions ?? new List<SpaceMission>(),
+    ];
+
+    if (Model.Backup?.FuelingMission is not null) iterableMissions.Add(Model.Backup.FuelingMission);
+}
+
+<script type="text/javascript">
+    var isMobileCS = false;
+    if (window.innerWidth <= 768) { // You can adjust the threshold for mobile screens
+        isMobileCS = true;
+    }
+
+    function formatEpochToTime(epochSeconds, full) {
+        // Calculate the difference between the epoch time and the current time in seconds
+        var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
+
+        if (timeDifference < 0) {
+            // If the time is in the past, invert to assume counting up.
+            timeDifference *= -1;
+        }
+
+        var days = Math.floor(timeDifference / 86400); // 86400 seconds in a day
+        var hours = Math.floor((timeDifference % 86400) / 3600); // 3600 seconds in an hour
+        var minutes = Math.floor((timeDifference % 3600) / 60); // 60 seconds in a minute
+        var seconds = timeDifference % 60; // 60 seconds in a minute
+
+        // Format the result as "XdXhXm"
+        var result = ("" + (days > 0 ? `${days}d` : "") + (hours > 0 ? `${hours}h` : "") + ((minutes > 0 && (days == 0 && hours < 10 || full)) ? `${minutes}m` : "") + ((seconds > 0 && ((minutes < 10 && hours == 0 && days == 0) || full)) ? `${seconds}s` : "")) ?? "0s";
+        if (result == "") result = "0s"; // If the time is empty, display "0s"
+
+        return result;
+    }
+</script>
+
+<style>
+
+.afx-bg, .afx-img {
+    height: 1em;
+    width: 1em;
+}
+    :root {
+        --extended-color: @durationColor(DurationType.Epic);
+        --standard-color: @durationColor(DurationType.Long);
+        --short-color: @durationColor(DurationType.Short);
+    }
+
+    .ShipCardStar {
+        letter-spacing: -0.1em;
+    }
+
+    .GoldenStar {
+        color: gold;
+    }
+
+    .GrayStar {
+        color: gray;
+    }
+
+    .bootstrap .tooltip-text {
+        color: black;
+    }
+
+    .bootstrap-dark .tooltip-text {
+        color: #ccc;
+    }
+
+    .tooltip-custom {
+        position: relative;
+        display: inline-block;
+    }
+
+        .tooltip-custom:hover.tooltiptext-custom {
+            display: inline-block;
+            z-index: 3;
+            position: absolute;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%); /* Center the tooltip */
+        }
+
+        .tooltip-custom img {
+            height: 100%; /* Ensure the image's height is equal to the span */
+            max-height: 1em; /* Set a reasonable limit for the height based on the font size */
+            width: auto; /* Ensure the aspect ratio is maintained */
+            vertical-align: middle; /* Align the image vertically with the text */
+        }
+
+    .bootstrap-dark .tooltip-custom img {
+        filter: invert(1) !important;
+    }
+
+    .tooltiptext-custom {
+        display: none;
+        border: 1px solid #ccc;
+        padding: 10px;
+        border-radius: 4px;
+        white-space: nowrap;
+        text-align: center; /* Center the text within the tooltip */
+        position: absolute;
+    }
+
+    .bootstrap-dark .tooltiptext-custom {
+        background-color: rgba(33, 37, 41, 0.95);
+    }
+
+    .bootstrap .tooltiptext-custom {
+        background-color: rgba(235, 239, 242, 0.95);
+    }
+
+    .bootstrap-dark .speech-bubble {
+        background-color: rgba(33, 37, 41, 0.95);
+    }
+
+    .bootstrap .speech-bubble {
+        background-color: rgba(235, 239, 242, 0.95);
+    }
+
+    .speech-bubble {
+        position: relative;
+        padding: 10px;
+        margin: 10px auto; /* Center the bubble horizontally */
+        border-radius: 5px; /* Rounded corners for the bubble */
+    }
+
+        /* Create the triangle */
+        .speech-bubble :after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -15px; /* Half of the triangle's width */
+            border-width: 15px;
+            border-style: solid;
+            border-color: #ccc transparent transparent transparent;
+        }
+
+    .gray-text-half-margin .bootstrap-dark, .gray-text .bootstrap-dark {
+        color: lightgray;
+    }
+
+    .gray-text-half-margin .bootstrap, .gray-text .bootstrap {
+        color: darkgray;
+    }
+
+    .mission-progress-blue {
+        background-color: var(--short-color);
+    }
+    .mission-progress-purple {
+        background-color: var(--standard-color);
+    }
+    .mission-progress-orange {
+        background-color: var(--extended-color);
+    }
+
+    .orange-text {
+        color: var(--extended-color);
+    }
+    .purple-text {
+        color: var(--standard-color);
+    }
+    .blue-text {
+        color: var(--short-color);
+    }
+
+    .gray-text, .orange-text, .purple-text, .blue-text {
+        display: inline-block;
+        margin-right: 10px;
+    }
+
+    .gray-text-half-margin {
+        display: inline-block;
+        margin-right: 5px;
+    }
+
+    .ship-item {
+        flex: 1;
+        margin: 7px;
+    }
+
+    .ship-item::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: conic-gradient( from 0deg transparent 0%, #000 0%, #000 100% /* Change this percentage to control the "x%" filled in */
+        );
+        clip-path: polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%);
+        z-index: -1;
+    }
+
+    .fuel-progress-bar {
+        border: solid 2px black;
+        border-radius: 7px;
+        max-height: 30px;
+        justify-content: center;
+        display: flex;
+        align-items: center;
+        padding-left: 3px;
+        padding-right: 3px;
+        white-space: nowrap;
+    }
+
+    .double-cap-span {
+        background-color: rgb(139, 14, 158);
+        border: 2px solid rgb(92, 9, 91);
+        border-radius: 10px;
+        color:white;
+        display: inline-block;
+        margin-bottom: 20px;
+        margin-top: 10px;
+        text-align: center;
+        width: 70%;
+    }
+
+    .superfood-progress-bar,
+    .edible-progress-bar {
+        background-color: #f0ead6;
+        border-color: black;
+    } .medical-progress-bar {
+        background-color: #730f23;
+        border-color: #400203
+    } .rocket-fuel-progress-bar {
+        background-color: #b08717;
+        border-color: black;
+    } .super-material-progress-bar {
+        background-color: #2e2d2c;
+        border-color: #211f20
+    } .prodigy-progress-bar,
+      .terraform-progress-bar,
+      .ai-progress-bar,
+      .fusion-progress-bar {
+        background-color: #117d7b;
+        border-color: #4f5757
+    } .quantum-progress-bar {
+        background-color: #c4bf1f;
+        border-color: #3b3b38;
+    } .immortality-progress bar {
+        background-color: #2e5666;
+        border-color: #14386b;
+    } .tachyon-progress-bar {
+        background-color: #1aa32a;
+        border-color: black;
+    } .gravitron-progress-bar {
+        background-color: #5f6360;
+        border-color: #222423;
+    } .dilithium-progress-bar {
+        background-color: #c74ebb;
+        border-color: #52054a;
+    } .antimatter-progress-bar {
+        background-color: #2272a8;
+        border-color: #761287;
+    } .dark-matter-progress-bar {
+        background-color: #1c2bb0;
+        border-color: dodgerblue;
+    } .nebula-progress-bar {
+        background-color: #46474d;
+        border-color: #7d0f3b;
+    } .universe-progress-bar {
+        background-color: #1f1d1e;
+        border-color: #288e99;
+    } .enlightenment-progress-bar {
+        background-color: #c4c41a;
+        border-color: #755109;
+    }
+    
+    .fuel-progress-text {
+        white-space: nowrap;
+        margin-left: 7px;
+    }
+
+    .ship-card {
+        display: inline-block;
+        text-align: center;
+        transition: width 0.5s; /* Add animation to resizing */
+    }
+
+    .ship-progress-ring {
+        transform: rotate(90deg);
+        transform-origin: 50% 50%;
+    }
+
+    .ship-progress-anti-ring {
+        transform: rotate(90deg) scale(1, -1);
+        transform-origin: 50% 50%;
+    }
+
+    .card-body{
+        transition: height 0.5s; /* Add animation to resizing */
+    }
+
+    .ship-toggle-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: transparent;
+        border: none;
+        line-height: 1;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .bootstrap .ship-toggle-button {
+        color: #333333;
+    }
+
+    .bootstrap-dark .ship-toggle-button {
+        color: #d3d3d3;
+    }
+
+    .hidden-ship-element {
+        opacity: 0;
+        display: none;
+        pointer-events: none;
+    }
+
+    select, option {
+        border: 1px solid #ccc;
+    }
+
+    .bootstrap-dark select, 
+    .bootstrap-dark option {
+        border: 1px solid #222;
+        background-color: #333;
+    }
+
+    select {
+        border-radius: 7px;
+    }
+    option {
+        border-radius: 4px;
+    }
+
+    .bootstrap-dark .alert-danger {
+        color: rgb(225, 134, 143) !important;
+        background-color: rgb(67, 12, 17) !important;
+        border-color: rgb(104, 18, 27) !important;
+    }
+
+    @@media (max-width: 768px) {
+        .ship-container {
+            flex-direction: column; /* Change to a vertical layout */
+        }
+
+        .card {
+                margin-left: -15px;
+    margin-right: -15px;
+        }
+    }
+
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    function toggleShipButton(element){
+        if (element.textContent == "•••") {
+            element.textContent = "⟵";
+            element.title = "Hide Extras";
+        } else{
+            element.textContent = "•••";
+            element.title = "Show Extras";
+        }
+
+        var indexMatches = element.id.match(/\d/g);
+        if(!indexMatches) return;
+
+        var [rIndex, sIndex] = indexMatches;
+
+        var capacityEl = document.getElementById(`capacity-div-${rIndex}-${sIndex}`);
+        if (capacityEl != null) capacityEl.classList.toggle("hidden-ship-element");
+
+        var fuelEl = document.getElementById(`fueling-div-${rIndex}-${sIndex}`);
+        if (fuelEl != null) fuelEl.classList.toggle("hidden-ship-element");
+
+        var dubCapEl = document.getElementById(`double-cap-badge-${rIndex}-${sIndex}`);
+        if(dubCapEl != null) dubCapEl.classList.toggle("hidden-ship-element");
+
+        var targetingEl = document.getElementById(`targeting-div-${rIndex}-${sIndex}`);
+        if(targetingEl != null) targetingEl.classList.toggle("hidden-ship-element");
+    }
+</script>
+
+
+
+
+@for (var i = 0; i < Model.Backup.Farms.Count; i++) {
+    var farm = Model.Backup.Farms[i];
+
+
+    if (farm.FarmType != Ei.FarmType.Empty) {
+        var coop = Model.JoinedCoops.FirstOrDefault(x => x.Name.Equals(farm.CoopId, StringComparison.InvariantCultureIgnoreCase));
+        var contract = Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId);
+        var farmStats = farm.WithStats(Model.Backup, coop, Model.CustomEggs, null, contract);
+        var ihrPerHab = Research.InternalHatchery(farm, Model.Backup.EpicResearch);
+        var maxHabs = Math.Round(farmStats.HabSpace) <= farm.NumChickens;
+
+        var offlineHatcheryMultiplier = Research.InternalHatcheryOfflineBonus(farm, Model.Backup.EpicResearch) + 1;
+
+        var timeTillFull = VirtueHelper.GetTimeTillFull(farmStats.CurrentShippingRate, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60);
+        var timeTillFullOffline = VirtueHelper.GetTimeTillFull(farmStats.CurrentShippingRate, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60 * offlineHatcheryMultiplier);
+        <div style="display: inline-block;" class="card">
+            @if (farm.FarmType == Ei.FarmType.Home) {
+                <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
+            } else if (farm.ContractId != null && farm.ContractId != "first-contract") {
+                <h4 class="card-header"><img src="@(EggIncStatics.GetEggByContract(contract, Model.CustomEggs).image)" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+            } else {
+                <h4 class="card-header">Error Finding Contract @farm.ContractId</h4>
+            }
+
+            
+
+            @if (Model.Backup.GetLastBackupDateTime() < DateTimeOffset.Now.AddMinutes(-15))
+            {
+                <div class="alert alert-warning" style="margin-bottom:0;" role="alert">
+                    Warning: Last backup was @((DateTimeOffset.Now - Model.Backup.GetLastBackupDateTime()).Humanize().ShortenTime()) ago, calculations may be inaccurate.
+                </div>
+            }
+            <div class="card-body">
+                <div style="display: inline-block;">
+                    Chickens: @farm.NumChickens.ToEggString()
+                </div>
+                <div>
+                    Hab Space: @farmStats.HabSpace.ToEggString() 
+                    @if (maxHabs)
+                    {
+                        <span style="color: orange;">Habs are filled</span>
+                    } else if(ihrPerHab > 0) {
+                        <span>(Full in @timeTillFull.timeTillHabsFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() offline)</span>
+                    } 
+                </div>
+                <div>
+                    Egg Rate: @((farmStats.EggLayingRate * 60).ToEggString(true))/m
+                </div>
+                <div>
+                    Max Shipping Rate: @((farmStats.MaxShippingRate * 60).ToEggString(true))/m
+                    @if(farmStats.CurrentShippingRate >= farmStats.MaxShippingRate) {
+                        <span style="color: red;">Maxed Shipping by @((farmStats.EggLayingRate / farmStats.MaxShippingRate).ToString("P"))</span>
+                        if(farm.isVirtueEgg)
+                        {
+                            <br />
+                            if(farmStats.EggLayingRate * .1 > farmStats.MaxShippingRate)
+                            {
+                                <span style="color: orange;">&nbsp; - You can set fuel tank to 90% without affecting shipping</span>
+                            } else if(farmStats.EggLayingRate * .5 > farmStats.MaxShippingRate)
+                            {
+                                <span style="color: orange;">&nbsp; - You can set fuel tank to 50% without affecting shipping</span>
+                            } else if(farmStats.EggLayingRate * .9 > farmStats.MaxShippingRate) {
+                                <span style="color: orange;">&nbsp; - You can set fuel tank to 10% without affecting shipping</span>
+                            }
+                        }
+                    }
+                </div>
+                <div>
+                    Current Shipping Rate: @((farmStats.CurrentShippingRate * 60).ToEggString(true))/m <!--(@((farmStats.CurrentShippingRate).ToEggString(true, 3))/s)-->
+                    @if(farmStats.CurrentShippingRate < farmStats.MaxShippingRate) {
+                        if(timeTillFull.timeTillShippingFull < timeTillFull.timeTillHabsFull) {
+                            <span>(Will reach max shipping before max habs, @timeTillFull.timeTillShippingFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillShippingFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() offline)</span>
+                        } else if(timeTillFull.timeTillHabsFull > TimeSpan.Zero && farmStats.InternalHatchery > 0)
+                        {
+                            <span>(Will reach max habs before max shipping, @timeTillFull.timeTillHabsFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillHabsFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() offline)</span>
+                        }
+                    }
+                </div>
+                @*<div>
+                    Base Internal Hatchery: @ihrPerHab
+                </div>*@
+                <div id="@Model.Backup.EggIncId">
+                    Internal Hatchery: @farmStats.InternalHatchery/m/hab
+                </div>
+                <div>
+                    Silo Time: @(Research.GetTotalSiloCapacity(Model.Backup) * farm.SilosOwned / 60)h
+                    @if(farm.isVirtueEgg)
+                    {
+                        @: Shifts: @Model.Backup.ShiftCount,
+                        @: Resets: @Model.Backup.Resets
+                    }
+                </div>
+                @if(farm.isVirtueEgg)
+                {
+                    var totalEoT = 0;
+                    <table>
+                    @for(var e = 50; e < 55; e++)
+                    {
+                        var virtueEggStats = VirtueHelper.EggStats(Model.Backup, (Ei.Egg)e);
+                        totalEoT += virtueEggStats.Level;
+                        var egg = EggIncStatics.GetEggById(e, null, new List<DBCustomEgg>());
+                        <tr>
+                            <td><img src="/images/Egg_@(e).png" style="width: 20px;" />@egg.name</td>
+                            <td>
+                                    @switch(e)
+                                    {
+                                        case 50: @:🧪
+                                        break;
+                                        default: 
+                                            @:<img src="/images/Virtue/egg_@(e)_type.png" style="width: 20px;">
+                                        break;
+                                    }
+                            
+                            </td>
+                            <td> @Model.Backup.VirtueEggsDelivered[e - 50].ToEggString() shipped</td>
+                            <td> @Model.Backup.EovEarned[e - 50]@if(virtueEggStats.Level > Model.Backup.EovEarned[e - 50]) {<span>+@(virtueEggStats.Level - Model.Backup.EovEarned[e-50])</span>}<img src="/images/egg_truth.png" style="width: 20px;" /></td>
+                            <td>
+                                    @{
+                                        if(virtueEggStats.Progress >= 0) {
+                                            <span>@virtueEggStats.Progress.ToString("P0") of @virtueEggStats.NextThreshold.ToEggString()</span>
+                                        } else {
+                                            <span>??</span>
+                                        }
+                                    }
+                            </td>
+                        </tr>
+                        if(e == (int)farm.EggType) {
+                            <tr><td colspan="10" style="text-align: center;">
+                            @if(farmStats.CurrentShippingRate == 0) {
+                                                
+                            } else {
+                                var maxedShipping = farmStats.CurrentShippingRate >= farmStats.MaxShippingRate;
+
+
+                                <div>No Growth 
+                                @if(maxedShipping) {
+                                    <span style="color: red;">(Maxed Shipping)</span>
+                                } else if(maxHabs) {
+                                    <span style="color: orange;">(Maxed Habs)</span>
+                                }
+                                </div>
+                                <span class="abg">+1<img src="/images/egg_truth.png" style="width: 20px;" />
+                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()</span>
+                                <span class="abg">+2<img src="/images/egg_truth.png" style="width: 20px;" />
+                                            @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
+                                        </span>
+                                <span class="abg">+3<img src="/images/egg_truth.png" style="width: 20px;" />
+                                            @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime()).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
+                                        </span>
+
+                                if(!maxHabs && !maxedShipping && ihrPerHab > 0) {
+                                    <div>Normal Growth</div>
+                                    <span class="abg">+1<img src="/images/egg_truth.png" style="width: 20px;" />
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
+                                            </span>
+                                     <span class="abg">+2<img src="/images/egg_truth.png" style="width: 20px;" />
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
+                                            </span>
+                                     <span class="abg">+3<img src="/images/egg_truth.png" style="width: 20px;" />
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
+                                            </span>
+                                    <div>Offline Growth</div>
+                                    <span class="abg">+1<img src="/images/egg_truth.png" style="width: 20px;" />
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
+                                    </span>
+                                     <span class="abg">+2<img src="/images/egg_truth.png" style="width: 20px;" />
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold2, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
+                                    </span>
+                                     <span class="abg">+3<img src="/images/egg_truth.png" style="width: 20px;" />
+                                                @VirtueHelper.GetTimeToThreshold(virtueEggStats.Delivered, farmStats.CurrentShippingRate, virtueEggStats.NextThreshold3, Model.Backup.GetLastBackupDateTime(), farm.NumChickens, farmStats.HabSpace, farmStats.MaxShippingRate, farmStats.InternalHatchery * farm.Habs.Count * offlineHatcheryMultiplier / 60).Humanize(precision: 2, maxUnit: TimeUnit.Year).ShortenTime()
+                                    </span>
+                                 }
+                                <style>
+                                    .abg {
+                                        display: inline-block;
+                                        padding-right: 10px;
+                                    }
+                                </style>
+                            }
+                            </tr>
+                        }
+
+                    }
+                    </table>
+                    <div>
+                    <table>
+                        <tr><td colspan="99"><b>Current</b></td></tr>
+                        <tr>
+                            <td><img src="/images/egg_truth.png" style="width: 20px;" />@Model.Backup.EggsOfTruth,</td>
+                            <td>Bonus: @((Math.Pow(1.1, Model.Backup.EggsOfTruth) - 1).ToString("P0"))</td>
+                            <td>(@((Math.Pow(1.01, Model.Backup.EggsOfTruth) - 1).ToString("P0")) Main Farms)</td>
+                        </tr>
+                        <tr><td colspan="99"><b>After Prestige</b></td></tr>
+                        <tr>
+                            <td><img src="/images/egg_truth.png" style="width: 20px;" />@Model.Backup.EggsOfTruthTotal,</td>
+                            <td>Bonus: @((Math.Pow(1.1, Model.Backup.EggsOfTruthTotal) - 1).ToString("P0"))</td>
+                            <td>(@((Math.Pow(1.01, Model.Backup.EggsOfTruthTotal) - 1).ToString("P0")) Main Farms)</td>
+                        </tr>
+                    </table>
+                    </div>
+                }
+                @if (coop is not null) {
+                    <div>
+                        Coop:
+                        <a href="/coop/@farm.ContractId/@(farm.CoopId ?? coop?.Name)">
+                            @(farm.CoopId ?? coop?.Name)
+                        </a>
+                        @if (coop is not null && coop.ThreadID != 0 && !coop.ThreadArchived) {
+                            <a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.ThreadID/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+                        }
+                    </div>
+                }
+            </div>
+            <div class="card-body" style="padding-bottom: 0;">
+                <h6>Artifacts</h6>
+            </div>
+            <table class="table table-sm" style="margin-bottom: 0;">
+                @if (farm.Artifacts.Count == 0) {
+                    <tr><td><i>No Artifacts</i></td></tr>
+                }
+                @foreach (var artifact in farm.Artifacts) {
+                    artifactTemplate(artifact, false);
+                    @if (artifact.Stones != null && artifact.Stones.Count > 0) {
+                        <tr>
+                            <td colspan="99" style="padding-left: 10px; padding-top: 0; ">
+                                <table>
+                                    @foreach (var stone in artifact.Stones) {
+                                        artifactTemplate(stone, true);
+                                    }
+                                </table>
+                            </td>
+                        </tr>
+                    }
+                }
+            </table>
+        </div>
+    }
+}
+
+
+
+<div id="shipsDiv-@index" class="ship-container">
+    @{
+        var shipIndex = 0;
+        //These values control the size of ship images & circles
+        var baseSize = 60;
+        var strokeWidth = 3;
+        // -- Calculated values --
+        var radius = baseSize - (2 * strokeWidth);
+        var circumfrence = radius * 2 * Math.PI;
+        var svgSize = baseSize * 2;
+        var shipImageSize = baseSize * 1.9;
+        var imageOffsets = baseSize / 2 + ((baseSize - shipImageSize) / 2);
+    }
+    @foreach (var mission in iterableMissions ?? new List<SpaceMission>()) {
+        var returns = DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime + (long)mission.DurationSeconds);
+        var epochReturns = (long)(returns.ToUnixTimeSeconds());
+        var epochCurrent = (long)(DateTimeOffset.Now.ToUnixTimeSeconds());
+        var epochStarted = (long)(DateTimeOffset.FromUnixTimeSeconds((long)mission.StartTime).ToUnixTimeSeconds());
+        var shipEmojiLink = GetShipEmojiUrl(mission.Ship);
+        var capacityModifier = (int)(mission.Capacity / Model.Backup.GetNominalCapacity(mission));
+
+        var initialPercentDone = mission.Status == Status.Fueling ? 0 : 100 - ((((double)(epochReturns - epochCurrent) / (double)(epochReturns - epochStarted)) * 100));
+        var initialOffset = circumfrence - initialPercentDone / 100 * circumfrence;
+        var initialAntiOffset = circumfrence - initialOffset;
+
+        //The sole purpose of this is to hold information for DOM manipulation later :^)
+        <span style="display: none; opacity: 0;" id="data-ship-@index-@shipIndex" data-vals="@circumfrence,@((mission.Status == Status.Fueling).ToString())">You found an easter egg ... Feel free to reach out to Daveed, he'll get a chuckle from that.</span>
+
+        <div id="ship-card-@index-@shipIndex" class="ship-item card ship-card">
+            <button id="ship-toggle-button-@index-@shipIndex" class="ship-toggle-button" onclick="toggleShipButton(this)" title="Hide Extras">⟵</button>
+            <h4 class="card-header">
+                @if (shipEmojiLink != "") {
+                    <svg width="@svgSize" height="@svgSize" xmlns="http://www.w3.org/2000/svg">
+                        <circle class="ship-progress-ring tooltip-custom" id="ship-ring-@index-@shipIndex" stroke-width="@strokeWidth" stroke="@durationColor(mission.Duration)" fill="transparent" r="@radius" cx="@baseSize" cy="@baseSize"
+                        style="stroke-dasharray: @circumfrence @circumfrence; stroke-dashoffset: @initialOffset;"/>
+                        <circle class="ship-progress-anti-ring" id="ship-antiring-@index-@shipIndex" stroke-width="@strokeWidth" stroke="gray" fill="transparent" r="@radius" cx="@baseSize" cy="@baseSize"
+                        style="stroke-dasharray: @circumfrence @circumfrence; stroke-dashoffset: @initialAntiOffset;" />
+                        <image alt="@MissionHelpers.GetProperShipName(mission.Ship)" x="@imageOffsets" y="@imageOffsets" width="@shipImageSize" height="@shipImageSize" xlink:href="@shipEmojiLink" />
+                    </svg><br/>
+                }
+                <span style="font-size: 1.1rem; color: @durationColor(mission.Duration);">@mission.Duration.ToString().Replace("Epic", "Extended").Replace("Long","Standard")</span><br>
+                @MissionHelpers.GetProperShipName(mission.Ship)<br>
+                <span id="ship-progress-stars-@index-@shipIndex" style="font-size: 1.2rem;">
+                    @for (var i = 0; i < MissionHelpers.MaxShipLevels[mission.Ship]; i++) {
+                        <span class="ShipCardStar @((i < mission.Stars) ? "GoldenStar" : "GrayStar")">★</span>
+                    }
+                </span>
+            </h4>
+
+            <div class="card-body" style="height: 150%">
+                <span class="status-span" id="status-span-@index-@shipIndex">@mission.Status</span>
+                @switch (mission.Status) {
+                    case Status.Fueling:
+                        <div id="fueling-div-@index-@shipIndex">
+                            @{
+                                var fuelTargets = Ei.MissionInfo.GetFuelTargets(mission.Ship, mission.Duration);
+                                var needsFuel = mission == null || fuelTargets.Any(ft => ft.Value > (mission.Fuels.FirstOrDefault(f => f.Egg == ft.Key)?.Amount ?? 0));
+                                        @if (needsFuel)
+                                {
+                                            <div style="color:darkred">❗Needs Fuel</div>
+                                }
+                                foreach (var fuel in mission.Fuels)
+                                {
+                                    var eggEmojiUrl = $"{EggIncStatics.GetEggById(fuel.Egg, null, Model.CustomEggs)?.image}";
+                                    var target = fuelTargets[fuel.Egg];
+                                    var percent = fuel.Amount / target * 100;
+                                    var eggName = string.Join(" ", Regex.Split(Enum.GetName(typeof(Ei.Egg), fuel.Egg).ToString(), @"(?=\p{Lu})"));
+                                    if (eggName.StartsWith(" ")) eggName = eggName.Substring(1);
+                                    var progressClass = $"{eggName.Replace(" ", "-").ToLower()}-progress-bar";
+                                    var barWidth = (80 * (percent / 100)) + "px";
+                                            <div style="width: 60%; margin-top: 2.5px; margin-bottom: 2.5px;">
+                                                <span style="width: 150%; display: flex; align-items: center; height: 35px;">
+                                                    <img style="height: 20px; width: 20px;" src="@(eggEmojiUrl)" title="@(eggName)" />&nbsp;
+                                                    <span style="width: @barWidth; height: 15px;" class="fuel-progress-bar tooltip-custom @progressClass"></span>
+                                                    @if (percent.ToString("N0") == "100"){
+                                                        <span class="fuel-progress-text">100% - @target.ToEggString()</span>
+                                            } else{
+                                                        <span class="fuel-progress-text">@(percent.ToString("N0"))% - @fuel.Amount.ToEggString() / @target.ToEggString()</span>
+                                            }
+                                                </span>
+                                            </div>
+                                }
+                            }
+                        </div>
+                        break;
+                    case Status.Exploring:
+                    case Status.Returned:
+                        <div>
+                            <span class="tooltip-custom" id="ttr-ship-@index-@shipIndex">
+                                <span id="timetext-@index-@shipIndex">
+                                    @((returns < DateTimeOffset.Now ? "Returned" : "Returns in")) <span style="font-weight: bold;" id="ship-return-m-@index-@shipIndex" data-duration="@mission.Duration" percent-done="" timedatastarted="@mission.StartTime" timedataends="@epochReturns">formatEpochToTime(epochReturns, false)</span> @((returns < DateTimeOffset.Now ? "ago" : ""))
+                                </span>
+                                <span id="ship-return-tt-@index-@shipIndex" class="tooltiptext-custom speech-bubble">
+                                    Placeholder... Why are you looking here?
+                                </span>
+                            </span>
+                        </div>
+                        break;
+                }
+                <div id="capacity-div-@index-@shipIndex" style="flex: 1">Capacity: @((mission.Capacity))</div>
+                <!-- Only quintillion (4) and above can be targeted ships-->
+                @if (((int)mission?.Ship >= 4) && mission?.Targeting != null) {
+                    @switch (mission?.Targeting) {
+                        case Ei.ArtifactSpec.Types.Name.Unknown:
+                            break;
+                        default:
+                            var targetInfo = ArtifactHelpers.GetTargetInfo(mission.Targeting);
+                            if(targetInfo is not null && targetInfo?.Name != ""){
+                                if(targetInfo.EmojiURL != ""){
+                                    <div id="targeting-div-@index-@shipIndex" style="flex: 1">Targeting: @(targetInfo.Name) <img title="@(targetInfo.Name)" style="max-height: 25px;" src="@(targetInfo.EmojiURL)" /></div>
+                                } else {
+                                    <div id="targeting-div-@index-@shipIndex" style="flex: 1">Targeting: @(targetInfo.Name)</div>
+                                }
+                            }
+                            break;
+                    }
+                }
+
+                <!-- Double cap span, will be displayed conditionally-->
+                @if(capacityModifier > 1 && mission.Status != Status.Fueling){
+                    <span id="double-cap-badge-@index-@shipIndex" class="double-cap-span" style="flex: 1">
+                        <img src="https://eggincassets.tcl.sh/64/egginc/icon_afx_chest_2.png" style="height: 30px" />
+                        <span class="tooltip-custom" style="font-weight: bold">@(capacityModifier)x Capacity
+                            <span style="font-weight: normal;" class="tooltiptext-custom speech-bubble">This ship was launched during a<br /><span style="color: rgb(139, 14, 158)">@(capacityModifier)x Capacity Event</span> and will return with<br />more artifacts than normal.</span>
+                        </span>
+                    </span>
+                }
+            </div>
+        </div>
+        shipIndex++;
+    }
+</div>
+
+<div id="shipInfoContainer-@index" class="asc-info-container" style="display: flex; margin-top: 15px;">
+    <div id="ship-level-container-@index" style="margin-left: 10px; width:60%; display: block;">
+        <table id="ship-level-table" class="table card table-sm" style="width: 100%; table-layout: auto; display: table;">
+            <thead>
+                <tr>
+                    <th style="text-align: center;">Ship</th>
+                    <th>Stars</th>
+                    <th>Next Level</th>
+                    <th>Max Level</th>
+                    <th>Launches</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var ship in MissionHelpers.MaxShipLevels) {
+                    var currentStars = Model.Backup.GetShipLevel(ship.Key);
+                    var shipEmojiLink = GetShipEmojiUrl(ship.Key);
+                    <tr id="@ship.Key-overall-row" style="height: 38px;">
+                        <td align="center">
+                            @if (shipEmojiLink != "") {
+                                <img src="@((shipEmojiLink))" title="@MissionHelpers.GetProperShipName(ship.Key)" style="max-height:20px;">
+                            }
+                        </td>
+                        <td>
+                            @for (var i = 0; i < ship.Value; i++) {
+                                if (i < currentStars){
+                                    <span class="Star GoldenStar">★</span>
+                                } else {
+                                    <span class="Star GrayStar">★</span>
+                                }
+                            }
+                        </td>
+                        <td>
+                            @if (Model.Backup.GetShipProgressTotal(ship.Key) != 1) {
+                                <span class="tooltip-custom">
+                                    @Model.Backup.GetShipProgressNextLevel(ship.Key).ToString("P0")
+                                    <span class="tooltiptext-custom speech-bubble">
+                                        @{
+                                            var shipsToNext = Model.Backup.LaunchShipsToNext(ship.Key);
+                                            var shortsToNext = shipsToNext.ContainsKey(DurationType.Short) ? shipsToNext[DurationType.Short] : 0;
+                                            var standardsToNext = shipsToNext.ContainsKey(DurationType.Long) ? shipsToNext[DurationType.Long] : 0;
+                                            var extendedsToNext = shipsToNext.ContainsKey(DurationType.Epic) ? shipsToNext[DurationType.Epic] : 0;
+
+                                            var shortsTimeNext = Model.Backup.GetShipTime(ship.Key, DurationType.Short, shortsToNext);
+                                            var standardsTimeNext = Model.Backup.GetShipTime(ship.Key, DurationType.Long, standardsToNext);
+                                            var extendedsTimeNext = Model.Backup.GetShipTime(ship.Key, DurationType.Epic, extendedsToNext);
+                                        }
+                                        <span id="@ship.Key-short-nextlvl" timeval="@shortsTimeNext" intval="@shortsToNext" class="blue-text">@shortsToNext @properCaseAndSuffix("Short", shortsToNext)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-standard-nextlvl" timeval="@standardsTimeNext" intval="@standardsToNext" class="purple-text">@standardsToNext @properCaseAndSuffix("Standard", standardsToNext)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-extended-nextlvl" timeval="@extendedsTimeNext" intval="@extendedsToNext" class="orange-text">@extendedsToNext @properCaseAndSuffix("Extended", extendedsToNext)</span>
+                                    </span>
+                                </span>
+                            }
+                            else{@("--")}
+                        </td>
+                        <td>
+                            <span class="tooltip-custom">
+                                @Model.Backup.GetShipProgressTotal(ship.Key).ToString("P0")
+                                @if (Model.Backup.GetShipProgressTotal(ship.Key) != 1){
+                                    <span class="tooltiptext-custom speech-bubble">
+                                        @{
+                                            var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
+                                            var shortsToMax = shipsToMax.ContainsKey(DurationType.Short) ? shipsToMax[DurationType.Short] : 0;
+                                            var standardsToMax = shipsToMax.ContainsKey(DurationType.Long) ? shipsToMax[DurationType.Long] : 0;
+                                            var extendedsToMax = shipsToMax.ContainsKey(DurationType.Epic) ? shipsToMax[DurationType.Epic] : 0;
+
+                                            var shortsTimeMax = Model.Backup.GetShipTime(ship.Key, DurationType.Short, shortsToMax);
+                                            var standardsTimeMax = Model.Backup.GetShipTime(ship.Key, DurationType.Long, standardsToMax);
+                                            var extendedsTimeMax = Model.Backup.GetShipTime(ship.Key, DurationType.Epic, extendedsToMax);
+                                        }
+                                        <span id="@ship.Key-short-maxlvl" timeval="@shortsTimeMax" intval="@shortsToMax" class="blue-text">@shortsToMax @properCaseAndSuffix("Short", shortsToMax)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-standard-maxlvl" timeval="@standardsTimeMax" intval="@standardsToMax" class="purple-text">@standardsToMax @properCaseAndSuffix("Standard", standardsToMax)</span><span class="gray-text-half-margin">or</span>
+                                        <span id="@ship.Key-extended-maxlvl" timeval="@extendedsTimeMax" intval="@extendedsToMax" class="orange-text">@extendedsToMax @properCaseAndSuffix("Extended", extendedsToMax)</span>
+                                    </span>
+                                }
+                            </span>
+                        </td>
+                        <td>
+                            <span class="tooltip-custom">
+                                @Model.Backup.ShipsSent.Where(x => x.ship == ship.Key).Sum(x => x.count)
+                                <span class="tooltiptext-custom speech-bubble">
+                                    @{
+                                        var ships = Model.Backup.ShipsSent.Where(x => x.ship == ship.Key);
+                                        var tutorialShips = ships.FirstOrDefault(x => x.type == DurationType.Tutorial);
+                                        var shortShips = ships.FirstOrDefault(x => x.type == DurationType.Short);
+                                        var standardShips = ships.FirstOrDefault(x => x.type == DurationType.Long);
+                                        var extendedShips = ships.FirstOrDefault(x => x.type == DurationType.Epic);
+
+                                        var tutorialTimeLaunched = Model.Backup.GetShipTime(ship.Key, DurationType.Tutorial, tutorialShips.count);
+                                        var shortsTimeLaunched = Model.Backup.GetShipTime(ship.Key, DurationType.Short, shortShips.count);
+                                        var standardsTimeLaunched = Model.Backup.GetShipTime(ship.Key, DurationType.Long, standardShips.count);
+                                        var extendedsTimeLaunched = Model.Backup.GetShipTime(ship.Key, DurationType.Epic, extendedShips.count);
+                                    }
+                                    @if (ship.Key == Spaceship.ChickenOne) {
+                                        <span id="@ship.Key-tutorial-launched" timeval="@tutorialTimeLaunched" intval="@tutorialShips.count" class="gray-text">@tutorialShips.count @properCaseAndSuffix("Tutorial", tutorialShips.count)</span>
+                                    }
+                                    <span id="@ship.Key-short-launched" timeval="@shortsTimeLaunched" intval="@shortShips.count" class="blue-text">@shortShips.count @properCaseAndSuffix("Short", shortShips.count)</span>
+                                    <span id="@ship.Key-standard-launched" timeval="@standardsTimeLaunched" intval="@standardShips.count" class="purple-text">@standardShips.count @properCaseAndSuffix("Standard", standardShips.count)</span>
+                                    <span id="@ship.Key-extended-launched" timeval="@extendedsTimeLaunched" intval="@extendedShips.count" class="orange-text">@extendedShips.count @properCaseAndSuffix("Extended", extendedShips.count)</span>
+                                </span>
+                            </span>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <span id="do-tt-@index" class="tooltip-text">ℹ️<i>Press CTRL to toggle showing times for ship launches in tooltips.</i></span>
+        <button class="btn-primary tooltip-text" id="mo-tt-@index" style="margin-bottom: 10px;" onclick="toggleShipTimes()"><span>Toggle showing times in tooltips.</span></button>
+    </div>
+    <div id="asc-planner-cont" style="margin-left: 0px; width: auto"> 
+        <table id="asc-planner-table" class="table card table-sm" style="table-layout: auto; display: table;">
+            <thead>
+                <tr>
+                    <th style="text-align: center" colspan="4">
+                        ASC Planner 
+                        <span class="tooltip-custom" style="letter-spacing: 0.1em; font-weight: bolder">
+                            <img src="/images/help_icon.png"/>
+                            <span class="tooltiptext-custom speech-bubble" style="letter-spacing: normal; font-weight: normal;">
+                                All-Star-Club, commonly shortened to "ASC", is<br />
+                                the name of the community-created achievement<br />
+                                for getting all <span class="GoldenStar">★</span>s, on all ships.
+                            </span>
+                        </span>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    var unMaxedShips = MissionHelpers.MaxShipLevels.Where(s => !(Model.Backup.GetShipProgressTotal(s.Key) >= 1)).Count();
+                    if(unMaxedShips != 0){
+                        foreach (var ship in MissionHelpers.MaxShipLevels){
+                            var alreadyMaxed = (Model.Backup.GetShipProgressTotal(ship.Key) >= 1);
+
+                            var currentStars = Model.Backup.GetShipLevel(ship.Key);
+                            var shipEmojiLink = GetShipEmojiUrl(ship.Key);
+
+                            var shipsToMax = Model.Backup.LaunchShipsToMax(ship.Key);
+                            var shortsToMax = shipsToMax.ContainsKey(DurationType.Short) ? shipsToMax[DurationType.Short] : 0;
+                            var standardsToMax = shipsToMax.ContainsKey(DurationType.Long) ? shipsToMax[DurationType.Long] : 0;
+                            var extendedsToMax = shipsToMax.ContainsKey(DurationType.Epic) ? shipsToMax[DurationType.Epic] : 0;
+
+                            var shortsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, DurationType.Short, shortsToMax);
+                            var standardsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, DurationType.Long, standardsToMax);
+                            var extendedsTimeMax = Model.Backup.GetShipTimeRaw(ship.Key, DurationType.Epic, extendedsToMax);
+
+                                    <tr id="@ship.Key-asc-row-@index" style="height: 38px;" dataMaxed="@(alreadyMaxed.ToString())">
+                                        <td id="asc-name-col-@index" align="left" style="padding-left: 5px; font-size: 0.75rem;" dataMaxed="@(alreadyMaxed.ToString())">
+                                            @MissionHelpers.GetProperShipName(ship.Key)
+                                        </td>
+                                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                                            @if (!alreadyMaxed){
+                                                <select class="blue-text" name="@ship.Key-duration-asc-choice-@index" id="@ship.Key-duration-asc-choice-@index" onchange="durationSelectionChanged(this)">
+                                                    <option value="short" class="blue-text">Short</option>
+                                                    <option value="standard" class="purple-text">Standard</option>
+                                                    <option value="extended" class="orange-text">Extended</option>
+                                                </select>
+                                    }
+                                        </td>
+                                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                                            @if (!alreadyMaxed){
+                                                <span class="blue-text" id="@ship.Key-number-needed-asc-@index"
+                                                      data-short="@shortsToMax" data-standard="@standardsToMax" data-extended="@extendedsToMax">
+                                                    @shortsToMax
+                                                </span>
+                                    }
+                                        </td>
+                                        <td dataMaxed="@(alreadyMaxed.ToString())">
+                                            @if (!alreadyMaxed){
+                                                <span class="blue-text" id="@ship.Key-time-needed-asc-@index"
+                                                      data-short="@shortsTimeMax" data-standard="@standardsTimeMax" data-extended="@extendedsTimeMax"
+                                              dt-short="@MissionHelpers.MinutesToString(shortsTimeMax)" dt-standard="@MissionHelpers.MinutesToString(standardsTimeMax)" dt-extended="@MissionHelpers.MinutesToString(extendedsTimeMax)">
+                                            @MissionHelpers.MinutesToString(shortsTimeMax)
+                                                </span>
+                                    }
+                                        </td>
+                                    </tr>
+                        }
+                    }
+                }
+                <tr>
+                    <td colspan="3"><span>Total time (as configured):</span></td>
+                    <td><span id="total-asc-time-@index"></span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<br />
+<hr />
+<br />
+
+<script type="text/javascript">
+    var timeState = 'no';
+    var ctrlReleaseHandled = false;
+    var index = Number("@(index)");
+
+    var isMobile = (window.innerWidth < 768);
+    if (isMobile) {
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.height = '0px'; });
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.visibility = 'hidden'; });
+        document.querySelectorAll('[id*="do-tt"]').forEach(el => { el.style.display = 'none'; });
+        document.querySelectorAll('[id*="shipInfoContainer"]').forEach(el => { el.style.flexDirection = 'column'; });
+        document.querySelectorAll('[id*="asc-planner-cont"]').forEach(el => { el.style.marginLeft = '10px'; });
+        document.querySelectorAll('[id*="ship-level-container-"]').forEach(el => { el.style.width = '100%' });
+        document.querySelectorAll('[dataMaxed="True"]').forEach(el => { el.style.display = 'none'; });
+    } else {
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.height = '0px'; });
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.visibility = 'hidden'; });
+        document.querySelectorAll('[id*="mo-tt"]').forEach(el => { el.style.display = 'none'; });
+        document.querySelectorAll('[id*="shipInfoContainer"]').forEach(el => { el.style.flexDirection = 'row'; });
+    }
+    
+    function properCaseAndSuffix(inputString, number) {
+        const suffix = (number == 0 || number > 1) ? 's' : '';
+        return inputString.charAt(0).toUpperCase() + inputString.slice(1) + suffix;
+    }
+
+    document.addEventListener("keydown", function (event) {
+        if (event.ctrlKey) ctrlReleaseHandled = false;
+    });
+
+    function toggleShipTimes(){
+        const elementsLaunched = Array.from(document.querySelectorAll('[id*="-launched"]'));
+        const elementsMaxLvl = Array.from(document.querySelectorAll('[id*="-maxlvl"]'));
+        const elementsNextLvl = Array.from(document.querySelectorAll('[id*="-nextlvl"]'));
+        const elements = elementsLaunched.concat(elementsMaxLvl, elementsNextLvl);
+        switch (timeState) {
+            case 'yes':
+                timeState = 'no';
+                elements.forEach(element => {
+                    if (element.nodeName == 'SPAN') {
+                        const elementId = element.id.toString();
+                        const durationType = elementId.split("-")[1];
+                        const durationString = properCaseAndSuffix(durationType, parseInt(element.intVal));
+                        element.textContent = element.getAttribute('intval') + ' ' + durationString;
+                    }
+                });
+                break;
+            case 'no':
+                timeState = 'yes';
+                elements.forEach(element => {
+                    if (element.nodeName == 'SPAN') element.textContent = element.getAttribute('timeval') + ' (' + element.getAttribute('intval') + ')';
+                });
+                break;
+        }
+    }
+
+    /* When control is released */
+    document.addEventListener("keyup", function (event) {
+        if (!event.ctrlKey && !ctrlReleaseHandled) {
+            ctrlReleaseHandled = true;
+            toggleShipTimes();
+        }
+    });
+
+    function durationSelectionChanged(el) {
+        if (el == null || el.id == null) return;
+
+        var shipName = el.id.split('-')[0];
+        index = el.id.split('-')[el.id.split('-').length - 1];
+        var newValue = el.value;
+
+        var numNeededSpan = document.getElementById(shipName + '-number-needed-asc-' + index);
+        numNeededSpan.textContent = numNeededSpan.getAttribute('data-' + newValue);
+
+        var timeNeededSpan = document.getElementById(shipName + '-time-needed-asc-' + index);
+        timeNeededSpan.textContent = timeNeededSpan.getAttribute('dt-' + newValue);
+
+        var newColorClass = '';
+        switch(newValue){
+            case 'extended':
+                newColorClass = 'orange-text'
+                break;
+            case 'standard':
+                newColorClass = 'purple-text'
+                break;
+            default:
+            case 'short':
+                newColorClass = 'blue-text';
+                break;
+        }
+        timeNeededSpan.classList = newColorClass;
+        numNeededSpan.classList = newColorClass;
+        el.classList = newColorClass;
+
+        //Re-calc total times
+        reSumTimes(index);
+    }
+
+    function reSumTimes(index){
+
+        var times = [];
+        var idQuery = "-time-needed-asc-" + index;
+        var timeEls = document.querySelectorAll('[id*="' + idQuery + '"]');
+
+        if(timeEls.length == 0) {
+            var el2 = document.getElementById('total-asc-time-' + index);
+            if(el2 == undefined) return;
+            else {
+                el2.textContent = 'Maxed';
+                el2.style.color = 'green';
+            }
+            return;
+        }
+
+        timeEls.forEach(el => {
+            if(el.textContent !== '0m')
+                times.push(el.textContent);
+        });
+
+        const summedTimesStr = sumTime(times);
+        document.getElementById('total-asc-time-' + index).textContent = summedTimesStr;
+    }
+
+    function sumTime(timeStrings) {
+        let totalSeconds = 0;
+        for (let i = 0; i < timeStrings.length; i++) {
+            const timeString = timeStrings[i].trim();
+            const years = parseInt(timeString.match(/\d+y/)?.[0]?.slice(0, -1) ?? 0);
+            const days = parseInt(timeString.match(/\d+d/)?.[0]?.slice(0, -1) ?? 0);
+            const hours = parseInt(timeString.match(/\d+h/)?.[0]?.slice(0, -1) ?? 0);
+            const minutes = parseInt(timeString.match(/\d+m/)?.[0]?.slice(0, -1) ?? 0);
+            totalSeconds += (years * 365 * 24 * 60 * 60) + (days * 24 * 60 * 60) + (hours * 60 * 60) + (minutes * 60);
+        }
+        const years = Math.floor(totalSeconds / (365 * 24 * 60 * 60));
+        const days = Math.floor(totalSeconds / (24 * 60 * 60)) - (years > 0 ? years * 365 : 0);
+        const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+        const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+        var returnString = "";
+        if(years > 0) returnString += `${years}y`;
+        if(days > 0) returnString += `${days}d`;
+        if(hours > 0) returnString += `${hours}h`;
+        if(minutes > 0) returnString += `${minutes}m`
+
+        return returnString;
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        for(var i = 0; i < 6; i++) reSumTimes(i);
+    });
+
+    function formatEpochToLocalDateTime(epochSeconds) {
+        // Convert the epoch time to milliseconds and create a Date object
+        var date = new Date(epochSeconds * 1000);
+
+        // Get date and time components
+        var year = date.getFullYear();
+        var month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-based
+        var day = String(date.getDate()).padStart(2, '0');
+        var hours = String(date.getHours()).padStart(2, '0');
+        var minutes = String(date.getMinutes()).padStart(2, '0');
+        var seconds = String(date.getSeconds()).padStart(2, '0');
+
+        // Format the result as "YYYY-MM-DD HH:mm:ss"
+        var result = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+        return result;
+    }
+
+    function updateTimedataval() {
+        var elements = document.querySelectorAll('span[id^="ship-return-m"]');
+        elements.forEach(function (element) {
+            var returnsEpoch = parseFloat(element.getAttribute('timedataends'));
+            var startedEpoch = parseFloat(element.getAttribute('timedatastarted'));
+            var currentEpoch = new Date() / 1000;
+
+            var rawId = element.id.toString().replace("ship-return-m-", "");
+            var index = rawId.split("-")[0];
+            var shipIndex = rawId.split("-")[1];
+
+            if (returnsEpoch != '' && returnsEpoch != null && element.id.indexOf('ago') == -1 && currentEpoch >= returnsEpoch) {
+                document.getElementById('status-span-' + index + '-' + shipIndex).textContent = 'Returned';
+
+                //Update the timetext
+                document.getElementById('timetext-' + index + '-' + shipIndex).innerHTML = 'Returned <span style="font-weight: bold;" id="ship-return-m-' + index + '-' + shipIndex + '-ago" timedataends="' + returnsEpoch + '">0s</span> ago';
+            }
+            element.textContent = formatEpochToTime(returnsEpoch, false);
+
+            var ttEl = document.getElementById(element.id.replace('-m', '-tt').replace('-ago', ''));
+            if (ttEl != null) {
+                var ttCounter = formatEpochToTime(returnsEpoch, true);
+                var ttCounterText = element.id.indexOf('ago') > -1 ? ttCounter + ' ago' : 'In ' + ttCounter;
+                var fullDate = formatEpochToLocalDateTime(returnsEpoch);
+                ttEl.innerHTML = `${ttCounterText} <br><span style="color: grey;">(</span> ${fullDate} <span style="color: grey;">)</span>`;
+            }
+
+            var indexMatches = element.id.match(/\d/g);
+            var percentDone = 100 - ((((returnsEpoch - currentEpoch) / (returnsEpoch - startedEpoch)) * 100));
+            if (percentDone > 101) percentDone = 101;
+            if (indexMatches && percentDone <= 101){
+                var [rIndex, sIndex] = indexMatches;
+                var dataEl = document.getElementById(`data-ship-${rIndex}-${sIndex}`);
+                var rawData = dataEl.getAttribute('data-vals');
+                var circumfrence = parseFloat(rawData.split(',')[0]);
+                var fueling = rawData.split(',')[1];
+
+                var ringEl = document.getElementById(`ship-ring-${rIndex}-${sIndex}`);
+                var antiRingEl = document.getElementById(`ship-antiring-${rIndex}-${sIndex}`);
+
+                if(fueling == "False" && ringEl != null && antiRingEl != null){
+                    
+                    var ringOffset = circumfrence - percentDone / 100 * circumfrence;
+                    var antiRingOffset = circumfrence - ringOffset;
+
+                    ringEl.style.strokeDashoffset = ringOffset;
+                    antiRingEl.style.strokeDashoffset = antiRingOffset;
+                }
+            }
+        });
+    }
+
+    // Initial call to the function
+    updateTimedataval();
+
+    // Set up a timer to call the function every second
+    setInterval(updateTimedataval, 1000);
+
+</script>
+
+
+
