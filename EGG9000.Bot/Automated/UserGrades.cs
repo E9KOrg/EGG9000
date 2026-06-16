@@ -40,18 +40,44 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}: {error}");
                             } else if(info.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
                                 _logger.LogTrace($"Skipping non-final grade ({info.Status}) for user {user.DiscordUsername} {account.Name}");
-                            } else if(info.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && info.Grade != account.LastGrade) {
-                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {info.Grade}");
-                                account.LastGrade = info.Grade;
-                                user.UpdateAccounts();
-
-                                using var writeScope = _provider.CreateScope();
-                                var writeDb = writeScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                                await writeDb.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
-                                    .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
-                                writeDb.Dispose();
                             } else {
-                                _logger.LogInformation($"No grade change for user {user.DiscordUsername} {account.Name} grade: {info.Grade}");
+                                // Grade update
+                                if(info.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && info.Grade != account.LastGrade) {
+                                    _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {info.Grade}");
+                                    account.LastGrade = info.Grade;
+                                    user.UpdateAccounts();
+
+                                    using var writeScope = _provider.CreateScope();
+                                    var writeDb = writeScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                                    await writeDb.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
+                                        .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
+                                    writeDb.Dispose();
+                                } else {
+                                    _logger.LogInformation($"No grade change for user {user.DiscordUsername} {account.Name} grade: {info.Grade}");
+                                }
+
+                                // Season progress upsert
+                                if(info.SeasonProgress.Count > 0) {
+                                    using var seasonScope = _provider.CreateScope();
+                                    var seasonDb = seasonScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                                    foreach(var sp in info.SeasonProgress) {
+                                        if(string.IsNullOrEmpty(sp.SeasonId)) continue;
+                                        var existing = await seasonDb.UserSeasonProgresses
+                                            .FirstOrDefaultAsync(x => x.EggIncId == account.Id && x.SeasonId == sp.SeasonId, CancellationToken.None);
+                                        if(existing == null) {
+                                            seasonDb.UserSeasonProgresses.Add(new UserSeasonProgress {
+                                                EggIncId = account.Id,
+                                                SeasonId = sp.SeasonId,
+                                                TotalCxp = sp.TotalCxp,
+                                                StartingGrade = (int)sp.StartingGrade
+                                            });
+                                        } else {
+                                            existing.TotalCxp = sp.TotalCxp;
+                                            existing.StartingGrade = (int)sp.StartingGrade;
+                                        }
+                                    }
+                                    await seasonDb.SaveChangesAsync(CancellationToken.None);
+                                }
                             }
                         } catch(Exception ex) {
                             _logger.LogError(ex, $"Error getting grade for user {user.DiscordUsername} {account.Name}");

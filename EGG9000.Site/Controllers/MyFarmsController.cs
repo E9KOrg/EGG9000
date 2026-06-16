@@ -105,6 +105,30 @@ namespace EGG9000.Site.Controllers {
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
+            var eggIncIds = user.EggIncAccounts.Select(a => a.Id).Distinct().ToList();
+            var seasonProgresses = await _db.UserSeasonProgresses
+                .Where(x => eggIncIds.Contains(x.EggIncId))
+                .ToListAsync();
+            var seasonIds = seasonProgresses.Select(x => x.SeasonId).Distinct().ToList();
+            var seasonInfos = await _db.SeasonInfos
+                .Where(x => seasonIds.Contains(x.Id))
+                .ToListAsync();
+            var seasonPEByEggIncId = eggIncIds.ToDictionary(
+                id => id,
+                id => {
+                    var progresses = seasonProgresses.Where(sp => sp.EggIncId == id).ToList();
+                    var earned = progresses.Sum(sp => {
+                        var info = seasonInfos.FirstOrDefault(si => si.Id == sp.SeasonId);
+                        return info?.GetPeEarned((Ei.Contract.Types.PlayerGrade)sp.StartingGrade, sp.TotalCxp) ?? 0;
+                    });
+                    var max = progresses.Sum(sp => {
+                        var info = seasonInfos.FirstOrDefault(si => si.Id == sp.SeasonId);
+                        return info?.GetMaxPe((Ei.Contract.Types.PlayerGrade)sp.StartingGrade) ?? 0;
+                    });
+                    return (Earned: earned, Max: max);
+                }
+            );
+
             List<DBCustomEgg> dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
                 return _db.CustomEggs.ToList();
@@ -124,7 +148,7 @@ namespace EGG9000.Site.Controllers {
 
 
             Console.WriteLine(String.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId));
         }
 
         private async Task<bool> GetBackups(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring, FrozenSet<Ei.Contract> cachedContracts) {
@@ -168,7 +192,8 @@ namespace EGG9000.Site.Controllers {
             Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts,
             List<DBCustomEgg> CustomEggs,
             bool IsSelf,
-            FrozenSet<Ei.Contract> CachedContracts
+            FrozenSet<Ei.Contract> CachedContracts,
+            Dictionary<string, (int Earned, int Max)> SeasonPEByEggIncId
         );
 
         public async Task<IActionResult> EarningsBoostCalculator() {

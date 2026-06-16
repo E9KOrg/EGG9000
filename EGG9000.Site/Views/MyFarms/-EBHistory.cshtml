@@ -1,4 +1,4 @@
-﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts)
+﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts, (int Earned, int Max) peFromSeasons)
 @{
     string calculateMER(double se, ulong pe) {
         se = se / 1e18;
@@ -30,6 +30,7 @@
                                 <th style="text-align: left">From Contracts</th>
                                 <th style="text-align: left">From Daily Gifts</th>
                                 <th style="text-align: left">From Trophies</th>
+                                <th style="text-align: left">From Season Rewards</th>
                                 <th style="text-align: left">Total</th>
                             </tr>
                         </thead>
@@ -42,6 +43,7 @@
                                 }
                                 <td>@Model.backup.PEFromDailyGifts of 24</td>
                                 <td>@Model.backup.PEFromTrophies of 40</td>
+                                <td>@Model.peFromSeasons.Earned@(Model.peFromSeasons.Max > 0 ? $" of {Model.peFromSeasons.Max}" : "")</td>
                                 <td>@Model.backup.EggsOfProphecy</td>
                             </tr>
                         </tbody>
