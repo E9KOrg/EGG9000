@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
@@ -426,8 +427,8 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-
-            await component.UpdateAsync(async x => { x.Components = ColleggtiblesComponents(dbuser, account.DoUnfinishedCollegtibles, index); x.Embed = await ColleggtiblesEmbed(db, dbuser, account, account.DoUnfinishedCollegtibles); });
+            var embed = await ColleggtiblesEmbed(db, dbuser, account, account.DoUnfinishedCollegtibles);
+            await component.UpdateAsync(x => { x.Components = ColleggtiblesComponents(dbuser, account.DoUnfinishedCollegtibles, index); x.Embed = embed; });
         }
 
         [ComponentCommand]
@@ -442,7 +443,8 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
 
-            await component.UpdateAsync(async x => { x.Components = ColleggtiblesComponents(dbuser, toggleState, index); x.Embed = await ColleggtiblesEmbed(db, dbuser, account, toggleState); });
+            var embed = await ColleggtiblesEmbed(db, dbuser, account, toggleState);
+            await component.UpdateAsync(x => { x.Components = ColleggtiblesComponents(dbuser, toggleState, index); x.Embed = embed; });
         }
 
         [ComponentCommand]
@@ -458,18 +460,71 @@ namespace EGG9000.Bot.Commands {
         [ComponentCommand]
         public static async Task<Embed> ColleggtiblesEmbed(ApplicationDbContext db, DBUser dbuser, EggIncAccount account, bool enabled) {
             var customEggs = await db.GetCustomEggsAsync();
+            var cachedContracts = await db.CachedEiContractsAsync();
+            var customEggById = cachedContracts
+                .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
+                .ToDictionary(c => c.Identifier, c => c.CustomEggId.ToLower());
+            var (archive, _) = await EggIncApi.GetContractsArchive(account.Id);
+            if(archive != null) {
+                // LocalContract.Contract is no longer populated by the archive or backup endpoints.
+                // resolve egg type via CachedEiContractsAsync instead. Only fetch from get_contracts_info for contracts
+                // that are completely absent from our DB, known non-custom-egg contracts are skipped.
+                var cachedIds = cachedContracts.Select(c => c.Identifier).ToHashSet();
+                var missingIds = archive.Archive
+                    .Where(f => f.MaxFarmSizeReached > 0 && !customEggById.ContainsKey(f.ContractIdentifier) && !cachedIds.Contains(f.ContractIdentifier))
+                    .Select(f => f.ContractIdentifier)
+                    .Distinct()
+                    .ToArray();
+                // fallback to get_contracts_info for any missing contract IDs, and register them in the DB
+                if(missingIds.Length > 0) {
+                    var (info, _) = await EggIncApi.GetContractsInfoAsync(account.Id, missingIds);
+                    if(info != null) {
+                        await db.RegisterMissingContractsAsync(info.Contracts);
+                        var newCustomEggIds = info.Contracts
+                            .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
+                            .Select(c => c.CustomEggId.ToLower())
+                            .ToHashSet();
+                        foreach(var c in info.Contracts.Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId)))
+                            customEggById[c.Identifier] = c.CustomEggId.ToLower();
+                        // Mark any previously-unreleased eggs as released now that a contract for them exists.
+                        if(newCustomEggIds.Count > 0) {
+                            var eggsToRelease = await db.CustomEggs
+                                .Where(e => !e.Released && newCustomEggIds.Contains(e.Identifier.ToLower()))
+                                .ToListAsync();
+                            if(eggsToRelease.Count > 0) {
+                                foreach(var egg in eggsToRelease)
+                                    egg.Released = true;
+                                await db.SaveChangesAsync();
+                                db.ExpireCustomEggsCache();
+                            }
+                        }
+                    }
+                }
+            }
+            var maxFarmSizes = archive?.Archive
+                .Where(f => f.MaxFarmSizeReached > 0 && customEggById.ContainsKey(f.ContractIdentifier))
+                .GroupBy(f => customEggById[f.ContractIdentifier])
+                .ToDictionary(g => g.Key, g => (ulong)g.Max(f => f.MaxFarmSizeReached))
+                ?? [];
             var colleggtiblesMessage = $"Colleggtibles are **[Custom Eggs](<https://egg-inc.fandom.com/wiki/Colleggtibles>)** that reward permanent buffs when you achieve certain habitat populations farming a contract of that egg. " +
                 $"Each Colleggtible egg has 4 levels, which all provide the same type of buff, at different efficacies. Levels unlock at:\n- Level 1: **10 Million** :chicken:\n- Level 2: **100 Million** :chicken:\n- Level 3: **1 Billion** :chicken:\n- Level 4: **10 Billion** :chicken:\n\n" +
-                $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(account.Backup, customEggs)}\n" +
+                $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(maxFarmSizes, customEggs)}\n" +
                 $"You can enable this option to be automatically assigned to all Colleggtible Contracts that you do not have at max level already.";
 
             return MenuEmbedTemplate("Colleggtibles Contract Menu", colleggtiblesMessage, account, dbuser).AddField("Auto-Assign Colleggtibles", enabled ? "Yes" : "No").Build();
         }
 
-        private static string getAccountColleggtibles(CustomBackup backup, List<DBCustomEgg> customEggs) {
+        private static string getAccountColleggtibles(Dictionary<string, ulong> maxFarmSizes, List<DBCustomEgg> customEggs) {
             var sb = new StringBuilder();
             foreach(var customEgg in customEggs) {
-                var colleggtibleLevel = backup.GetColleggtibleLevel(customEgg);
+                maxFarmSizes.TryGetValue(customEgg.Identifier.ToLower(), out var farmSize);
+                uint colleggtibleLevel = farmSize switch {
+                    > 10000000000UL => 4,
+                    > 1000000000UL => 3,
+                    > 100000000UL => 2,
+                    > 10000000UL => 1,
+                    _ => 0
+                };
                 if(colleggtibleLevel == 0) {
                     sb.AppendLine($"{customEgg.Emoji} - _Not unlocked_ {GetTheoreticalModifierString(customEgg)}");
                 } else {
