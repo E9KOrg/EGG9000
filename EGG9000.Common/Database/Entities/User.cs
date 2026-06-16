@@ -134,6 +134,14 @@ namespace EGG9000.Common.Database.Entities {
 
         public byte[] _contractRegistrationByte { get; set; }
 
+        // Builds an in-memory DBUser carrying only the two columns the EggIncAccounts getter reads
+        // to enumerate account ids. Callers that just need "which EIDs are registered" can project
+        // these columns instead of loading every user's full row (ship-DM / coop-setting / backup
+        // blobs). _CustomBackups only hydrates account.Backup, which id checks never touch, so the
+        // id set is identical to the full entity. Covered by DBUserProjectionTests.
+        public static DBUser FromAccountColumns(string eggIncIds, byte[] contractRegistrationByte)
+            => new() { _eggIncIds = eggIncIds, _contractRegistrationByte = contractRegistrationByte };
+
         [NotMapped]
         private List<EggIncAccount> _accounts = null;
         [NotMapped]

@@ -1409,7 +1409,20 @@ music
 
         public async Task<IActionResult> InactivePlayers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var users = await _db.DBUsers.ToListAsync();
+            // The view only reads Id, DiscordId, TempDisabled, Notes and account ids, so project
+            // those columns instead of every user's full row (ship-DM / coop-setting / backup blobs).
+            var users = (await _db.DBUsers
+                .Select(u => new { u.Id, u.DiscordId, u.TempDisabled, u.Notes, u._eggIncIds, u._contractRegistrationByte })
+                .ToListAsync())
+                .Select(u => {
+                    var row = DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte);
+                    row.Id = u.Id;
+                    row.DiscordId = u.DiscordId;
+                    row.TempDisabled = u.TempDisabled;
+                    row.Notes = u.Notes;
+                    return row;
+                })
+                .ToList();
             var guild = _discord.Guilds.First(x => x.Id == guildId);
             await guild.DownloadUsersAsync();
             var xrefs = await _db.UserCoopXrefs.FromSqlRaw("select UserCoopXrefs.* from UserCoopXrefs where UserCoopXrefs.CreatedOn = (select max(t2.CreatedOn) from UserCoopXrefs t2 where t2.UserId = UserCoopXrefs.UserId)").ToListAsync();
