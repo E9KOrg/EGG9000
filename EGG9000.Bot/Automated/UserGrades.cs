@@ -23,7 +23,7 @@ namespace EGG9000.Bot.Automated {
 
 #if DEBUG
             var throttler = new SemaphoreSlim(8);
-            users  = [.. users.Where(x => x.DiscordUsername.StartsWith("heimdallr"))];
+            users  = [.. users.Where(x => x.DiscordUsername.StartsWith("harsh30"))];
 #else
             var throttler = new SemaphoreSlim(8);
 #endif

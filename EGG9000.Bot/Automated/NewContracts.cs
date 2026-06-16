@@ -179,18 +179,22 @@ namespace EGG9000.Bot.Automated {
                     await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
                 }
 
-                // Upsert current season definition
-                var currentSeason = contractsResponse.Contracts.CurrentSeason;
-                if (currentSeason != null && !string.IsNullOrEmpty(currentSeason.Id)) {
-                    var newInfo = SeasonInfo.FromProto(currentSeason);
-                    var existingSeason = await _db.SeasonInfos.FindAsync(currentSeason.Id);
-                    if (existingSeason == null) {
-                        _db.SeasonInfos.Add(newInfo);
-                        _logger.LogInformation("New season {seasonId} added to DB", currentSeason.Id);
-                    } else {
-                        existingSeason.Name = newInfo.Name;
-                        existingSeason.StartTime = newInfo.StartTime;
-                        existingSeason.GoalsJson = newInfo.GoalsJson;
+                // Upsert all season definitions (self-heals past seasons)
+                var (seasonInfos, seasonInfosError) = await EggIncApi.GetSeasonInfosAsync();
+                if (seasonInfos == null) {
+                    _logger.LogWarning("Failed to fetch season infos: {error}", seasonInfosError);
+                } else {
+                    foreach (var proto in seasonInfos.Infos.Where(SeasonInfo.HasPeRewards)) {
+                        var newInfo = SeasonInfo.FromProto(proto);
+                        var existingSeason = await _db.SeasonInfos.FindAsync(proto.Id);
+                        if (existingSeason == null) {
+                            _db.SeasonInfos.Add(newInfo);
+                            _logger.LogInformation("New season {seasonId} added to DB", proto.Id);
+                        } else {
+                            existingSeason.Name = newInfo.Name;
+                            existingSeason.StartTime = newInfo.StartTime;
+                            existingSeason.GoalsJson = newInfo.GoalsJson;
+                        }
                     }
                 }
             }
