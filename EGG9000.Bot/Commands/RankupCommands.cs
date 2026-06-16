@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Commands {
             return (eb.Build(), cb.Build());
         }
 
-        [SlashCommand(Description = "Customize this server's rank-up announcements", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
+        [SlashCommand(Description = "Customize this server's rank-up announcements", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
         public static async Task Rankup(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync(ephemeral: true);
             var g = await LoadGuild(db, command.GuildId);
