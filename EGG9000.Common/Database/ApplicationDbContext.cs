@@ -142,11 +142,12 @@ namespace EGG9000.Common.Database {
 
         public async Task<FrozenSet<Ei.Contract>> CachedEiContractsAsync() {
             return await _cache.GetOrCreateAsync("DbContext-EiContracts", async entry => {
-                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
                 var dbcontracts = await Contracts.ToListAsync();
                 var (eiContracts, _) = await EggIncAPI.EggIncApi.GetContractsArchive(EggIncAPI.EggIncApi.UserId);
 
-                var contracts = eiContracts.Archive.Select(x => x.Contract).ToList();
+                var contracts = eiContracts?.Archive?.Select(x => x.Contract).ToList() ?? [];
+                // Archive fetch failed (e.g. API timeout) - fall back to DB contracts and retry soon instead of caching the degraded set for an hour.
+                entry.AbsoluteExpirationRelativeToNow = contracts.Count > 0 ? TimeSpan.FromHours(1) : TimeSpan.FromMinutes(1);
                 contracts.AddRange(dbcontracts.Where(dbc => !contracts.Any(c => c.Identifier == dbc.ID)).Select(x => x.Details));
                 return contracts.ToFrozenSet();
             });
