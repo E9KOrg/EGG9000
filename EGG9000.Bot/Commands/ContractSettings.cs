@@ -465,17 +465,21 @@ namespace EGG9000.Bot.Commands {
                 .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
                 .ToDictionary(c => c.Identifier, c => c.CustomEggId.ToLower());
             var (archive, _) = await EggIncApi.GetContractsArchive(account.Id);
-            if(archive != null) {
-                // LocalContract.Contract is no longer populated by the archive or backup endpoints.
-                // resolve egg type via CachedEiContractsAsync instead. Only fetch from get_contracts_info for contracts
-                // that are completely absent from our DB, known non-custom-egg contracts are skipped.
+            // Combine the dedicated archive (completed contracts) with any currently active contracts
+            // from the backup; active contracts don't appear in the archive until they expire.
+            var allFarms = (archive?.Archive ?? [])
+                .Concat(account.Backup?.Contracts?.Contracts ?? [])
+                .ToList();
+            if(allFarms.Count > 0) {
+                // LocalContract.Contract is never populated by these endpoints; resolve egg type via
+                // CachedEiContractsAsync instead. Only hit get_contracts_info for contracts completely
+                // absent from the DB — known non-custom-egg contracts are skipped.
                 var cachedIds = cachedContracts.Select(c => c.Identifier).ToHashSet();
-                var missingIds = archive.Archive
+                var missingIds = allFarms
                     .Where(f => f.MaxFarmSizeReached > 0 && !customEggById.ContainsKey(f.ContractIdentifier) && !cachedIds.Contains(f.ContractIdentifier))
                     .Select(f => f.ContractIdentifier)
                     .Distinct()
                     .ToArray();
-                // fallback to get_contracts_info for any missing contract IDs, and register them in the DB
                 if(missingIds.Length > 0) {
                     var (info, _) = await EggIncApi.GetContractsInfoAsync(account.Id, missingIds);
                     if(info != null) {
@@ -501,11 +505,10 @@ namespace EGG9000.Bot.Commands {
                     }
                 }
             }
-            var maxFarmSizes = archive?.Archive
+            var maxFarmSizes = allFarms
                 .Where(f => f.MaxFarmSizeReached > 0 && customEggById.ContainsKey(f.ContractIdentifier))
                 .GroupBy(f => customEggById[f.ContractIdentifier])
-                .ToDictionary(g => g.Key, g => (ulong)g.Max(f => f.MaxFarmSizeReached))
-                ?? [];
+                .ToDictionary(g => g.Key, g => (ulong)g.Max(f => f.MaxFarmSizeReached));
             var colleggtiblesMessage = $"Colleggtibles are **[Custom Eggs](<https://egg-inc.fandom.com/wiki/Colleggtibles>)** that reward permanent buffs when you achieve certain habitat populations farming a contract of that egg. " +
                 $"Each Colleggtible egg has 4 levels, which all provide the same type of buff, at different efficacies. Levels unlock at:\n- Level 1: **10 Million** :chicken:\n- Level 2: **100 Million** :chicken:\n- Level 3: **1 Billion** :chicken:\n- Level 4: **10 Billion** :chicken:\n\n" +
                 $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(maxFarmSizes, customEggs)}\n" +
