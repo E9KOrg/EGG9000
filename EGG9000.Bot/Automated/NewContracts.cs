@@ -178,6 +178,21 @@ namespace EGG9000.Bot.Automated {
 
                     await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
                 }
+
+                // Upsert current season definition
+                var currentSeason = contractsResponse.Contracts.CurrentSeason;
+                if (currentSeason != null && !string.IsNullOrEmpty(currentSeason.Id)) {
+                    var newInfo = SeasonInfo.FromProto(currentSeason);
+                    var existingSeason = await _db.SeasonInfos.FindAsync(currentSeason.Id);
+                    if (existingSeason == null) {
+                        _db.SeasonInfos.Add(newInfo);
+                        _logger.LogInformation("New season {seasonId} added to DB", currentSeason.Id);
+                    } else {
+                        existingSeason.Name = newInfo.Name;
+                        existingSeason.StartTime = newInfo.StartTime;
+                        existingSeason.GoalsJson = newInfo.GoalsJson;
+                    }
+                }
             }
 
             await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
