@@ -11,7 +11,13 @@ COPY ["EGG9000.Bot/EGG9000.Bot.csproj", "EGG9000.Bot/"]
 COPY ["EGG9000.Common/EGG9000.Common.csproj", "EGG9000.Common/"]
 RUN dotnet restore "./EGG9000.Bot/EGG9000.Bot.csproj"
 COPY . .
-RUN printf 'Docker build\nunknown\nDocker\n0' > /src/EGG9000.Bot/version.txt
+ARG GIT_MESSAGE="Docker build"
+ARG GIT_HASH="unknown"
+ARG GIT_AUTHOR="Docker"
+ARG GIT_TIMESTAMP="0"
+ARG GIT_BRANCH=""
+ARG GIT_REMOTE=""
+RUN printf '%s\n%s\n%s\n%s\n%s\n%s' "$GIT_MESSAGE" "$GIT_HASH" "$GIT_AUTHOR" "$GIT_TIMESTAMP" "$GIT_BRANCH" "$GIT_REMOTE" > /src/EGG9000.Bot/version.txt
 ENV DOCKER_BUILD=true
 WORKDIR "/src/EGG9000.Bot"
 RUN dotnet publish "./EGG9000.Bot.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
