@@ -461,23 +461,16 @@ namespace EGG9000.Bot.Commands {
             var customEggs = await db.GetCustomEggsAsync();
             var colleggtiblesMessage = $"Colleggtibles are **[Custom Eggs](<https://egg-inc.fandom.com/wiki/Colleggtibles>)** that reward permanent buffs when you achieve certain habitat populations farming a contract of that egg. " +
                 $"Each Colleggtible egg has 4 levels, which all provide the same type of buff, at different efficacies. Levels unlock at:\n- Level 1: **10 Million** :chicken:\n- Level 2: **100 Million** :chicken:\n- Level 3: **1 Billion** :chicken:\n- Level 4: **10 Billion** :chicken:\n\n" +
-                $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(account.CollegtibleMaxFarmSizes ?? new(), customEggs)}\n" +
+                $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(account.Backup, account.CollegtibleMaxFarmSizes ?? new(), customEggs)}\n" +
                 $"You can enable this option to be automatically assigned to all Colleggtible Contracts that you do not have at max level already.";
 
             return MenuEmbedTemplate("Colleggtibles Contract Menu", colleggtiblesMessage, account, dbuser).AddField("Auto-Assign Colleggtibles", enabled ? "Yes" : "No").Build();
         }
 
-        private static string getAccountColleggtibles(Dictionary<string, ulong> maxFarmSizes, List<DBCustomEgg> customEggs) {
+        private static string getAccountColleggtibles(CustomBackup backup, Dictionary<string, ulong> maxFarmSizes, List<DBCustomEgg> customEggs) {
             var sb = new StringBuilder();
             foreach(var customEgg in customEggs) {
-                maxFarmSizes.TryGetValue(customEgg.Identifier.ToLower(), out var farmSize);
-                uint colleggtibleLevel = farmSize switch {
-                    > 10000000000UL => 4,
-                    > 1000000000UL => 3,
-                    > 100000000UL => 2,
-                    > 10000000UL => 1,
-                    _ => 0
-                };
+                var colleggtibleLevel = backup.GetColleggtibleLevel(customEgg.Identifier, maxFarmSizes);
                 if(colleggtibleLevel == 0) {
                     sb.AppendLine($"{customEgg.Emoji} - _Not unlocked_ {GetTheoreticalModifierString(customEgg)}");
                 } else {
