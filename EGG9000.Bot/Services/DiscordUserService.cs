@@ -176,18 +176,19 @@ namespace EGG9000.Common.Services {
                     }, _logger);
                     return;
                 }
-                dbuser.EggIncAccounts.ForEach(async account => {
+                var cachedContracts = await db.CachedEiContractsAsync();
+                foreach(var account in dbuser.EggIncAccounts) {
                     var rawBackup = await EggIncApi.FirstContact(account.Id);
-                    if(rawBackup is null || rawBackup.Backup is null) return;
-                    var customBackup = new CustomBackup(rawBackup.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
+                    if(rawBackup is null || rawBackup.Backup is null) continue;
+                    var customBackup = new CustomBackup(rawBackup.Backup, cachedContracts, account?.Backup ?? null);
                     account.Backup = customBackup?.Farms is not null ? customBackup : account.Backup;
-                });
+                }
                 if(dbuser.GuildId == 0 && await db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.GuildId == user.Guild.Id)) {
                     dbuser.GuildId = user.Guild.Id;
                 }
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
-                var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
+                var earningsBonus = dbuser.EggIncAccounts.Where(x => x.Backup is not null).Max(x => x.Backup.EarningsBonus);
                 var role = await DiscordHelpers.CheckRoles(db, user.Guild, user, dbuser, _discord, null, [], _logger);
                 var roleText = role is not null ? $" You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}" : "";
                 var response = await ChannelHelper.DetermineAndSend(_discord.Gateway, dbguild, GuildChannelType.General, new() { Text = $"Welcome back {user.Mention}!{roleText}" }, _logger);
