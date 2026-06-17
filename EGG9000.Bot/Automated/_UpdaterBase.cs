@@ -135,8 +135,9 @@ namespace EGG9000.Bot.Automated {
 
         private async Task _run(object state) {
             if(await _semaphoreSlim.WaitAsync(TimeSpan.Zero)) {
+                using var scope = _provider.CreateScope();
                 try {
-                    var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var _db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     _logger.LogInformation("Running");
                     LastStarted = DateTime.Now;
                     _lastAlive = DateTimeOffset.UtcNow;
@@ -162,7 +163,8 @@ namespace EGG9000.Bot.Automated {
                     _semaphoreSlim.Release();
                 }
             } else {
-                var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                using var skippedScope = _provider.CreateScope();
+                var _db = skippedScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 _db.AutomationLogs.Add(new AutomationLog { Type = GetType().Name, StartTime = DateTimeOffset.UtcNow, Skipped = true });
                 await _db.SaveChangesAsync();
                 _logger.LogWarning("Unable to run, already running for {time}", (DateTime.Now - LastStarted).Humanize());
