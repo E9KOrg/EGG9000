@@ -125,11 +125,7 @@ namespace EGG9000.Site.Controllers {
                 }
             );
 
-<<<<<<< HEAD
-            List<DBCustomEgg> dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
-=======
             var dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
->>>>>>> 491bb0ebb3b3ac3b4326f94d587f07f413a6bd0f
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
                 return _db.CustomEggs.ToList();
             });
@@ -161,13 +157,8 @@ namespace EGG9000.Site.Controllers {
             times.Set("Post backups");
 
 
-<<<<<<< HEAD
-            Console.WriteLine(String.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId));
-=======
             Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId));
->>>>>>> 491bb0ebb3b3ac3b4326f94d587f07f413a6bd0f
         }
 
         private async Task GetScores(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
