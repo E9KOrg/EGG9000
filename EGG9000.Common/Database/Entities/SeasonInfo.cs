@@ -38,16 +38,19 @@ namespace EGG9000.Common.Database.Entities {
         public static bool HasPeRewards(ContractSeasonInfo proto) =>
             proto.GradeGoals.Any(gs => gs.Goals.Any(g => g.RewardType == RewardType.EggsOfProphecy && g.Cxp > 0));
 
+        private Dictionary<int, List<SeasonPeGoal>> _goals;
+        private Dictionary<int, List<SeasonPeGoal>> Goals =>
+            _goals ??= JsonConvert.DeserializeObject<Dictionary<int, List<SeasonPeGoal>>>(GoalsJson ?? "{}") ?? [];
+
+        // Season goals are set based on the starting grade, so even if player is demoted or promoted during the season, the goals will stay at what starting grade was.
         public int GetPeEarned(Ei.Contract.Types.PlayerGrade grade, double totalCxp) {
-            var goals = JsonConvert.DeserializeObject<Dictionary<int, List<SeasonPeGoal>>>(GoalsJson ?? "{}");
-            if (goals == null || !goals.TryGetValue((int)grade, out var gradeGoals))
+            if (!Goals.TryGetValue((int)grade, out var gradeGoals))
                 return 0;
             return gradeGoals.Where(g => totalCxp >= g.Cxp).Sum(g => g.PeAmount);
         }
 
         public int GetMaxPe(Ei.Contract.Types.PlayerGrade grade) {
-            var goals = JsonConvert.DeserializeObject<Dictionary<int, List<SeasonPeGoal>>>(GoalsJson ?? "{}");
-            if (goals == null || !goals.TryGetValue((int)grade, out var gradeGoals))
+            if (!Goals.TryGetValue((int)grade, out var gradeGoals))
                 return 0;
             return gradeGoals.Sum(g => g.PeAmount);
         }

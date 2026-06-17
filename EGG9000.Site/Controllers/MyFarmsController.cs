@@ -109,18 +109,17 @@ namespace EGG9000.Site.Controllers {
             var seasonInfos = await _db.SeasonInfos
                 .Where(x => seasonIds.Contains(x.Id))
                 .ToListAsync();
+            var seasonInfoMap = seasonInfos.ToDictionary(si => si.Id);
             var seasonPEByEggIncId = eggIncIds.ToDictionary(
                 id => id,
                 id => {
-                    var progresses = seasonProgresses.Where(sp => sp.EggIncId == id).ToList();
-                    var earned = progresses.Sum(sp => {
-                        var info = seasonInfos.FirstOrDefault(si => si.Id == sp.SeasonId);
-                        return info?.GetPeEarned((Ei.Contract.Types.PlayerGrade)sp.StartingGrade, sp.TotalCxp) ?? 0;
-                    });
-                    var max = progresses.Sum(sp => {
-                        var info = seasonInfos.FirstOrDefault(si => si.Id == sp.SeasonId);
-                        return info?.GetMaxPe((Ei.Contract.Types.PlayerGrade)sp.StartingGrade) ?? 0;
-                    });
+                    var earned = 0;
+                    var max = 0;
+                    foreach(var sp in seasonProgresses.Where(sp => sp.EggIncId == id)) {
+                        if(!seasonInfoMap.TryGetValue(sp.SeasonId, out var info)) continue;
+                        earned += info.GetPeEarned((Ei.Contract.Types.PlayerGrade)sp.StartingGrade, sp.TotalCxp);
+                        max += info.GetMaxPe((Ei.Contract.Types.PlayerGrade)sp.StartingGrade);
+                    }
                     return (Earned: earned, Max: max);
                 }
             );

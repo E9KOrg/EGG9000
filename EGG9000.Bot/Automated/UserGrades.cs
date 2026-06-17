@@ -42,34 +42,39 @@ namespace EGG9000.Bot.Automated {
                             } else if(info.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
                                 _logger.LogTrace($"Skipping non-final grade ({info.Status}) for user {user.DiscordUsername} {account.Name}");
                             } else {
+                                using var scope = _provider.CreateScope();
+                                var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
                                 if(GradeSync.ApplyGradeChange(user, account, info.Grade, setPromotionTime: false, guardUnset: true, _logger)) {
-                                    using var writeScope = _provider.CreateScope();
-                                    var writeDb = writeScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                                    await writeDb.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
+                                    await db.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
                                         .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
-                                    writeDb.Dispose();
                                 }
 
                                 if(info.SeasonProgress.Count > 0) {
-                                    using var seasonScope = _provider.CreateScope();
-                                    var seasonDb = seasonScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                                    var seasonIds = info.SeasonProgress
+                                        .Select(sp => sp.SeasonId)
+                                        .Where(id => !string.IsNullOrEmpty(id))
+                                        .ToList();
+                                    var existingRows = await db.UserSeasonProgresses
+                                        .Where(x => x.EggIncId == account.Id && seasonIds.Contains(x.SeasonId))
+                                        .ToListAsync(CancellationToken.None);
+
                                     foreach(var sp in info.SeasonProgress) {
                                         if(string.IsNullOrEmpty(sp.SeasonId)) continue;
-                                        var existing = await seasonDb.UserSeasonProgresses
-                                            .FirstOrDefaultAsync(x => x.EggIncId == account.Id && x.SeasonId == sp.SeasonId, CancellationToken.None);
-                                        if(existing == null) {
-                                            seasonDb.UserSeasonProgresses.Add(new UserSeasonProgress {
+                                        var row = existingRows.FirstOrDefault(x => x.SeasonId == sp.SeasonId);
+                                        if(row == null) {
+                                            db.UserSeasonProgresses.Add(new UserSeasonProgress {
                                                 EggIncId = account.Id,
                                                 SeasonId = sp.SeasonId,
                                                 TotalCxp = sp.TotalCxp,
                                                 StartingGrade = (int)sp.StartingGrade
                                             });
                                         } else {
-                                            existing.TotalCxp = sp.TotalCxp;
-                                            existing.StartingGrade = (int)sp.StartingGrade;
+                                            row.TotalCxp = sp.TotalCxp;
+                                            row.StartingGrade = (int)sp.StartingGrade;
                                         }
                                     }
-                                    await seasonDb.SaveChangesAsync(CancellationToken.None);
+                                    await db.SaveChangesAsync(CancellationToken.None);
                                 }
                             }
                         } catch(Exception ex) {
