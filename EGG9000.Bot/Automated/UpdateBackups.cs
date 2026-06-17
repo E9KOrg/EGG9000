@@ -126,93 +126,13 @@ namespace EGG9000.Bot.Automated {
                 await DiscoverUnknownContracts(account.Id, firstContact?.Backup, knownContractIds, discoveredContractDefs);
 
                 var oldLevel = account.SubscriptionLevel;
-                var backup = new CustomBackup(firstContact.Backup, cachedContracts);
+                var backup = new CustomBackup(firstContact.Backup, cachedContracts, account.Backup);
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {
 
                     // Backup setter auto-syncs account.SubscriptionLevel and account.SubscriptionEnds
                     account.Backup = backup;
-
-                    account.CollegtibleMaxFarmSizes ??= new();
-
-                    var customEggById = cachedContracts
-                        .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
-                        .ToDictionary(c => c.Identifier, c => c.CustomEggId.ToLower());
-
-                    if(customEggById.Count > 0) {
-                        bool wasAway = user.LastBackupCheck == null
-                                    || user.LastBackupCheck < DateTimeOffset.UtcNow.AddDays(-7);
-                        bool needsFullSync = account.CollegtibleMaxFarmSizes.Count == 0
-                                          || account.CollegtibleLastFullSync < DateTimeOffset.UtcNow.AddDays(-30)
-                                          || wasAway;
-
-                        if(needsFullSync) {
-                            var knownEggIds = customEggById.Values.Distinct().ToHashSet();
-                            bool allMaxed = knownEggIds.Count > 0
-                                         && knownEggIds.All(id =>
-                                             account.CollegtibleMaxFarmSizes.TryGetValue(id, out var fs) && fs > 10_000_000_000UL);
-
-                            if(!allMaxed) {
-                                var (archive, _) = await EggIncApi.GetContractsArchive(account.Id);
-                                var allFarms = (archive?.Archive ?? [])
-                                    .Concat(firstContact.Backup?.Contracts?.Contracts ?? []);
-
-                                // Pull in any custom egg contracts already discovered this cycle
-                                // (DiscoverUnknownContracts ran earlier but only covers backup archive, not full archive)
-                                foreach(var def in discoveredContractDefs.Values
-                                    .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId)
-                                             && !customEggById.ContainsKey(c.Identifier)))
-                                    customEggById[def.Identifier] = def.CustomEggId.ToLower();
-
-                                // Fetch definitions for contracts in the full archive that have farm size data
-                                // but are still absent from our DB and the current-cycle discovered set
-                                var missingIds = (archive?.Archive ?? [])
-                                    .Where(f => f.MaxFarmSizeReached > 0
-                                             && !customEggById.ContainsKey(f.ContractIdentifier)
-                                             && !knownContractIds.Contains(f.ContractIdentifier)
-                                             && !discoveredContractDefs.ContainsKey(f.ContractIdentifier)
-                                             && !_notFoundContractIds.ContainsKey(f.ContractIdentifier))
-                                    .Select(f => f.ContractIdentifier)
-                                    .Distinct()
-                                    .ToArray();
-
-                                if(missingIds.Length > 0) {
-                                    foreach(var chunk in missingIds.Chunk(50)) {
-                                        var (info, _) = await EggIncApi.GetContractsInfoAsync(account.Id, chunk);
-                                        if(info is null) continue;
-                                        foreach(var def in info.Contracts) {
-                                            if(!string.IsNullOrEmpty(def.Identifier))
-                                                discoveredContractDefs.TryAdd(def.Identifier, def);
-                                            if(def.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(def.CustomEggId))
-                                                customEggById[def.Identifier] = def.CustomEggId.ToLower();
-                                        }
-                                        foreach(var notFound in info.NotFound)
-                                            _notFoundContractIds.TryAdd(notFound, 0);
-                                    }
-                                }
-
-                                foreach(var f in allFarms.Where(f => f.MaxFarmSizeReached > 0
-                                                                   && customEggById.ContainsKey(f.ContractIdentifier))) {
-                                    var eggId = customEggById[f.ContractIdentifier];
-                                    if(!account.CollegtibleMaxFarmSizes.TryGetValue(eggId, out var existing)
-                                       || (ulong)f.MaxFarmSizeReached > existing)
-                                        account.CollegtibleMaxFarmSizes[eggId] = (ulong)f.MaxFarmSizeReached;
-                                }
-                            }
-                            account.CollegtibleLastFullSync = DateTimeOffset.UtcNow;
-                        } else {
-                            var recentFarms = (firstContact.Backup?.Contracts?.Contracts ?? [])
-                                .Concat(firstContact.Backup?.Contracts?.Archive ?? []);
-                            foreach(var f in recentFarms.Where(f => f.MaxFarmSizeReached > 0
-                                                                  && customEggById.ContainsKey(f.ContractIdentifier))) {
-                                var eggId = customEggById[f.ContractIdentifier];
-                                if(!account.CollegtibleMaxFarmSizes.TryGetValue(eggId, out var existing)
-                                   || (ulong)f.MaxFarmSizeReached > existing)
-                                    account.CollegtibleMaxFarmSizes[eggId] = (ulong)f.MaxFarmSizeReached;
-                            }
-                        }
-                    }
 
                     if(firstContact.Backup.SubInfo is null) {
                         _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
