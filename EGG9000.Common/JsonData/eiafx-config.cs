@@ -2,14 +2,10 @@
 using EGG9000.Common.JsonData.EiAfxData;
 
 using Ei;
-using Humanizer;
-using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 
 using static Ei.MissionInfo.Types;
 
@@ -76,22 +72,11 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public Dictionary<int, double> craftingLevelMultipliers { get; set; }
         public List<long> craftingLevelXpThresholds { get; set; }
 
-        private static Root Instance = null;
-        public static Root Get() {
-            if(Instance != null) {
-                return Instance;
-            }
+        private static readonly EmbeddedResource<Root> _res =
+            EmbeddedResource.Json<Root>("eiafx-config.json", PostProcess);
+        public static Root Get() => _res.Value;
 
-            var assembly = Assembly.GetExecutingAssembly();
-
-            var resourceName = assembly.GetManifestResourceNames()
-                .Single(str => str.EndsWith("eiafx-config.json"));
-
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            using var reader = new StreamReader(stream);
-            var json = reader.ReadToEnd();
-            Instance = JsonConvert.DeserializeObject<Root>(json);
-
+        private static Root PostProcess(Root Instance) {
             // Compile the crafting coefficients from artifactParameters
             Instance.baseCraftingCoefficients = Instance.artifactParameters
                 .GroupBy(config => new { config.spec.name, config.spec.level })
@@ -104,7 +89,7 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
                         afInstanceName = afInstanceName.Replace("vial-", "vial-of-");
                         afInstanceName = afInstanceName.Replace("ornate-", "");
                         var afInstance = new EggIncArtifactInstance() {
-                            Tier = (byte)((int)Enum.Parse<ArtifactSpec.Types.Level>(firstGroup.spec.level, ignoreCase: true) + 1), Id = (byte)EiAfxDataRoot.Instance.artifact_families.First(x => x.id == afInstanceName).afx_id
+                            Tier = (byte)((int)Enum.Parse<ArtifactSpec.Types.Level>(firstGroup.spec.level, ignoreCase: true) + 1), Id = (byte)EiAfxDataRoot.Get().artifact_families.First(x => x.id == afInstanceName).afx_id
                         };
 
                         return afInstance;

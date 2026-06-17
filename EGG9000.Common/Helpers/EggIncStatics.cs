@@ -38,10 +38,10 @@ namespace EGG9000.Common.Helpers {
         public static EggIncEgg GetEggById(int id, Contract contract, List<DBCustomEgg> customEggs) {
            try {
                 if(id == 200) {
-                    var customEgg = customEggs.FirstOrDefault(ce => ce.Identifier == (contract.Details?.CustomEggId ?? "INVALID"));
+                    var customEgg = customEggs?.FirstOrDefault(ce => ce.Identifier == (contract?.Details?.CustomEggId ?? "INVALID"));
                     return new EggIncEgg {
                         value = customEgg?.Value ?? 0,
-                        imageUrlEnder = customEgg?.Icon.URL ?? "",
+                        imageUrlEnder = customEgg?.Icon?.URL ?? "",
                         emoji = customEgg is not null ? customEgg.Emoji : "<:Edible_Egg:712424206276755516>"
                     };
                 } else {

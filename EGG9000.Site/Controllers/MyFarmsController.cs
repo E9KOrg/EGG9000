@@ -7,7 +7,6 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EIEpicResearch;
-using EGG9000.Common.Services;
 using EGG9000.Site.Services;
 
 using Ei;
@@ -19,9 +18,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
-using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
@@ -31,11 +29,13 @@ using System.Threading.Tasks;
 
 using Event = EGG9000.Common.Database.Entities.Event;
 using System.Collections.Frozen;
+using EGG9000.Common.JsonData;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<IdentityUser> userManager, DiscordSocketClient discord,
-        RoleManager<IdentityRole> roleManager, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache) : Controller {
+        RoleManager<IdentityRole> roleManager, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache,
+        IServiceScopeFactory scopeFactory) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -45,6 +45,7 @@ namespace EGG9000.Site.Controllers {
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
         private readonly IMemoryCache _cache = cache;
         private readonly DatabaseCache _databaseCache = databaseCache;
+        private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
 
         public async Task<IActionResult> Index() {
             var sw = new Stopwatch();
@@ -74,9 +75,6 @@ namespace EGG9000.Site.Controllers {
             var times = new TimingsFactory(_logger);
             times.Start();
 
-
-
-
             var loginuser = (await _userManager.GetUserAsync(User));
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var loginUserId = ulong.Parse(logins.First().ProviderKey);
@@ -89,19 +87,17 @@ namespace EGG9000.Site.Controllers {
             times.Set("User prep");
 
             var cachedContracts = await _db.CachedEiContractsAsync();
-            var getBackupsTask = GetBackups(user, scoring, cachedContracts);
-
-            var contractIDs = user.EggIncAccounts.Where(x => x.Backup is not null).SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
+            // MyContracts scores are cached (1h) and _db-free, so kick them off concurrently with the DB queries below.
+            var scoresTask = GetScores(user, scoring);
 
             var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
 
             var Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            /*var RawBackups = rawBackups;*/
             var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
-            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel && !x.JoinedCoop && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
-            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived && !x.DeletedChannel).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).ToListAsync();
-            var EpicResearchConfig = EiEpicResearch.Get().epicResearchItems;
+            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
+            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsSplitQuery().ToListAsync();
+            var erItems = EiEpicResearch.Get().epicResearchItems;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
@@ -129,52 +125,94 @@ namespace EGG9000.Site.Controllers {
                 }
             );
 
+<<<<<<< HEAD
             List<DBCustomEgg> dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
+=======
+            var dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
+>>>>>>> 491bb0ebb3b3ac3b4326f94d587f07f413a6bd0f
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
                 return _db.CustomEggs.ToList();
             });
 
             times.Set("Pre backups");
-            var update = await getBackupsTask;
+            await scoresTask;
 
-            if(update) {
-                user.UpdateAccounts();
-                Console.WriteLine("Saving updated backups to DB");
-                Console.WriteLine(String.Join(",",_db.ChangeTracker.Entries().Where(x => x.State != EntityState.Unchanged).Select(x => x.Entity.GetType())));
-                await _db.SaveChangesAsync();
+            // Render from the stored backups for an instant page; only block on accounts that have no stored backup yet
+            // (the view dereferences account.Backup directly). Fresh backups are refreshed out of band below.
+            var accountsNeedingBackup = user.EggIncAccounts.Where(a => a.Backup is null).ToList();
+            if(accountsNeedingBackup.Count > 0) {
+                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(async a => {
+                    var raw = await EggIncApi.FirstContact(a.Id);
+                    return (account: a, backup: new CustomBackup(raw.Backup, cachedContracts, null));
+                }));
+                var changed = false;
+                foreach(var (account, backup) in fetched) {
+                    if(backup?.Farms is not null) { account.Backup = backup; changed = true; }
+                }
+                if(changed) {
+                    user.UpdateAccounts();
+                    await _db.SaveChangesAsync();
+                }
             }
+
+            // Refresh fresh backups in the background (own DI scope) so the next load is current without blocking this render.
+            RefreshBackupsInBackground(user.DiscordId);
 
             times.Set("Post backups");
 
 
+<<<<<<< HEAD
             Console.WriteLine(String.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, EpicResearchConfig, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId));
+=======
+            Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId));
+>>>>>>> 491bb0ebb3b3ac3b4326f94d587f07f413a6bd0f
         }
 
-        private async Task<bool> GetBackups(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring, FrozenSet<Ei.Contract> cachedContracts) {
-            var update = false;
-
-            foreach(var account in user.EggIncAccounts) {
-                var rawBackup = await EggIncApi.FirstContact(account.Id);
-                var customBackup = new CustomBackup(rawBackup.Backup, cachedContracts, account?.Backup ?? null);
-
-                Console.WriteLine($"Getting backups for {account.Name}");
-                if(customBackup?.Farms is not null) {
-                    account.Backup = customBackup;
-                    update = true;
-                }
-
-                var scores = _cache.GetOrCreate($"{account.Id}-MyContracts", entry => {
+        private async Task GetScores(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
+            // MyContracts scores per account (cached 1h, network-only on miss). Never touches _db, so it is safe
+            // to run concurrently with the controller's DB queries.
+            var results = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
+                var scores = await _cache.GetOrCreateAsync($"{account.Id}-MyContracts", async entry => {
                     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
-                    return EggIncApi.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id).GetAwaiter().GetResult();
+                    return await EggIncApi.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
                 });
+                return (account.Id, scores);
+            }));
+            scoring.AddRange(results);
+        }
 
-                scoring.Add((account.Id, scores));
-            }
-            if(update) {
-                user.UpdateAccounts();
-            }
-            return update;
+        // Refreshes each account's backup from the Egg Inc API in its own DI scope and persists it, so the next
+        // page load renders current data without this request blocking on the network / backup processing.
+        private void RefreshBackupsInBackground(ulong discordId) {
+            _ = Task.Run(async () => {
+                try {
+                    using var scope = _scopeFactory.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discordId);
+                    if(user is null) return;
+                    var cachedContracts = await db.CachedEiContractsAsync();
+                    var results = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
+                        var rawBackup = await EggIncApi.FirstContact(account.Id);
+                        var customBackup = new CustomBackup(rawBackup.Backup, cachedContracts, account?.Backup ?? null);
+                        return (account, customBackup);
+                    }));
+                    var update = false;
+                    foreach(var (account, customBackup) in results) {
+                        if(customBackup?.Farms is not null) {
+                            account.Backup = customBackup;
+                            update = true;
+                        }
+                    }
+                    if(update) {
+                        user.UpdateAccounts();
+                        await db.SaveChangesAsync();
+                    }
+                } catch(Exception e) {
+                    _logger.LogError(e, "Background backup refresh failed for {discordId}", discordId);
+                }
+            });
         }
 
         public record MyFarmsModel(
@@ -202,8 +240,13 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-            foreach(var account in user.EggIncAccounts) {
-                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, await _db.CachedEiContractsAsync());
+            //Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
+            var cachedContracts = await _db.CachedEiContractsAsync();
+            var freshBackups = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
+                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, cachedContracts);
+                return (account, backup);
+            }));
+            foreach(var (account, backup) in freshBackups) {
                 if(backup?.Farms is not null && backup.LastBackupTime > account.Backup.LastBackupTime) {
                     account.Backup = backup;
                 }
@@ -313,7 +356,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> CoopOptimizer([FromQuery] Guid CoopId) {
-            var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).FirstOrDefaultAsync(x => x.Id == CoopId);
+            var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == CoopId);
             var customEggs = await _db.GetCustomEggsAsync();
             return View((coop, customEggs));
         }

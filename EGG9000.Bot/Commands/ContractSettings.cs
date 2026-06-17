@@ -426,8 +426,8 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-
-            await component.UpdateAsync(async x => { x.Components = ColleggtiblesComponents(dbuser, account.DoUnfinishedCollegtibles, index); x.Embed = await ColleggtiblesEmbed(db, dbuser, account, account.DoUnfinishedCollegtibles); });
+            var embed = await ColleggtiblesEmbed(db, dbuser, account, account.DoUnfinishedCollegtibles);
+            await component.UpdateAsync(x => { x.Components = ColleggtiblesComponents(dbuser, account.DoUnfinishedCollegtibles, index); x.Embed = embed; });
         }
 
         [ComponentCommand]
@@ -442,7 +442,8 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
 
-            await component.UpdateAsync(async x => { x.Components = ColleggtiblesComponents(dbuser, toggleState, index); x.Embed = await ColleggtiblesEmbed(db, dbuser, account, toggleState); });
+            var embed = await ColleggtiblesEmbed(db, dbuser, account, toggleState);
+            await component.UpdateAsync(x => { x.Components = ColleggtiblesComponents(dbuser, toggleState, index); x.Embed = embed; });
         }
 
         [ComponentCommand]
@@ -469,7 +470,7 @@ namespace EGG9000.Bot.Commands {
         private static string getAccountColleggtibles(CustomBackup backup, List<DBCustomEgg> customEggs) {
             var sb = new StringBuilder();
             foreach(var customEgg in customEggs) {
-                var colleggtibleLevel = backup.GetColleggtibleLevel(customEgg);
+                var colleggtibleLevel = backup?.GetColleggtibleLevel(customEgg.Identifier) ?? 0;
                 if(colleggtibleLevel == 0) {
                     sb.AppendLine($"{customEgg.Emoji} - _Not unlocked_ {GetTheoreticalModifierString(customEgg)}");
                 } else {

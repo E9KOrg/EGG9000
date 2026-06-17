@@ -203,11 +203,11 @@ namespace EGG9000.Site.Controllers {
             _db.Database.SetCommandTimeout(360);
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             Dictionary<DateTimeOffset, int[]> days;
-            var adminDaysCacheKey = $"AdminDays{guildId}";
+            var adminDaysCacheKey = $"AdminDaysV2{guildId}";
             if(!_cache.TryGetValue(adminDaysCacheKey, out days)) {
 
                 days = [];
-                var coops = (await _db.Coops.AsQueryable().Select(x => new { x.Created, Finished = x.CoopCompleted ?? x.CoopEnds }).ToListAsync())
+                var coops = (await _db.Coops.AsQueryable().Select(x => new { x.Created, Finished = x.CoopCompleted ?? x.CoopEnds, x.GuildId }).ToListAsync())
                     .Where(x => x.Created != DateTimeOffset.MinValue).ToList();
 
                 var userDates = await _db.DBUsers.Where(x => x.UserCoopXrefs.Any(y => y.JoinedCoop))
@@ -216,16 +216,31 @@ namespace EGG9000.Site.Controllers {
                         End = x.UserCoopXrefs.Where(y => y.JoinedCoop).OrderByDescending(y => y.CreatedOn).First().CreatedOn
                     }).ToListAsync();
 
+                var guildUserDates = (await _db.UserCoopXrefs
+                    .Where(y => y.JoinedCoop && y.Coop.GuildId == guildId)
+                    .Select(y => new { y.UserId, y.CreatedOn })
+                    .ToListAsync())
+                    .GroupBy(y => y.UserId)
+                    .Select(g => new { Start = g.Min(y => y.CreatedOn), End = g.Max(y => y.CreatedOn) })
+                    .ToList();
+
                 for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.UtcNow; start = start.AddDays(1)) {
                     var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
                     var accountsCount = userDates.Count(x => x.Start < start && x.End > start.AddDays(-14));
-                    days.Add(start, [count, accountsCount]);
+                    var guildCount = coops.Count(c => c.GuildId == guildId && c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
+                    var guildAccountsCount = guildUserDates.Count(x => x.Start < start && x.End > start.AddDays(-14));
+                    days.Add(start, [count, accountsCount, guildCount, guildAccountsCount]);
                 }
                 _cache.Set(adminDaysCacheKey, days, TimeSpan.FromHours(1));
             }
 
 
-            return Json(new { days = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] }), days2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] }) });
+            return Json(new {
+                days = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] }),
+                days2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] }),
+                guildDays = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[2] }),
+                guildDays2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[3] })
+            });
         }
 
         public async Task<IActionResult> Index() {
@@ -1409,7 +1424,20 @@ music
 
         public async Task<IActionResult> InactivePlayers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var users = await _db.DBUsers.ToListAsync();
+            // The view only reads Id, DiscordId, TempDisabled, Notes and account ids, so project
+            // those columns instead of every user's full row (ship-DM / coop-setting / backup blobs).
+            var users = (await _db.DBUsers
+                .Select(u => new { u.Id, u.DiscordId, u.TempDisabled, u.Notes, u._eggIncIds, u._contractRegistrationByte })
+                .ToListAsync())
+                .Select(u => {
+                    var row = DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte);
+                    row.Id = u.Id;
+                    row.DiscordId = u.DiscordId;
+                    row.TempDisabled = u.TempDisabled;
+                    row.Notes = u.Notes;
+                    return row;
+                })
+                .ToList();
             var guild = _discord.Guilds.First(x => x.Id == guildId);
             await guild.DownloadUsersAsync();
             var xrefs = await _db.UserCoopXrefs.FromSqlRaw("select UserCoopXrefs.* from UserCoopXrefs where UserCoopXrefs.CreatedOn = (select max(t2.CreatedOn) from UserCoopXrefs t2 where t2.UserId = UserCoopXrefs.UserId)").ToListAsync();

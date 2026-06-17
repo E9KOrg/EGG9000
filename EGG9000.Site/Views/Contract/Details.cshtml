@@ -269,7 +269,7 @@
                 </h5>
                 <div class="card-body" ng-show="!coop.Hide">
                     <table class="table table-striped">
-                        <tbody class="sortablers" ui-sortable="sortableOptionsTarget" ng-model="coop.Users" dnd-list="coop.Users" dnd-drop="dropCallback(item, coop)">
+                        <tbody class="sortablers" ng-model="coop.Users" dnd-list="coop.Users" dnd-drop="dropCallback(item, coop)">
                             <tr ng-repeat="user in coop.Users" ng-class="{ notsortable: user.Locked }">
                                 <td>{{user.Name}}
                                 <span ng-if="user.Guild.length > 0">[{{user.Guild}}]</span>
@@ -513,11 +513,6 @@
                         return "";
                     var min = _.minBy(users, function (o) { return o.TimeLeft; });
                     return min.Status;
-                };
-
-                $scope.sortableOptions = {
-                    connectWith: ".sortablers",
-                    items: "tr:not(.notsortable)"
                 };
 
                 $scope.dropCallback = function (item, coop) {

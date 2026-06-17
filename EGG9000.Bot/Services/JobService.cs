@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Services {
                     _bugsnag.Notify(e);
                     _logger.LogError(e, "Error running job");
                 }
-                var nextJob = _jobs.OrderBy(x => x.NextRun).FirstOrDefault();
+                var nextJob = _jobs.Where(x => !x.Running).OrderBy(x => x.NextRun).FirstOrDefault();
                 if(nextJob != null) {
                     var delay = (nextJob.NextRun - DateTimeOffset.UtcNow) + TimeSpan.FromMilliseconds(10);
                     if(delay < TimeSpan.Zero) {

@@ -23,18 +23,42 @@ namespace EGG9000.Bot.Commands {
                 gitVersion = reader.ReadToEnd();
             }
 
-            var output = gitVersion.Trim().Split('\n');
-            var commitMessage = output[0];
-            var commitHash = output[1];
-            var author = output[2];
-            var commitTimestamp = output[3];
+            var output = gitVersion.Replace("\r", string.Empty).Trim().Split('\n');
+            string Line(int i) => i < output.Length ? output[i].Trim() : string.Empty;
 
-            var response = $"___Running commit:___\n**Hash:**\t[{commitHash}](https://github.com/kendrome/EGG9000/commit/{commitHash})" +
-                $"\n**Author**:\t{author.Split(" ")[0]}\n**Message**:\t{commitMessage}\n**Timestamp:**\t<t:{commitTimestamp}:R>";
+            var commitMessage = Line(0);
+            var commitHash = Line(1);
+            var author = Line(2);
+            var commitTimestamp = Line(3);
+            var branch = Line(4);
+            var repoUrl = NormalizeRemote(Line(5));
+
+            var emailStart = author.IndexOf('<');
+            if(emailStart > 0) author = author[..emailStart].Trim();
+
+            var branchLine = string.IsNullOrEmpty(branch) ? string.Empty : $"\n**Branch:**\t{branch}";
+            var response = $"___Running commit:___\n**Hash:**\t[{commitHash}]({repoUrl}/commit/{commitHash}){branchLine}" +
+                $"\n**Author**:\t{author}\n**Message**:\t{commitMessage}\n**Timestamp:**\t<t:{commitTimestamp}:R>";
 
             _logger.LogInformation($"Responding to ping...");
             await command.RespondAsync(response, ephemeral: !showInChannel);
             _logger.LogInformation($"Responded to ping, {command.HasResponded}");
+        }
+
+        private const string DefaultRepoUrl = "https://github.com/E9KOrg/EGG9000";
+
+        // version.txt line 6 is the raw remote.origin.url. Convert ssh/https git URLs to a web URL so the
+        // commit hash links to wherever this build was actually pushed (fork or canonical), not a hardcoded
+        // org. Falls back to the canonical repo when no remote was captured at build time.
+        private static string NormalizeRemote(string raw) {
+            raw = raw?.Trim() ?? string.Empty;
+            if(raw.Length == 0) return DefaultRepoUrl;
+            if(raw.StartsWith("git@")) {
+                var colon = raw.IndexOf(':');
+                if(colon > 4) raw = $"https://{raw[4..colon]}/{raw[(colon + 1)..]}";
+            }
+            if(raw.EndsWith(".git")) raw = raw[..^4];
+            return raw;
         }
     }
 }

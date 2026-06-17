@@ -126,7 +126,7 @@ namespace EGG9000.Bot.Automated {
                 await DiscoverUnknownContracts(account.Id, firstContact?.Backup, knownContractIds, discoveredContractDefs);
 
                 var oldLevel = account.SubscriptionLevel;
-                var backup = new CustomBackup(firstContact.Backup, cachedContracts);
+                var backup = new CustomBackup(firstContact.Backup, cachedContracts, account.Backup);
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {

@@ -1,6 +1,7 @@
 ﻿using Cronos;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Database;
+using EGG9000.Common.Helpers;
 using Ei;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,12 +29,8 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning("Null response for {user} ({account})", user.DiscordUsername, account.Id);
                                 continue;
                             }
-                            if(r.Status == ContractPlayerInfo.Types.Status.Complete && r.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && r.Grade != account.LastGrade) {
-                                _logger.LogInformation("Update grade for {user} ({account}) Prev {LastGrade} New {NewGrade}", user.DiscordUsername, account.Backup?.UserName, account.LastGrade, r.Grade);
-                                account.PromotionTime = DateTimeOffset.UtcNow;
-                                account.LastGrade = r.Grade;
-                                user.UpdateAccounts();
-                            }
+                            if(r.Status == ContractPlayerInfo.Types.Status.Complete)
+                                GradeSync.ApplyGradeChange(user, account, r.Grade, setPromotionTime: true, guardUnset: true, _logger);
                         }
                     } catch(Exception e) {
                         _bugSnag.Notify(e);

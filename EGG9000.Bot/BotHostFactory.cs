@@ -206,6 +206,7 @@ public static class BotHostFactory {
             services.AddHostedService<RefreshNasaApod>();
             services.AddHostedService<UpdateBackups>();
             services.AddHostedService<CleanAutomationLogs>();
+            services.AddHostedService<RankupMessageSeeder>();
 
             services.AddSingleton<CoopsBeingCreatedService>();
             services.AddSingleton<JobService>();

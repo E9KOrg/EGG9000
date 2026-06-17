@@ -146,33 +146,59 @@ namespace EGG9000.Bot.Commands.Informational {
                 return;
             }
 
-            var hash = AfxSetsHash.Compute(sets);
-            List<string> urls;
-            if(account.AfxSetsImageHash == hash && account.AfxSetsImageUrls is { Count: > 0 }) {
-                urls = account.AfxSetsImageUrls;
-            } else {
-                var (pages, renderError) = await AfxSetsRender.AfxSetsB64(account);
-                if(pages is null || pages.Count == 0) {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Artifact set images could not be generated.\n```{renderError}```"); });
-                    return;
-                }
-                var files = pages.Select((b, i) => new FileAttachment(new MemoryStream(Convert.FromBase64String(b)), $"afxset_page_{(i + 1):D2}.jpeg")).ToList();
-                var resp = await command.RespondWithFilesAsyncGettingMessage(files, text: "Uploading artifact sets...");
-                urls = [.. resp.Attachments.OrderBy(a => a.Filename).Select(a => TrimImageUrl(a.Url))];
-                account.AfxSetsImageHash = hash;
-                account.AfxSetsImageUrls = urls;
-                dbUser.UpdateAccounts();
-                await db.SaveChangesAsync();
+            var perPage = AfxSetsCreatorConfig.DefaultSetsPerPage;
+            var pageCount = (sets.Count + perPage - 1) / perPage;
+
+            var (pages, renderError) = await AfxSetsRender.AfxSetsB64(account, 0);
+            if(pages is null || pages.Count == 0) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Artifact set images could not be generated.\n```{renderError}```"); });
+                return;
             }
 
+            // Mirror _viewInventory: the embed displays the page via attachment:// so the image lives
+            // on the message permanently (Discord CDN attachment links are signed and expire). The
+            // resolved CDN url is only used for the clickable full-resolution title link.
+            var file = new FileAttachment(new MemoryStream(Convert.FromBase64String(pages[0])), AfxSetsImageFileName, "Artifact Sets");
+            var resp = await command.RespondWithFilesAsyncGettingMessage([file], text: "",
+                embeds: new[] { AfxSetsImageEmbed(dbUser, account, 0, pageCount, null), AfxSetsDetailEmbed(null) },
+                components: AfxSetsComponents(dbUser, accountIndex, sets, pageCount, 0));
+
+            var fullResUrl = ResolveAttachmentUrl(resp);
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
-                // Drop the uploaded page attachments now that we have their CDN URLs; the embed
-                // references those URLs directly so the loose image files don't clutter the message.
-                x.Attachments = new List<FileAttachment>();
-                x.Embeds = new[] { AfxSetsImageEmbed(dbUser, account, urls, 0), AfxSetsDetailEmbed(null) };
-                x.Components = AfxSetsComponents(dbUser, accountIndex, sets, urls.Count, 0);
+                x.Embeds = new[] { AfxSetsImageEmbed(dbUser, account, 0, pageCount, fullResUrl), AfxSetsDetailEmbed(null) };
+                x.Components = AfxSetsComponents(dbUser, accountIndex, sets, pageCount, 0);
             });
+        }
+
+        private const string AfxSetsImageFileName = "AfxSets.jpeg";
+
+        private static string ResolveAttachmentUrl(IUserMessage message) {
+            var url = message?.Embeds?.FirstOrDefault(e => e.Image is not null)?.Image?.Url;
+            return string.IsNullOrEmpty(url) ? "" : TrimImageUrl(url);
+        }
+
+        // Renders a single page on the Site, swaps in the new attachment, and refreshes the
+        // full-resolution link. Used by the page + set-select component handlers.
+        private static async Task RenderAfxPage(SocketMessageComponent component, DBUser user, EggIncAccount account, int accountIndex, List<List<EggIncArtifactInstance>> sets, int pageCount, int page, Embed detailEmbed) {
+            await component.DeferAsync();
+            var (pages, _) = await AfxSetsRender.AfxSetsB64(account, page);
+            if(pages is null || pages.Count == 0) return;
+
+            var file = new FileAttachment(new MemoryStream(Convert.FromBase64String(pages[0])), AfxSetsImageFileName, "Artifact Sets");
+            await component.ModifyOriginalResponseAsync(x => {
+                x.Content = "";
+                x.Attachments = new List<FileAttachment> { file };
+                x.Embeds = new[] { AfxSetsImageEmbed(user, account, page, pageCount, null), detailEmbed };
+                x.Components = AfxSetsComponents(user, accountIndex, sets, pageCount, page);
+            });
+
+            var fullResUrl = ResolveAttachmentUrl(await component.GetOriginalResponseAsync());
+            if(!string.IsNullOrEmpty(fullResUrl)) {
+                await component.ModifyOriginalResponseAsync(x => {
+                    x.Embeds = new[] { AfxSetsImageEmbed(user, account, page, pageCount, fullResUrl), detailEmbed };
+                });
+            }
         }
 
         public static string TrimImageUrl(string baseUrl) {
@@ -180,18 +206,17 @@ namespace EGG9000.Bot.Commands.Informational {
             return i != -1 ? baseUrl[..i] : baseUrl;
         }
 
-        private static Embed AfxSetsImageEmbed(DBUser user, EggIncAccount account, List<string> urls, int page) {
+        private static Embed AfxSetsImageEmbed(DBUser user, EggIncAccount account, int page, int pageCount, string fullResUrl) {
             var name = account.Backup?.UserName ?? "(No Name)";
             var eb = account.Backup?.EarningsBonus.ToEggString() ?? "No EB";
-            return new EmbedBuilder()
+            var builder = new EmbedBuilder()
                 .WithColor(Color.Blue)
                 .WithAuthor(new EmbedAuthorBuilder().WithName("EGG9000").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp"))
                 .WithDescription($"Artifact Sets of <@{user.DiscordId}> - `{name} ({eb})`")
-                .WithTitle("Link to full resolution image")
-                .WithUrl(urls[page])
-                .WithImageUrl(urls[page])
-                .WithFooter(new EmbedFooterBuilder().WithText($"Page {page + 1}/{urls.Count}"))
-                .Build();
+                .WithImageUrl($"attachment://{AfxSetsImageFileName}")
+                .WithFooter(new EmbedFooterBuilder().WithText($"Page {page + 1}/{pageCount}"));
+            if(!string.IsNullOrEmpty(fullResUrl)) builder.WithTitle("Link to full resolution image").WithUrl(fullResUrl);
+            return builder.Build();
         }
 
         private static Embed AfxSetsDetailEmbed(List<EggIncArtifactInstance> set, int globalIndex = -1) {
@@ -249,14 +274,12 @@ namespace EGG9000.Bot.Commands.Informational {
             if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
             var account = user.EggIncAccounts[accountIndex];
             var sets = account.Backup?.ArtifactSets;
-            var urls = account.AfxSetsImageUrls;
-            if(sets is null || urls is null || page < 0 || page >= urls.Count) return;
+            if(sets is null || sets.Count == 0) return;
+            var perPage = AfxSetsCreatorConfig.DefaultSetsPerPage;
+            var pageCount = (sets.Count + perPage - 1) / perPage;
+            if(page < 0 || page >= pageCount) return;
 
-            await component.UpdateAsync(x => {
-                x.Content = "";
-                x.Embeds = new[] { AfxSetsImageEmbed(user, account, urls, page), AfxSetsDetailEmbed(null) };
-                x.Components = AfxSetsComponents(user, accountIndex, sets, urls.Count, page);
-            });
+            await RenderAfxPage(component, user, account, accountIndex, sets, pageCount, page, AfxSetsDetailEmbed(null));
         }
 
         [ComponentCommand]
@@ -272,14 +295,12 @@ namespace EGG9000.Bot.Commands.Informational {
             if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
             var account = user.EggIncAccounts[accountIndex];
             var sets = account.Backup?.ArtifactSets;
-            var urls = account.AfxSetsImageUrls;
-            if(sets is null || urls is null || selected < 0 || selected >= sets.Count || page < 0 || page >= urls.Count) return;
+            if(sets is null || selected < 0 || selected >= sets.Count) return;
+            var perPage = AfxSetsCreatorConfig.DefaultSetsPerPage;
+            var pageCount = (sets.Count + perPage - 1) / perPage;
+            if(page < 0 || page >= pageCount) return;
 
-            await component.UpdateAsync(x => {
-                x.Content = "";
-                x.Embeds = new[] { AfxSetsImageEmbed(user, account, urls, page), AfxSetsDetailEmbed(sets[selected], selected) };
-                x.Components = AfxSetsComponents(user, accountIndex, sets, urls.Count, page);
-            });
+            await RenderAfxPage(component, user, account, accountIndex, sets, pageCount, page, AfxSetsDetailEmbed(sets[selected], selected));
         }
 
     }
