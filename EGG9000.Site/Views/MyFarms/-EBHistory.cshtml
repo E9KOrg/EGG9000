@@ -1,4 +1,4 @@
-﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts, (int Earned, int Max) peFromSeasons)
+﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts, (int Earned, int Max) peFromSeasons, List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe> missingSeasonalPEs)
 @{
     string calculateMER(double se, ulong pe) {
         se = se / 1e18;
@@ -50,6 +50,27 @@
                     </table>
                 </div>
             </div>
+
+            @if (Model.missingSeasonalPEs.Count > 0) {
+                <div class="card" style="margin-top:15px;">
+                    <h4 class="card-header" style="text-align: center">Missing Seasonal Eggs of Prophecy</h4>
+                    <div class="card-body">
+                        @foreach (var season in Model.missingSeasonalPEs) {
+                            var pct = Math.Min(100, season.GoalCxp > 0 ? season.CurrentCxp / season.GoalCxp * 100 : 0);
+                            <div style="margin-bottom:12px;">
+                                <div class="d-flex justify-content-between align-items-center" style="margin-bottom:4px;">
+                                    <span><b>@season.SeasonName</b></span>
+                                    <span><span class="text-info">@season.CurrentCxp.ToString("N0")</span> / @season.GoalCxp.ToString("N0") CS</span>
+                                    <span><img src="/images/Egg_of_Prophecy.png" style="max-height: 1.2em;" alt="Egg of Prophecy" /></span>
+                                </div>
+                                <div class="progress" role="progressbar" aria-valuenow="@((int)pct)" aria-valuemin="0" aria-valuemax="100">
+                                    <div class="progress-bar bg-success" style="width:@pct.ToString(System.Globalization.CultureInfo.InvariantCulture)%"></div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
 
             @if (Model.uncompletePEs[Model.backup.EggIncId].Count() > 0 || true) {
                 <div class="card" style="margin-top:15px;">

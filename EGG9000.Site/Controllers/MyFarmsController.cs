@@ -110,19 +110,23 @@ namespace EGG9000.Site.Controllers {
                 .Where(x => seasonIds.Contains(x.Id))
                 .ToListAsync();
             var seasonInfoMap = seasonInfos.ToDictionary(si => si.Id);
-            var seasonPEByEggIncId = eggIncIds.ToDictionary(
-                id => id,
-                id => {
-                    var earned = 0;
-                    var max = 0;
-                    foreach(var sp in seasonProgresses.Where(sp => sp.EggIncId == id)) {
-                        if(!seasonInfoMap.TryGetValue(sp.SeasonId, out var info)) continue;
-                        earned += info.GetPeEarned((Ei.Contract.Types.PlayerGrade)sp.StartingGrade, sp.TotalCxp);
-                        max += info.GetMaxPe((Ei.Contract.Types.PlayerGrade)sp.StartingGrade);
-                    }
-                    return (Earned: earned, Max: max);
+            var seasonPEByEggIncId = new Dictionary<string, (int Earned, int Max)>();
+            var missingSeasonalPEByEggIncId = new Dictionary<string, List<MissingSeasonalPe>>();
+            foreach(var id in eggIncIds) {
+                var earned = 0;
+                var max = 0;
+                var missing = new List<MissingSeasonalPe>();
+                foreach(var sp in seasonProgresses.Where(sp => sp.EggIncId == id)) {
+                    if(!seasonInfoMap.TryGetValue(sp.SeasonId, out var info)) continue;
+                    var grade = (Ei.Contract.Types.PlayerGrade)sp.StartingGrade;
+                    earned += info.GetPeEarned(grade, sp.TotalCxp);
+                    max += info.GetMaxPe(grade);
+                    foreach(var goal in info.GetUnearnedGoals(grade, sp.TotalCxp))
+                        missing.Add(new MissingSeasonalPe(info.Name, sp.TotalCxp, goal.Cxp, goal.PeAmount, info.StartTime));
                 }
-            );
+                seasonPEByEggIncId[id] = (Earned: earned, Max: max);
+                missingSeasonalPEByEggIncId[id] = missing.OrderBy(m => m.StartTime).ToList();
+            }
 
             var dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
@@ -150,7 +154,7 @@ namespace EGG9000.Site.Controllers {
 
 
             Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId));
         }
 
         private async Task GetScores(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
@@ -205,8 +209,11 @@ namespace EGG9000.Site.Controllers {
             List<DBCustomEgg> CustomEggs,
             bool IsSelf,
             FrozenSet<Ei.Contract> CachedContracts,
-            Dictionary<string, (int Earned, int Max)> SeasonPEByEggIncId
+            Dictionary<string, (int Earned, int Max)> SeasonPEByEggIncId,
+            Dictionary<string, List<MissingSeasonalPe>> MissingSeasonalPEByEggIncId
         );
+
+        public record MissingSeasonalPe(string SeasonName, double CurrentCxp, double GoalCxp, int PeAmount, DateTimeOffset StartTime);
 
         public async Task<IActionResult> EarningsBoostCalculator() {
             var loginuser = (await _userManager.GetUserAsync(User));
