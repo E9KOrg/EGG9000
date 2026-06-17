@@ -4,6 +4,7 @@ using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,8 +13,8 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class ContextUserCommands {
         [UserCommand(Name = "Userstatus", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task Userstatus(SocketUserCommand command, ApplicationDbContext db, DiscordHostedService _client) {
-            await UserStatusCommands._userstatus(command, db, _client, command.Data.Member, true, false);
+        public static async Task Userstatus(SocketUserCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger logger) {
+            await UserStatusCommands._userstatus(command, db, _client, logger, command.Data.Member, true, false);
         }
 
         [UserCommand(Name = "Contract Settings", AdminOnly = StaffOnlyLevel.FarmHand)]
