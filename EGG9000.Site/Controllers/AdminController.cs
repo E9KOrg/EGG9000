@@ -216,11 +216,13 @@ namespace EGG9000.Site.Controllers {
                         End = x.UserCoopXrefs.Where(y => y.JoinedCoop).OrderByDescending(y => y.CreatedOn).First().CreatedOn
                     }).ToListAsync();
 
-                var guildUserDates = await _db.DBUsers.Where(x => x.UserCoopXrefs.Any(y => y.JoinedCoop && y.Coop.GuildId == guildId))
-                    .Select(x => new {
-                        Start = x.UserCoopXrefs.Where(y => y.JoinedCoop && y.Coop.GuildId == guildId).OrderBy(y => y.CreatedOn).First().CreatedOn,
-                        End = x.UserCoopXrefs.Where(y => y.JoinedCoop && y.Coop.GuildId == guildId).OrderByDescending(y => y.CreatedOn).First().CreatedOn
-                    }).ToListAsync();
+                var guildUserDates = (await _db.UserCoopXrefs
+                    .Where(y => y.JoinedCoop && y.Coop.GuildId == guildId)
+                    .Select(y => new { y.UserId, y.CreatedOn })
+                    .ToListAsync())
+                    .GroupBy(y => y.UserId)
+                    .Select(g => new { Start = g.Min(y => y.CreatedOn), End = g.Max(y => y.CreatedOn) })
+                    .ToList();
 
                 for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.UtcNow; start = start.AddDays(1)) {
                     var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);

@@ -1,4 +1,4 @@
-﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
@@ -50,6 +50,7 @@ namespace EGG9000.Bot.Automated {
                                         .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
                                 }
 
+                                // Season progress upsert
                                 if(info.SeasonProgress.Count > 0) {
                                     var seasonIds = info.SeasonProgress
                                         .Select(sp => sp.SeasonId)
