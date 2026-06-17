@@ -63,7 +63,9 @@ public static class BotHostFactory {
                     x.MigrationsAssembly("EGG9000.Common");
                     x.CommandTimeout(30);
                 });
+#if DEBUG
                 options.EnableSensitiveDataLogging(true);
+#endif
                 options.AddInterceptors(new QueryCountingInterceptor());
             });
 

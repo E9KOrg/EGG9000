@@ -104,7 +104,9 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
             x.MigrationsAssembly("EGG9000.Common");
             x.CommandTimeout(30);
         });
+#if DEBUG
         options.EnableSensitiveDataLogging(true);
+#endif
     });
 
     services.AddIdentity<IdentityUser, IdentityRole>(options => {
