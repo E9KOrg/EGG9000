@@ -387,7 +387,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId == coop.Name.ToLower());
                         if(farm != null) {
                             _bugSnag.Breadcrumbs.Leave($"User: {user.DiscordUser?.Id}, {user.Backup?.EggIncId}");
-                            user.FarmStats = farm.WithStats(user.Backup, coop, customEggs);
+                            user.FarmStats = farm.WithStats(user.Backup, coop, customEggs, contract: coop.Contract);
                             user.SiloTime = awayTime * farm.SilosOwned;
                             var siloTimeHours = user.SiloTime / 60;
                             if(user.Xref is not null && user.Xref.SiloTimeHours != siloTimeHours) {

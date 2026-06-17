@@ -441,14 +441,9 @@ namespace EGG9000.Common.Helpers {
                 Config = config,
             };
 
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("authenticationKey", SecretsHelper.BotToken);
-
-#if RELEASE
-            var baseUrl = "https://egg9000.com";
-#else
-            var baseUrl = "https://egg9000.dev.sglade.com";
-#endif
+            var siteApi = SiteApiClient.Create();
+            using var client = siteApi.client;
+            var baseUrl = siteApi.baseUrl;
 
             var apiUrl = $"{baseUrl}/api/generateinventoryb64";
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(postedObject);

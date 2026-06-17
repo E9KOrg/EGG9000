@@ -15,7 +15,7 @@ namespace EGG9000.Bot.Jobs {
 
     public class UptimeKuma(ILogger<UptimeKuma> logger) {
         private readonly ILogger<UptimeKuma> _logger = logger;
-        private readonly HttpClient httpClient = new();
+        private static readonly HttpClient httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
 
 
         [Job("0/30 * * * * *")]

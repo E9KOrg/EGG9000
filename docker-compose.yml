@@ -18,6 +18,9 @@ services:
       << : *default-environment
       BOT_ACTIVE: "true"
       BOT_COLOR: blue
+      # Reach the co-located Site over the Docker network; the public domain cannot be hairpinned
+      # back from inside a container, which silently breaks the bot's image-generation API calls.
+      E9K_SITE_BASEURL: http://site_blue:5013
       # App will read from /run/secrets/ via DockerSecretsHelper
     volumes:
       # If you are not on Windows, adjust the path to your user secrets store accordingly
@@ -42,6 +45,7 @@ services:
       << : *default-environment
       BOT_ACTIVE: "false"
       BOT_COLOR: green
+      E9K_SITE_BASEURL: http://site_blue:5013
     volumes:
       # If you are not on Windows, adjust the path to your user secrets store accordingly
       # (If you get "no default credentials found" errors, check this)
