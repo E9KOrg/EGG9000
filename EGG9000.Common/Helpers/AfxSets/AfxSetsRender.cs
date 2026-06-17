@@ -52,6 +52,8 @@ namespace EGG9000.Common.Helpers.AfxSets {
     public class AfxSetsAPIObject {
         public string EID { get; set; }
         public AfxSetsCreatorConfig Config { get; set; }
+        // When set, the Site renders only that single (zero-based) page instead of every page.
+        public int? Page { get; set; }
     }
 
     public class AfxSetsB64Response {
@@ -63,8 +65,8 @@ namespace EGG9000.Common.Helpers.AfxSets {
 
         // Returns one base64 JPEG (no data: header) per page. On failure pages is null and error
         // holds a short human-readable reason (also logged).
-        public static async Task<(List<string> pages, string error)> AfxSetsB64(EggIncAccount account) {
-            var posted = new AfxSetsAPIObject { EID = account.Id, Config = new AfxSetsCreatorConfig(100) };
+        public static async Task<(List<string> pages, string error)> AfxSetsB64(EggIncAccount account, int? page = null) {
+            var posted = new AfxSetsAPIObject { EID = account.Id, Config = new AfxSetsCreatorConfig(100), Page = page };
 
             var siteApi = SiteApiClient.Create();
             using var client = siteApi.client;

@@ -258,8 +258,18 @@ namespace EGG9000.Site.Controllers {
             if(fontFilePath == null) return BadRequest(new { message = "`Always Together.otf` could not be found." });
             var font = new FontCollection().Add(fontFilePath).CreateFont(config.TextFontSize, FontStyle.Bold);
 
+            // Render every page, or just the one requested (used for paginated views that show a
+            // single page at a time).
+            var firstPageStart = 0;
+            var lastPageStartExclusive = sets.Count;
+            if(userObject.Page is int requestedPage) {
+                firstPageStart = requestedPage * config.SetsPerPage;
+                if(requestedPage < 0 || firstPageStart >= sets.Count) return BadRequest(new { message = $"Page {requestedPage} is out of range." });
+                lastPageStartExclusive = firstPageStart + config.SetsPerPage;
+            }
+
             var pages = new List<string>();
-            for(var pageStart = 0; pageStart < sets.Count; pageStart += config.SetsPerPage) {
+            for(var pageStart = firstPageStart; pageStart < lastPageStartExclusive; pageStart += config.SetsPerPage) {
                 var pageSets = sets.Skip(pageStart).Take(config.SetsPerPage).ToList();
                 var rowCount = pageSets.Count;
 
