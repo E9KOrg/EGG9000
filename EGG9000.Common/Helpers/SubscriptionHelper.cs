@@ -45,8 +45,8 @@ namespace EGG9000.Common.Helpers {
 
         private static async Task SendUltraLogMessage(DiscordSocketClient gateway, Guild dbGuild, DBUser user, EggIncAccount account, int oldLevel, int newLevel) {
             var accountName = account.Backup?.UserName;
-            var accountTag = user.EggIncAccounts.Count > 1 && (accountName?.Length ?? 0) > 0 ? $" (`{accountName}`) " : "";
-            var message = $"<@{user.DiscordId}>{accountTag}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(newLevel)}`.";
+            var accountTag = user.EggIncAccounts.Count > 1 && (accountName?.Length ?? 0) > 0 ? $"account (`{accountName}`) " : "";
+            var message = $"<@{user.DiscordId}>'s {accountTag}ULTRA status changed from `{LevelText(oldLevel)}` to `{LevelText(newLevel)}`.";
             _ = await ChannelHelper.DetermineAndSend(gateway, dbGuild, GuildChannelType.UltraLog, new() { Text = message });
         }
 

@@ -66,30 +66,9 @@ namespace EGG9000.Common.Helpers.AfxSets {
         public static async Task<(List<string> pages, string error)> AfxSetsB64(EggIncAccount account) {
             var posted = new AfxSetsAPIObject { EID = account.Id, Config = new AfxSetsCreatorConfig(100) };
 
-            // E9K_SITE_BASEURL overrides the target site (e.g. https://localhost:44314 when testing
-            // against a locally-run Site through Visual Studio).
-            var baseUrl = Environment.GetEnvironmentVariable("E9K_SITE_BASEURL");
-            if(string.IsNullOrWhiteSpace(baseUrl)) {
-#if RELEASE
-                baseUrl = "https://egg9000.com";
-#else
-                baseUrl = "https://egg9000.dev.sglade.com";
-#endif
-            }
-            baseUrl = baseUrl.TrimEnd('/');
-
-            // A locally-run Site uses a self-signed dev cert; accept it only when targeting localhost.
-            // Match on the parsed host (not a substring) so e.g. https://localhost.evil.com can't disable TLS.
-            HttpClientHandler handler = null;
-            var isLocalHost = Uri.TryCreate(baseUrl, UriKind.Absolute, out var parsedBase)
-                && (parsedBase.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) || parsedBase.Host == "127.0.0.1");
-            if(isLocalHost) {
-                handler = new HttpClientHandler {
-                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
-                };
-            }
-            using var client = handler is null ? new HttpClient() : new HttpClient(handler);
-            client.DefaultRequestHeaders.Add("authenticationKey", SecretsHelper.BotToken);
+            var siteApi = SiteApiClient.Create();
+            using var client = siteApi.client;
+            var baseUrl = siteApi.baseUrl;
 
             var apiUrl = $"{baseUrl}/api/generateafxsetsb64";
             var content = new StringContent(JsonSerializer.Serialize(posted), Encoding.UTF8, "application/json");
