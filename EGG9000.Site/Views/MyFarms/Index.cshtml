@@ -480,7 +480,7 @@
                     @if (snapshots != null) {
                         <div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts));
+                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts, Model.SeasonPEByEggIncId.GetValueOrDefault(backup.EggIncId, (Earned: 0, Max: 0))));
                             }
                         </div>
                     }

@@ -131,6 +131,8 @@ namespace EGG9000.Common.Database {
         public DbSet<RankupMessage> RankupMessages { get; set; }
         public DbSet<ResearchCostSubmission> ResearchCostSubmissions { get; set; }
         public DbSet<NasaApod> NasaApods { get; set; }
+        public DbSet<SeasonInfo> SeasonInfos { get; set; }
+        public DbSet<UserSeasonProgress> UserSeasonProgresses { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -267,6 +269,7 @@ namespace EGG9000.Common.Database {
             base.OnModelCreating(builder);
             builder.Entity<UserCoopXref>().HasKey(x => new { x.UserId, x.CoopId, x.EggIncId });
             builder.Entity<UserSnapShot>().HasKey(x => new { x.UserId, x.Date, x.EggIncID });
+            builder.Entity<UserSeasonProgress>().HasKey(x => new { x.EggIncId, x.SeasonId });
             builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League });
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
             builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
