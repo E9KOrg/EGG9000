@@ -55,6 +55,12 @@ builder.Host.UseNLog();
 ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
+
+// Must run before any middleware that reads the request scheme/host (HTTPS redirect, auth,
+// OAuth redirect_uri generation). Honors X-Forwarded-Proto from the TLS-terminating proxy so
+// the Discord OAuth callback is built as https, not the proxy's internal http hop.
+app.UseForwardedHeaders();
+
 if(app.Environment.IsDevelopment()) {
     app.UseDeveloperExceptionPage();
     app.UseMigrationsEndPoint();
@@ -177,7 +183,14 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.Configure<ForwardedHeadersOptions>(options => {
         options.ForwardedHeaders =
             ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-        options.KnownIPNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("192.168.0.0"), 24));
+
+        // Trusted proxy subnet(s) come from TRUSTED_PROXY_NETWORKS (comma-separated CIDR). Forwarded
+        // headers from any other source IP are ignored. Falls back to the prior hardcoded value when
+        // unset so an un-updated deploy keeps its old behavior instead of trusting nothing.
+        string trustedNetworks = Configuration["TRUSTED_PROXY_NETWORKS"] ?? "192.168.0.0/24";
+        foreach (string cidr in trustedNetworks.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
+            options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr));
+        }
     });
 
 

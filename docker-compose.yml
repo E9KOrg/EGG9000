@@ -71,6 +71,9 @@ services:
       SITE_ACTIVE: "false"
       SITE_COLOR: blue
       Docker__Host: unix:///var/run/docker.sock
+      # CIDR(s) of the TLS-terminating reverse proxy (proxy-v6 network) so X-Forwarded-Proto is
+      # trusted. Comma-separated; IPv4 and IPv6 both supported.
+      TRUSTED_PROXY_NETWORKS: ""
     networks:
       - egg9000_network
     ports:
