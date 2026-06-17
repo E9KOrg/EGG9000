@@ -129,7 +129,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuNav(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -137,7 +137,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuBack(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -147,7 +147,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuToggle(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -158,7 +158,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuFilter(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -169,7 +169,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuPickGroup(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -177,7 +177,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuPickMsg(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -185,7 +185,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuAdd(SocketMessageComponent component, [ComponentData] string data) {
             var modal = new ModalBuilder().WithTitle("New rank-up message").WithCustomId($"RuMsgModal:new:{data}")
                 .AddTextInput("Message", customId: "text", TextInputStyle.Paragraph, placeholder: "Use {{user}} {{rank}} {{eb}} {{oom}} {{emoji:name}}", required: true, maxLength: 1500)
@@ -193,7 +193,7 @@ namespace EGG9000.Bot.Commands {
             await component.RespondWithModalAsync(modal);
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuEditBtn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var msg = await db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data);
             if(msg is null) { await component.DeferAsync(); return; }
@@ -203,7 +203,7 @@ namespace EGG9000.Bot.Commands {
             await component.RespondWithModalAsync(modal);
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuDelBtn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -218,7 +218,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [Modal]
+        [Modal(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuMsgModal(SocketModal modal, ApplicationDbContext db) {
             var g = await LoadGuild(db, modal.GuildId);
             var (op, arg) = SplitFirst(Tail(modal.Data.CustomId));

@@ -746,7 +746,7 @@ namespace EGG9000.Bot.Commands {
             }, cts.Token);
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SysLoadNav(SocketMessageComponent component, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider) {
             await component.DeferAsync();
             var section = component.Data.Values.FirstOrDefault() ?? "overview";
@@ -758,7 +758,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(snap); x.Embed = SysLoadSection(section, snap); x.Components = SysLoadComponents(section, refreshing, IsEphemeral(component.Message)); });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SysLoadRefresh(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider) {
             await component.DeferAsync();
             var section = string.IsNullOrEmpty(data) ? "overview" : data;
@@ -767,14 +767,14 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(snap); x.Embed = SysLoadSection(section, snap); x.Components = SysLoadComponents(section, refreshing, IsEphemeral(component.Message)); });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SysLoadStop(SocketMessageComponent component) {
             await component.DeferAsync();
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
                 session.Cts.Cancel();
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SysLoadDismiss(SocketMessageComponent component) {
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
                 session.Cts.Cancel();

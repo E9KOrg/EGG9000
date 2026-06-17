@@ -36,8 +36,10 @@ using NLog.Web;
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 
@@ -61,11 +63,33 @@ var app = builder.Build();
 // the Discord OAuth callback is built as https, not the proxy's internal http hop.
 app.UseForwardedHeaders();
 
+// Security response headers on every response (incl. static files). Set before the rest of the
+// pipeline so they apply regardless of which handler produces the response. CSP is report-only
+// for now so violations are observable (browser console) without breaking Stripe.js / Discord
+// OAuth / existing inline assets - tighten to enforcing once the report is clean.
+app.Use(async (context, next) => {
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["Content-Security-Policy-Report-Only"] =
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data: https:; " +
+        "font-src 'self' data:; " +
+        "frame-src https://js.stripe.com https://hooks.stripe.com; " +
+        "connect-src 'self' https://api.stripe.com; " +
+        "frame-ancestors 'none'";
+    await next();
+});
+
 if(app.Environment.IsDevelopment()) {
     app.UseDeveloperExceptionPage();
     app.UseMigrationsEndPoint();
 } else {
     app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
 }
 
 app.UseHttpsRedirection();
@@ -74,7 +98,6 @@ app.UseStaticFiles(new StaticFileOptions {
 });
 
 app.UseRouting();
-app.UseCors("SiteCorsPolicy");
 app.UseResponseCaching();
 app.UseAuthentication(); 
 app.UseAuthorization();
@@ -98,7 +121,18 @@ app.Run();
 
 
 void ConfigureServices(IServiceCollection services, IConfiguration Configuration) {
-    services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>().SetApplicationName("EGG9000");
+    var dataProtection = services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>().SetApplicationName("EGG9000");
+    // Keys are persisted to the DB; encrypt them at rest with a key-encryption certificate so a DB
+    // leak cannot be used to forge auth/OAuth cookies. The PFX lives outside the DB (Docker secret /
+    // mounted file). If not configured the keys stay unencrypted - acceptable for local dev only.
+    var dpCertPath = SecretsHelper.GetConfigOrSecret(Configuration, "DataProtection:CertPath", "dataprotection_cert_path");
+    var dpCertPassword = SecretsHelper.GetConfigOrSecret(Configuration, "DataProtection:CertPassword", "dataprotection_cert_password");
+    if(!string.IsNullOrEmpty(dpCertPath) && File.Exists(dpCertPath)) {
+        var dpCert = X509CertificateLoader.LoadPkcs12FromFile(dpCertPath, dpCertPassword);
+        dataProtection.ProtectKeysWithCertificate(dpCert);
+    } else {
+        logger.Warn("DataProtection key-encryption certificate not configured (DataProtection:CertPath / dataprotection_cert_path). Data-protection keys are persisted UNENCRYPTED in the database.");
+    }
     services.AddDbContext<ApplicationDbContext>(
         options => options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), x => x.CommandTimeout(30)),
         contextLifetime: ServiceLifetime.Scoped,

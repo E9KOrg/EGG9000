@@ -108,7 +108,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FeBack(SocketMessageComponent component, ApplicationDbContext db, DiscordHostedService client) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -116,7 +116,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FePick(SocketMessageComponent component, ApplicationDbContext db, DiscordHostedService client) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -124,19 +124,19 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FeAdd(SocketMessageComponent component) {
             await component.RespondWithModalAsync(TopicModal("FeModal:new", null).Build());
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FeEditText(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var t = await db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data);
             if(t is null) { await component.DeferAsync(); return; }
             await component.RespondWithModalAsync(TopicModal($"FeModal:edit:{data}", t).Build());
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FeStaff(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -146,7 +146,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FePalace(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -156,11 +156,11 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FeWUp(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) =>
             await AdjustWeight(component, data, db, client, +1);
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FeWDn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) =>
             await AdjustWeight(component, data, db, client, -1);
 
@@ -173,7 +173,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FeDel(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -183,7 +183,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [Modal]
+        [Modal(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task FeModal(SocketModal modal, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) {
             var g = await LoadGuild(db, modal.GuildId);
             var (op, id) = SplitFirst(data);
