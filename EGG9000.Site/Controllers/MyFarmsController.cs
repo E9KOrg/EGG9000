@@ -136,15 +136,8 @@ namespace EGG9000.Site.Controllers {
             // (the view dereferences account.Backup directly). Fresh backups are refreshed out of band below.
             var accountsNeedingBackup = user.EggIncAccounts.Where(a => a.Backup is null).ToList();
             if(accountsNeedingBackup.Count > 0) {
-                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(async a => {
-                    var raw = await EggIncApi.FirstContact(a.Id);
-                    return (account: a, backup: new CustomBackup(raw.Backup, cachedContracts, null));
-                }));
-                var changed = false;
-                foreach(var (account, backup) in fetched) {
-                    if(backup?.Farms is not null) { account.Backup = backup; changed = true; }
-                }
-                if(changed) {
+                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(a => AccountRefresh.RefreshBackupAsync(a, cachedContracts)));
+                if(fetched.Any(b => b is not null)) {
                     user.UpdateAccounts();
                     await _db.SaveChangesAsync();
                 }
@@ -183,22 +176,13 @@ namespace EGG9000.Site.Controllers {
                     var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discordId);
                     if(user is null) return;
                     var cachedContracts = await db.CachedEiContractsAsync();
-                    var results = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
-                        var rawBackup = await EggIncApi.FirstContact(account.Id);
-                        var customBackup = new CustomBackup(rawBackup.Backup, cachedContracts, account?.Backup ?? null);
-                        return (account, customBackup);
-                    }));
-                    var update = false;
-                    foreach(var (account, customBackup) in results) {
-                        if(customBackup?.Farms is not null) {
-                            account.Backup = customBackup;
-                            update = true;
-                        }
-                    }
-                    if(update) {
-                        user.UpdateAccounts();
-                        await db.SaveChangesAsync();
-                    }
+                    // Backups are network-only + per-account in memory, so fetch them concurrently.
+                    await Task.WhenAll(user.EggIncAccounts.Select(account => AccountRefresh.RefreshBackupAsync(account, cachedContracts)));
+                    // Extras stage DB writes, so run them sequentially against the single context.
+                    foreach(var account in user.EggIncAccounts)
+                        await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger);
+                    user.UpdateAccounts();
+                    await db.SaveChangesAsync();
                 } catch(Exception e) {
                     _logger.LogError(e, "Background backup refresh failed for {discordId}", discordId);
                 }
