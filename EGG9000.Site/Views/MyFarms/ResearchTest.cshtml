@@ -1,4 +1,5 @@
 ﻿@using EGG9000.Common.JsonData
+@using EGG9000.Common.JsonData.EiStatics
 
 @model CustomBackup
 
@@ -18,30 +19,13 @@
 
     var collegggtibleDiscount = Colleggtibles.GetCollectibleData((List<DBCustomEgg>)ViewBag.CustomEggs, Model);
     var researchCostDisicountColleggtible = collegggtibleDiscount[Ei.GameModifier.Types.GameDimension.ResearchCost];
-    var artifactDiscount = EggIncArtifacts.GetMultiple(EGG9000.Common.JsonData.EiStatics.EggIncBoostTypeEnum.ResearchCost, farm);
+    var artifactDiscount = EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.ResearchCost, farm);
     <div>
         Epic Lab Research Discount = @((1 - researchDiscount).ToString("P0"))<br />
         Colleggtible Discount = @((1 - researchCostDisicountColleggtible).ToString("P0"))<br />
         Artifact Discount = @((1 - artifactDiscount).ToString("P0"))<br />
         Total Discount = @((1 - researchDiscount * researchCostDisicountColleggtible * artifactDiscount).ToString("P0"))
     </div>
-
-    // foreach (var (research, researchItem) in incompleteResearch) {
-    //     if (researchItem.EoVPrices == null) {
-    //         researchItem.EoVPrices = new List<double>();
-    //         foreach (var price in researchItem.Prices) {
-    //             researchItem.EoVPrices.Add(0);
-    //         }
-    //     }
-    //     <div>
-    //         <b>@researchItem.Name</b> (Level @research.Level/@researchItem.Levels) Next Cost =
-    //         @if (researchItem.EoVPrices[(int)research.Level] <= 0) {
-    //             <span>Missing Value</span>
-    //         } else {
-    //             @((researchItem.EoVPrices[(int)research.Level] * researchDiscount * researchCostDisicountColleggtible * artifactDiscount).ToEggString(numberOfDecimalPlaces: 3))
-    //         }
-    //     </div>
-    // }
 
     var allResearch = researchData.Select(x => {
         var currentResearch = farm.CommonResearch.FirstOrDefault(r => r.Id == x.Id);

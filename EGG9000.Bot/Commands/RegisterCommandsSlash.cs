@@ -288,8 +288,10 @@ namespace EGG9000.Bot.Commands {
                 logger.LogError(ex, "Error checking banned users");
             }
 
-            var existingUsers = await db.DBUsers.ToListAsync();
-            if(existingUsers.Any(u => u.EggIncAccounts.Any(a => a.Id.ToUpper() == eggincid))) {
+            var existingAccountColumns = await db.DBUsers
+                .Select(u => new { u._eggIncIds, u._contractRegistrationByte })
+                .ToListAsync();
+            if(existingAccountColumns.Any(u => DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte).EggIncAccounts.Any(a => a.Id.ToUpper() == eggincid))) {
                 await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
                 return;
             }

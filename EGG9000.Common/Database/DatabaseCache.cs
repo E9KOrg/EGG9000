@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,12 +34,21 @@ namespace EGG9000.Common.Database {
         public List<DBUser> GetCachedUsers() => _cachedUsers;
         public Task<List<DBUser>> GetDbUsers() => Task.FromResult(_cachedUsers);
 
+        // A user counts as changed since the last refresh when its LastModified moved past the
+        // cutoff. CreateOn is intentionally not tested: the Added hook (ApplicationDbContext) stamps
+        // LastModified at insert time and CreateOn never changes afterward, so LastModified >= CreateOn
+        // always holds and an "OR CreateOn > cutoff" branch can never match a row LastModified misses.
+        // Keeping the predicate single-column lets Postgres use IX_Users_LastModified instead of
+        // seq-scanning Users every refresh. Equivalence is covered by DatabaseCacheFilterTests.
+        public static Expression<Func<DBUser, bool>> UpdatedSince(DateTimeOffset cutoff)
+            => u => u.LastModified > cutoff;
+
         public async Task RefreshUserCache() {
             try {
                 var db = await _dbContextFactory.CreateDbContextAsync();
                 var currentCacheTime = _lastCacheUpdateUser;
                 _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-                var updatedUsers = await db.DBUsers.AsNoTracking().Where(u => u.LastModified > currentCacheTime || u.CreateOn > currentCacheTime).ToListAsync();
+                var updatedUsers = await db.DBUsers.AsNoTracking().Where(UpdatedSince(currentCacheTime)).ToListAsync();
                 _logger.LogInformation("Refreshing DBUser cache, found {Count} updated users. (Last cache update {LastCacheUpdate})", updatedUsers.Count, (_lastCacheUpdateUser - currentCacheTime).Humanize());
                 var newList = new List<DBUser>(_cachedUsers);
                 newList.RemoveAll(u => updatedUsers.Any(uu => uu.Id == u.Id));

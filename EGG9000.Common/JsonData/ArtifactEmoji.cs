@@ -1,12 +1,5 @@
-﻿using Newtonsoft.Json;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EGG9000.Common.JsonData {
     public class ArtifactEmoji {
@@ -17,24 +10,17 @@ namespace EGG9000.Common.JsonData {
 
         }
 
-        private static List<ArtifactEmojiItem> Instance = null;
-        public static List<ArtifactEmojiItem> Get() {
-            if(Instance != null ) return Instance;
+        private static readonly EmbeddedResource<List<ArtifactEmojiItem>> _res =
+            EmbeddedResource.Json<List<ArtifactEmojiItem>>("ArtifactEmoji.json", PostProcess);
 
-            var assembly = Assembly.GetExecutingAssembly();
+        public static List<ArtifactEmojiItem> Get() => _res.Value;
 
-            var resourceName = assembly.GetManifestResourceNames()
-                .Single(str => str.EndsWith("ArtifactEmoji.json"));
-
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            using var reader = new StreamReader(stream);
-            var json = reader.ReadToEnd();
-            Instance = JsonConvert.DeserializeObject<List<ArtifactEmojiItem>>(json);
-            Instance.ForEach(x => {
+        private static List<ArtifactEmojiItem> PostProcess(List<ArtifactEmojiItem> items) {
+            items.ForEach(x => {
                 if(x.Emoji.Contains("stone", StringComparison.OrdinalIgnoreCase))
-                    x.Tier--;
-                }); // Convert to 0-based index
-            return Instance;
+                    x.Tier--; // Convert to 0-based index
+            });
+            return items;
         }
     }
 }

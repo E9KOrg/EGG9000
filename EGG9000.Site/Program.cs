@@ -14,6 +14,7 @@ using EGG9000.Site.Services;
 using MassTransit;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
@@ -159,6 +160,12 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 #endif
 
     services.AddResponseCaching();
+    services.AddAuthorization(options => {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();

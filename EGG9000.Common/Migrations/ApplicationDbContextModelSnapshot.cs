@@ -17,7 +17,7 @@ namespace EGG9000.Common.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -236,6 +236,9 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("ThreadID", "Created");
 
+                    b.HasIndex("GuildId", "ContractID", "League")
+                        .HasFilter("NOT \"Finished\" AND NOT \"DeletedChannel\" AND NOT \"ThreadArchived\"");
+
                     b.HasIndex("DiscordChannelId", "ThreadArchived", "CoopEnds", "ThreadID");
 
                     b.ToTable("Coops");
@@ -316,6 +319,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<decimal>("GuildId")
                         .HasColumnType("numeric(20,0)");
+
+                    b.Property<int>("HighestAnnouncedOom")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset?>("LastBackupCheck")
                         .HasColumnType("timestamp with time zone");
@@ -756,6 +762,12 @@ namespace EGG9000.Common.Migrations
                     b.Property<bool>("PublicScoreGrid")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("RankupExclusivePool")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("RankupMessagesEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("RemoveFindCoopSpot")
                         .HasColumnType("boolean");
 
@@ -778,6 +790,9 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("_faqTopicsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("_rankupDisabledGroupsCsv")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -909,6 +924,46 @@ namespace EGG9000.Common.Migrations
                     b.HasKey("ID");
 
                     b.ToTable("NasaApods");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.RankupMessage", b =>
+                {
+                    b.Property<string>("InternalId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("CreatedById")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("CreatedByIdString")
+                        .HasColumnType("text");
+
+                    b.Property<int>("GroupBaseOom")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("GuildId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("GuildName")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PalaceOnly")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Text")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Weight")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("_subscribedGuildIds")
+                        .HasColumnType("text");
+
+                    b.HasKey("InternalId");
+
+                    b.ToTable("RankupMessages");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.ResearchCostSubmission", b =>
