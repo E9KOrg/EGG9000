@@ -203,11 +203,11 @@ namespace EGG9000.Site.Controllers {
             _db.Database.SetCommandTimeout(360);
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             Dictionary<DateTimeOffset, int[]> days;
-            var adminDaysCacheKey = $"AdminDays{guildId}";
+            var adminDaysCacheKey = $"AdminDaysV2{guildId}";
             if(!_cache.TryGetValue(adminDaysCacheKey, out days)) {
 
                 days = [];
-                var coops = (await _db.Coops.AsQueryable().Select(x => new { x.Created, Finished = x.CoopCompleted ?? x.CoopEnds }).ToListAsync())
+                var coops = (await _db.Coops.AsQueryable().Select(x => new { x.Created, Finished = x.CoopCompleted ?? x.CoopEnds, x.GuildId }).ToListAsync())
                     .Where(x => x.Created != DateTimeOffset.MinValue).ToList();
 
                 var userDates = await _db.DBUsers.Where(x => x.UserCoopXrefs.Any(y => y.JoinedCoop))
@@ -216,16 +216,29 @@ namespace EGG9000.Site.Controllers {
                         End = x.UserCoopXrefs.Where(y => y.JoinedCoop).OrderByDescending(y => y.CreatedOn).First().CreatedOn
                     }).ToListAsync();
 
+                var guildUserDates = await _db.DBUsers.Where(x => x.UserCoopXrefs.Any(y => y.JoinedCoop && y.Coop.GuildId == guildId))
+                    .Select(x => new {
+                        Start = x.UserCoopXrefs.Where(y => y.JoinedCoop && y.Coop.GuildId == guildId).OrderBy(y => y.CreatedOn).First().CreatedOn,
+                        End = x.UserCoopXrefs.Where(y => y.JoinedCoop && y.Coop.GuildId == guildId).OrderByDescending(y => y.CreatedOn).First().CreatedOn
+                    }).ToListAsync();
+
                 for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.UtcNow; start = start.AddDays(1)) {
                     var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
                     var accountsCount = userDates.Count(x => x.Start < start && x.End > start.AddDays(-14));
-                    days.Add(start, [count, accountsCount]);
+                    var guildCount = coops.Count(c => c.GuildId == guildId && c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
+                    var guildAccountsCount = guildUserDates.Count(x => x.Start < start && x.End > start.AddDays(-14));
+                    days.Add(start, [count, accountsCount, guildCount, guildAccountsCount]);
                 }
                 _cache.Set(adminDaysCacheKey, days, TimeSpan.FromHours(1));
             }
 
 
-            return Json(new { days = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] }), days2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] }) });
+            return Json(new {
+                days = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] }),
+                days2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] }),
+                guildDays = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[2] }),
+                guildDays2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[3] })
+            });
         }
 
         public async Task<IActionResult> Index() {
