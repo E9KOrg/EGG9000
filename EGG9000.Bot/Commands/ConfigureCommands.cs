@@ -229,7 +229,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgNav(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -237,7 +237,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgPickChannel(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -245,7 +245,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgPickRole(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -253,7 +253,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgPickCoop(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -261,7 +261,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgPickList(SocketMessageComponent component, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -269,7 +269,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgSetChannel(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -281,7 +281,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgSetRole(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -293,7 +293,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgClear(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -306,7 +306,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgCoopEn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -318,7 +318,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgCoopLock(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -330,7 +330,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgToggle(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -343,7 +343,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgSetCsvCat(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -356,7 +356,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgSetCsvRole(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);
@@ -369,7 +369,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgEdit(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var g = await LoadGuild(db, component.GuildId);
             var f = GuildConfigReflection.Get(data);
@@ -387,7 +387,7 @@ namespace EGG9000.Bot.Commands {
             await component.RespondWithModalAsync(modal);
         }
 
-        [Modal]
+        [Modal(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgEditModal(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
             var g = await LoadGuild(db, modal.GuildId);
             var f = GuildConfigReflection.Get(data);
@@ -415,7 +415,7 @@ namespace EGG9000.Bot.Commands {
             await modal.UpdateAsync(x => { x.Content = error is null ? "" : $"⚠️ {error}"; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
         public static async Task CfgBack(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             await component.DeferAsync();
             var g = await LoadGuild(db, component.GuildId);

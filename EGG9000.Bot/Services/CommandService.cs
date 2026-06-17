@@ -157,6 +157,15 @@ namespace EGG9000.Bot.Services {
                 }
             }*/
             try {
+                // Discord gates slash/user commands by DefaultMemberPermissions, but applies no
+                // permission gating to component (button/select) or modal callbacks. The dispatcher
+                // must therefore enforce the required staff level itself for those interaction types,
+                // otherwise any member can replay a privileged customId. Slash/user commands keep
+                // relying on Discord's gating so per-guild permission customization still works.
+                if((arg is SocketMessageComponent || arg is SocketModal) && command.AdminOnly != StaffOnlyLevel.None && !HasStaffPermission(command.AdminOnly, arg.User)) {
+                    await arg.RespondAsync(text: "", embed: EmbedError("You do not have permission to use this control."), ephemeral: true);
+                    return;
+                }
                 semaphoreAcquired = await _semaphoreSlim.WaitAsync(TimeSpan.FromSeconds(2.5));
                 if(semaphoreAcquired) {
                     var parameters = new List<object>();
@@ -267,6 +276,21 @@ namespace EGG9000.Bot.Services {
         }
 
 
+
+        private static bool HasStaffPermission(StaffOnlyLevel level, IUser user) {
+            if(level == StaffOnlyLevel.None) return true;
+            if(user is not SocketGuildUser guildUser) return false;
+            var perms = guildUser.GuildPermissions;
+            if(perms.Administrator) return true;
+            var required = level switch {
+                StaffOnlyLevel.Admin => GuildPermission.Administrator,
+                StaffOnlyLevel.CluckingCoordinator => GuildPermission.ManageChannels,
+                StaffOnlyLevel.FarmHand => GuildPermission.CreatePrivateThreads,
+                StaffOnlyLevel.ChickenTender => GuildPermission.ModerateMembers,
+                _ => GuildPermission.UseApplicationCommands
+            };
+            return perms.Has(required);
+        }
 
         private static FauxSocketSlashCommandDataOption FindOption(string name, IList<FauxSocketSlashCommandDataOption> options) {
             var foundOption = options.FirstOrDefault(x => x.Name == name);
@@ -389,6 +413,15 @@ namespace EGG9000.Bot.Services {
 
             if(command.SubFunctions != null) {
                 command = command.SubFunctions.First(x => x.Name == arg.Data.Options.First().Name);
+            }
+
+            // Server-side backstop: Discord already hides staff commands from non-staff, so this only
+            // bites if a command is mis-registered or a guild grants it to a non-staff role. It stops
+            // sensitive handlers (member EID/EB enumeration, internal service names) from running for a
+            // user who lacks the command's required staff level.
+            if(command.AdminOnly != StaffOnlyLevel.None && !HasStaffPermission(command.AdminOnly, arg.User)) {
+                _ = arg.RespondAsync(System.Array.Empty<AutocompleteResult>());
+                return Task.CompletedTask;
             }
 
             var paremeter = command.Parameters.First(x => x.Name.Equals(arg.Data.Current.Name, StringComparison.OrdinalIgnoreCase));

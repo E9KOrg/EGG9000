@@ -70,7 +70,6 @@ services:
       ASPNETCORE_URLS: http://+:5013
       SITE_ACTIVE: "false"
       SITE_COLOR: blue
-      Docker__Host: unix:///var/run/docker.sock
       # CIDR(s) of the TLS-terminating reverse proxy (proxy-v6 network) so X-Forwarded-Proto is
       # trusted. Comma-separated; IPv4 and IPv6 both supported.
       TRUSTED_PROXY_NETWORKS: ""
@@ -78,14 +77,11 @@ services:
       - egg9000_network
     ports:
       - "5013:5013"
-    volumes:
-      # Correct syntax for Docker Desktop on Windows with Linux containers
-      - /var/run/docker.sock:/var/run/docker.sock
-    # Grant access to Docker socket (choose one):
-    # Option A: Run as root (simpler but less secure)
-    user: root
-    # Option B: Add to docker group (more secure, requires group ID)
-    # user: "1000:999"  # Replace 999 with your docker group ID
+    # The Docker socket is intentionally NOT mounted and the container does NOT run as root.
+    # No code on this branch uses the Docker API. If bot lifecycle management is reintroduced,
+    # do NOT mount /var/run/docker.sock directly into this public container - front it with a
+    # read/verb-limited docker-socket-proxy and point the client at tcp://docker-socket-proxy:2375.
+    # See docs/audit/infra.md (H1).
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -107,9 +103,12 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-change_me}
+    # Bot and site reach the broker by service name on egg9000_network, so the broker does not
+    # need a public host port. Bind to loopback only - AMQP and the admin UI must not be exposed
+    # on 0.0.0.0. Use an SSH tunnel to reach the management UI. See docs/audit/infra.md (H2).
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
     networks:
       - egg9000_network
     healthcheck:

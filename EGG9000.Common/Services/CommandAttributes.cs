@@ -31,9 +31,11 @@ namespace EGG9000.Common.Commands {
     }
     [AttributeUsage(AttributeTargets.Method)]
     public class ComponentCommandAttribute : System.Attribute {
+        public StaffOnlyLevel AdminOnly = StaffOnlyLevel.None;
     }
     [AttributeUsage(AttributeTargets.Method)]
     public class ModalAttribute : System.Attribute {
+        public StaffOnlyLevel AdminOnly = StaffOnlyLevel.None;
     }
 
     [AttributeUsage(AttributeTargets.Parameter)]
@@ -52,15 +54,19 @@ namespace EGG9000.Common.Commands {
     public class SlashCommandFunction : CommandFunctionBase {
         public SlashCommandAttribute Details { get; set; }
         public List<SlashCommandFunction> SubFunctions { get; set; }
+        public override StaffOnlyLevel AdminOnly => Details?.AdminOnly ?? StaffOnlyLevel.None;
     }
     public class UserCommandFunction : CommandFunctionBase {
         public UserCommandAttribute Details { get; set; }
+        public override StaffOnlyLevel AdminOnly => Details?.AdminOnly ?? StaffOnlyLevel.None;
     }
     public class ComponentCommandFunction : CommandFunctionBase {
         public ComponentCommandAttribute Details { get; set; }
+        public override StaffOnlyLevel AdminOnly => Details?.AdminOnly ?? StaffOnlyLevel.None;
     }
     public class ModalCommandFunction : CommandFunctionBase {
         public ModalAttribute Details { get; set; }
+        public override StaffOnlyLevel AdminOnly => Details?.AdminOnly ?? StaffOnlyLevel.None;
     }
 
 
@@ -68,6 +74,7 @@ namespace EGG9000.Common.Commands {
         public MethodInfo MethodInfo { get; set; }
         public ParameterInfo[] Parameters { get; set; }
         public string Name { get; set; }
+        public virtual StaffOnlyLevel AdminOnly => StaffOnlyLevel.None;
     }
 
 
