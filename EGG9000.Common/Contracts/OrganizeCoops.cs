@@ -178,7 +178,7 @@ namespace EGG9000.Common.Contracts {
 
         private static bool UncompleteColleggtibleBypass(UserByAccount x, Contract contract) {
             if(x.Account.DoUnfinishedCollegtibles && contract.Details.Egg == Ei.Egg.CustomEgg && contract.Details.CustomEggId != "") {
-                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId) < 4) return true;
+                if(x.Account.Backup.GetColleggtibleLevel(contract.Details.CustomEggId, x.Account.CollegtibleMaxFarmSizes) < 4) return true;
             }
             return false;
         }

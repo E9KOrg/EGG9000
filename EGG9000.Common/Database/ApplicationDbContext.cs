@@ -159,10 +159,6 @@ namespace EGG9000.Common.Database {
             _cache.Remove("DbContext-EiContracts");
         }
 
-        public void ExpireCustomEggsCache() {
-            _cache.Remove("CustomEggsCache");
-        }
-
         // Registers contract definitions fetched by identifier (get_contracts_info) that the periodicals
         // feed never delivered to us (e.g. single-player contracts), so they exist in the DB and resolve
         // in CachedEiContractsAsync for everyone. Inserts the row only; fires no channel/coop automation.

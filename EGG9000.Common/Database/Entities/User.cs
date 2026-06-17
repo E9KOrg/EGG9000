@@ -407,6 +407,10 @@ namespace EGG9000.Common.Database.Entities {
         public string AfxSetsImageHash { get; set; } = "";
         [Key(41)]
         public List<string> AfxSetsImageUrls { get; set; } = new();
+        [Key(42)]
+        public Dictionary<string, ulong> CollegtibleMaxFarmSizes { get; set; } = new();
+        [Key(43)]
+        public DateTimeOffset CollegtibleLastFullSync { get; set; } = DateTimeOffset.MinValue;
 
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)

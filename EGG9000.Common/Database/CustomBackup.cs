@@ -334,21 +334,15 @@ namespace EGG9000.Common.Database {
                     MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
             }
 
+            var customEggContractIds = contracts
+                .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
+                .ToDictionary(c => c.Identifier, c => c.CustomEggId.ToLower());
             CustomEggMaxFarmSizeReached = [];
-            var allContractList = backup.Contracts.Archive.Concat(backup.Contracts.Contracts).ToList();
-            foreach(var customEgg in backup.Contracts.CustomEggInfo.ToList()) {
-                var matchingContracts = allContractList.Where(f =>
-                    f?.MaxFarmSizeReached > 0
-                    && f.Contract?.Egg == Ei.Egg.CustomEgg
-                    && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
-                ).ToList();
-
-                if(!matchingContracts.Any()) continue;
-
-                CustomEggMaxFarmSizeReached.Add(
-                    customEgg.Identifier,
-                    (ulong)matchingContracts.Max(f => f.MaxFarmSizeReached)
-                );
+            foreach(var f in backup.Contracts.Archive.Concat(backup.Contracts.Contracts)
+                .Where(f => f.MaxFarmSizeReached > 0 && customEggContractIds.ContainsKey(f.ContractIdentifier))) {
+                var eggId = customEggContractIds[f.ContractIdentifier];
+                if(!CustomEggMaxFarmSizeReached.TryGetValue(eggId, out var existing) || (ulong)f.MaxFarmSizeReached > existing)
+                    CustomEggMaxFarmSizeReached[eggId] = (ulong)f.MaxFarmSizeReached;
             }
 
 
@@ -512,20 +506,22 @@ namespace EGG9000.Common.Database {
             Farms.Add(customFarm);
         }
 
-        public uint GetColleggtibleLevel(DBCustomEgg customEgg) {
-            return GetColleggtibleLevel(customEgg.Identifier);
+        public uint GetColleggtibleLevel(DBCustomEgg customEgg, Dictionary<string, ulong> accountFarmSizes = null) {
+            return GetColleggtibleLevel(customEgg.Identifier, accountFarmSizes);
         }
 
-        public uint GetColleggtibleLevel(string identifier) {
-            if(CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize)) {
-                return farmSize switch {
-                    > 10000000000 => 4,
-                    > 1000000000 => 3,
-                    > 100000000 => 2,
-                    > 10000000 => 1,
-                    _ => 0
-                };
-            } else return 0;
+        public uint GetColleggtibleLevel(string identifier, Dictionary<string, ulong> accountFarmSizes = null) {
+            var key = identifier.ToLower();
+            ulong farmSize = 0;
+            if(accountFarmSizes == null || !accountFarmSizes.TryGetValue(key, out farmSize))
+                CustomEggMaxFarmSizeReached.TryGetValue(key, out farmSize);
+            return farmSize switch {
+                > 10000000000UL => 4,
+                > 1000000000UL => 3,
+                > 100000000UL => 2,
+                > 10000000UL => 1,
+                _ => 0
+            };
         }
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {

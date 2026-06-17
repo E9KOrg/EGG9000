@@ -4,7 +4,6 @@ using Discord.WebSocket;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
@@ -460,58 +459,9 @@ namespace EGG9000.Bot.Commands {
         [ComponentCommand]
         public static async Task<Embed> ColleggtiblesEmbed(ApplicationDbContext db, DBUser dbuser, EggIncAccount account, bool enabled) {
             var customEggs = await db.GetCustomEggsAsync();
-            var cachedContracts = await db.CachedEiContractsAsync();
-            var customEggById = cachedContracts
-                .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
-                .ToDictionary(c => c.Identifier, c => c.CustomEggId.ToLower());
-            var (archive, _) = await EggIncApi.GetContractsArchive(account.Id);
-            // Combine the dedicated archive (completed contracts) with any currently active contracts
-            // from the backup; active contracts don't appear in the archive until they expire.
-            var allFarms = (archive?.Archive ?? [])
-                .Concat(account.Backup?.Contracts?.Contracts ?? [])
-                .ToList();
-            if(allFarms.Count > 0) {
-                // LocalContract.Contract is never populated by these endpoints; resolve egg type via
-                // CachedEiContractsAsync instead. Only hit get_contracts_info for contracts completely
-                // absent from the DB — known non-custom-egg contracts are skipped.
-                var cachedIds = cachedContracts.Select(c => c.Identifier).ToHashSet();
-                var missingIds = allFarms
-                    .Where(f => f.MaxFarmSizeReached > 0 && !customEggById.ContainsKey(f.ContractIdentifier) && !cachedIds.Contains(f.ContractIdentifier))
-                    .Select(f => f.ContractIdentifier)
-                    .Distinct()
-                    .ToArray();
-                if(missingIds.Length > 0) {
-                    var (info, _) = await EggIncApi.GetContractsInfoAsync(account.Id, missingIds);
-                    if(info != null) {
-                        await db.RegisterMissingContractsAsync(info.Contracts);
-                        var newCustomEggIds = info.Contracts
-                            .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
-                            .Select(c => c.CustomEggId.ToLower())
-                            .ToHashSet();
-                        foreach(var c in info.Contracts.Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId)))
-                            customEggById[c.Identifier] = c.CustomEggId.ToLower();
-                        // Mark any previously-unreleased eggs as released now that a contract for them exists.
-                        if(newCustomEggIds.Count > 0) {
-                            var eggsToRelease = await db.CustomEggs
-                                .Where(e => !e.Released && newCustomEggIds.Contains(e.Identifier.ToLower()))
-                                .ToListAsync();
-                            if(eggsToRelease.Count > 0) {
-                                foreach(var egg in eggsToRelease)
-                                    egg.Released = true;
-                                await db.SaveChangesAsync();
-                                db.ExpireCustomEggsCache();
-                            }
-                        }
-                    }
-                }
-            }
-            var maxFarmSizes = allFarms
-                .Where(f => f.MaxFarmSizeReached > 0 && customEggById.ContainsKey(f.ContractIdentifier))
-                .GroupBy(f => customEggById[f.ContractIdentifier])
-                .ToDictionary(g => g.Key, g => (ulong)g.Max(f => f.MaxFarmSizeReached));
             var colleggtiblesMessage = $"Colleggtibles are **[Custom Eggs](<https://egg-inc.fandom.com/wiki/Colleggtibles>)** that reward permanent buffs when you achieve certain habitat populations farming a contract of that egg. " +
                 $"Each Colleggtible egg has 4 levels, which all provide the same type of buff, at different efficacies. Levels unlock at:\n- Level 1: **10 Million** :chicken:\n- Level 2: **100 Million** :chicken:\n- Level 3: **1 Billion** :chicken:\n- Level 4: **10 Billion** :chicken:\n\n" +
-                $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(maxFarmSizes, customEggs)}\n" +
+                $"**__Your colleggtibles__**\n\n{getAccountColleggtibles(account.CollegtibleMaxFarmSizes ?? new(), customEggs)}\n" +
                 $"You can enable this option to be automatically assigned to all Colleggtible Contracts that you do not have at max level already.";
 
             return MenuEmbedTemplate("Colleggtibles Contract Menu", colleggtiblesMessage, account, dbuser).AddField("Auto-Assign Colleggtibles", enabled ? "Yes" : "No").Build();
