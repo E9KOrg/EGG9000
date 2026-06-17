@@ -54,6 +54,11 @@ namespace EGG9000.Common.Database.Entities {
                 return 0;
             return gradeGoals.Sum(g => g.PeAmount);
         }
+
+        public IEnumerable<SeasonPeGoal> GetUnearnedGoals(Ei.Contract.Types.PlayerGrade grade, double totalCxp) =>
+            Goals.TryGetValue((int)grade, out var gradeGoals)
+                ? gradeGoals.Where(g => totalCxp < g.Cxp)
+                : [];
     }
 
     public class SeasonPeGoal {
