@@ -252,9 +252,11 @@ namespace EGG9000.Common.Database.Entities {
         public bool UpdateDMStatus(DiscordHelpersExt.DMResult dmResult) {
             switch(dmResult) {
                 case DiscordHelpersExt.DMResult.Success:
-                    if(DMSBlocked) DMSBlocked = false; return true;
+                    if(DMSBlocked) { DMSBlocked = false; return true; }
+                    return false;
                 case DiscordHelpersExt.DMResult.CannotSendToUser:
-                    if(!DMSBlocked) DMSBlocked = true; return true;
+                    if(!DMSBlocked) { DMSBlocked = true; return true; }
+                    return false;
                 default:
                     break;
             }
