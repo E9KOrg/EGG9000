@@ -3,13 +3,27 @@
 
 If you run into any issues with the setup, please ask around in the Dev server or ping @daveed or @kendrome.
 
-### Windows / Visual Studio Dev Setup
+### Dev Setup
 
 **Prerequisites**
-- Visual Studio with the **ASP.NET and web development** and **.NET desktop development** workloads (VScode or Rider work too)
-- .NET 10 SDK
-- Docker Desktop
 
+**Windows:** Visual Studio with the **ASP.NET and web development** and **.NET desktop development** workloads (VS Code or Rider work too), .NET 10 SDK, Docker Desktop.
+
+**WSL2:** Install .NET 10 SDK and Docker Desktop (on Windows, not inside WSL2). Enable WSL2 integration in Docker Desktop under Settings → Resources → WSL Integration.
+```bash
+wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb
+sudo apt update && sudo apt install -y dotnet-sdk-10.0
+```
+
+**Linux:** Install .NET 10 SDK and Docker Engine.
+```bash
+wget https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb
+sudo dpkg -i packages-microsoft-prod.deb && rm packages-microsoft-prod.deb
+sudo apt update && sudo apt install -y dotnet-sdk-10.0
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER && newgrp docker
+```
 
 ---
 
@@ -23,13 +37,26 @@ cd EGG9000
 
 **2. Set up secrets**
 
-The bot and site both run under the `DEV9002` build configuration, which resolves secrets via User Secrets ID `DEV9001`.
+The bot and site run under the `DEV9002` build configuration, using User Secrets ID `DEV9001`. Create `secrets.json` at the path for your platform:
 
-Create this file:
-```
-%APPDATA%\Microsoft\UserSecrets\DEV9001\secrets.json
-```
+**Windows:** `%APPDATA%\Microsoft\UserSecrets\DEV9001\secrets.json`
 
+<br>
+
+**Linux / WSL2:** `docker-compose.dev.yml` mounts `${APPDATA}/Microsoft/UserSecrets` into containers, but `dotnet run` reads from `~/.microsoft/usersecrets/`. Set `APPDATA` once so both point to the same place, then create the file and symlink:
+```bash
+# Add to ~/.bashrc or ~/.zshrc
+export APPDATA="$HOME/.local/share"
+
+mkdir -p ~/.local/share/Microsoft/UserSecrets/DEV9001
+mkdir -p ~/.microsoft/usersecrets
+ln -s ~/.local/share/Microsoft/UserSecrets/DEV9001 ~/.microsoft/usersecrets/DEV9001
+```
+Secrets file: `~/.local/share/Microsoft/UserSecrets/DEV9001/secrets.json`
+
+<br>
+
+All platforms — populate with:
 ```json
 {
   "ConnectionStrings": {
@@ -46,8 +73,6 @@ Create this file:
 ```
 
 > **ApiSalt** is required for authenticated Egg Inc. API endpoints (`ei_ctx/get_contracts_info`, `ei_ctx/get_contract_player_info`). Without it those calls are silently disabled but everything else still works.
->
-> The `docker-compose.dev.yml` mounts `%APPDATA%\Microsoft\UserSecrets` read-only into the containers, so the same secrets file is shared between local runs and Docker.
 
 <br>
 
@@ -59,11 +84,11 @@ dotnet restore
 
 Restores packages at the versions pinned in the project files without upgrading.
 
-
 <br>
 
 **4. Start PostgreSQL**
 
+**Windows:**
 ```
 docker run -d --name egg9000-pg ^
   -e POSTGRES_USER=<username> ^
@@ -72,7 +97,18 @@ docker run -d --name egg9000-pg ^
   -p 5433:5432 ^
   postgres:latest
 ```
-> Make sure the connection string in secrets.json matches the username, password, and database name you used here. 
+
+**Linux / WSL2:**
+```bash
+docker run -d --name egg9000-pg \
+  -e POSTGRES_USER=<username> \
+  -e POSTGRES_PASSWORD=<password> \
+  -e POSTGRES_DB=<dbname> \
+  -p 5433:5432 \
+  postgres:latest
+```
+
+> Make sure the connection string in `secrets.json` matches the username, password, and database name you used here.
 
 <br>
 
@@ -99,10 +135,10 @@ dotnet ef database update --project EGG9000.Common --startup-project EGG9000.Bot
 
 **7. Seed the Guilds table**
 
-The bot needs a row in `Guilds` for your test Discord server before it will function. Replace `<your-server-id>` with your Discord server's ID (a large number visible in Discord under Server Settings → Widget, or by right-clicking the server icon with developer mode on):
+The bot needs a row in `Guilds` for your test Discord server before it will function. Replace `<your-server-id>` with your Discord server's ID (visible by right-clicking the server icon with Developer Mode on):
 
 ```
-docker exec -it egg9000-pg psql -U egg -d egg9000 -c "INSERT INTO \"Guilds\" (\"Id\", \"Name\", \"DiscordSeverId\", \"OverflowServersJson\", \"_coopSettingsJson\", \"_eventCustomizationsJson\", \"_faqTopicsJson\", \"_channelDetailsJson\", \"AddOutsideCoops\") VALUES (<your-server-id>, 'Dev Server', <your-server-id>, '[]', '[]', '[]', '[]', '[]', true);"
+docker exec -it egg9000-pg psql -U <username> -d <dbname> -c "INSERT INTO \"Guilds\" (\"Id\", \"Name\", \"DiscordSeverId\", \"OverflowServersJson\", \"_coopSettingsJson\", \"_eventCustomizationsJson\", \"_faqTopicsJson\", \"_channelDetailsJson\", \"AddOutsideCoops\") VALUES (<your-server-id>, 'Dev Server', <your-server-id>, '[]', '[]', '[]', '[]', '[]', true);"
 ```
 
 <br>
@@ -126,6 +162,8 @@ In your test Discord server, run the `/register` slash command with your Egg Inc
 
 **10. Start the site**
 
+Make sure the postgres container from step 4 is still running (`docker start egg9000-pg` if it stopped). Then:
+
 ```
 docker-compose -f docker-compose.dev.yml up site
 ```
@@ -142,10 +180,10 @@ Go to `http://localhost:5013` and log in with Discord. This creates your ASP.NET
 
 **12. Seed yourself as admin**
 
-Connect to the postgres container and run:
+Connect to the postgres container:
 
 ```
-docker exec -it egg9000-pg psql -U egg -d egg9000
+docker exec -it egg9000-pg psql -U <username> -d <dbname>
 ```
 
 Then paste:
@@ -182,27 +220,11 @@ Run the bot using `dotnet run --configuration DEV9002` and then go to /mycontrac
 
 ---
 
-**Website (local, no Docker)**
+**Website (local)**
+
+Requires the postgres container from step 4 to be running (`docker start egg9000-pg` if it stopped).
 ```
 cd EGG9000.Site
 dotnet watch --no-hot-reload
 ```
 To bypass Discord login: `/Home/DebugLogin?id={yourdiscordid}` (requires at least one prior login to the dev DB).
-
----
-
-### Linux Install
-**Prerequisites**
-```
-sudo apt install dotnet-sdk-6.0
-```
-
-**Secrets**
-Add secrets.json to ~/.microsoft/usersecrets/dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a
-
-**Run**
-```
-cd EGG9000\EGG9000.Bot
-dotnet run --arch x64 --os linux
-```
-If anybody knows a solution to not need the platform flags let me know.
