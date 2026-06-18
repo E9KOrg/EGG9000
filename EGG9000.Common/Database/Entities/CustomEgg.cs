@@ -162,7 +162,8 @@ namespace EGG9000.Common.Database.Entities {
         public string GetReadbleGameDimnension() {
             var type = ((GameDimension)Dimension).GetType();
             var name = Enum.GetName(type, Dimension);
-            return type.GetField(name).GetCustomAttributes(false).OfType<OriginalNameAttribute>().SingleOrDefault()?.Name ?? Dimension.ToString();
+            if(name is null) return Dimension.ToString();
+            return type.GetField(name)?.GetCustomAttributes(false).OfType<OriginalNameAttribute>().SingleOrDefault()?.Name ?? Dimension.ToString();
         }
 
         public override bool Equals(object another) {

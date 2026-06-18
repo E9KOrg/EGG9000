@@ -53,9 +53,9 @@
                             <td class="@tdClass">
                                 @if (mod != null) {
                                     if (!string.IsNullOrEmpty(mod.Description)) {
-                                        <span title='×@mod.Value.ToString("F3")'>@mod.Description</span>
+                                        <span title='×@mod.Value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)'>@mod.Description</span>
                                     } else {
-                                        <span>×@mod.Value.ToString("F3")</span>
+                                        <span>×@mod.Value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)</span>
                                     }
                                 }
                             </td>
