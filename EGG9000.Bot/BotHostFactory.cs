@@ -67,16 +67,6 @@ public static class BotHostFactory {
                 options.AddInterceptors(new QueryCountingInterceptor());
             });
 
-#if !DEBUG
-            services.Configure<ActiveMonitorOptions>(options => {
-                options.ServiceType = "bot";
-                options.ColorConfigKey = "BOT_COLOR";
-                options.PollIntervalSeconds = 10;
-            });
-            services.AddSingleton<ActiveMonitorHostedService>();
-            services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
-#endif
-
             services.AddSingleton<DatabaseCache>();
             services.AddHostedService<UserCacheRefreshService>();
             services.AddHostedService<ActiveCoopsCacheRefreshService>();

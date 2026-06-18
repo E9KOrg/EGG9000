@@ -10,17 +10,14 @@ x-environment: &default-environment
   ConnectionStrings__ClientSecret: ...
   ConnectionStrings__BugSnagApiKey: ...
 services:
-  # Blue bot instance
-  bot_blue:
+  bot:
     image: kendrome/egg9000bot:latest
     restart: on-failure
     environment:
       << : *default-environment
-      BOT_ACTIVE: "true"
-      BOT_COLOR: blue
       # Reach the co-located Site over the Docker network; the public domain cannot be hairpinned
       # back from inside a container, which silently breaks the bot's image-generation API calls.
-      E9K_SITE_BASEURL: http://site_blue:5013
+      E9K_SITE_BASEURL: http://site:5013
       # App will read from /run/secrets/ via DockerSecretsHelper
     volumes:
       # If you are not on Windows, adjust the path to your user secrets store accordingly
@@ -37,39 +34,12 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # Green bot instance
-  bot_green:
-    image: kendrome/egg9000bot:latest
-    restart: on-failure
-    environment:
-      << : *default-environment
-      BOT_ACTIVE: "false"
-      BOT_COLOR: green
-      E9K_SITE_BASEURL: http://site_blue:5013
-    volumes:
-      # If you are not on Windows, adjust the path to your user secrets store accordingly
-      # (If you get "no default credentials found" errors, check this)
-      - ${APPDATA}/Microsoft/UserSecrets/DEV9001:/home/app/.microsoft/usersecrets/DEV9001:ro
-    networks:
-      - egg9000_network
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # Blue site instance
-  site_blue:
+  site:
     image: kendrome/egg9000site:latest
     restart: always
     environment:
       << : *default-environment
       ASPNETCORE_URLS: http://+:5013
-      SITE_ACTIVE: "false"
-      SITE_COLOR: blue
       # CIDR(s) of the TLS-terminating reverse proxy (proxy-v6 network) so X-Forwarded-Proto is
       # trusted. Comma-separated; IPv4 and IPv6 both supported.
       TRUSTED_PROXY_NETWORKS: ""
@@ -117,57 +87,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-
-#   # Green site instance
-#   site_green:
-#     image: kendrome/egg9000site:latest
-#     restart: on-failure
-#     environment:
-#       << : *default-environment
-#       ASPNETCORE_URLS=http://+:8080
-#       SITE_ACTIVE=false
-#       SITE_COLOR=green
-#       Docker__Host: unix:///var/run/docker.sock
- 
-#     depends_on:
-#       - db
-#       - rabbitmq
-#     networks:
-#       - egg9000_network
-#     logging:
-#       driver: "json-file"
-#       options:
-#         max-size: "10m"
-#         max-file: "3"
-#     healthcheck:
-#       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-#       interval: 10s
-#       timeout: 5s
-#       retries: 3
-#       start_period: 40s
-
-#   # Caddy reverse proxy
-#   caddy:
-#     image: caddy:2-alpine
-#     restart: unless-stopped
-#     ports:
-#       - "80:80"
-#       - "443:443"
-#       - "443:443/udp"
-#     volumes:
-#       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-#       - caddy_data:/data
-#       - caddy_config:/config
-#     networks:
-#       - egg9000_network
-#     depends_on:
-#       - site_blue
-#       - site_green
- 
-
-# volumes:
-#   caddy_data:
-#   caddy_config:
 
 networks:
   egg9000_network:

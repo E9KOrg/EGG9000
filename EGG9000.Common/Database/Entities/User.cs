@@ -200,12 +200,9 @@ namespace EGG9000.Common.Database.Entities {
                 } catch(Exception) { throw; }
             }
             set {
-                if(value == null) {
-                    Console.WriteLine("Trying to save NULL EggIncAccounts");
-                } else {
-                    _accounts = value;
-                    UpdateAccounts();
-                }
+                if(value is null) return;
+                _accounts = value;
+                UpdateAccounts();
             }
 
         }

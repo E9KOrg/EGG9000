@@ -15,8 +15,6 @@ services:
     environment:
       DOTNET_ENVIRONMENT: Development
       ASPNETCORE_ENVIRONMENT: Development
-      BOT_ACTIVE: "true"
-      BOT_COLOR: blue
       ConnectionStrings__RabbitMQServer: rabbitmq|e9k|devpassword
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
