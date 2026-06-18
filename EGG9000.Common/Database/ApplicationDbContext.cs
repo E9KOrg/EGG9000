@@ -102,7 +102,7 @@ namespace EGG9000.Common.Database {
         }
     }
 
-    public class ApplicationDbContext : IdentityDbContext<IdentityUser>, IDataProtectionKeyContext {
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionKeyContext {
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<Guild> Guilds { get; set; }
         public DbSet<Contract> Contracts { get; set; }

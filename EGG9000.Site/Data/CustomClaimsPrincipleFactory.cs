@@ -8,13 +8,13 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Data {
-    public class CustomClaimsPrincipleFactory(UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, IOptions<IdentityOptions> optionsAccessor, ApplicationDbContext db) 
-        : UserClaimsPrincipalFactory<IdentityUser, IdentityRole>(userManager, roleManager, optionsAccessor) {
+    public class CustomClaimsPrincipleFactory(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IOptions<IdentityOptions> optionsAccessor, ApplicationDbContext db) 
+        : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>(userManager, roleManager, optionsAccessor) {
 
         private readonly ApplicationDbContext _db = db;
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
 
-        protected async override Task<ClaimsIdentity> GenerateClaimsAsync(IdentityUser user) {
+        protected async override Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user) {
             var identity = await base.GenerateClaimsAsync(user);
             var logins = await _userManager.GetLoginsAsync(user);
             var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey)) 
@@ -22,7 +22,8 @@ namespace EGG9000.Site.Data {
             identity.AddClaim(new Claim("DbUserId", dbuser.Id.ToString()));
             identity.AddClaim(new Claim("DiscordId", logins.First().ProviderKey));
             identity.AddClaim(new Claim("GuildId", dbuser.GuildId.ToString()));
-            identity.AddClaim(new Claim("DarkMode", dbuser.DarkMode ? "true" : "false"));
+            // DarkMode lives on the ApplicationUser (AspNetUsers); surface it as a claim for the layout.
+            identity.AddClaim(new Claim("DarkMode", user.DarkMode ? "true" : "false"));
             return identity;
         }
 

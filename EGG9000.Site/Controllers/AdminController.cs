@@ -43,11 +43,11 @@ using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
-    public class AdminController(UserManager<IdentityUser> userManager, DiscordSocketClient discord,
+    public class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
         private readonly ApplicationDbContext _db = db;
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly DiscordSocketClient _discord = discord;
         private readonly IMemoryCache _cache = cache;
         private readonly ILogger<AdminController> _logger = logger;
@@ -466,7 +466,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public class UserPermissionsModel {
-            public List<IdentityUser> Users { get; set; }
+            public List<ApplicationUser> Users { get; set; }
             public List<IdentityUserLogin<string>> Logins { get; set; }
             public List<IdentityUserRole<string>> UserRoles { get; set; }
             public List<IdentityRole> Roles { get; set; }
@@ -864,7 +864,7 @@ namespace EGG9000.Site.Controllers {
                 var DiscordId = userLogins.FirstOrDefault(y => y.UserId == x.Id)?.ProviderKey;
                 var customName = customNames.FirstOrDefault(y => y.DiscordId == DiscordId);
                 return new EditUserWithDetails {
-                    IdentityUser = x,
+                    ApplicationUser = x,
                     IdentityUserRoles = userRoles.Where(y => y.UserId == x.Id).ToList(),
                     DiscordId = DiscordId,
                     CustomCoopName = customName?.CustomCoopName,
@@ -907,7 +907,7 @@ namespace EGG9000.Site.Controllers {
             public DateTimeOffset? ExpireCustomCoopName { get; set; }
             public Guid DBUserId { get; set; }
             public string DiscordId { get; set; }
-            public IdentityUser IdentityUser { get; set; }
+            public ApplicationUser ApplicationUser { get; set; }
             public List<IdentityUserRole<string>> IdentityUserRoles { get; set; }
         }
 

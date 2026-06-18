@@ -161,7 +161,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.EnableSensitiveDataLogging(true);
     });
 
-    services.AddIdentity<IdentityUser, IdentityRole>(options => {
+    services.AddIdentity<ApplicationUser, IdentityRole>(options => {
         options.SignIn.RequireConfirmedAccount = false;
         options.User.RequireUniqueEmail = false;
     })
