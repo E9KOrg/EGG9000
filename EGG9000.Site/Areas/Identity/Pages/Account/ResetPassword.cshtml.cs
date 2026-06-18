@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public class ResetPasswordModel(UserManager<IdentityUser> userManager) : PageModel
+    public class ResetPasswordModel(UserManager<ApplicationUser> userManager) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
 
         [BindProperty]
         public InputModel Input { get; set; }

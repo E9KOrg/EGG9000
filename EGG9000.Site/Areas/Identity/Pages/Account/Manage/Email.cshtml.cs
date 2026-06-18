@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public partial class EmailModel(
-        UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         IEmailSender emailSender) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly IEmailSender _emailSender = emailSender;
 
         public string Username { get; set; }
@@ -38,7 +38,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             public string NewEmail { get; set; }
         }
 
-        private async Task LoadAsync(IdentityUser user)
+        private async Task LoadAsync(ApplicationUser user)
         {
             var email = await _userManager.GetEmailAsync(user);
             Email = email;

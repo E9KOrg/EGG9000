@@ -51,7 +51,7 @@
         @foreach (var user in Model.Users.OrderByDescending(x => x.IdentityUserRoles.Any())) {
             <tr>
                 <td>
-                    @user.IdentityUser.UserName
+                    @user.ApplicationUser.UserName
                     <br />
                     @user.DiscordId
                 </td>
@@ -59,7 +59,7 @@
                 <td>@user.ExpireCustomCoopName?.ToString("yyyy-M-d")</td>
                 @foreach (var role in Model.Roles) {
                     <td>
-                        <input type="checkbox" checked="@user.IdentityUserRoles.Any(ur => ur.RoleId == role.Id)" onchange="Change(this, '@user.IdentityUser.Id', '@role.Id')" />
+                        <input type="checkbox" checked="@user.IdentityUserRoles.Any(ur => ur.RoleId == role.Id)" onchange="Change(this, '@user.ApplicationUser.Id', '@role.Id')" />
                     </td>
                 }
             </tr>

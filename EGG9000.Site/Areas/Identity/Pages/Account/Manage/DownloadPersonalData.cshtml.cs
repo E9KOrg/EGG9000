@@ -11,10 +11,10 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class DownloadPersonalDataModel(
-        UserManager<IdentityUser> userManager,
+        UserManager<ApplicationUser> userManager,
         ILogger<DownloadPersonalDataModel> logger) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly ILogger<DownloadPersonalDataModel> _logger = logger;
 
         public async Task<IActionResult> OnPostAsync()
@@ -29,7 +29,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
 
             // Only include personal data for download
             var personalData = new Dictionary<string, string>();
-            var personalDataProps = typeof(IdentityUser).GetProperties().Where(
+            var personalDataProps = typeof(ApplicationUser).GetProperties().Where(
                             prop => Attribute.IsDefined(prop, typeof(PersonalDataAttribute)));
             foreach (var p in personalDataProps)
             {

@@ -10,12 +10,12 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public partial class IndexModel(
-        UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         ApplicationDbContext db
             ) : PageModel {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly ApplicationDbContext _db = db;
 
         [BindProperty]
@@ -51,7 +51,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             public bool SkipNoPiggyDouble { get; set; }
         }
 
-        private async Task LoadAsync(IdentityUser user) {
+        private async Task LoadAsync(ApplicationUser user) {
             var userName = await _userManager.GetUserNameAsync(user);
             //var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
 
@@ -66,7 +66,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
                 ShipReturnMinutes = dbuser.ShipReturnMinutes,
                 ShipReturnStillFuelingMinutes = dbuser.ShipReturnStillFuelingMinutes,
                 ShowEB = dbuser.showEB,
-                DarkMode = dbuser.DarkMode,
+                DarkMode = user.DarkMode,
                 SkipNoPE = dbuser.SkipNoPE,
                 SkipNoPiggyDouble = dbuser.SkipNoPiggyDouble,
                 SkipNoArtifacts = dbuser.SkipNoArtifacts,
@@ -118,11 +118,14 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             dbuser.SkipNoArtifacts = Input.SkipNoArtifacts;
             dbuser.SkipNoPiggyDouble = Input.SkipNoPiggyDouble;
             dbuser.showEB = Input.ShowEB;
-            dbuser.DarkMode = Input.DarkMode;
             if(Input.OnBreak && !dbuser.OnBreakSince.HasValue) {
                 dbuser.OnBreakSince = DateTimeOffset.UtcNow;
             }
             await _db.SaveChangesAsync();
+
+            // DarkMode lives on the ApplicationUser (AspNetUsers), not on DBUser.
+            user.DarkMode = Input.DarkMode;
+            await _userManager.UpdateAsync(user);
 
             await _signInManager.RefreshSignInAsync(user);
             StatusMessage = "Your profile has been updated";

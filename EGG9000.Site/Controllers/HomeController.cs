@@ -48,16 +48,16 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
-    public class HomeController(ILogger<HomeController> logger, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<IdentityUser> signInManager,
+    public class HomeController(ILogger<HomeController> logger, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<ApplicationUser> signInManager,
         DiscordSocketClient discord, ApplicationDbContext db, IMemoryCache cache, DatabaseCache databaseCache) : Controller {
 
         private readonly ILogger<HomeController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly RoleManager<IdentityRole> _roleManager = roleManager;
         private readonly DiscordSocketClient _discord = discord;
         private readonly IMemoryCache _cache = cache;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly DatabaseCache _databaseCache = databaseCache;
 
 #if DEBUG || DEV9002

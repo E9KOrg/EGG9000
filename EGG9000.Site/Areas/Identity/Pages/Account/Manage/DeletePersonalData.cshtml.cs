@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class DeletePersonalDataModel(
-        UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         ILogger<DeletePersonalDataModel> logger) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly ILogger<DeletePersonalDataModel> _logger = logger;
 
         [BindProperty]

@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class PersonalDataModel(
-        UserManager<IdentityUser> userManager,
+        UserManager<ApplicationUser> userManager,
         ILogger<PersonalDataModel> logger) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly ILogger<PersonalDataModel> _logger = logger;
 
         public async Task<IActionResult> OnGet()

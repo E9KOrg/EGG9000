@@ -6,14 +6,14 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class TwoFactorAuthenticationModel(
-        UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         ILogger<TwoFactorAuthenticationModel> logger) : PageModel
     {
         private const string AuthenicatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}";
 
-        private readonly UserManager<IdentityUser> _userManager = userManager;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly ILogger<TwoFactorAuthenticationModel> _logger = logger;
 
         public bool HasAuthenticator { get; set; }
