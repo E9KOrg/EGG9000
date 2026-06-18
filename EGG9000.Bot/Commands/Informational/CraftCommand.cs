@@ -225,7 +225,7 @@ namespace EGG9000.Bot.Commands {
             stringBuilder.Append($"Total Cost: <:Golden_Egg_GE:692439755798872075> **{basket.GetTotalCost().ToString("#,0", new CultureInfo("en-US"))}**");
             stringBuilder.AppendLine();
             var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
-            stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "_You have enough <:Golden_Egg_GE:692439755798872075>!_" : "_You do not have enough <:Golden_Egg_GE:692439755798872075>!_");
+            stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "*You have enough <:Golden_Egg_GE:692439755798872075>!*" : "*You do not have enough <:Golden_Egg_GE:692439755798872075>!*");
 
             var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
             var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.ToLower() == requestedArtifact.name.ToLower() && a.Key.Tier == (int)quality);
