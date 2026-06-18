@@ -49,10 +49,11 @@
                             var mod = (egg.Modifiers != null && egg.Modifiers.Count > l) ? egg.Modifiers[l] : null;
                             var isActive = (l + 1) == level;
                             var isFuture = (l + 1) > level;
-                            <td class="@(isActive ? "table-success" : "") @(isFuture ? "text-muted" : "")">
+                            var tdClass = isActive ? "table-success" : isFuture ? "text-muted" : "";
+                            <td class="@tdClass">
                                 @if (mod != null) {
                                     if (!string.IsNullOrEmpty(mod.Description)) {
-                                        <span title="×@mod.Value.ToString("F3")">@mod.Description</span>
+                                        <span title='×@mod.Value.ToString("F3")'>@mod.Description</span>
                                     } else {
                                         <span>×@mod.Value.ToString("F3")</span>
                                     }
