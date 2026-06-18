@@ -8,6 +8,20 @@
         .OrderBy(x => x.Level == 0 ? 1 : 0)
         .ThenBy(x => x.Egg.Name)
         .ToList();
+
+    string FormatModifier(double value) {
+        bool negative = value < 1;
+        int pct = (int)((negative ? (1 - value) : (value - 1)) * 100);
+        return $"{(negative ? "-" : "+")}{pct}%";
+    }
+
+    string FormatPopulation(ulong num) {
+        if (num == 0) return "";
+        if (num >= 1_000_000_000UL) return $"{num / 1_000_000_000.0:F1}B";
+        if (num >= 1_000_000UL) return $"{num / 1_000_000.0:F1}M";
+        if (num >= 1_000UL) return $"{num / 1_000.0:F1}K";
+        return num.ToString();
+    }
 }
 
 <div class="card" style="margin-top:15px">
@@ -18,17 +32,22 @@
                 <tr>
                     <th>Name</th>
                     <th class="d-none d-md-table-cell">Effect</th>
-                    <th>Level</th>
-                    <th>L1 <span class="d-none d-md-inline">(10M)</span></th>
-                    <th>L2 <span class="d-none d-md-inline">(100M)</span></th>
-                    <th>L3 <span class="d-none d-md-inline">(1B)</span></th>
-                    <th>L4 <span class="d-none d-md-inline">(10B)</span></th>
+                    <th class="text-center">Level</th>
+                    <th class="text-center">L1 <span class="d-none d-md-inline">(10M)</span></th>
+                    <th class="text-center">L2 <span class="d-none d-md-inline">(100M)</span></th>
+                    <th class="text-center">L3 <span class="d-none d-md-inline">(1B)</span></th>
+                    <th class="text-center">L4 <span class="d-none d-md-inline">(10B)</span></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var (egg, level) in colleggtibles) {
                     var isMissing = level == 0;
                     var dimensionName = egg.Modifiers?.FirstOrDefault()?.GetReadbleGameDimnension() ?? "";
+                    ulong farmSize = 0;
+                    if (isMissing && Model.Backup != null) {
+                        Model.Backup.CustomEggMaxFarmSizeReached.TryGetValue(egg.Identifier.ToLower(), out farmSize);
+                    }
+                    var popText = FormatPopulation(farmSize);
                     <tr class="@(isMissing ? "table-secondary" : "")">
                         <td>
                             @if (!string.IsNullOrEmpty(egg.Icon?.URL)) {
@@ -37,10 +56,13 @@
                             <strong>@egg.Name</strong>
                             @if (isMissing) {
                                 <span class="badge badge-secondary" style="margin-left:4px;">Missing</span>
+                                @if (!string.IsNullOrEmpty(popText)) {
+                                    <small class="text-muted" style="margin-left:4px;">reached @popText</small>
+                                }
                             }
                         </td>
                         <td class="d-none d-md-table-cell">@dimensionName</td>
-                        <td>
+                        <td class="text-center">
                             <span class="badge @(isMissing ? "badge-secondary" : level == 4 ? "badge-success" : "badge-warning")">
                                 @level/4
                             </span>
@@ -49,14 +71,10 @@
                             var mod = (egg.Modifiers != null && egg.Modifiers.Count > l) ? egg.Modifiers[l] : null;
                             var isActive = (l + 1) == level;
                             var isFuture = (l + 1) > level;
-                            var tdClass = isActive ? "table-success" : isFuture ? "text-muted" : "";
+                            var tdClass = "text-center" + (isActive ? " table-success" : isFuture ? " text-muted" : "");
                             <td class="@tdClass">
                                 @if (mod != null) {
-                                    if (!string.IsNullOrEmpty(mod.Description)) {
-                                        <span title='×@mod.Value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)'>@mod.Description</span>
-                                    } else {
-                                        <span>×@mod.Value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)</span>
-                                    }
+                                    <span title='×@mod.Value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)'>@FormatModifier(mod.Value)</span>
                                 }
                             </td>
                         }
