@@ -1,0 +1,70 @@
+@using EGG9000.Common.Helpers
+@using static Ei.GameModifier.Types
+@model (CustomBackup Backup, List<DBCustomEgg> CustomEggs)
+
+@{
+    var colleggtibles = Model.CustomEggs
+        .Select(e => (Egg: e, Level: (int)Model.Backup.GetColleggtibleLevel(e.Identifier)))
+        .OrderBy(x => x.Level == 0 ? 1 : 0)
+        .ThenBy(x => x.Egg.Name)
+        .ToList();
+}
+
+<div class="card" style="margin-top:15px">
+    <h4 class="card-header">Colleggtibles</h4>
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th class="d-none d-md-table-cell">Effect</th>
+                    <th>Level</th>
+                    <th>L1 <span class="d-none d-md-inline">(10M)</span></th>
+                    <th>L2 <span class="d-none d-md-inline">(100M)</span></th>
+                    <th>L3 <span class="d-none d-md-inline">(1B)</span></th>
+                    <th>L4 <span class="d-none d-md-inline">(10B)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (egg, level) in colleggtibles) {
+                    var isMissing = level == 0;
+                    var dimensionName = egg.Modifiers?.FirstOrDefault()?.GetReadbleGameDimnension() ?? "";
+                    <tr class="@(isMissing ? "table-secondary" : "")">
+                        <td>
+                            @if (!string.IsNullOrEmpty(egg.Icon?.URL)) {
+                                <img src="@egg.Icon.URL" style="max-height:22px; margin-right:5px;" />
+                            }
+                            <strong>@egg.Name</strong>
+                            @if (isMissing) {
+                                <span class="badge badge-secondary" style="margin-left:4px;">Missing</span>
+                            }
+                        </td>
+                        <td class="d-none d-md-table-cell">@dimensionName</td>
+                        <td>
+                            <span class="badge @(isMissing ? "badge-secondary" : level == 4 ? "badge-success" : "badge-warning")">
+                                @level/4
+                            </span>
+                        </td>
+                        @for (var l = 0; l < 4; l++) {
+                            var mod = (egg.Modifiers != null && egg.Modifiers.Count > l) ? egg.Modifiers[l] : null;
+                            var isActive = (l + 1) == level;
+                            var isFuture = (l + 1) > level;
+                            <td class="@(isActive ? "table-success" : "") @(isFuture ? "text-muted" : "")">
+                                @if (mod != null) {
+                                    if (!string.IsNullOrEmpty(mod.Description)) {
+                                        <span title="×@mod.Value.ToString("F3")">@mod.Description</span>
+                                    } else {
+                                        <span>×@mod.Value.ToString("F3")</span>
+                                    }
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (!colleggtibles.Any()) {
+                    <tr><td colspan="7" class="text-center text-muted">No colleggtible data available.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
