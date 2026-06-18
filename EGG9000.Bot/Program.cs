@@ -1,4 +1,8 @@
-﻿using Microsoft.Extensions.Configuration;
+using EGG9000.Common.Database;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NLog;
@@ -9,39 +13,18 @@ using System;
 var logger = LogManager.Setup().GetCurrentClassLogger();
 logger.Log(NLog.LogLevel.Info, "Main Start");
 
-string botColor;
-
 try
 {
-    // Build a minimal configuration to check BOT_ACTIVE before building the full host
-    var tempConfig = new ConfigurationBuilder()
-        .AddEnvironmentVariables()
-        .AddUserSecrets<Program>(optional: true) // Optional for Docker scenarios
-        .Build();
-
-    var botActive = tempConfig.GetValue("BOT_ACTIVE", true);
-    botColor = tempConfig.GetValue<string>("BOT_COLOR") ?? "blue";
-
-#if DEBUG 
-    botColor = "debug";
+#if DEBUG
+    var machineName = $"{Environment.MachineName}_debug";
+#else
+    var machineName = Environment.MachineName;
 #endif
-    NLog.GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}_{botColor}");
-    NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Bot");
-    logger.Log(NLog.LogLevel.Info, "CustomMachineName = " + $"{NLog.GlobalDiagnosticsContext.Get("CustomMachineName")}");
+    NLog.GlobalDiagnosticsContext.Set("CustomMachineName", machineName);
+    NLog.GlobalDiagnosticsContext.Set("CustomAppName", "EGG9000.Bot");
+    logger.Log(NLog.LogLevel.Info, "CustomMachineName = " + machineName);
 
-    logger.Log(NLog.LogLevel.Info, "BOT_ACTIVE = " + botActive);
-    logger.Log(NLog.LogLevel.Info, "BOT_COLOR = " + botColor);
-
-
-    if (!botActive)
-    {
-        logger.Log(NLog.LogLevel.Info, "Bot set to not active. Exiting gracefully without starting services.");
-        LogManager.Shutdown();
-        return; // Exit cleanly without throwing exception
-    }
-
-    // If BOT_ACTIVE is true, proceed with normal host build
-    await Host.CreateDefaultBuilder(args)
+    var host = Host.CreateDefaultBuilder(args)
         .ConfigureLogging(logging => {
             logging.ClearProviders();
             logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Trace);
@@ -52,8 +35,22 @@ try
         })
         .UseDefaultServiceProvider(options => options.ValidateScopes = false)
         .ConfigureServices(EGG9000.Bot.BotHostFactory.ConfigureServices)
-        .Build()
-        .RunAsync();
+        .Build();
+
+#if RELEASE
+    // Apply pending migrations on startup. Production only - dev configs (Debug/DEV9001/DEV9002)
+    // run against the live DB and must stay manual so a half-written migration can't auto-apply.
+    using (var scope = host.Services.CreateScope())
+    {
+        logger.Log(NLog.LogLevel.Info, "Applying database migrations");
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var migrateCtx = await factory.CreateDbContextAsync();
+        await migrateCtx.Database.MigrateAsync();
+        logger.Log(NLog.LogLevel.Info, "Database migrations applied");
+    }
+#endif
+
+    await host.RunAsync();
 }
 catch (Exception ex)
 {

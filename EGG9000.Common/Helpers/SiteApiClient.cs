@@ -3,7 +3,7 @@ using System.Net.Http;
 
 namespace EGG9000.Common.Helpers {
     // Bot -> Site internal API access. In prod the bot reaches the co-located Site over the Docker
-    // network (E9K_SITE_BASEURL=http://site_blue:5013) instead of the public domain, which a
+    // network (E9K_SITE_BASEURL=http://site:5013) instead of the public domain, which a
     // container cannot reliably hairpin back to. Falls back to the public URL when the override is unset.
     public static class SiteApiClient {
         public static string BaseUrl() {

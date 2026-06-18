@@ -23,18 +23,10 @@
 	</style>
 	@RenderSection("Head", required: false)
 </head>
-<body ng-app="egg9000" class="bootstrap">
-	<script>
-		function getCookie (name) {
-			let value = `; ${document.cookie}`;
-			let parts = value.split(`; ${name}=`);
-			if (parts.length === 2) return parts.pop().split(';').shift();
-		}
-		if (getCookie('Egg9000Theme') == 'bootstrap-dark') {
-            document.body.classList.add("bootstrap-dark");
-			document.body.classList.remove("bootstrap");
-		};
-	</script>
+@{
+	var darkMode = User?.FindFirst("DarkMode")?.Value == "true";
+}
+<body ng-app="egg9000" class="@(darkMode ? "bootstrap-dark" : "bootstrap")">
 	<header>
 		<nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3 navbar-themed">
 			<div class="container">

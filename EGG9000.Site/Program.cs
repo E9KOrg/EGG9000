@@ -58,6 +58,18 @@ ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
 
+#if RELEASE
+// Apply pending migrations on startup. Production only - dev runs against the live DB and must
+// stay manual. Single shared ApplicationDbContext; EF takes an advisory lock so the bot and site
+// applying concurrently serialize safely.
+using (var migrateScope = app.Services.CreateScope())
+{
+    var migrateFactory = migrateScope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+    using var migrateCtx = migrateFactory.CreateDbContext();
+    migrateCtx.Database.Migrate();
+}
+#endif
+
 // Must run before any middleware that reads the request scheme/host (HTTPS redirect, auth,
 // OAuth redirect_uri generation). Honors X-Forwarded-Proto from the TLS-terminating proxy so
 // the Discord OAuth callback is built as https, not the proxy's internal http hop.
@@ -144,6 +156,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
             x.MigrationsAssembly("EGG9000.Common");
             x.CommandTimeout(30);
         });
+        // Kept on in prod on purpose: inlined parameter values are needed to debug user issues.
+        // The JSON-blob noise that produces is suppressed by NLog (drop messages >5000 chars), not here.
         options.EnableSensitiveDataLogging(true);
     });
 
@@ -178,6 +192,9 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.ExpireTimeSpan = TimeSpan.FromDays(45);
         options.Cookie.Name = "egg9000Cookie";
         options.Cookie.Expiration = TimeSpan.FromDays(45);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
         options.SlidingExpiration = true;
         options.LoginPath = $"/Identity/Account/Login";
         options.LogoutPath = $"/Identity/Account/Logout";
@@ -185,19 +202,6 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     });
 
 
-
-#if RELEASE
-        services.Configure<ActiveMonitorOptions>(options => {
-            options.ServiceType = "site";
-            options.ColorConfigKey = "SITE_COLOR";
-            options.PollIntervalSeconds = 10;
-        });
-        // Register active monitor so every instance watches the shared deployment record
-        // 1. Register the concrete class as a Singleton so other services can find it
-        services.AddSingleton<ActiveMonitorHostedService>();
-        // 2. Register it as a Hosted Service by resolving the existing Singleton instance
-        services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
-#endif
 
     services.AddResponseCaching();
     services.AddAuthorization(options => {

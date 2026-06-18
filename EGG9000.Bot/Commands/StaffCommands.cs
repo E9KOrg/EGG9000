@@ -802,8 +802,6 @@ namespace EGG9000.Bot.Commands {
             var buildConfig = "Unknown";
 #endif
 
-            var botActive = Environment.GetEnvironmentVariable("BOT_ACTIVE") ?? "(unset)";
-            var botColor = Environment.GetEnvironmentVariable("BOT_COLOR") ?? "(unset)";
             var proc = Process.GetCurrentProcess();
             var uptime = (DateTime.Now - proc.StartTime).Humanize();
 
@@ -825,8 +823,6 @@ namespace EGG9000.Bot.Commands {
             var server = command.GuildId.HasValue ? stats.GetServerStats(command.GuildId.Value) : null;
 
             var rows = new List<List<FixedWidthCell>> {
-                new() { new("Bot Active"), new(botActive, CellAlignment.Right) },
-                new() { new("Bot Color"), new(botColor, CellAlignment.Right) },
                 new() { new("Build"), new(buildConfig, CellAlignment.Right) },
                 new() { new("Uptime"), new(uptime, CellAlignment.Right) },
                 null,

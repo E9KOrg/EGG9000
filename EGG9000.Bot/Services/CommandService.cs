@@ -60,7 +60,6 @@ namespace EGG9000.Bot.Services {
         private readonly Bugsnag.IClient _bugsnag;
         private readonly SemaphoreSlim _semaphoreSlim = new(50);
         private readonly ContractUpdater _contractUpdater;
-        private readonly ActiveMonitorHostedService _activeMonitorHostedService;
         private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads;
         private readonly JobService _jobService;
         private readonly Guild _cpGuild;
@@ -81,8 +80,7 @@ namespace EGG9000.Bot.Services {
                 IServiceProvider serviceProvider,
                 ILogger<CommandService> logger,
                 IDbContextFactory<ApplicationDbContext> dbContextFactory,
-                IMemoryCache cache,
-                ActiveMonitorHostedService activeMonitorHostedService
+                IMemoryCache cache
             ) {
             _discord = discord;
             _words = words;
@@ -97,7 +95,6 @@ namespace EGG9000.Bot.Services {
             _logger = logger;
             _dbContextFactory = dbContextFactory;
             _cache = cache;
-            _activeMonitorHostedService = activeMonitorHostedService;
         }
 
         private static readonly Histogram RunCommandDuration = Metrics
@@ -319,8 +316,6 @@ namespace EGG9000.Bot.Services {
                 _discord.Gateway.SelectMenuExecuted += _discord_SelectMenuExecuted;
                 _discord.Gateway.AutocompleteExecuted += _discord_AutocompleteExecuted;
                 _discord.Gateway.ModalSubmitted += _discord_ModalSubmitted;
-
-                _ = _activeMonitorHostedService.SetActiveColorAsync();
 
                 _logger.LogInformation("Creating slash commands");
                 List<ApplicationCommandProperties> guildCommandProperties = [];

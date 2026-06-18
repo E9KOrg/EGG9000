@@ -62,7 +62,6 @@ namespace EGG9000.Bot.Automated {
                 }, cancellationToken));
             }
             await Task.WhenAll(tasks);
-            Console.WriteLine(String.Join(",", tasks.Select(x => x.IsCompleted ? "X" : "_")));
             times.Set("Updated Backups");
             await _db.SaveChangesAsync(cancellationToken);
 

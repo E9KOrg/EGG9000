@@ -22,6 +22,7 @@ namespace EGG9000.Site.Data {
             identity.AddClaim(new Claim("DbUserId", dbuser.Id.ToString()));
             identity.AddClaim(new Claim("DiscordId", logins.First().ProviderKey));
             identity.AddClaim(new Claim("GuildId", dbuser.GuildId.ToString()));
+            identity.AddClaim(new Claim("DarkMode", dbuser.DarkMode ? "true" : "false"));
             return identity;
         }
 

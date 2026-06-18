@@ -250,14 +250,22 @@ namespace EGG9000.Common.Database {
         }
 
 
-        // Npgsql 'timestamp with time zone' only accepts UTC (offset 0). Normalize every
-        // DateTimeOffset the model writes or compares (including query parameters - EF routes
-        // them through this converter) to UTC, so a stray local-offset value such as
-        // DateTimeOffset.Now can never crash a write or a query. The instant is preserved.
-        // Reads keep Npgsql's default materialization (local offset, same instant); the app
-        // compares DateTimeOffsets by instant, so the offset representation is irrelevant.
+        // Npgsql 'timestamp with time zone' only accepts UTC (offset 0). This converter normalizes
+        // every mapped DateTimeOffset column write to UTC, so a stray local-offset value such as
+        // DateTimeOffset.Now can never crash a write. It does NOT cover query parameters that are
+        // not tied to a converted column (a literal in a Where/OrderBy, raw SQL) -
+        // UtcDateTimeOffsetCommandInterceptor is the runtime safety net for those. The instant is
+        // preserved. Reads keep Npgsql's default materialization (local offset, same instant); the
+        // app compares DateTimeOffsets by instant, so the offset representation is irrelevant.
         private sealed class UtcDateTimeOffsetConverter : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTimeOffset, DateTimeOffset> {
             public UtcDateTimeOffsetConverter() : base(v => v.ToUniversalTime(), v => v) { }
+        }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
+            base.OnConfiguring(optionsBuilder);
+            // Last-line normalization of any non-UTC DateTimeOffset command parameter.
+            // Registered here so every consumer gets it.
+            optionsBuilder.AddInterceptors(UtcDateTimeOffsetCommandInterceptor.Instance);
         }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) {

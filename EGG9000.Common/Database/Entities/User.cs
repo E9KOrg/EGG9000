@@ -37,6 +37,9 @@ namespace EGG9000.Common.Database.Entities {
         public bool DMSBlocked { get; set; } = false;
         public bool TempDisabled { get; set; }
         public bool showEB { get; set; }
+        // Site dark-mode preference. Source of truth for the dashboard theme (replaces the old
+        // per-browser Egg9000Theme cookie). Surfaced to the Site as a "DarkMode" claim at login.
+        public bool DarkMode { get; set; }
         // High-water mark of the highest rank (oom) we have already announced a rank-up for.
         // Gates rank-up messages so an EB dip-and-recover spike does not re-announce. -1 = never announced.
         public int HighestAnnouncedOom { get; set; } = -1;
@@ -200,12 +203,9 @@ namespace EGG9000.Common.Database.Entities {
                 } catch(Exception) { throw; }
             }
             set {
-                if(value == null) {
-                    Console.WriteLine("Trying to save NULL EggIncAccounts");
-                } else {
-                    _accounts = value;
-                    UpdateAccounts();
-                }
+                if(value is null) return;
+                _accounts = value;
+                UpdateAccounts();
             }
 
         }

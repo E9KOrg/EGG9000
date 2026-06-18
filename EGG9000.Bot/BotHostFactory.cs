@@ -63,19 +63,11 @@ public static class BotHostFactory {
                     x.MigrationsAssembly("EGG9000.Common");
                     x.CommandTimeout(30);
                 });
+                // Kept on in prod on purpose (param values needed to debug user issues); JSON-blob
+                // noise is suppressed by NLog (drop messages >5000 chars), not here.
                 options.EnableSensitiveDataLogging(true);
                 options.AddInterceptors(new QueryCountingInterceptor());
             });
-
-#if !DEBUG
-            services.Configure<ActiveMonitorOptions>(options => {
-                options.ServiceType = "bot";
-                options.ColorConfigKey = "BOT_COLOR";
-                options.PollIntervalSeconds = 10;
-            });
-            services.AddSingleton<ActiveMonitorHostedService>();
-            services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
-#endif
 
             services.AddSingleton<DatabaseCache>();
             services.AddHostedService<UserCacheRefreshService>();

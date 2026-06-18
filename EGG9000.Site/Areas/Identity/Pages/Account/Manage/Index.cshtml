@@ -57,50 +57,18 @@
                 <span asp-validation-for="Input.ShipReturnStillFuelingMinutes" class="text-danger"></span>
             </div>
             <br />
-            <button id="update-profile-button" type="submit" class="btn btn-primary">Save</button>
             <hr />
             <div class="form-check">
                 <label class="form-check-label">
-                    <input id="darkModeEnable" class="form-check-input" type="checkbox">
-                Enable Dark Mode (beta, setting is per-browser)</label>
+                    <input asp-for="Input.DarkMode" class="form-check-input" type="checkbox">
+                    Enable Dark Mode (saved to your account)</label>
             </div>
-
+            <br />
+            <button id="update-profile-button" type="submit" class="btn btn-primary">Save</button>
         </form>
     </div>
 </div>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
-
-    <script>
-        function setCookie(n, v) {
-            document.cookie = n + "=" + v + "; samesite=none; secure; max-age=31536000; path=/";
-        }
-        function setCookieMaxExpiry(n, v){
-            const d = new Date();
-            d.setTime(d.getTime() + (400 * 24 * 60 * 60 * 1000));
-            document.cookie = n + "=" + v + "; samesite=none;" + "expires=" + d.toUTCString() + ";" + "secure; max-age=31536000; path=/";
-        }
-
-      $(function() {
-        // Check darkmode checkbox if cookie is found.
-        if (Cookies.get('Egg9000Theme') == 'bootstrap-dark') {
-            $('#darkModeEnable').prop('checked', true);
-        }
-
-        // Set cookie for dark/light on checkbox changed.
-        $('#darkModeEnable').change(function() {
-            if ($('#darkModeEnable').is(":checked")) {
-                $('body').addClass("bootstrap-dark");
-                $('body').removeClass("bootstrap");
-                setCookieMaxExpiry('Egg9000Theme', 'bootstrap-dark');
-            }
-            else {
-                $('body').addClass("bootstrap");
-                $('body').removeClass("bootstrap-dark");
-                setCookieMaxExpiry('Egg9000Theme', 'bootstrap');
-            }
-        })
-      })
-    </script>
 }

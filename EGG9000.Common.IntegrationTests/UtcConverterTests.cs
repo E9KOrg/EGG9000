@@ -45,4 +45,33 @@ public class UtcConverterTests {
         // Instant must round-trip exactly (DateTimeOffset equality compares the instant, not the offset).
         Assert.AreEqual(localNow.ToUniversalTime(), found[0].StartTime.ToUniversalTime(), "The instant must be preserved.");
     }
+
+    // The exact shape that crashed HomeController.EggDayLeaderboard: a DateTimeOffset literal with a
+    // non-UTC offset compared against a DateTime ('date') column, inside a GroupBy + nested Select.
+    // The model value converter does NOT reach this parameter - the column is DateTime, not
+    // DateTimeOffset, so Properties<DateTimeOffset>().HaveConversion never binds it. Only
+    // UtcDateTimeOffsetCommandInterceptor normalizes it; without the interceptor Npgsql throws
+    // "Cannot write DateTimeOffset with Offset=-05:00:00 ... only offset 0 (UTC) is supported".
+    [TestMethod]
+    public async Task LocalOffsetParameter_AgainstDateColumn_DoesNotThrow() {
+        await using var ctx = new ApplicationDbContext(Options());
+        await ctx.Database.MigrateAsync();
+
+        var eggIncId = "UtcInterceptorTest-" + Guid.NewGuid().ToString("N");
+        ctx.UserSnapShots.Add(new UserSnapShot { Date = new DateTime(2026, 7, 10), UserId = Guid.NewGuid(), EggIncID = eggIncId, EarningsBonus = 1 });
+        ctx.UserSnapShots.Add(new UserSnapShot { Date = new DateTime(2026, 7, 12), UserId = Guid.NewGuid(), EggIncID = eggIncId, EarningsBonus = 2 });
+        await ctx.SaveChangesAsync();
+
+        var cutoff = new DateTimeOffset(2026, 7, 14, 11, 0, 0, TimeSpan.FromHours(-5));
+        var ids = new[] { eggIncId };
+
+        var latest = await ctx.UserSnapShots.AsQueryable()
+            .Where(x => ids.Contains(x.EggIncID) && x.Date < cutoff)
+            .GroupBy(x => x.EggIncID)
+            .Select(g => g.OrderByDescending(y => y.Date).First())
+            .ToListAsync();
+
+        Assert.AreEqual(1, latest.Count, "The pre-cutoff snapshot query must run without an Npgsql offset error.");
+        Assert.AreEqual(new DateTime(2026, 7, 12), latest[0].Date, "Should return the latest snapshot before the cutoff.");
+    }
 }
