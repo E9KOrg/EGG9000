@@ -192,6 +192,9 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.ExpireTimeSpan = TimeSpan.FromDays(45);
         options.Cookie.Name = "egg9000Cookie";
         options.Cookie.Expiration = TimeSpan.FromDays(45);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
         options.SlidingExpiration = true;
         options.LoginPath = $"/Identity/Account/Login";
         options.LogoutPath = $"/Identity/Account/Logout";

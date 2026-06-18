@@ -150,7 +150,7 @@ namespace EGG9000.Site.Controllers {
             var demerit = _db.Demerit.FirstOrDefault(x => x.Id == id);
             _db.Remove(demerit);
             await _db.SaveChangesAsync();
-            return Redirect(Request.Headers["Referer"].ToString());
+            return RedirectToLocalReferer();
         }
 
         [Authorize(Roles = "Admin")]
@@ -159,6 +159,7 @@ namespace EGG9000.Site.Controllers {
             return Content("Bot proccess ended.");
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> LookForLargeJump() {
             var snapshots = await _db.UserSnapShots.ToListAsync();
 
@@ -814,7 +815,10 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> DeleteGhost([FromQuery] Guid UserId, [FromQuery] Guid CoopId) {
-            var xref = await _db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == UserId && x.CoopId == CoopId);
+            var xref = await _db.UserCoopXrefs.Include(x => x.Coop).FirstAsync(x => x.UserId == UserId && x.CoopId == CoopId);
+            if(!VerifyId(xref.Coop.GuildId)) {
+                return NotFound();
+            }
             _db.Remove(xref);
             await _db.SaveChangesAsync();
             return RedirectToAction("Ghosts");
@@ -1382,6 +1386,16 @@ music
             return ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value) == guildid;
         }
 
+        // Redirect back to the Referer only when it points at this same host, to avoid an open
+        // redirect from a forged Referer header. Falls back to the site root.
+        private IActionResult RedirectToLocalReferer() {
+            var referer = Request.Headers["Referer"].ToString();
+            if(Uri.TryCreate(referer, UriKind.Absolute, out var uri) && uri.Host == Request.Host.Host) {
+                return Redirect(uri.PathAndQuery);
+            }
+            return Redirect("~/");
+        }
+
         public class SaveChannelDetailsObject {
             public List<ServerCoopSetting> CoopSettingsOverrides { get; set; }
             public List<ChannelDetail> ChannelDetails { get; set; }
@@ -1447,6 +1461,9 @@ music
 
         public async Task<IActionResult> SaveNotes([FromQuery] Guid UserId, [FromQuery] string Notes) {
             var user = await _db.DBUsers.FirstAsync(x => x.Id == UserId);
+            if(!VerifyId(user.GuildId)) {
+                return NotFound();
+            }
             user.Notes = Notes;
             await _db.SaveChangesAsync();
             return Content("Success");

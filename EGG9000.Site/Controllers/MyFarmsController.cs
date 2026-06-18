@@ -297,7 +297,7 @@ namespace EGG9000.Site.Controllers {
             var demerit = _db.Demerit.FirstOrDefault(x => x.Id == id);
             _db.Remove(demerit);
             await _db.SaveChangesAsync();
-            return Redirect(Request.Headers["Referer"].ToString());
+            return RedirectToLocalReferer();
         }
 
         public Dictionary<string, List<Common.Database.Entities.Contract>> GetUncompletedPEContracts(DBUser user, List<Common.Database.Entities.Contract> contracts) {
@@ -319,7 +319,17 @@ namespace EGG9000.Site.Controllers {
             var merit = _db.Merit.FirstOrDefault(x => x.Id == id);
             _db.Remove(merit);
             await _db.SaveChangesAsync();
-            return Redirect(Request.Headers["Referer"].ToString());
+            return RedirectToLocalReferer();
+        }
+
+        // Redirect back to the Referer only when it points at this same host, to avoid an open
+        // redirect from a forged Referer header. Falls back to the site root.
+        private IActionResult RedirectToLocalReferer() {
+            var referer = Request.Headers["Referer"].ToString();
+            if(Uri.TryCreate(referer, UriKind.Absolute, out var uri) && uri.Host == Request.Host.Host) {
+                return Redirect(uri.PathAndQuery);
+            }
+            return Redirect("~/");
         }
 
         public async Task<IActionResult> SendTestDM([FromQuery] string target, [FromQuery] ulong discorduserid) {

@@ -130,7 +130,17 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async void _runTimer(object state) {
-            await _run(state);
+            // async void timer callback: any exception escaping _run (e.g. from the pre-try
+            // semaphore wait / scope creation) would otherwise go unobserved on the thread pool
+            // and can crash the process. Contain it here.
+            try {
+                await _run(state);
+            } catch(Exception e) {
+                try {
+                    _bugSnag.Notify(e);
+                    _logger.LogError(e, "Unobserved exception in timer callback");
+                } catch { }
+            }
         }
 
         private async Task _run(object state) {
