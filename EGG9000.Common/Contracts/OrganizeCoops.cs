@@ -1,8 +1,11 @@
 ﻿using Discord;
 using Discord.WebSocket;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.Helpers;
+
+using Microsoft.EntityFrameworkCore;
 
 using System;
 using System.Collections.Generic;
@@ -11,7 +14,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class OrganizeCoops {
-        public static async Task<(List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded)> SortUsersIntoDay1Coops(List<DBUser> users, Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbGuild, SocketGuild guild = null, int overrideNumber = 0) {
+        public static async Task<(List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded)> SortUsersIntoDay1Coops(List<DBUser> users, Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbGuild, SeasonInfo contractSeason = null, List<UserSeasonProgress> seasonProgresses = null, SocketGuild guild = null, int overrideNumber = 0) {
             var groups = new List<PotentialCoopGroup>();
             var excluded = new List<(string reason, UserByAccount account)>();
 
@@ -81,6 +84,17 @@ namespace EGG9000.Common.Contracts {
                 return registerRewards.Count == 0 || registerRewards.Any(r => DBUser.MatchRewards(gradeSpec, r, completedRewards));
             }, "Rewards not selected");
 
+            // Seasonal PE filter, only runs when contract has a season and the guild uses BGs
+            if (contractSeason != null && !dbGuild.DisableBG) {
+                FilterAccounts(accounts, excluded, x => ShouldIncludeForSeasonalPe(
+                    x.Account,
+                    x.Account.GetGrade(),
+                    contractSeason,
+                    seasonProgresses ?? [],
+                    x.UserCsHistoryEntry?.Cxp),
+                    "Seasonal PE not needed");
+            }
+
             // Run CheckOnPreviousComplete last so that all other filters are applied to `accounts` first
             // This fixes some issues with  RedoLeggacyOption.YesOtherAccountMatch
             FilterAccounts(accounts, excluded, x => CheckOnPreviousComplete(dbGuild, x, contract, accounts.Where(a => a.User == x.User && a.Account.Id != x.Account.Id).ToList()), "Previously completed");
@@ -138,6 +152,38 @@ namespace EGG9000.Common.Contracts {
             }
 
             return (groups, excluded);
+        }
+
+        public static bool ShouldIncludeForSeasonalPe(
+            EggIncAccount account,
+            Ei.Contract.Types.PlayerGrade grade,
+            SeasonInfo contractSeason,
+            List<UserSeasonProgress> seasonProgresses,
+            double? contractScore) {
+
+            if (account.SeasonalPeOption == SeasonalPeOption.NotSet)
+                return true;
+
+            if (account.SeasonalPeOption == SeasonalPeOption.DontAssign)
+                return false;
+
+            if (account.SeasonalPeOption == SeasonalPeOption.AlwaysAssignIfMissing) {
+                var progress = seasonProgresses.FirstOrDefault(x => x.EggIncId == account.Id && x.SeasonId == contractSeason.Id);
+                // Use StartingGrade if available, season PE goals are based on the grade at season start
+                var seasonGrade = progress != null ? (Ei.Contract.Types.PlayerGrade)progress.StartingGrade : grade;
+                var maxPe = contractSeason.GetMaxPe(seasonGrade);
+                if (maxPe == 0) return true; // grade has no PE goals in this season
+                var earnedPe = contractSeason.GetPeEarned(seasonGrade, progress?.TotalCxp ?? 0);
+                return earnedPe < maxPe;
+            }
+
+            if (account.SeasonalPeOption == SeasonalPeOption.AssignIfBelowThreshold) {
+                // contractScore = account's previous score on this specific contract (UserCsHistoryEntry.Cxp), not the total season progress
+                return (contractScore ?? 0) < account.SeasonalPeThreshold;
+            }
+
+            // Unknown future option - default to include
+            return true;
         }
 
         private static List<Ei.RewardType> GetRegisterRewards(Guild dbGuild, UserByAccount x, Contract contract) {
@@ -300,6 +346,21 @@ namespace EGG9000.Common.Contracts {
                 includeBG.RemoveAll(x => true);
             }
             return coops;
+        }
+
+        // Static helper on OrganizeCoops so both the site controller and the bot can load season data without duplicating the query
+        public static async Task<(SeasonInfo contractSeason, List<UserSeasonProgress> seasonProgresses)> LoadContractSeasonData(ApplicationDbContext db, Contract contract, List<DBUser> users) {
+            if (string.IsNullOrEmpty(contract.SeasonId)) return (null, []);
+            var contractSeason = await db.SeasonInfos.FindAsync(contract.SeasonId);
+            if (contractSeason == null) return (null, []);
+            var eggIncIds = users
+                .SelectMany(u => u.EggIncAccounts.Select(a => a.Id))
+                .Where(id => id != null)
+                .ToList();
+            var seasonProgresses = await db.UserSeasonProgresses
+                .Where(x => x.SeasonId == contract.SeasonId && eggIncIds.Contains(x.EggIncId))
+                .ToListAsync();
+            return (contractSeason, seasonProgresses);
         }
     }
 }
