@@ -9,6 +9,10 @@
         .ThenBy(x => x.Egg.Name)
         .ToList();
 
+    string FriendlyDimension(string raw) =>
+        System.Globalization.CultureInfo.InvariantCulture.TextInfo
+            .ToTitleCase(raw.Replace("_", " ").ToLowerInvariant());
+
     string FormatModifier(double value) {
         bool negative = value < 1;
         int pct = (int)((negative ? (1 - value) : (value - 1)) * 100);
@@ -24,27 +28,43 @@
     }
 }
 
+<style>
+    .bootstrap-dark .colleggtibles-table .table-success,
+    .bootstrap-dark .colleggtibles-table .table-success > td,
+    .bootstrap-dark .colleggtibles-table .table-success > th {
+        background-color: rgba(40, 167, 69, 0.25);
+        color: inherit;
+    }
+    .bootstrap-dark .colleggtibles-table .table-secondary,
+    .bootstrap-dark .colleggtibles-table .table-secondary > td,
+    .bootstrap-dark .colleggtibles-table .table-secondary > th {
+        background-color: rgba(108, 117, 125, 0.2);
+        color: inherit;
+        border-top-color: rgba(255, 255, 255, 0.08);
+    }
+</style>
+
 <div class="card" style="margin-top:15px">
     <h4 class="card-header">Colleggtibles</h4>
     <div class="table-responsive">
-        <table class="table table-striped">
+        <table class="table table-striped colleggtibles-table">
             <thead>
                 <tr>
-                    <th>Name</th>
-                    <th class="d-none d-md-table-cell">Effect</th>
+                    <th style="text-align:left">Name</th>
+                    <th class="d-none d-md-table-cell" style="text-align:left">Effect</th>
                     <th class="text-center">Level</th>
-                    <th class="text-center">L1 <span class="d-none d-md-inline">(10M)</span></th>
-                    <th class="text-center">L2 <span class="d-none d-md-inline">(100M)</span></th>
-                    <th class="text-center">L3 <span class="d-none d-md-inline">(1B)</span></th>
-                    <th class="text-center">L4 <span class="d-none d-md-inline">(10B)</span></th>
+                    <th class="text-center">1 <span class="d-none d-md-inline">(10M)</span></th>
+                    <th class="text-center">2 <span class="d-none d-md-inline">(100M)</span></th>
+                    <th class="text-center">3 <span class="d-none d-md-inline">(1B)</span></th>
+                    <th class="text-center">4 <span class="d-none d-md-inline">(10B)</span></th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var (egg, level) in colleggtibles) {
                     var isMissing = level == 0;
-                    var dimensionName = egg.Modifiers?.FirstOrDefault()?.GetReadbleGameDimnension() ?? "";
+                    var dimensionName = FriendlyDimension(egg.Modifiers?.FirstOrDefault()?.GetReadbleGameDimnension() ?? "");
                     ulong farmSize = 0;
-                    if (isMissing && Model.Backup != null) {
+                    if (level < 4 && Model.Backup != null) {
                         Model.Backup.CustomEggMaxFarmSizeReached.TryGetValue(egg.Identifier.ToLower(), out farmSize);
                     }
                     var popText = FormatPopulation(farmSize);
@@ -56,12 +76,12 @@
                             <strong>@egg.Name</strong>
                             @if (isMissing) {
                                 <span class="badge badge-secondary" style="margin-left:4px;">Missing</span>
-                                @if (!string.IsNullOrEmpty(popText)) {
-                                    <small class="text-muted" style="margin-left:4px;">reached @popText</small>
-                                }
+                            }
+                            @if (level < 4 && !string.IsNullOrEmpty(popText)) {
+                                <small class="text-muted" style="margin-left:4px;">reached @popText</small>
                             }
                         </td>
-                        <td class="d-none d-md-table-cell">@dimensionName</td>
+                        <td class="d-none d-md-table-cell" style="white-space:nowrap">@dimensionName</td>
                         <td class="text-center">
                             <span class="badge @(isMissing ? "badge-secondary" : level == 4 ? "badge-success" : "badge-warning")">
                                 @level/4
