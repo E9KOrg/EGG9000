@@ -156,6 +156,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
             x.MigrationsAssembly("EGG9000.Common");
             x.CommandTimeout(30);
         });
+        // Kept on in prod on purpose: inlined parameter values are needed to debug user issues.
+        // The JSON-blob noise that produces is suppressed by NLog (drop messages >5000 chars), not here.
         options.EnableSensitiveDataLogging(true);
     });
 

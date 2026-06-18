@@ -63,6 +63,8 @@ public static class BotHostFactory {
                     x.MigrationsAssembly("EGG9000.Common");
                     x.CommandTimeout(30);
                 });
+                // Kept on in prod on purpose (param values needed to debug user issues); JSON-blob
+                // noise is suppressed by NLog (drop messages >5000 chars), not here.
                 options.EnableSensitiveDataLogging(true);
                 options.AddInterceptors(new QueryCountingInterceptor());
             });
