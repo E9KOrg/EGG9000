@@ -4,7 +4,7 @@
 
 @{
     var colleggtibles = Model.CustomEggs
-        .Select(e => (Egg: e, Level: (int)Model.Backup.GetColleggtibleLevel(e.Identifier)))
+        .Select(e => (Egg: e, Level: (int)(Model.Backup?.GetColleggtibleLevel(e.Identifier) ?? 0)))
         .OrderBy(x => x.Level == 0 ? 1 : 0)
         .ThenBy(x => x.Egg.Name)
         .ToList();
