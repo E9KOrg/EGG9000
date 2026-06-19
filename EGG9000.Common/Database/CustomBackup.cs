@@ -521,14 +521,22 @@ namespace EGG9000.Common.Database {
 
         public uint GetColleggtibleLevel(string identifier) {
             CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize);
-            return farmSize switch {
-                > 10000000000UL => 4,
-                > 1000000000UL => 3,
-                > 100000000UL => 2,
-                > 10000000UL => 1,
-                _ => 0
-            };
+            return LevelForFarmSize(farmSize);
         }
+
+        // Level plus the raw max habitat population reached, in one lookup.
+        public (uint Level, ulong FarmSize) GetColleggtibleProgress(string identifier) {
+            CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize);
+            return (LevelForFarmSize(farmSize), farmSize);
+        }
+
+        private static uint LevelForFarmSize(ulong farmSize) => farmSize switch {
+            > 10000000000UL => 4,
+            > 1000000000UL => 3,
+            > 100000000UL => 2,
+            > 10000000UL => 1,
+            _ => 0
+        };
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {
             foreach(var localContract in contracts) {

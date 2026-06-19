@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Ei;
 using Google.Protobuf.Reflection;
+using Humanizer;
 using MessagePack;
 using System;
 using System.Collections.Generic;
@@ -164,6 +165,18 @@ namespace EGG9000.Common.Database.Entities {
             var name = Enum.GetName(type, Dimension);
             if(name is null) return Dimension.ToString();
             return type.GetField(name)?.GetCustomAttributes(false).OfType<OriginalNameAttribute>().SingleOrDefault()?.Name ?? Dimension.ToString();
+        }
+
+        // Title-cased human dimension, e.g. "Egg Value". Shared by the contract-settings embed and the web view.
+        public string DimensionName() => GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
+
+        // "+" for a buff (value >= 1), "-" for a debuff.
+        public string Sign() => Value < 1 ? "-" : "+";
+
+        // Signed percent away from 1.0, e.g. "+15%" / "-5%".
+        public string PercentString() {
+            var magnitude = Value < 1 ? 1 - Value : Value - 1;
+            return $"{Sign()}{(int)(magnitude * 100)}%";
         }
 
         public override bool Equals(object another) {

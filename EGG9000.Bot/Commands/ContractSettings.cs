@@ -488,22 +488,11 @@ namespace EGG9000.Bot.Commands {
 
         private static string GetTheoreticalModifierString(DBCustomEgg egg) {
             var firstMod = egg.Modifiers.First();
-            var dimensionString = firstMod.GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
-            return $"({((firstMod.Value < 1) ? "-" : "+")} {dimensionString}{(egg.Released ? "" : " \\*")})";
+            return $"({firstMod.Sign()} {firstMod.DimensionName()}{(egg.Released ? "" : " \\*")})";
         }
 
         private static string GetModifierString(DBCustomEggModifier modifier) {
-            var value = modifier.Value;
-            var negative = false;
-            if(value < 1) {
-                value = 1 - value;
-                negative = true;
-            } else {
-                value -= 1;
-            }
-            var dimensionString = modifier.GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
-
-            return $"{(negative ? "-" : "+")}{(int)(value * 100)}% {dimensionString}";
+            return $"{modifier.PercentString()} {modifier.DimensionName()}";
         }
         #endregion
 

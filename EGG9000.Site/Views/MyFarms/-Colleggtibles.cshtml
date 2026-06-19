@@ -1,31 +1,8 @@
 @using EGG9000.Common.Helpers
-@using static Ei.GameModifier.Types
 @model (CustomBackup Backup, List<DBCustomEgg> CustomEggs)
 
 @{
-    var colleggtibles = Model.CustomEggs
-        .Select(e => (Egg: e, Level: (int)(Model.Backup?.GetColleggtibleLevel(e.Identifier) ?? 0)))
-        .OrderBy(x => x.Level == 0 ? 1 : 0)
-        .ThenBy(x => x.Egg.Name)
-        .ToList();
-
-    string FriendlyDimension(string raw) =>
-        System.Globalization.CultureInfo.InvariantCulture.TextInfo
-            .ToTitleCase(raw.Replace("_", " ").ToLowerInvariant());
-
-    string FormatModifier(double value) {
-        bool negative = value < 1;
-        int pct = (int)((negative ? (1 - value) : (value - 1)) * 100);
-        return $"{(negative ? "-" : "+")}{pct}%";
-    }
-
-    string FormatPopulation(ulong num) {
-        if (num == 0) return "";
-        if (num >= 1_000_000_000UL) return $"{num / 1_000_000_000.0:F1}B";
-        if (num >= 1_000_000UL) return $"{num / 1_000_000.0:F1}M";
-        if (num >= 1_000UL) return $"{num / 1_000.0:F1}K";
-        return num.ToString();
-    }
+    var rows = ColleggtibleHelper.BuildRows(Model.Backup, Model.CustomEggs);
 }
 
 <style>
@@ -60,47 +37,36 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach (var (egg, level) in colleggtibles) {
-                    var isMissing = level == 0;
-                    var dimensionName = FriendlyDimension(egg.Modifiers?.FirstOrDefault()?.GetReadbleGameDimnension() ?? "");
-                    ulong farmSize = 0;
-                    if (level < 4 && Model.Backup != null) {
-                        Model.Backup.CustomEggMaxFarmSizeReached.TryGetValue(egg.Identifier.ToLower(), out farmSize);
-                    }
-                    var popText = FormatPopulation(farmSize);
-                    <tr class="@(isMissing ? "table-secondary" : "")">
+                @foreach (var row in rows) {
+                    <tr class="@(row.Missing ? "table-secondary" : "")">
                         <td>
-                            @if (!string.IsNullOrEmpty(egg.Icon?.URL)) {
-                                <img src="@egg.Icon.URL" style="max-height:22px; margin-right:5px;" />
+                            @if (!string.IsNullOrEmpty(row.IconUrl)) {
+                                <img src="@row.IconUrl" style="max-height:22px; margin-right:5px;" />
                             }
-                            <strong>@egg.Name</strong>
-                            @if (isMissing) {
+                            <strong>@row.Name</strong>
+                            @if (row.Missing) {
                                 <span class="badge badge-secondary" style="margin-left:4px;">Missing</span>
                             }
-                            @if (level < 4 && !string.IsNullOrEmpty(popText)) {
-                                <small class="text-muted" style="margin-left:4px;">reached @popText</small>
+                            @if (!string.IsNullOrEmpty(row.FarmReachedText)) {
+                                <small class="text-muted" style="margin-left:4px;">reached @row.FarmReachedText</small>
                             }
                         </td>
-                        <td class="d-none d-md-table-cell" style="white-space:nowrap">@dimensionName</td>
+                        <td class="d-none d-md-table-cell" style="white-space:nowrap">@row.Dimension</td>
                         <td class="text-center">
-                            <span class="badge @(isMissing ? "badge-secondary" : level == 4 ? "badge-success" : "badge-warning")">
-                                @level/4
+                            <span class="badge @(row.Missing ? "badge-secondary" : row.Level == 4 ? "badge-success" : "badge-warning")">
+                                @row.Level/4
                             </span>
                         </td>
-                        @for (var l = 0; l < 4; l++) {
-                            var mod = (egg.Modifiers != null && egg.Modifiers.Count > l) ? egg.Modifiers[l] : null;
-                            var isActive = (l + 1) == level;
-                            var isFuture = (l + 1) > level;
-                            var tdClass = "text-center" + (isActive ? " table-success" : isFuture ? " text-muted" : "");
-                            <td class="@tdClass">
-                                @if (mod != null) {
-                                    <span title='×@mod.Value.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)'>@FormatModifier(mod.Value)</span>
+                        @foreach (var cell in row.Cells) {
+                            <td class="text-center@(cell.Active ? " table-success" : cell.Future ? " text-muted" : "")">
+                                @if (cell.HasValue) {
+                                    <span title='×@cell.RawValue.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)'>@cell.Percent</span>
                                 }
                             </td>
                         }
                     </tr>
                 }
-                @if (!colleggtibles.Any()) {
+                @if (rows.Count == 0) {
                     <tr><td colspan="7" class="text-center text-muted">No colleggtible data available.</td></tr>
                 }
             </tbody>
