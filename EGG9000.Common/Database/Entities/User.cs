@@ -406,6 +406,10 @@ namespace EGG9000.Common.Database.Entities {
         public string AfxSetsImageHash { get; set; } = "";
         [Key(41)]
         public List<string> AfxSetsImageUrls { get; set; } = new();
+        [Key(42)]
+        public SeasonalPeOption SeasonalPeOption { get; set; } = SeasonalPeOption.NotSet;
+        [Key(43)]
+        public double SeasonalPeThreshold { get; set; } = 0;
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
                 return UltraGroup;

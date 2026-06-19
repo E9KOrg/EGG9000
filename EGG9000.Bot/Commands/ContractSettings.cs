@@ -116,6 +116,9 @@ namespace EGG9000.Bot.Commands {
                 if(account.LeggacyAutoRegisterRewards.Any()) {
                     eBuilder.AddField("Leggacy Rewards Filter", string.Join(",", account.LeggacyAutoRegisterRewards.Select(x => rDict[x])));
                 }
+
+                eBuilder.AddField("Seasonal PE", GetSeasonalPeText(account));
+                buttons.Add(("Seasonal PE", $"MCSSeasonalPe:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             }
 
             if(!account.HasActiveSubscription()) {
@@ -371,6 +374,108 @@ namespace EGG9000.Bot.Commands {
 
             await component.UpdateAsync(x => { x.Components = GetRlButtons(index, account, dbuser); x.Embed = RedoLeggaciesEmbedBuilder(dbuser, account).Build(); });
         }
+        #endregion
+
+        #region SeasonalPe
+
+        [ComponentCommand]
+        public static async Task MCSSeasonalPe(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+            await component.UpdateAsync(x => { x.Components = GetSeasonalPeComponents(index, account, dbuser); x.Embed = SeasonalPeEmbed(dbuser, account).Build(); });
+        }
+
+        private static string GetSeasonalPeText(EggIncAccount account) => account.SeasonalPeOption switch {
+            SeasonalPeOption.AlwaysAssignIfMissing => "Yes - assign while PE is missing",
+            SeasonalPeOption.AssignIfBelowThreshold => $"Yes - assign when contract score is under {account.SeasonalPeThreshold:N0}",
+            SeasonalPeOption.DontAssign => "No - skip seasonal contracts",
+            _ => "Not set (assigned normally)"
+        };
+
+        private static EmbedBuilder SeasonalPeEmbed(DBUser dbuser, EggIncAccount account) {
+            var content = "Seasonal PE Filter Text"; // UI: Daveed (text for the seasonal pe filter embed) 
+            return MenuEmbedTemplate("Seasonal PE Menu", content, account, dbuser).AddField("Current Setting", GetSeasonalPeText(account));
+        }
+
+        private static MessageComponent GetSeasonalPeComponents(int index, EggIncAccount account, DBUser dbuser) {
+            var builder = new ComponentBuilder().WithSelectMenu($"MCSSeasonalPeSet:{index},{dbuser.DiscordId}", [
+                new("Not set (assigned normally)", "0", isDefault: account.SeasonalPeOption == SeasonalPeOption.NotSet),
+                new("Yes - always assign while PE is missing", "1", isDefault: account.SeasonalPeOption == SeasonalPeOption.AlwaysAssignIfMissing),
+                new("Yes - assign when my CXP is below a threshold", "2", isDefault: account.SeasonalPeOption == SeasonalPeOption.AssignIfBelowThreshold),
+                new("No - skip seasonal contracts even if missing PE", "3", isDefault: account.SeasonalPeOption == SeasonalPeOption.DontAssign),
+            ]);
+
+            if (account.SeasonalPeOption == SeasonalPeOption.AssignIfBelowThreshold) {
+                builder.WithButton("Change CXP Threshold", $"SeasonalPeThreshModal:{index},{dbuser.DiscordId}");
+            }
+
+            builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}", ButtonStyle.Secondary);
+            return builder.Build();
+        }
+
+        [ComponentCommand]
+        public static async Task MCSSeasonalPeSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+            account.SeasonalPeOption = (SeasonalPeOption)int.Parse(component.Data.Values.First());
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            await component.UpdateAsync(x => { x.Components = GetSeasonalPeComponents(index, account, dbuser); x.Embed = SeasonalPeEmbed(dbuser, account).Build(); });
+        }
+
+        [ComponentCommand]
+        public static async Task SeasonalPeThreshModal(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+
+            var modal = new ModalBuilder()
+                .WithTitle("Set Seasonal CXP Threshold")
+                .WithCustomId($"SeasonalPeThreshUpdate:{index},{dbuser.DiscordId}")
+                .AddTextInput(
+                    label: "Assign me when my contract score is below this value",
+                    value: account.SeasonalPeThreshold.ToString("N0"),
+                    customId: "num",
+                    required: true)
+                .Build();
+
+            await component.RespondWithModalAsync(modal);
+        }
+
+        [Modal]
+        public static async Task SeasonalPeThreshUpdate(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
+            var numText = modal.Data.Components.First(x => x.CustomId == "num").Value.ToLower().Replace(",", "");
+            var isNum = double.TryParse(
+                numText.EndsWith("k") ? numText[..^1] : numText,
+                out var num);
+            if (isNum && numText.EndsWith("k")) num *= 1000;
+
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+
+            if (!isNum || num <= 0) {
+                var errMsg = $"⚠️ `{numText}` not accepted - enter a positive number (e.g. `5000` or `5k`)";
+                var embed = SeasonalPeEmbed(dbuser, account).AddField("ERROR", errMsg).WithColor(Color.Red).Build();
+                var components = new ComponentBuilder()
+                    .WithButton("Re-enter", $"SeasonalPeThreshModal:{index},{dbuser.DiscordId}")
+                    .WithButton("Cancel", $"MCSSeasonalPe:{index},{dbuser.DiscordId}")
+                    .Build();
+                await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embed; });
+            } else {
+                account.SeasonalPeThreshold = num;
+                dbuser.UpdateAccounts();
+                await db.SaveChangesAsync();
+                await modal.UpdateAsync(x => { x.Components = GetSeasonalPeComponents(index, account, dbuser); x.Embed = SeasonalPeEmbed(dbuser, account).Build(); });
+            }
+        }
+
         #endregion
 
         #region TwoToThree

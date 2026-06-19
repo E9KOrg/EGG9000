@@ -340,6 +340,18 @@
                         @string.Join("", "No")
                     }
                 </span>
+                <span style="margin-right:10px;">
+                    <b><u>Seasonal PE</u></b>:
+                    @if (account.SeasonalPeOption == SeasonalPeOption.AlwaysAssignIfMissing) {
+                        @:Yes (always)
+                    } else if (account.SeasonalPeOption == SeasonalPeOption.AssignIfBelowThreshold) {
+                        @:Yes (contract score under @account.SeasonalPeThreshold.ToString("N0"))
+                    } else if (account.SeasonalPeOption == SeasonalPeOption.DontAssign) {
+                        @:No
+                    } else {
+                        @:Not set
+                    }
+                </span>
                 @if(account?.LatestRunningScore != 0){
                     <br /><span><b><u>Latest Running Score</u></b>: @account.LatestRunningScore.ToString("G3")</span>
                 }

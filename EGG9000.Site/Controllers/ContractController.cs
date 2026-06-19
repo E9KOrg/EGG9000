@@ -84,7 +84,10 @@ namespace EGG9000.Site.Controllers {
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.UtcNow.AddDays(-60)).ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
-            var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild, guild, count);
+
+            var (contractSeason, seasonProgresses) = await OrganizeCoops.LoadContractSeasonData(_db, contract, users);
+
+            var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild, contractSeason, seasonProgresses, guild: guild, overrideNumber: count);
 
             return (coopGroups, contract);
         }

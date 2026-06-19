@@ -68,6 +68,10 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public List<Ei.Contract.Types.Goal> GoalsDetail => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(goals);
 
+        // Derived from the proto rather than a DB column so leggacy re-runs of old seasonal contracts keep the original season ID
+        [NotMapped]
+        public string SeasonId => string.IsNullOrEmpty(Details?.SeasonId) ? null : Details.SeasonId;
+
         public List<GuildContract> GuildContracts { get; set; }
 
         public DateTimeOffset Created { get; set; }
