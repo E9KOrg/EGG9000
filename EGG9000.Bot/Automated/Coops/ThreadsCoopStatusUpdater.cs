@@ -1438,7 +1438,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var nextDemeritAt = (currentSleep.DemeritsGiven + 1) * 18;
                     var demeritChannel = await GetDemeritChannel(dbGuild);
                     var needsDemerit = timeEmpty > nextDemeritAt && demeritChannel is not null && !user.Xref.NoDemerit;
-                    if(needsDemerit && user.DBUser is not null) {
+                    if(needsDemerit && user.DBUser is not null && user.DiscordUser is not null) {
                         currentSleep.DemeritsGiven++;
                         if(user.DBUser.IsFreshEgg()) {
                             _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{user.DiscordUser?.Mention ?? user.DBUser.DiscordUsername}: You will start receiving demerits for this 7 days after joining the server. Your silos have been empty for {nextDemeritAt} hours."));
