@@ -18,7 +18,10 @@
 
     var count = currentCoops.Count;
     var ebrgx = new Regex(@"\(.+?\)");
-    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+    // LesserAdmins are intentionally excluded: on this page admin gates coop names, member ids, the
+    // remove (X) button and move controls. The backend move/remove endpoints already reject LesserAdmin,
+    // so showing them the controls only leaks coop names and dangles dead buttons.
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
 
     var activeCoops = currentCoops.Select(c => new {
         Name = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
