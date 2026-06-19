@@ -97,55 +97,55 @@ namespace EGG9000.Bot.Commands {
 
             var buttons = new List<(string, string, ButtonStyle)>();
 
-            var redoText = account.Assignment.Redo.Mode switch {
-                RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
-                RedoLeggacyOption.YesNoUltra => "Yes (Will not redo completed Ultra contracts)",
-                RedoLeggacyOption.YesThreshold => $"Yes (If previous score was under {account.Assignment.Redo.ScoreThreshold} score)",
-                RedoLeggacyOption.YesOtherAccountMatch => "Yes (If any other of your accounts get assigned)",
-                RedoLeggacyOption.No => "No (Will still be assigned to incomplete leggacies)",
-                _ => "No (Will still be assigned to incomplete leggacies)"
+            var redoSummary = account.Assignment.Redo.Mode switch {
+                RedoLeggacyOption.YesAll => "Yes (all)",
+                RedoLeggacyOption.YesNoUltra => "Yes (no ultra)",
+                RedoLeggacyOption.YesThreshold => $"Yes (<{account.Assignment.Redo.ScoreThreshold:N0})",
+                RedoLeggacyOption.YesOtherAccountMatch => "Yes (alt match)",
+                _ => "No"
             };
-
-            eBuilder.AddField("__Always Assign Me If__", "Permanent rewards you are still missing.");
+            var seasonalPe = account.Assignment.Get(PermanentRewardKind.SeasonalPe);
+            var seasonalSummary = seasonalPe.Mode switch {
+                ForceMode.AssignIfMissing => "If missing",
+                ForceMode.BelowThreshold => $"If <{seasonalPe.CsFloor ?? 0:N0}",
+                _ => "Not set"
+            };
             var colleggtibleOn = account.Assignment.Get(PermanentRewardKind.Colleggtible).Mode == ForceMode.AssignIfMissing;
-            eBuilder.AddField("Auto-Assign Colleggtibles", colleggtibleOn ? "Yes" : "No");
-            eBuilder.AddField("Seasonal PE", GetSeasonalPeText(account));
 
             var newDict = GetNewRewardDictionary();
             var legacyDict = GetLegacyRewardDictionary();
             account.Assignment.NewContractRewardFilter ??= [];
             account.Assignment.LegacyRewardFilter ??= [];
 
-            eBuilder.AddField("__New Contracts__", "Settings for newly released contracts.");
-            eBuilder.AddField("Rewards Filter", account.Assignment.NewContractRewardFilter.Any() ? string.Join(",", account.Assignment.NewContractRewardFilter.Select(x => newDict[x])) : "All Contracts");
+            var newRewards = account.Assignment.NewContractRewardFilter.Any() ? string.Join(", ", account.Assignment.NewContractRewardFilter.Select(x => newDict[x])) : "All";
+            var legRewards = account.Assignment.LegacyRewardFilter.Any() ? string.Join(", ", account.Assignment.LegacyRewardFilter.Select(x => legacyDict[x])) : "Follows main";
 
-            eBuilder.AddField("__Leggacy Contracts__", "Settings for re-offered (leggacy) contracts.");
-            eBuilder.AddField("Leggacy Rewards Filter", account.Assignment.LegacyRewardFilter.Any() ? string.Join(",", account.Assignment.LegacyRewardFilter.Select(x => legacyDict[x])) : "Follows main filter");
-            eBuilder.AddField("Redo Completed Leggacies", redoText);
-            eBuilder.AddField("Skip Seasonal Replays", account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF");
-            eBuilder.AddField("Auto-Assign 2 -> 3 Contracts", account.Assignment.TwoToThree ? "Yes" : "No");
+            eBuilder.AddField("__Always Assign Me If__",
+                $"Colleggtibles: {(colleggtibleOn ? "Yes" : "No")}\nSeasonal PE: {seasonalSummary}");
 
-            eBuilder.AddField("__Placement & Other__", "Boarding groups, breaks, and other preferences.");
-            eBuilder.AddField("Break (60 Day Max)", MCSBreakMessage(account));
+            eBuilder.AddField("__New Contracts__", $"Rewards: {newRewards}");
+
+            eBuilder.AddField("__Leggacy Contracts__",
+                $"Leg. Rewards: {legRewards}\nRedo: {redoSummary}\nSkip Seasonal: {(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")}\n2 -> 3: {(account.Assignment.TwoToThree ? "Yes" : "No")}");
+
+            var placementLines = new List<string> { $"Break: {MCSBreakMessage(account)}" };
             if(!dbguild.DisableBG) {
-                eBuilder.AddField("Boarding Group", account.Group != default ? $"BG{account.Group} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.Group).time}:t>" : "Not Set (please select below)");
-                if(account.HasActiveSubscription()) {
-                    eBuilder.AddField("Ultra Boarding Group", account.UltraGroup != default ? $"UG{account.UltraGroup} Co-ops start just after <t:{BoardingGroupTimes.First(x => x.bg == account.UltraGroup).time}:t>" : "Not Set (please select below)");
-                }
+                placementLines.Add($"Boarding Group: {(account.Group != default ? $"BG{account.Group}" : "Not Set")}");
+                if(account.HasActiveSubscription())
+                    placementLines.Add($"Ultra BG: {(account.UltraGroup != default ? $"UG{account.UltraGroup}" : "Not Set")}");
             }
-            if(dbguild.AllowGuilds) {
-                eBuilder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "Not Set" : account.Guild.Truncate(100));
-            }
-            if(!account.HasActiveSubscription()) {
-                eBuilder.AddField("Ultra Offer Pings", account.PingForNCUltra ? "Enabled" : "Disabled");
-            }
+            if(dbguild.AllowGuilds)
+                placementLines.Add($"Guild: {(string.IsNullOrWhiteSpace(account.Guild) ? "Not Set" : account.Guild.Truncate(50))}");
+            if(!account.HasActiveSubscription())
+                placementLines.Add($"Ultra Pings: {(account.PingForNCUltra ? "On" : "Off")}");
+            eBuilder.AddField("__Placement & Other__", string.Join("\n", placementLines));
 
+            // Filter settings always show their edit buttons (matching their always-shown fields and the
+            // Colleggtibles/Redo/2->3 buttons). Only Boarding Group is BG-mode-specific and stays gated.
             buttons.Add(("Colleggtibles Setting", $"MCSColleggtible:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
-            if(!dbguild.DisableBG) {
-                buttons.Add(("Seasonal PE", $"MCSSeasonalPe:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
-                buttons.Add(("Rewards Filter", $"MCSRewards:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
-                buttons.Add(("Leggacy Rewards Filter", $"MCSLeggacyRewards:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
-            }
+            buttons.Add(("Seasonal PE", $"MCSSeasonalPe:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
+            buttons.Add(("Rewards Filter", $"MCSRewards:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
+            buttons.Add(("Leggacy Rewards Filter", $"MCSLeggacyRewards:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             buttons.Add(("Redo Completed Leggacies", $"MCSRL:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             buttons.Add(("2 -> 3 Setting", $"MCSTwoToThree:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             if(!dbguild.DisableBG) {
