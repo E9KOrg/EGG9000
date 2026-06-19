@@ -21,27 +21,27 @@
         .OrderBy(s => s.Date)
         .Select(s => new {
             date = s.Date.ToString("yyyy-MM-dd"),
-            logEb = s.EarningsBonus > 0 ? Math.Log10(s.EarningsBonus) : 0.0,
+            logEb = (s.EarningsBonus > 0 && double.IsFinite(s.EarningsBonus)) ? Math.Log10(s.EarningsBonus) : 0.0,
             ebStr = s.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3),
-            logSe = s.SoulEggs > 0 ? Math.Log10(s.SoulEggs) : 0.0,
+            logSe = (s.SoulEggs > 0 && double.IsFinite(s.SoulEggs)) ? Math.Log10(s.SoulEggs) : 0.0,
             seStr = s.SoulEggs.ToEggString(numberOfDecimalPlaces: 3),
             pe = (double)s.EggsOfProphecy,
             eot = (double)s.EggsOfTruth,
-            mer = s.SoulEggs > 0 ? (91.0 * Math.Log10(s.SoulEggs / 1e18) + 200.0 - (double)s.EggsOfProphecy) / 10.0 : 0.0
+            mer = (s.SoulEggs > 0 && double.IsFinite(s.SoulEggs)) ? (91.0 * Math.Log10(s.SoulEggs / 1e18) + 200.0 - (double)s.EggsOfProphecy) / 10.0 : 0.0
         })
         .Append(new {
             date = DateTime.Today.ToString("yyyy-MM-dd"),
-            logEb = Model.backup.EarningsBonus > 0 ? Math.Log10(Model.backup.EarningsBonus) : 0.0,
+            logEb = (Model.backup.EarningsBonus > 0 && double.IsFinite(Model.backup.EarningsBonus)) ? Math.Log10(Model.backup.EarningsBonus) : 0.0,
             ebStr = Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3),
-            logSe = Model.backup.SoulEggs > 0 ? Math.Log10(Model.backup.SoulEggs) : 0.0,
+            logSe = (Model.backup.SoulEggs > 0 && double.IsFinite(Model.backup.SoulEggs)) ? Math.Log10(Model.backup.SoulEggs) : 0.0,
             seStr = Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3),
             pe = (double)Model.backup.EggsOfProphecy,
             eot = (double)Model.backup.EggsOfTruth,
-            mer = Model.backup.SoulEggs > 0 ? (91.0 * Math.Log10(Model.backup.SoulEggs / 1e18) + 200.0 - (double)Model.backup.EggsOfProphecy) / 10.0 : 0.0
+            mer = (Model.backup.SoulEggs > 0 && double.IsFinite(Model.backup.SoulEggs)) ? (91.0 * Math.Log10(Model.backup.SoulEggs / 1e18) + 200.0 - (double)Model.backup.EggsOfProphecy) / 10.0 : 0.0
         })
         .ToArray();
 
-    var ebStatsJson = JsonConvert.SerializeObject(ebStatsPoints);
+    var ebStatsJson = JsonConvert.SerializeObject(ebStatsPoints, new JsonSerializerSettings { FloatFormatHandling = FloatFormatHandling.DefaultValue });
     var ebStatsSuffix = Regex.Replace(Model.backup.EggIncId, @"[^a-zA-Z0-9]", "");
 }
 
@@ -172,9 +172,9 @@
         <div class="col-sm">
             <!-- CHART CARD (narrow, default visible) -->
             <div class="card" style="margin-top:15px;" id="ebStatsNarrowCard-@(ebStatsSuffix)">
-                <h4 class="card-header d-flex justify-content-between align-items-center">
-                    <span>EB Progress Graph</span>
-                    <div>
+                <h4 class="card-header d-flex justify-content-between align-items-center flex-nowrap">
+                    <span style="white-space: nowrap; margin-right: 8px;">Progress Graph</span>
+                    <div style="white-space: nowrap; flex-shrink: 0;">
                         <button class="btn btn-sm btn-primary mr-1"           id="ebStatsBtn-eb-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('eb')">EB</button>
                         <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-se-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('se')">SE</button>
                         <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-pe-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('pe')">PE</button>
@@ -290,7 +290,8 @@
     var state = {
         activeMetrics: new Set(['eb']),
         chart: null,
-        expanded: false
+        expanded: false,
+        dual: false
     };
 
     function buildSeries() {
@@ -298,13 +299,43 @@
             .filter(function(k) { return state.activeMetrics.has(k); })
             .map(function(k) {
                 var m = METRICS[k];
-                return {
-                    name: m.label,
-                    data: snapData.map(function(p) {
-                        return [new Date(p.date).getTime(), p[m.dataKey]];
-                    })
-                };
+                var data = snapData.map(function(p) {
+                    var val = p[m.dataKey];
+                    return [new Date(p.date + 'T00:00:00').getTime(), (typeof val === 'number' && isFinite(val)) ? val : null];
+                });
+                return { name: m.label, data: data };
+            })
+            .filter(function(s) {
+                return s.data.some(function(pt) { return pt[1] !== null; });
             });
+    }
+
+    function axisBounds(scaleType) {
+        var vals = [];
+        METRIC_KEYS.forEach(function(k) {
+            if (!state.activeMetrics.has(k) || METRICS[k].scaleType !== scaleType) return;
+            var key = METRICS[k].dataKey;
+            snapData.forEach(function(p) {
+                var v = p[key];
+                if (typeof v === 'number' && isFinite(v)) vals.push(v);
+            });
+        });
+        if (vals.length === 0) return { min: 0, max: 1 };
+        var mn = Math.min.apply(null, vals);
+        var mx = Math.max.apply(null, vals);
+        if (mn === mx) { mn -= 1; mx += 1; }
+        return { min: mn, max: mx };
+    }
+
+    function seriesBounds(key) {
+        var vals = snapData
+            .map(function(p) { return p[METRICS[key].dataKey]; })
+            .filter(function(v) { return typeof v === 'number' && isFinite(v); });
+        if (vals.length === 0) return { min: 0, max: 1 };
+        var mn = Math.min.apply(null, vals);
+        var mx = Math.max.apply(null, vals);
+        if (mn === mx) { mn -= 1; mx += 1; }
+        return { min: mn, max: mx };
     }
 
     function buildYAxis() {
@@ -313,30 +344,43 @@
         var hasLinear = activeKeys.some(function(k) { return METRICS[k].scaleType === 'linear'; });
         var dual = hasLog && hasLinear;
 
+        var safeAxis = { forceNiceScale: false, tickAmount: 5 };
+
+        if (!dual) {
+            var bounds = axisBounds(hasLog ? 'log' : 'linear');
+            return [Object.assign({ title: { text: hasLog ? 'log₁₀(value)' : 'value', style: { fontSize: '11px' } } }, safeAxis, bounds)];
+        }
+
+        var logBounds    = axisBounds('log');
+        var linearBounds = axisBounds('linear');
         return activeKeys.map(function(k) {
             var isLog = METRICS[k].scaleType === 'log';
             var isFirstOfType = activeKeys.filter(function(j) {
                 return METRICS[j].scaleType === METRICS[k].scaleType;
             })[0] === k;
-            return {
-                show: !dual || isFirstOfType,
-                opposite: dual && !isLog,
+            return Object.assign({
+                show: isFirstOfType,
+                opposite: !isLog,
                 title: {
-                    text: dual
-                        ? (isLog ? 'log₁₀(EB/SE)' : 'PE / EoT / MER')
-                        : (hasLog ? 'log₁₀(value)' : 'value'),
+                    text: isLog ? 'log₁₀(EB/SE)' : 'linear',
                     style: { fontSize: '11px' }
                 }
-            };
+            }, safeAxis, isLog ? logBounds : linearBounds);
         });
     }
 
     function buildOptions() {
-        var isDark = typeof getCookie === 'function' && getCookie('Egg9000Theme') === 'bootstrap-dark';
+        var isDark = (typeof getCookie === 'function' && getCookie('Egg9000Theme') === 'bootstrap-dark')
+                  || document.body.classList.contains('bootstrap-dark')
+                  || document.documentElement.classList.contains('bootstrap-dark');
+        var textColor  = isDark ? '#e9ecef' : '#373d3f';
+        var gridColor  = isDark ? '#444'    : '#e0e0e0';
+        var axisLabelFmt = function(val) { return typeof val === 'number' ? val.toFixed(2) : val; };
         return {
             chart: {
                 type: 'line',
                 height: 300,
+                background: 'transparent',
                 animations: { enabled: false },
                 zoom: { type: 'x', enabled: true, autoScaleYaxis: true },
                 toolbar: { autoSelected: 'zoom' }
@@ -345,11 +389,18 @@
             series: buildSeries(),
             xaxis: {
                 type: 'datetime',
-                labels: { datetimeUTC: false }
+                labels: { datetimeUTC: false, style: { colors: textColor } }
             },
-            yaxis: buildYAxis(),
+            grid: { borderColor: gridColor },
+            yaxis: buildYAxis().map(function(ax) {
+                var entry = Object.assign({}, ax);
+                entry.labels = { formatter: axisLabelFmt, style: { colors: textColor } };
+                if (entry.title) entry.title.style = Object.assign({}, entry.title.style, { color: textColor });
+                return entry;
+            }),
             tooltip: {
-                x: { format: 'yyyy-MM-dd' },
+                theme: isDark ? 'dark' : 'light',
+                x: { format: 'MMM dd yyyy' },
                 y: {
                     formatter: function(val, opts) {
                         var sIdx = opts.seriesIndex;
@@ -359,9 +410,16 @@
                             return METRICS[k].label === sName;
                         })[0];
                         if (metricKey && METRICS[metricKey].tooltipKey && snapData[dp]) {
-                            return snapData[dp][METRICS[metricKey].tooltipKey];
+                            var str = snapData[dp][METRICS[metricKey].tooltipKey];
+                            var logVal = snapData[dp][METRICS[metricKey].dataKey];
+                            if (typeof logVal === 'number' && isFinite(logVal)) {
+                                str += ' (' + logVal.toFixed(2) + ')';
+                            }
+                            return str;
                         }
-                        return typeof val === 'number' ? val.toFixed(2) : val;
+                        if (typeof val !== 'number') return val;
+                        if (metricKey === 'pe' || metricKey === 'eot') return Math.round(val).toString();
+                        return val.toFixed(2);
                     }
                 }
             },
@@ -401,6 +459,33 @@
         });
     }
 
+    function updateChart() {
+        if (!state.chart) return;
+        var activeKeys = METRIC_KEYS.filter(function(k) { return state.activeMetrics.has(k); });
+        var nowDual = activeKeys.some(function(k) { return METRICS[k].scaleType === 'log'; })
+                   && activeKeys.some(function(k) { return METRICS[k].scaleType === 'linear'; });
+        var prevDual = state.dual;
+        state.dual = nowDual;
+        if (nowDual || prevDual) {
+            // yaxis array length changes in any dual-axis scenario; updateOptions unreliable
+            var containerId = state.expanded ? 'ebStatsChartFull-' + suffix : 'ebStatsChartNarrow-' + suffix;
+            renderChart(containerId);
+        } else {
+            var isDarkU = document.body.classList.contains('bootstrap-dark') || document.documentElement.classList.contains('bootstrap-dark');
+            var textColorU = isDarkU ? '#e9ecef' : '#373d3f';
+            var fmtU = function(val) { return typeof val === 'number' ? val.toFixed(2) : val; };
+            state.chart.updateOptions({
+                series: buildSeries(),
+                yaxis: buildYAxis().map(function(ax) {
+                    var entry = Object.assign({}, ax);
+                    entry.labels = { formatter: fmtU, style: { colors: textColorU } };
+                    if (entry.title) entry.title.style = Object.assign({}, entry.title.style, { color: textColorU });
+                    return entry;
+                })
+            }, false, false);
+        }
+    }
+
     function toggle(key) {
         if (state.activeMetrics.has(key)) {
             if (state.activeMetrics.size === 1) return; // prevent deselecting last metric
@@ -409,22 +494,50 @@
             state.activeMetrics.add(key);
         }
         syncButtonStyles();
-        var containerId = state.expanded
-            ? 'ebStatsChartFull-' + suffix
-            : 'ebStatsChartNarrow-' + suffix;
-        renderChart(containerId);
+        updateChart();
     }
 
     window['ebStatsToggle_' + suffix] = toggle;
 
-    // Initialize on page load in narrow container
-    $(document).ready(function() {
-        renderChart('ebStatsChartNarrow-' + suffix);
+    window.addEventListener('load', function() {
+        var chartEl = document.getElementById('ebStatsChartNarrow-' + suffix);
+        if (!chartEl) return;
+        var pane = chartEl.closest('.tab-pane');
+        if (!pane) return;
+
+        function activeContainerId() {
+            return state.expanded ? 'ebStatsChartFull-' + suffix : 'ebStatsChartNarrow-' + suffix;
+        }
+
+        if (pane.classList.contains('active')) {
+            renderChart(activeContainerId());
+        }
+
+        $('[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+            if (state.chart) return;
+            var href = $(e.target).attr('href');
+            if (!href) return;
+            var shownEl = document.querySelector(href);
+            if (shownEl && (shownEl === pane || shownEl.contains(pane)) && pane.classList.contains('active')) {
+                renderChart(activeContainerId());
+            }
+        });
+
+        $('[data-toggle="tab"]').on('hidden.bs.tab', function(e) {
+            if (!state.chart) return;
+            var href = $(e.target).attr('href');
+            if (!href) return;
+            var hiddenEl = document.querySelector(href);
+            if (hiddenEl && (hiddenEl === pane || hiddenEl.contains(pane))) {
+                state.chart.destroy();
+                state.chart = null;
+            }
+        });
     });
 
     function expand() {
         state.expanded = true;
-        document.getElementById('ebStatsNarrowRow-' + suffix).style.display = 'none';
+        document.getElementById('ebStatsNarrowCard-' + suffix).style.display = 'none';
         document.getElementById('ebStatsFullRow-' + suffix).style.display = '';
         syncButtonStyles();
         renderChart('ebStatsChartFull-' + suffix);
@@ -433,7 +546,7 @@
     function collapse() {
         state.expanded = false;
         document.getElementById('ebStatsFullRow-' + suffix).style.display = 'none';
-        document.getElementById('ebStatsNarrowRow-' + suffix).style.display = '';
+        document.getElementById('ebStatsNarrowCard-' + suffix).style.display = '';
         syncButtonStyles();
         renderChart('ebStatsChartNarrow-' + suffix);
     }
