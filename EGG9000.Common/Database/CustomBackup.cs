@@ -256,7 +256,10 @@ namespace EGG9000.Common.Database {
             DroneTakedowns = backup.Stats.DroneTakedowns;
             DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
             HyperloopPurchased = backup.Game.HyperloopStation;
-            TankLevel = backup.Artifacts.TankLevel;
+            var currentFarm = backup.Farms.ElementAtOrDefault((int)backup.Game.CurrentFarm);
+            var inVirtueDimension = currentFarm is not null && (int)currentFarm.EggType >= 50 && (int)currentFarm.EggType <= 54;
+            var activeTankArtifacts = inVirtueDimension && backup.Virtue?.Afx is not null ? backup.Virtue.Afx : backup.Artifacts;
+            TankLevel = activeTankArtifacts.TankLevel;
             //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
@@ -323,9 +326,9 @@ namespace EGG9000.Common.Database {
             }
 
             FuelAmounts = [];
-            for(var i = 0; i < backup.Artifacts.TankFuels.Count; i++) {
-                if(backup.Artifacts.TankFuels[i] > 0)
-                    FuelAmounts.Add((Ei.Egg)(i + 1), backup.Artifacts.TankFuels[i]);
+            for(var i = 0; i < activeTankArtifacts.TankFuels.Count; i++) {
+                if(activeTankArtifacts.TankFuels[i] > 0)
+                    FuelAmounts.Add((Ei.Egg)(i + 1), activeTankArtifacts.TankFuels[i]);
             }
 
             MaxFarmSizeReached = [];
