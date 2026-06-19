@@ -531,9 +531,14 @@ namespace EGG9000.Bot.Automated.Coops {
                     var user = users.FirstOrDefault(x => x.User.Id == xref.UserId);
                     if(xref.CoopSetting is null && user is not null) {
                         xref.CoopSetting = new CoopSetting(xref, user.User, dbGuild);
-                        if(xref.CoopSetting.PingOnCoopCreated && !xref.JoinedCoop) {
+                        // PingOnCoopCreated: only when not already joined. PingOnCoopCreatedEvenIfJoined:
+                        // regardless of join state (restores the pre-fix behavior for users who opt in).
+                        var pingEvenIfJoined = xref.CoopSetting.PingOnCoopCreatedEvenIfJoined;
+                        var pingIfNotJoined = xref.CoopSetting.PingOnCoopCreated && !xref.JoinedCoop;
+                        if(pingEvenIfJoined || pingIfNotJoined) {
                             await SendDMWarning(_db, parentGuild.GetUser(user.User.DiscordId), coopThread, "Co-op has been created", coop);
                             xref.CoopSetting.PingOnCoopCreated = false;
+                            xref.CoopSetting.PingOnCoopCreatedEvenIfJoined = false;
                         }
                         xref.UpdateCoopSetting();
                     }
