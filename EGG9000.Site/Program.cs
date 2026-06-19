@@ -34,6 +34,8 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Web;
 
+using Prometheus;
+
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -110,6 +112,10 @@ app.UseStaticFiles(new StaticFileOptions {
 });
 
 app.UseRouting();
+// Capture per-request HTTP metrics (duration/count by route + status) into the default Prometheus
+// registry, which also auto-exports GC/memory/process counters. Exposed at the gated /metrics
+// endpoint below.
+app.UseHttpMetrics();
 app.UseResponseCaching();
 app.UseAuthentication(); 
 app.UseAuthorization();
@@ -127,6 +133,12 @@ app.MapControllerRoute(
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+// Prometheus scrape endpoint. Behind Discord auth (cookie -> Discord OAuth login) AND the global
+// Admin role only. The explicit RequireAuthorization overrides the deny-by-default FallbackPolicy:
+// unauthenticated users hit the Discord login flow, authenticated non-Admins get 403. GuildAdmin /
+// GuildLesserAdmin are intentionally excluded - runtime/host metrics are a global ops concern.
+app.MapMetrics().RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute { Roles = "Admin" });
 
 app.MapRazorPages();
 app.Run();
@@ -271,11 +283,16 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         }
     });
 
+    // Re-exposes bot runtime snapshots (received below) as bot_* gauges on /metrics.
+    services.AddSingleton<EGG9000.Site.Services.BotMetricsExporter>();
+
     services.AddMassTransit(x => {
         x.AddConsumer<ExpireCacheConsumer>();
         // Per-instance temporary queue so a version update fans out to every running process
         // instead of being load-balanced across a shared queue.
         x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
+        // Same broadcast pattern: every site instance applies every bot metrics snapshot.
+        x.AddConsumer<EGG9000.Site.Consumers.BotMetricsSnapshotConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
         var host = Configuration.GetConnectionString("RabbitMQServer");
         if(string.IsNullOrEmpty(host)) {
             x.UsingInMemory((context, cfg) => {
