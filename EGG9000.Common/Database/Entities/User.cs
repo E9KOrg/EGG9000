@@ -189,6 +189,12 @@ namespace EGG9000.Common.Database.Entities {
                             if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
                                 account.DeviceID = account.Backup.DeviceId;
                             }
+
+                            //One-time migration of the scalar contract-settings keys into the consolidated blob.
+                            if(account.Assignment is null) {
+                                account.Assignment = Contracts.Assignment.AssignmentSettingsMigration.FromLegacyKeys(account);
+                                needsUpdate = true;
+                            }
                         });
                         if(needsUpdate) {
                             UpdateAccounts();
@@ -410,6 +416,10 @@ namespace EGG9000.Common.Database.Entities {
         public SeasonalPeOption SeasonalPeOption { get; set; } = SeasonalPeOption.NotSet;
         [Key(43)]
         public double SeasonalPeThreshold { get; set; } = 0;
+        // Consolidated contract-assignment settings. Migrated once from the scalar keys above
+        // (which are retained as a recovery copy). See AssignmentSettingsMigration.
+        [Key(44)]
+        public Contracts.Assignment.AssignmentSettings Assignment { get; set; }
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
                 return UltraGroup;

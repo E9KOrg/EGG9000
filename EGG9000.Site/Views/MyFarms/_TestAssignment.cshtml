@@ -1,0 +1,20 @@
+@using EGG9000.Common.Database.Entities
+@model (EggIncAccount account, int index, List<Contract> contracts)
+@{
+    var index = Model.index;
+    var contracts = (Model.contracts ?? new List<Contract>()).OrderByDescending(c => c.Created).ToList();
+}
+
+<div class="test-assignment" data-account-index="@index" style="margin-top:20px;">
+    <div class="form-group" style="max-width:600px;">
+        <label for="ta-contract-@index">Contract</label>
+        <select class="form-control ta-contract" id="ta-contract-@index">
+            @foreach (var c in contracts) {
+                <option value="@c.ID">@c.Name (@c.ID)</option>
+            }
+        </select>
+    </div>
+    <button type="button" class="btn btn-primary ta-test-btn" data-index="@index">Test</button>
+    <p style="font-size:0.85em; color:grey; margin-top:8px;">Ignores current-round assignment (whether you are already in a co-op).</p>
+    <div class="ta-result" id="ta-result-@index" style="margin-top:12px;"></div>
+</div>

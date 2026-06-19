@@ -1,5 +1,6 @@
 ﻿@model MyFarmsModel
 @using Discord.WebSocket
+@using EGG9000.Common.Contracts.Assignment
 @using EGG9000.Common.Helpers
 @using EGG9000.Common.JsonData
 @using Microsoft.AspNetCore.Html
@@ -317,37 +318,39 @@
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
                     <span style="margin-right:10px;" title="Date/Time displayed in local time"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToLocalTime().ToString("yyyy-MM-dd h:mm:ss tt")</span>
                 }
-                @if ((account.AutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.AutoRegisterRewards)</span>
+                @if ((account.Assignment.NewContractRewardFilter?.Count ?? 0) > 0) {
+                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.Assignment.NewContractRewardFilter)</span>
                 } else {
                     <span style="margin-right:10px;"><b><u>Filter</u></b>: All</span>
                 }
-                @if ((account.LeggacyAutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span style="margin-right:10px;"><b><u>Leggacy Filter</u></b>: @string.Join(",", account.LeggacyAutoRegisterRewards)</span>
+                @if ((account.Assignment.LegacyRewardFilter?.Count ?? 0) > 0) {
+                    <span style="margin-right:10px;"><b><u>Leggacy Filter</u></b>: @string.Join(",", account.Assignment.LegacyRewardFilter)</span>
                 }
                 <span style="margin-right:10px;">
                     <b><u>Redo Leggacies</u></b>:
-                    @if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) {
+                    @if (account.Assignment.Redo.Mode == RedoLeggacyOption.YesAll) {
                         @string.Join("", "Yes (All)")
-                    } else if(account.RedoLeggacySelection == RedoLeggacyOption.YesNoUltra) {
+                    } else if(account.Assignment.Redo.Mode == RedoLeggacyOption.YesNoUltra) {
                         @string.Join("", "Yes (No ultra-redos)")
-                    } 
-                    else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
-                        @string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS)")
-                    } else if(account.RedoLeggacySelection == RedoLeggacyOption.YesOtherAccountMatch) {
+                    }
+                    else if (account.Assignment.Redo.Mode == RedoLeggacyOption.YesThreshold) {
+                        @string.Join("", $"Yes (Under {account.Assignment.Redo.ScoreThreshold} CS)")
+                    } else if(account.Assignment.Redo.Mode == RedoLeggacyOption.YesOtherAccountMatch) {
                         @string.Join("", "Yes (If other account matches)")
                     } else {
                         @string.Join("", "No")
                     }
                 </span>
                 <span style="margin-right:10px;">
+                    <b><u>Skip Seasonal Replays</u></b>: @(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")
+                </span>
+                <span style="margin-right:10px;">
                     <b><u>Seasonal PE</u></b>:
-                    @if (account.SeasonalPeOption == SeasonalPeOption.AlwaysAssignIfMissing) {
+                    @{ var seasonalRule = account.Assignment.Get(PermanentRewardKind.SeasonalPe); }
+                    @if (seasonalRule.Mode == ForceMode.AssignIfMissing) {
                         @:Yes (always)
-                    } else if (account.SeasonalPeOption == SeasonalPeOption.AssignIfBelowThreshold) {
-                        @:Yes (contract score under @account.SeasonalPeThreshold.ToString("N0"))
-                    } else if (account.SeasonalPeOption == SeasonalPeOption.DontAssign) {
-                        @:No
+                    } else if (seasonalRule.Mode == ForceMode.BelowThreshold) {
+                        @:Yes (contract score under @((seasonalRule.CsFloor ?? 0).ToString("N0")))
                     } else {
                         @:Not set
                     }
@@ -390,6 +393,12 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#colleggtibles@(index)" role="tab" aria-selected="false">Colleggtibles</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#contractsettings@(index)" role="tab" aria-selected="false">Contract Settings</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#testsettings@(index)" role="tab" aria-selected="false">Test my settings</a>
                 </li>
                 <!--<li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#inventoryview(index)" role="tab" aria-selected="false">Inventory View</a>
@@ -526,6 +535,16 @@
                         await Html.RenderPartialAsync("-Colleggtibles", (backup, Model.CustomEggs));
                     }
                 </div>
+                <div class="tab-pane" id="contractsettings@(index)" role="tabpanel">
+                    @{
+                        await Html.RenderPartialAsync("_ContractSettings", (account, index, isSelf));
+                    }
+                </div>
+                <div class="tab-pane" id="testsettings@(index)" role="tabpanel">
+                    @{
+                        await Html.RenderPartialAsync("_TestAssignment", (account, index, contracts));
+                    }
+                </div>
             </div>
         </div>
     }
@@ -622,6 +641,145 @@
             });
 
             setInterval(updateLastBackupTime, 1000);
+
+            wireContractSettings();
+            wireTestAssignment();
         });
+
+        function rewardGroupValue(group) {
+            return Array.from(group.querySelectorAll('.cs-reward'))
+                .filter(cb => cb.checked)
+                .map(cb => cb.value)
+                .join(',');
+        }
+
+        function controlValue(el) {
+            if (el.type === 'checkbox') return el.checked ? 'true' : 'false';
+            return el.value;
+        }
+
+        function showCsStatus(container, text, ok) {
+            const status = container.querySelector('.cs-status');
+            if (!status) return;
+            status.textContent = text;
+            status.style.color = ok ? 'green' : 'red';
+            setTimeout(() => { status.textContent = ''; }, 2500);
+        }
+
+        function saveContractSetting(container, accountIndex, field, value, revert) {
+            fetch('/MyFarms/SaveContractSetting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountIndex: accountIndex, field: field, value: value })
+            }).then(res => {
+                if (res.ok) {
+                    showCsStatus(container, 'Saved', true);
+                } else {
+                    if (revert) revert();
+                    showCsStatus(container, 'Save failed', false);
+                }
+            }).catch(() => {
+                if (revert) revert();
+                showCsStatus(container, 'Save failed', false);
+            });
+        }
+
+        function wireContractSettings() {
+            document.querySelectorAll('.contract-settings').forEach(container => {
+                if (container.dataset.isself !== '1') return;
+                const accountIndex = parseInt(container.dataset.accountIndex);
+
+                container.querySelectorAll('.cs-input').forEach(el => {
+                    let prior = controlValue(el);
+                    el.addEventListener('change', () => {
+                        const field = el.dataset.field;
+                        const value = controlValue(el);
+                        const before = prior;
+                        if (field === 'seasonalPeMode') {
+                            const wrap = container.querySelector('.cs-seasonalfloor-wrap-' + accountIndex);
+                            if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
+                        }
+                        if (field === 'redoMode') {
+                            const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);
+                            if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
+                        }
+                        saveContractSetting(container, accountIndex, field, value, () => {
+                            if (el.type === 'checkbox') el.checked = (before === 'true');
+                            else el.value = before;
+                        });
+                        prior = value;
+                    });
+                });
+
+                container.querySelectorAll('.cs-reward-group').forEach(group => {
+                    const field = group.dataset.field;
+                    group.querySelectorAll('.cs-reward').forEach(cb => {
+                        let priorChecked = cb.checked;
+                        cb.addEventListener('change', () => {
+                            const before = priorChecked;
+                            const value = rewardGroupValue(group);
+                            saveContractSetting(container, accountIndex, field, value, () => {
+                                cb.checked = before;
+                            });
+                            priorChecked = cb.checked;
+                        });
+                    });
+                });
+            });
+        }
+
+        function wireTestAssignment() {
+            document.querySelectorAll('.ta-test-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const index = parseInt(btn.dataset.index);
+                    const select = document.getElementById('ta-contract-' + index);
+                    const result = document.getElementById('ta-result-' + index);
+                    if (!select || !result) return;
+                    const contractId = select.value;
+                    if (!contractId) return;
+                    result.innerHTML = '<span style="color:grey;">Testing...</span>';
+
+                    fetch('/MyFarms/TestAssignment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ accountIndex: index, contractId: contractId })
+                    }).then(res => {
+                        if (!res.ok) {
+                            result.innerHTML = '<span style="color:red;">Test failed (' + res.status + ').</span>';
+                            return null;
+                        }
+                        return res.json();
+                    }).then(data => {
+                        if (!data) return;
+                        renderTestResult(result, data);
+                    }).catch(() => {
+                        result.innerHTML = '<span style="color:red;">Test failed.</span>';
+                    });
+                });
+            });
+        }
+
+        function renderTestResult(result, data) {
+            const verdict = data.assigned
+                ? '<h5 style="color:green;">Assigned</h5>'
+                : '<h5 style="color:red;">Not assigned</h5>';
+
+            let firstHighlightDone = false;
+            const lines = (data.results || []).map(r => {
+                const highlight = !firstHighlightDone && (r.outcome === 'Exclude' || r.outcome === 'ForceInclude');
+                if (highlight) firstHighlightDone = true;
+                const style = highlight ? ' style="font-weight:bold; background-color:#fff3cd;"' : '';
+                const text = '[' + r.tier + '] ' + r.reason + ' -> ' + r.outcome;
+                return '<li' + style + '>' + escapeHtml(text) + '</li>';
+            }).join('');
+
+            result.innerHTML = verdict + '<ul>' + lines + '</ul>';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 }

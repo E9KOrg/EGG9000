@@ -15,6 +15,12 @@ namespace EGG9000.Common.Database.Entities {
         public string InactiveStandards { get; set; }
 
         public ulong DiscordSeverId { get; set; }
+
+        // Assignment rules this guild forbids users from applying. Engine consults this in its guild
+        // overlay step. Empty by default = no overrides. Persistence lands with the future guild-UI spec.
+        [NotMapped]
+        public IReadOnlySet<Contracts.Assignment.AssignmentRuleId> RuleOverrides { get; set; } = new HashSet<Contracts.Assignment.AssignmentRuleId>();
+
         public string OverflowServersJson { get; set; }
         [NotMapped]
         public ReadOnlyCollection<ulong> OverflowServers {

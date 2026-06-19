@@ -287,6 +287,71 @@ namespace EGG9000.Site.Controllers {
             return Ok();
         }
 
+        public record SaveContractSettingModel {
+            public int AccountIndex { get; set; }
+            public string Field { get; set; }
+            public string Value { get; set; }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveContractSetting([FromBody] SaveContractSettingModel m) {
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            if(m.AccountIndex < 0 || m.AccountIndex >= dbuser.EggIncAccounts.Count) return BadRequest();
+
+            var account = dbuser.EggIncAccounts[m.AccountIndex];
+            var s = account.Assignment ??= new Common.Contracts.Assignment.AssignmentSettings();
+            var result = Common.Contracts.Assignment.ContractSettingField.Apply(s, m.Field, m.Value);
+            if(result.Status != Common.Contracts.Assignment.ContractSettingApplyStatus.Ok) return BadRequest(result.Status.ToString());
+
+            dbuser.UpdateAccounts();
+            await _db.SaveChangesAsync();
+            return Ok();
+        }
+
+        public record TestAssignmentModel {
+            public int AccountIndex { get; set; }
+            public string ContractId { get; set; }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> TestAssignment([FromBody] TestAssignmentModel m) {
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            if(m.AccountIndex < 0 || m.AccountIndex >= dbuser.EggIncAccounts.Count) return BadRequest();
+            var account = dbuser.EggIncAccounts[m.AccountIndex];
+
+            var contract = await _db.Contracts.FirstOrDefaultAsync(x => x.ID == m.ContractId);
+            if(contract is null) return NotFound();
+
+            var (season, seasonProgresses) = await Common.Contracts.OrganizeCoops.LoadContractSeasonData(_db, contract, new List<DBUser> { dbuser });
+
+            var latest = await _db.UserCsHistoryEntries
+                .Where(h => h.EggIncId == account.Id && h.ContractIdentifier == contract.ID)
+                .OrderByDescending(h => h.Created)
+                .FirstOrDefaultAsync();
+
+            var contractFacts = Common.Contracts.Assignment.ContractFactsBuilder.Build(contract, season);
+            var accountFacts = Common.Contracts.Assignment.AccountFactsBuilder.Build(dbuser, account, contract, new List<Coop>(), latest, season, seasonProgresses);
+
+            var dbGuild = _db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
+            var decision = Common.Contracts.Assignment.AssignmentEvaluator.Evaluate(accountFacts, contractFacts, account.Assignment, dbGuild?.RuleOverrides, dbGuild?.DisableBG ?? false);
+
+            return Ok(new {
+                assigned = decision.Assigned,
+                results = decision.Results.Select(r => new {
+                    rule = r.Rule.ToString(),
+                    tier = r.Tier.ToString(),
+                    outcome = r.Outcome.ToString(),
+                    reason = r.Reason
+                })
+            });
+        }
+
         public async Task<IActionResult> Roles() {
             var roles = await _userManager.GetRolesAsync(await _userManager.GetUserAsync(User));
             return Json(roles);

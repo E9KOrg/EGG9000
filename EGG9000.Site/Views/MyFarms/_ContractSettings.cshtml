@@ -1,0 +1,141 @@
+@using EGG9000.Common.Contracts.Assignment
+@using EGG9000.Common.Database.Entities
+@using Microsoft.AspNetCore.Html
+@model (EggIncAccount account, int index, bool isSelf)
+@{
+    var account = Model.account;
+    var index = Model.index;
+    var isSelf = Model.isSelf;
+    var s = account.Assignment ?? new AssignmentSettings();
+
+    var dis = isSelf ? "" : "disabled";
+
+    var colleggtibleOn = s.Get(PermanentRewardKind.Colleggtible).Mode == ForceMode.AssignIfMissing;
+
+    var seasonalRule = s.Get(PermanentRewardKind.SeasonalPe);
+    var seasonalMode = seasonalRule.Mode switch {
+        ForceMode.AssignIfMissing => 1,
+        ForceMode.BelowThreshold => 2,
+        _ => 0
+    };
+    var seasonalFloor = seasonalRule.CsFloor ?? 0;
+
+    var newFilter = s.NewContractRewardFilter ?? new List<Ei.RewardType>();
+    var legacyFilter = s.LegacyRewardFilter ?? new List<Ei.RewardType>();
+
+    var redoMode = (int)s.Redo.Mode;
+    var redoThreshold = s.Redo.ScoreThreshold;
+
+    // Display names for the reward checkbox groups. New-filter group omits Eggs Of Prophecy;
+    // legacy group includes it.
+    var rewardLabels = new (Ei.RewardType Type, string Label)[] {
+        (Ei.RewardType.EggsOfProphecy, "Eggs Of Prophecy"),
+        (Ei.RewardType.Artifact, "Artifacts"),
+        (Ei.RewardType.PiggyMultiplier, "Piggy Bank"),
+        (Ei.RewardType.ShellScript, "Shell Tickets"),
+        (Ei.RewardType.Gold, "Golden Eggs"),
+        (Ei.RewardType.Boost, "Any Boost"),
+        (Ei.RewardType.EpicResearchItem, "Epic Research")
+    };
+    var newRewards = rewardLabels.Where(r => r.Type != Ei.RewardType.EggsOfProphecy).ToArray();
+    var legacyRewards = rewardLabels;
+
+    Func<int, int, string, IHtmlContent> opt = (val, current, label) =>
+        new HtmlString($"<option value=\"{val}\"{(val == current ? " selected" : "")}>{System.Net.WebUtility.HtmlEncode(label)}</option>");
+}
+
+<div class="contract-settings" data-account-index="@index" data-isself="@(isSelf ? "1" : "0")" style="margin-top:20px;">
+    @if (!isSelf) {
+        <div class="alert alert-secondary" style="padding:6px 10px;">Read-only: viewing another user's settings.</div>
+    }
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card" style="margin-top:10px;">
+                <div class="card-header"><b>Always assign me if</b></div>
+                <div class="card-body">
+                    <div class="form-check" style="margin-bottom:10px;">
+                        <input class="form-check-input cs-input" type="checkbox" data-field="colleggtible"
+                               id="cs-colleggtible-@index" @(colleggtibleOn ? "checked" : "") @dis />
+                        <label class="form-check-label" for="cs-colleggtible-@index">Missing a colleggtible</label>
+                    </div>
+                    <div class="form-group">
+                        <label for="cs-seasonalmode-@index">Seasonal PE</label>
+                        <select class="form-control cs-input" data-field="seasonalPeMode" id="cs-seasonalmode-@index" @dis>
+                            @opt(0, seasonalMode, "Not set")
+                            @opt(1, seasonalMode, "Always if missing")
+                            @opt(2, seasonalMode, "Below CS floor")
+                        </select>
+                    </div>
+                    <div class="form-group cs-seasonalfloor-wrap-@index" style="@(seasonalMode == 2 ? "" : "display:none;")">
+                        <label for="cs-seasonalfloor-@index">CS floor</label>
+                        <input class="form-control cs-input" type="number" min="0" step="1" data-field="seasonalPeFloor"
+                               id="cs-seasonalfloor-@index" value="@seasonalFloor.ToString("0")" @dis />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card" style="margin-top:10px;">
+                <div class="card-header"><b>Assign me to new contracts if</b></div>
+                <div class="card-body">
+                    <p style="font-size:0.85em; color:grey;">Rewards include (leave all unchecked for "any"):</p>
+                    <div class="cs-reward-group" data-field="newRewardFilter">
+                        @foreach (var r in newRewards) {
+                            <div class="form-check">
+                                <input class="form-check-input cs-reward" type="checkbox" value="@((int)r.Type)"
+                                       id="cs-new-@(index)-@((int)r.Type)" @(newFilter.Contains(r.Type) ? "checked" : "") @dis />
+                                <label class="form-check-label" for="cs-new-@(index)-@((int)r.Type)">@r.Label</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card" style="margin-top:10px;">
+                <div class="card-header"><b>Assign me to leggacy contracts if</b></div>
+                <div class="card-body">
+                    <p style="font-size:0.85em; color:grey;">Rewards include (leave all unchecked for "any"):</p>
+                    <div class="cs-reward-group" data-field="legacyRewardFilter" style="margin-bottom:10px;">
+                        @foreach (var r in legacyRewards) {
+                            <div class="form-check">
+                                <input class="form-check-input cs-reward" type="checkbox" value="@((int)r.Type)"
+                                       id="cs-leg-@(index)-@((int)r.Type)" @(legacyFilter.Contains(r.Type) ? "checked" : "") @dis />
+                                <label class="form-check-label" for="cs-leg-@(index)-@((int)r.Type)">@r.Label</label>
+                            </div>
+                        }
+                    </div>
+                    <div class="form-group">
+                        <label for="cs-redomode-@index">Redo leggacies</label>
+                        <select class="form-control cs-input" data-field="redoMode" id="cs-redomode-@index" @dis>
+                            @opt(0, redoMode, "Not set")
+                            @opt(1, redoMode, "Yes (all)")
+                            @opt(2, redoMode, "Yes (under threshold)")
+                            @opt(3, redoMode, "No")
+                            @opt(4, redoMode, "Yes (if other account matches)")
+                            @opt(5, redoMode, "Yes (no ultra-redos)")
+                        </select>
+                    </div>
+                    <div class="form-group cs-redothreshold-wrap-@index" style="@(redoMode == 2 ? "" : "display:none;")">
+                        <label for="cs-redothreshold-@index">CS threshold</label>
+                        <input class="form-control cs-input" type="number" min="0" max="90000" step="1" data-field="redoThreshold"
+                               id="cs-redothreshold-@index" value="@redoThreshold" @dis />
+                    </div>
+                    <div class="form-check" style="margin-bottom:8px;">
+                        <input class="form-check-input cs-input" type="checkbox" data-field="excludeSeasonal"
+                               id="cs-excludeseasonal-@index" @(s.Redo.ExcludeSeasonal ? "checked" : "") @dis />
+                        <label class="form-check-label" for="cs-excludeseasonal-@index">Skip seasonal replays</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input cs-input" type="checkbox" data-field="twoToThree"
+                               id="cs-twotothree-@index" @(s.TwoToThree ? "checked" : "") @dis />
+                        <label class="form-check-label" for="cs-twotothree-@index">Bump 2-goal completions to 3</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <span class="cs-status" id="cs-status-@index" style="margin-left:10px;"></span>
+</div>

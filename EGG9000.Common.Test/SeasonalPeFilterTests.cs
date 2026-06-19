@@ -1,6 +1,5 @@
-using EGG9000.Common.Contracts;
+using EGG9000.Common.Contracts.Assignment;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -12,10 +11,12 @@ using System.Collections.Generic;
 using G = Ei.Contract.Types.PlayerGrade;
 
 namespace EGG9000.Common.Test {
+    // Seasonal PE option behavior (assign-if-missing / below-threshold) lives in ForceRuleTests.
+    // These cover the pure progress arithmetic that feeds AccountFacts.MissingSeasonalPe.
     [TestClass]
     [TestCategory("Unit")]
-    public class SeasonalPeFilterTests {
-        // Helper: build a minimal SeasonInfo with one grade-A goal at 1000 CXP = 1 PE
+    public class SeasonalPeProgressTests {
+        // One grade-A goal at 1000 CXP = 1 PE.
         private static SeasonInfo MakeSeason(string id = "s1") {
             var goals = new Dictionary<int, List<SeasonPeGoal>> {
                 [(int)G.GradeA] = [new SeasonPeGoal { Cxp = 1000, PeAmount = 1 }]
@@ -23,7 +24,7 @@ namespace EGG9000.Common.Test {
             return new SeasonInfo {
                 Id = id,
                 Name = "Test Season",
-                StartTime = DateTimeOffset.UtcNow.AddDays(-7),
+                StartTime = DateTimeOffset.UnixEpoch,
                 GoalsJson = JsonConvert.SerializeObject(goals)
             };
         }
@@ -32,77 +33,32 @@ namespace EGG9000.Common.Test {
             new() { EggIncId = eggIncId, SeasonId = seasonId, TotalCxp = cxp, StartingGrade = (int)grade };
 
         [TestMethod]
-        public void ShouldIncludeForSeasonalPe_NotSet_AlwaysInclude() {
-            var season = MakeSeason();
-            var account = new EggIncAccount { Id = "u1", SeasonalPeOption = SeasonalPeOption.NotSet };
-            var progress = new List<UserSeasonProgress>();
-            Assert.IsTrue(OrganizeCoops.ShouldIncludeForSeasonalPe(account, G.GradeA, season, progress, null));
+        public void NoPeEarned_IsMissing() {
+            Assert.IsTrue(SeasonalPeProgress.IsMissing("u1", G.GradeA, MakeSeason(), new List<UserSeasonProgress>()));
         }
 
         [TestMethod]
-        public void ShouldIncludeForSeasonalPe_DontAssign_AlwaysExclude() {
-            var season = MakeSeason();
-            var account = new EggIncAccount { Id = "u1", SeasonalPeOption = SeasonalPeOption.DontAssign };
-            var progress = new List<UserSeasonProgress>();
-            Assert.IsFalse(OrganizeCoops.ShouldIncludeForSeasonalPe(account, G.GradeA, season, progress, null));
+        public void AllPeEarned_NotMissing() {
+            var progress = new List<UserSeasonProgress> { MakeProgress("u1", "s1", 1000, G.GradeA) };
+            Assert.IsFalse(SeasonalPeProgress.IsMissing("u1", G.GradeA, MakeSeason(), progress));
         }
 
         [TestMethod]
-        public void ShouldIncludeForSeasonalPe_AlwaysAssign_NoPeEarned_Include() {
-            var season = MakeSeason();
-            var account = new EggIncAccount { Id = "u1", SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing };
-            var progress = new List<UserSeasonProgress>();
-            Assert.IsTrue(OrganizeCoops.ShouldIncludeForSeasonalPe(account, G.GradeA, season, progress, null));
+        public void NoGoalsForGrade_IsMissing() {
+            // Season only has GradeA goals; a GradeB player has maxPe == 0 -> treated as missing.
+            Assert.IsTrue(SeasonalPeProgress.IsMissing("u1", G.GradeB, MakeSeason(), new List<UserSeasonProgress>()));
         }
 
         [TestMethod]
-        public void ShouldIncludeForSeasonalPe_AlwaysAssign_AllPeEarned_Exclude() {
-            var season = MakeSeason();
-            var account = new EggIncAccount { Id = "u1", SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing };
-            var progress = new List<UserSeasonProgress> {
-                MakeProgress("u1", "s1", 1000, G.GradeA)
-            };
-            Assert.IsFalse(OrganizeCoops.ShouldIncludeForSeasonalPe(account, G.GradeA, season, progress, null));
+        public void StartingGrade_WinsOverLiveGrade() {
+            // Live grade B (no goals) but started the season at A (has goals) and earned none -> missing.
+            var progress = new List<UserSeasonProgress> { MakeProgress("u1", "s1", 0, G.GradeA) };
+            Assert.IsTrue(SeasonalPeProgress.IsMissing("u1", G.GradeB, MakeSeason(), progress));
         }
 
         [TestMethod]
-        public void ShouldIncludeForSeasonalPe_BelowThreshold_Include() {
-            // Season total is 250k but contract score was 15k < threshold 20k → include
-            var season = MakeSeason();
-            var account = new EggIncAccount { Id = "u1", SeasonalPeOption = SeasonalPeOption.AssignIfBelowThreshold, SeasonalPeThreshold = 20000 };
-            var progress = new List<UserSeasonProgress> {
-                MakeProgress("u1", "s1", 250000, G.GradeA) // high season total, irrelevant for this branch
-            };
-            Assert.IsTrue(OrganizeCoops.ShouldIncludeForSeasonalPe(account, G.GradeA, season, progress, contractScore: 15000));
-        }
-
-        [TestMethod]
-        public void ShouldIncludeForSeasonalPe_AboveThreshold_Exclude() {
-            // Contract score 25k >= threshold 20k → exclude
-            var season = MakeSeason();
-            var account = new EggIncAccount { Id = "u1", SeasonalPeOption = SeasonalPeOption.AssignIfBelowThreshold, SeasonalPeThreshold = 20000 };
-            var progress = new List<UserSeasonProgress> {
-                MakeProgress("u1", "s1", 250000, G.GradeA)
-            };
-            Assert.IsFalse(OrganizeCoops.ShouldIncludeForSeasonalPe(account, G.GradeA, season, progress, contractScore: 25000));
-        }
-
-        [TestMethod]
-        public void ShouldIncludeForSeasonalPe_BelowThreshold_NullScore_Include() {
-            // Never played contract before (null score) → 0 < threshold → include
-            var season = MakeSeason();
-            var account = new EggIncAccount { Id = "u1", SeasonalPeOption = SeasonalPeOption.AssignIfBelowThreshold, SeasonalPeThreshold = 20000 };
-            var progress = new List<UserSeasonProgress>();
-            Assert.IsTrue(OrganizeCoops.ShouldIncludeForSeasonalPe(account, G.GradeA, season, progress, contractScore: null));
-        }
-
-        [TestMethod]
-        public void ShouldIncludeForSeasonalPe_NoGoalsForGrade_Include() {
-            // Grade with no PE goals in season → not a seasonal grade → include regardless
-            var season = MakeSeason(); // only has GradeA goals
-            var account = new EggIncAccount { Id = "u1", SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing };
-            var progress = new List<UserSeasonProgress>();
-            Assert.IsTrue(OrganizeCoops.ShouldIncludeForSeasonalPe(account, G.GradeB, season, progress, null));
+        public void NullSeason_NotMissing() {
+            Assert.IsFalse(SeasonalPeProgress.IsMissing("u1", G.GradeA, null, new List<UserSeasonProgress>()));
         }
     }
 }
