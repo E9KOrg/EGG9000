@@ -207,6 +207,10 @@ public static class BotHostFactory {
             services.AddHostedService<CommandService>();
             services.AddHostedService<DiscordUserService>();
             services.AddHostedService<UserGrades>();
+
+            // Publishes a runtime snapshot over the bus every 15s; the site re-exposes it as bot_*
+            // gauges on its /metrics for cross-scope reporting.
+            services.AddHostedService<BotMetricsPublisher>();
 #endif
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");
