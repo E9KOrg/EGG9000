@@ -18,7 +18,10 @@
 
     var count = currentCoops.Count;
     var ebrgx = new Regex(@"\(.+?\)");
-    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+    // LesserAdmins are intentionally excluded: on this page admin gates coop names, member ids, the
+    // remove (X) button and move controls. The backend move/remove endpoints already reject LesserAdmin,
+    // so showing them the controls only leaks coop names and dangles dead buttons.
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
 
     var activeCoops = currentCoops.Select(c => new {
         Name = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
@@ -221,7 +224,7 @@
         <p><a href="#@coopNum">Jump to my co-op @coopNum</a></p>
             }
         } else {
-        <p>You are not currently in a co-op nor prefarming</p>
+        <p>You are not currently in a co-op</p>
         }
 
     </div>
@@ -269,7 +272,7 @@
                 </h5>
                 <div class="card-body" ng-show="!coop.Hide">
                     <table class="table table-striped">
-                        <tbody class="sortablers" ui-sortable="sortableOptionsTarget" ng-model="coop.Users" dnd-list="coop.Users" dnd-drop="dropCallback(item, coop)">
+                        <tbody class="sortablers" ng-model="coop.Users" dnd-list="coop.Users" dnd-drop="dropCallback(item, coop)">
                             <tr ng-repeat="user in coop.Users" ng-class="{ notsortable: user.Locked }">
                                 <td>{{user.Name}}
                                 <span ng-if="user.Guild.length > 0">[{{user.Guild}}]</span>
@@ -513,11 +516,6 @@
                         return "";
                     var min = _.minBy(users, function (o) { return o.TimeLeft; });
                     return min.Status;
-                };
-
-                $scope.sortableOptions = {
-                    connectWith: ".sortablers",
-                    items: "tr:not(.notsortable)"
                 };
 
                 $scope.dropCallback = function (item, coop) {

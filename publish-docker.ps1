@@ -30,6 +30,14 @@ if (-not $Bot -and -not $Site) {
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 
+# Real git metadata baked into the bot's /ping version.txt. Falls back to placeholders off a git checkout.
+$gitMessage = (git log -1 --format=%s 2>$null); if (-not $gitMessage) { $gitMessage = "Docker build" }
+$gitHash = (git rev-parse --short HEAD 2>$null); if (-not $gitHash) { $gitHash = "unknown" }
+$gitAuthor = (git log -1 --format=%an 2>$null); if (-not $gitAuthor) { $gitAuthor = "Docker" }
+$gitTimestamp = (git log -1 --format=%ct 2>$null); if (-not $gitTimestamp) { $gitTimestamp = "0" }
+$gitBranch = (git rev-parse --abbrev-ref HEAD 2>$null); if (-not $gitBranch) { $gitBranch = "" }
+$gitRemote = (git config --get remote.origin.url 2>$null); if (-not $gitRemote) { $gitRemote = "" }
+
 function Publish-Image([string]$name) {
     $tag = "${name}:${timestamp}"
     $latest = "${name}:latest"
@@ -55,7 +63,14 @@ function Publish-Image([string]$name) {
 
 if ($Bot) {
     Write-Host "Building kendrome/egg9000bot:latest ..." -ForegroundColor Cyan
-    docker build -f EGG9000.Bot/Dockerfile -t "kendrome/egg9000bot:$timestamp" -t "kendrome/egg9000bot:latest" .
+    docker build -f EGG9000.Bot/Dockerfile `
+        --build-arg "GIT_MESSAGE=$gitMessage" `
+        --build-arg "GIT_HASH=$gitHash" `
+        --build-arg "GIT_AUTHOR=$gitAuthor" `
+        --build-arg "GIT_TIMESTAMP=$gitTimestamp" `
+        --build-arg "GIT_BRANCH=$gitBranch" `
+        --build-arg "GIT_REMOTE=$gitRemote" `
+        -t "kendrome/egg9000bot:$timestamp" -t "kendrome/egg9000bot:latest" .
     if ($LASTEXITCODE -ne 0) { Write-Host "Build failed: egg9000bot" -ForegroundColor Red; exit 1 }
     Write-Host "Built: kendrome/egg9000bot:latest" -ForegroundColor Green
     Publish-Image "kendrome/egg9000bot"

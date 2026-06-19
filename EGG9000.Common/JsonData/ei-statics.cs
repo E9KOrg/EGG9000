@@ -1,15 +1,6 @@
-﻿using EGG9000.Common.Helpers;
-
-using Ei;
-
-using Newtonsoft.Json;
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 
 namespace EGG9000.Common.JsonData.EiStatics {
 
@@ -91,21 +82,8 @@ namespace EGG9000.Common.JsonData.EiStatics {
     public class Root {
         public List<EggIncBoost> eggIncBoosts { get; set; }
         public List<EggIncEgg> eggIncEggs { get; set; }
-        private static Root Instance = null;
-        public static Root Get() {
-            if(Instance != null) {
-                return Instance;
-            }
-
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = assembly.GetManifestResourceNames()
-                .Single(str => str.EndsWith("ei-statics.json"));
-
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            using var reader = new StreamReader(stream);
-            var json = reader.ReadToEnd();
-            Instance = JsonConvert.DeserializeObject<Root>(json);
-            return Instance;
-        }
+        private static readonly EmbeddedResource<Root> _res =
+            EmbeddedResource.Json<Root>("ei-statics.json");
+        public static Root Get() => _res.Value;
     }
 }

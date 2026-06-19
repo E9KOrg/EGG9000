@@ -76,7 +76,7 @@ namespace EGG9000.Bot.Commands {
                 var guildOverride = guild.GetCoopSetting(coopSettingEnum);
                 var nextToText = guildOverride.Locked ? (guildOverride.Enabled ? "✅ Yes **(Locked by Server)**" : "❌ No **(Locked by Server)**") : (coopSetting[option.Property] ? "✅ Yes" : "❌ No");
 
-                if(coopOnly && option.Property == "PingOnCoopCreated")
+                if(coopOnly && (option.Property == "PingOnCoopCreated" || option.Property == "PingOnCoopCreatedEvenIfJoined"))
                     continue;
                 eBuilder.AddField($"{option.Property}: {nextToText}", option.Description);
                 if(!guildOverride.Locked) {

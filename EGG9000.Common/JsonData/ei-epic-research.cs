@@ -1,10 +1,6 @@
 ﻿using EGG9000.Common.Database;
-using Newtonsoft.Json;
-using System;
+
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 
 namespace EGG9000.Common.JsonData.EIEpicResearch {
 
@@ -43,20 +39,8 @@ namespace EGG9000.Common.JsonData.EIEpicResearch {
     public class EiEpicResearch {
         public List<EpicResearchItem> epicResearchItems { get; set; }
 
-        private static EiEpicResearch Instance = null;
-        public static EiEpicResearch Get() {
-            if (Instance != null) {
-                return Instance;
-            }
-
-            var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = assembly.GetManifestResourceNames().Single(str => str.EndsWith("ei-epic-research.json"));
-
-            using var stream = assembly.GetManifestResourceStream(resourceName);
-            using var reader = new StreamReader(stream);
-            var json = reader.ReadToEnd();
-            Instance = JsonConvert.DeserializeObject<EiEpicResearch>(json);
-            return Instance;
-        }
+        private static readonly EmbeddedResource<EiEpicResearch> _res =
+            EmbeddedResource.Json<EiEpicResearch>("ei-epic-research.json");
+        public static EiEpicResearch Get() => _res.Value;
     }
 }

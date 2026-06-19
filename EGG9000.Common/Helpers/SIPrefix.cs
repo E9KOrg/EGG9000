@@ -52,6 +52,7 @@ namespace EGG9000.Bot.Helpers {
             public int SubRank { get; set; }
             public string RankWithSubRank {
                 get {
+                    if(Name == "infini") return "Infinifarmer";
                     return $"{Rank} {(SubRank == 1 ? "I" : SubRank == 2 ? "II" : "III")}";
                 }
             }
@@ -64,66 +65,18 @@ namespace EGG9000.Bot.Helpers {
 
         public static List<PrefixDetails> Prefixes {
             get {
-                return [
-                    new() { Name = "", Base = 0},
-                    new() { Name="kilo", Base = 3},
-                    new() { Name="mega", Base = 6},
-                    new() { Name="giga", Base = 9},
-                    new() { Name="tera", Base = 12},
-                    new() { Name="peta", Base = 15},
-                    new() { Name="exa", Base = 18},
-                    new() { Name="zetta", Base = 21},
-                    new() { Name="yotta", Base = 24},
-                    new() { Name="xenna", Base = 27},
-                    new() { Name="wecca", Base = 30},
-                    new() { Name="venda", Base = 33},
-                ];
+                return [.. RankRegistry.GroupLeads.Select(lead => new PrefixDetails {
+                    Name = lead.DisplayName.Replace("farmer", "", StringComparison.OrdinalIgnoreCase).ToLower(),
+                    Base = lead.Oom
+                })];
             }
         }
 
         /// <summary>
-        /// Method for returning list of valid farmer roles from Farmer to Vendafarmer III.
+        /// Returns the list of valid farmer role names (Farmer I through Infinifarmer), sourced from RankRegistry.
         /// </summary>
-        /// <returns></returns>
         public static List<string> GetAllFarmerRoles() {
-            return new List<string> {
-                    "Farmer I",
-                    "Farmer II",
-                    "Farmer III",
-                    "Kilofarmer I",
-                    "Kilofarmer II",
-                    "Kilofarmer III",
-                    "Megafarmer I",
-                    "Megafarmer II",
-                    "Megafarmer III",
-                    "Gigafarmer I",
-                    "Gigafarmer II",
-                    "Gigafarmer III",
-                    "Terafarmer I",
-                    "Terafarmer II",
-                    "Terafarmer III",
-                    "Petafarmer I",
-                    "Petafarmer II",
-                    "Petafarmer III",
-                    "Exafarmer I",
-                    "Exafarmer II",
-                    "Exafarmer III",
-                    "Zettafarmer I",
-                    "Zettafarmer II",
-                    "Zettafarmer III",
-                    "Yottafarmer I",
-                    "Yottafarmer II",
-                    "Yottafarmer III",
-                    "Xennafarmer I",
-                    "Xennafarmer II",
-                    "Xennafarmer III",
-                    "Weccafarmer I",
-                    "Weccafarmer II",
-                    "Weccafarmer III",
-                    "Vendafarmer I",
-                    "Vendafarmer II",
-                    "Vendafarmer III"
-                };
+            return [.. RankRegistry.All.Select(r => r.RoleName)];
         }
     }
 }

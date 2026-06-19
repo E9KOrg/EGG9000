@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public class LogoutModel(SignInManager<IdentityUser> signInManager, ILogger<LogoutModel> logger) : PageModel
+    public class LogoutModel(SignInManager<ApplicationUser> signInManager, ILogger<LogoutModel> logger) : PageModel
     {
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly ILogger<LogoutModel> _logger = logger;
 
         public void OnGet()

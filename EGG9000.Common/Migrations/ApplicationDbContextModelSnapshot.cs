@@ -17,10 +17,77 @@ namespace EGG9000.Common.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.8")
+                .HasAnnotation("ProductVersion", "10.0.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApplicationUser", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<int>("AccessFailedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ConcurrencyStamp")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("DarkMode")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("LockoutEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("NormalizedEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("NormalizedUserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("PasswordHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PhoneNumberConfirmed")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("SecurityStamp")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("TwoFactorEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("UserName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NormalizedEmail")
+                        .HasDatabaseName("EmailIndex");
+
+                    b.HasIndex("NormalizedUserName")
+                        .IsUnique()
+                        .HasDatabaseName("UserNameIndex");
+
+                    b.ToTable("AspNetUsers", (string)null);
+                });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.AutomationLog", b =>
                 {
@@ -236,6 +303,9 @@ namespace EGG9000.Common.Migrations
 
                     b.HasIndex("ThreadID", "Created");
 
+                    b.HasIndex("GuildId", "ContractID", "League")
+                        .HasFilter("NOT \"Finished\" AND NOT \"DeletedChannel\" AND NOT \"ThreadArchived\"");
+
                     b.HasIndex("DiscordChannelId", "ThreadArchived", "CoopEnds", "ThreadID");
 
                     b.ToTable("Coops");
@@ -316,6 +386,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<decimal>("GuildId")
                         .HasColumnType("numeric(20,0)");
+
+                    b.Property<int>("HighestAnnouncedOom")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset?>("LastBackupCheck")
                         .HasColumnType("timestamp with time zone");
@@ -756,6 +829,12 @@ namespace EGG9000.Common.Migrations
                     b.Property<bool>("PublicScoreGrid")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("RankupExclusivePool")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("RankupMessagesEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("RemoveFindCoopSpot")
                         .HasColumnType("boolean");
 
@@ -778,6 +857,9 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("_faqTopicsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("_rankupDisabledGroupsCsv")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
@@ -911,6 +993,46 @@ namespace EGG9000.Common.Migrations
                     b.ToTable("NasaApods");
                 });
 
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.RankupMessage", b =>
+                {
+                    b.Property<string>("InternalId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("CreatedById")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("CreatedByIdString")
+                        .HasColumnType("text");
+
+                    b.Property<int>("GroupBaseOom")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("GuildId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("GuildName")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PalaceOnly")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Text")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Weight")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("_subscribedGuildIds")
+                        .HasColumnType("text");
+
+                    b.HasKey("InternalId");
+
+                    b.ToTable("RankupMessages");
+                });
+
             modelBuilder.Entity("EGG9000.Common.Database.Entities.ResearchCostSubmission", b =>
                 {
                     b.Property<string>("ID")
@@ -931,6 +1053,25 @@ namespace EGG9000.Common.Migrations
                     b.HasKey("ID", "Level", "UserId");
 
                     b.ToTable("ResearchCostSubmissions");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.SeasonInfo", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("text");
+
+                    b.Property<string>("GoalsJson")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("StartTime")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SeasonInfos");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.TemporaryRole", b =>
@@ -1189,6 +1330,25 @@ namespace EGG9000.Common.Migrations
                     b.ToTable("UserCsHistoryEntries");
                 });
 
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UserSeasonProgress", b =>
+                {
+                    b.Property<string>("EggIncId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SeasonId")
+                        .HasColumnType("text");
+
+                    b.Property<int>("StartingGrade")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("TotalCxp")
+                        .HasColumnType("double precision");
+
+                    b.HasKey("EggIncId", "SeasonId");
+
+                    b.ToTable("UserSeasonProgresses");
+                });
+
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UserSnapShot", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -1288,70 +1448,6 @@ namespace EGG9000.Common.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("AspNetRoleClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex");
-
-                    b.ToTable("AspNetUsers", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
@@ -1556,7 +1652,7 @@ namespace EGG9000.Common.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("EGG9000.Common.Database.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1565,7 +1661,7 @@ namespace EGG9000.Common.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("EGG9000.Common.Database.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1580,7 +1676,7 @@ namespace EGG9000.Common.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("EGG9000.Common.Database.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1589,7 +1685,7 @@ namespace EGG9000.Common.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<string>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser", null)
+                    b.HasOne("EGG9000.Common.Database.Entities.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

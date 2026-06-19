@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public abstract class ResendEmailConfirmationModel(UserManager<IdentityUser> userManager, IEmailSender emailSender) : PageModel
+    public abstract class ResendEmailConfirmationModel(UserManager<ApplicationUser> userManager, IEmailSender emailSender) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly IEmailSender _emailSender = emailSender;
 
         [BindProperty]

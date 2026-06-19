@@ -142,12 +142,14 @@ namespace EGG9000.Bot.Automated {
                     }
 
 
-                    // Keep future DMs and still-pending recent ones. Drop sent DMs and any unsent DM
-                    // whose ship returned more than 5 minutes ago - Run() would only stale-skip those,
-                    // so dropping them here clears the backlog silently instead of leaving it to pile up
-                    // (the failure mode that spammed users once saves started succeeding again).
+                    // Keep future DMs, plus any DM (sent or not) whose ship returned within the last
+                    // 5 minutes. Retaining the sent record is what prevents duplicates: the mission
+                    // stays in the backup until the ship is collected, so dropping a sent entry while
+                    // its return is still live lets the next rebuild regenerate it as unsent and fire a
+                    // second DM (the "returns soon" then "has returned" double-send). Once the return is
+                    // >5 min old it is dropped here and Run() stale-skips any regenerated copy.
                     var staleReturnUnix = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds();
-                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.UtcNow || (!x.Sent && x.ShipReturnTime > staleReturnUnix)).ToList();
+                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.UtcNow || x.ShipReturnTime > staleReturnUnix).ToList();
                     var NextShipReturnDMDue = currentShipDMs.Where(x => !x.Sent && x.ShipReturnTime > staleReturnUnix).OrderBy(x => x.DMTime).FirstOrDefault()?.DMTime;
 
                     if(NextShipReturnDMDue != user.NextShipReturnDMDue) {

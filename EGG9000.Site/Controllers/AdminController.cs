@@ -43,11 +43,11 @@ using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
-    public class AdminController(UserManager<IdentityUser> userManager, DiscordSocketClient discord,
+    public class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
         private readonly ApplicationDbContext _db = db;
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly DiscordSocketClient _discord = discord;
         private readonly IMemoryCache _cache = cache;
         private readonly ILogger<AdminController> _logger = logger;
@@ -150,7 +150,7 @@ namespace EGG9000.Site.Controllers {
             var demerit = _db.Demerit.FirstOrDefault(x => x.Id == id);
             _db.Remove(demerit);
             await _db.SaveChangesAsync();
-            return Redirect(Request.Headers["Referer"].ToString());
+            return RedirectToLocalReferer();
         }
 
         [Authorize(Roles = "Admin")]
@@ -159,6 +159,7 @@ namespace EGG9000.Site.Controllers {
             return Content("Bot proccess ended.");
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> LookForLargeJump() {
             var snapshots = await _db.UserSnapShots.ToListAsync();
 
@@ -203,11 +204,11 @@ namespace EGG9000.Site.Controllers {
             _db.Database.SetCommandTimeout(360);
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             Dictionary<DateTimeOffset, int[]> days;
-            var adminDaysCacheKey = $"AdminDays{guildId}";
+            var adminDaysCacheKey = $"AdminDaysV2{guildId}";
             if(!_cache.TryGetValue(adminDaysCacheKey, out days)) {
 
                 days = [];
-                var coops = (await _db.Coops.AsQueryable().Select(x => new { x.Created, Finished = x.CoopCompleted ?? x.CoopEnds }).ToListAsync())
+                var coops = (await _db.Coops.AsQueryable().Select(x => new { x.Created, Finished = x.CoopCompleted ?? x.CoopEnds, x.GuildId }).ToListAsync())
                     .Where(x => x.Created != DateTimeOffset.MinValue).ToList();
 
                 var userDates = await _db.DBUsers.Where(x => x.UserCoopXrefs.Any(y => y.JoinedCoop))
@@ -216,16 +217,31 @@ namespace EGG9000.Site.Controllers {
                         End = x.UserCoopXrefs.Where(y => y.JoinedCoop).OrderByDescending(y => y.CreatedOn).First().CreatedOn
                     }).ToListAsync();
 
+                var guildUserDates = (await _db.UserCoopXrefs
+                    .Where(y => y.JoinedCoop && y.Coop.GuildId == guildId)
+                    .Select(y => new { y.UserId, y.CreatedOn })
+                    .ToListAsync())
+                    .GroupBy(y => y.UserId)
+                    .Select(g => new { Start = g.Min(y => y.CreatedOn), End = g.Max(y => y.CreatedOn) })
+                    .ToList();
+
                 for(var start = coops.OrderBy(x => x.Created).First().Created.Date; start <= DateTimeOffset.UtcNow; start = start.AddDays(1)) {
                     var count = coops.Count(c => c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
                     var accountsCount = userDates.Count(x => x.Start < start && x.End > start.AddDays(-14));
-                    days.Add(start, [count, accountsCount]);
+                    var guildCount = coops.Count(c => c.GuildId == guildId && c.Created.Date <= start && (c.Finished?.Date ?? c.Created.AddDays(4).Date) >= start);
+                    var guildAccountsCount = guildUserDates.Count(x => x.Start < start && x.End > start.AddDays(-14));
+                    days.Add(start, [count, accountsCount, guildCount, guildAccountsCount]);
                 }
                 _cache.Set(adminDaysCacheKey, days, TimeSpan.FromHours(1));
             }
 
 
-            return Json(new { days = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] }), days2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] }) });
+            return Json(new {
+                days = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[0] }),
+                days2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[1] }),
+                guildDays = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[2] }),
+                guildDays2 = days.Select(x => new object[] { x.Key.ToUnixTimeMilliseconds(), x.Value[3] })
+            });
         }
 
         public async Task<IActionResult> Index() {
@@ -450,7 +466,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public class UserPermissionsModel {
-            public List<IdentityUser> Users { get; set; }
+            public List<ApplicationUser> Users { get; set; }
             public List<IdentityUserLogin<string>> Logins { get; set; }
             public List<IdentityUserRole<string>> UserRoles { get; set; }
             public List<IdentityRole> Roles { get; set; }
@@ -799,7 +815,10 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> DeleteGhost([FromQuery] Guid UserId, [FromQuery] Guid CoopId) {
-            var xref = await _db.UserCoopXrefs.AsQueryable().FirstAsync(x => x.UserId == UserId && x.CoopId == CoopId);
+            var xref = await _db.UserCoopXrefs.Include(x => x.Coop).FirstAsync(x => x.UserId == UserId && x.CoopId == CoopId);
+            if(!VerifyId(xref.Coop.GuildId)) {
+                return NotFound();
+            }
             _db.Remove(xref);
             await _db.SaveChangesAsync();
             return RedirectToAction("Ghosts");
@@ -845,7 +864,7 @@ namespace EGG9000.Site.Controllers {
                 var DiscordId = userLogins.FirstOrDefault(y => y.UserId == x.Id)?.ProviderKey;
                 var customName = customNames.FirstOrDefault(y => y.DiscordId == DiscordId);
                 return new EditUserWithDetails {
-                    IdentityUser = x,
+                    ApplicationUser = x,
                     IdentityUserRoles = userRoles.Where(y => y.UserId == x.Id).ToList(),
                     DiscordId = DiscordId,
                     CustomCoopName = customName?.CustomCoopName,
@@ -888,7 +907,7 @@ namespace EGG9000.Site.Controllers {
             public DateTimeOffset? ExpireCustomCoopName { get; set; }
             public Guid DBUserId { get; set; }
             public string DiscordId { get; set; }
-            public IdentityUser IdentityUser { get; set; }
+            public ApplicationUser ApplicationUser { get; set; }
             public List<IdentityUserRole<string>> IdentityUserRoles { get; set; }
         }
 
@@ -1367,6 +1386,16 @@ music
             return ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value) == guildid;
         }
 
+        // Redirect back to the Referer only when it points at this same host, to avoid an open
+        // redirect from a forged Referer header. Falls back to the site root.
+        private IActionResult RedirectToLocalReferer() {
+            var referer = Request.Headers["Referer"].ToString();
+            if(Uri.TryCreate(referer, UriKind.Absolute, out var uri) && uri.Host == Request.Host.Host) {
+                return Redirect(uri.PathAndQuery);
+            }
+            return Redirect("~/");
+        }
+
         public class SaveChannelDetailsObject {
             public List<ServerCoopSetting> CoopSettingsOverrides { get; set; }
             public List<ChannelDetail> ChannelDetails { get; set; }
@@ -1409,7 +1438,20 @@ music
 
         public async Task<IActionResult> InactivePlayers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var users = await _db.DBUsers.ToListAsync();
+            // The view only reads Id, DiscordId, TempDisabled, Notes and account ids, so project
+            // those columns instead of every user's full row (ship-DM / coop-setting / backup blobs).
+            var users = (await _db.DBUsers
+                .Select(u => new { u.Id, u.DiscordId, u.TempDisabled, u.Notes, u._eggIncIds, u._contractRegistrationByte })
+                .ToListAsync())
+                .Select(u => {
+                    var row = DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte);
+                    row.Id = u.Id;
+                    row.DiscordId = u.DiscordId;
+                    row.TempDisabled = u.TempDisabled;
+                    row.Notes = u.Notes;
+                    return row;
+                })
+                .ToList();
             var guild = _discord.Guilds.First(x => x.Id == guildId);
             await guild.DownloadUsersAsync();
             var xrefs = await _db.UserCoopXrefs.FromSqlRaw("select UserCoopXrefs.* from UserCoopXrefs where UserCoopXrefs.CreatedOn = (select max(t2.CreatedOn) from UserCoopXrefs t2 where t2.UserId = UserCoopXrefs.UserId)").ToListAsync();
@@ -1419,6 +1461,9 @@ music
 
         public async Task<IActionResult> SaveNotes([FromQuery] Guid UserId, [FromQuery] string Notes) {
             var user = await _db.DBUsers.FirstAsync(x => x.Id == UserId);
+            if(!VerifyId(user.GuildId)) {
+                return NotFound();
+            }
             user.Notes = Notes;
             await _db.SaveChangesAsync();
             return Content("Success");

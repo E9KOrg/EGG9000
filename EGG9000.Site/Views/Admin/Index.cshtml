@@ -131,6 +131,10 @@
 	}
 </div>
 <div>
+	<div class="btn-group" role="group" style="margin-top: 20px;" id="scopeToggle">
+		<button type="button" class="btn btn-outline-primary active" data-scope="global">Global</button>
+		<button type="button" class="btn btn-outline-primary" data-scope="server">@Model.Guild.Name</button>
+	</div>
 	<div id="chart"></div>
 
 </div>
@@ -142,17 +146,42 @@
 	}
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<partial name="_ApexCharts" />
 @section Scripts {
 <script>
+	var SERVER_NAME = @Json.Serialize(Model.Guild.Name);
+	var COOPS_GLOBAL = "Co-ops (Global)";
+	var COOPS_SERVER = "Co-ops (" + SERVER_NAME + ")";
+	var USERS_GLOBAL = "Active Users (Global)";
+	var USERS_SERVER = "Active Users (" + SERVER_NAME + ")";
+
+	var CHART_DATA = null;
+
 	$.ajax({
         url: "/admin/getgraphs",
         success: function (data) {
-            CreateChart(data.days, data.days2);
+            CHART_DATA = data;
+            CreateChart(data);
+        },
+        error: function (xhr) {
+            console.error("getgraphs failed:", xhr.status, xhr.responseText);
         }
     });
 
-	function CreateChart(days, days2) {
+	function seriesFor(scope, data) {
+		if (scope === "server") {
+			return [
+				{ name: COOPS_SERVER, data: data.guildDays },
+				{ name: USERS_SERVER, data: data.guildDays2 }
+			];
+		}
+		return [
+			{ name: COOPS_GLOBAL, data: data.days },
+			{ name: USERS_GLOBAL, data: data.days2 }
+		];
+	}
+
+	function CreateChart(data) {
 		var options = {
 			chart: {
 				type: 'area',
@@ -164,17 +193,13 @@
 			dataLabels: {
 				enabled: false
 			},
-			series: [{
-				name: "Number of Co-ops",
-				data: days// @Html.Raw(JsonConvert.SerializeObject(days))
-				}, {
-				name: "Number of Active Users",
-				data: days2//@Html.Raw(JsonConvert.SerializeObject(days2))
-				}],
+			series: seriesFor(currentScope(), data),
 			yaxis: [{
+				seriesName: [COOPS_GLOBAL, COOPS_SERVER],
 				opposite: true,
 				title: { text: "Number of Co-ops" }
 			}, {
+				seriesName: [USERS_GLOBAL, USERS_SERVER],
 				title: { text: "Number of Active Users" }
 			}],
 			xaxis: {
@@ -185,17 +210,28 @@
 					format: 'dd MMM yyyy'
 				}
 			},
-			dataLabels: {
-				enabled: false
-			},
 			stroke: {
 				width: 2
 			}
 		}
 
 		var chart = new ApexCharts(document.querySelector("#chart"), options);
-
 		chart.render();
+
+		document.querySelectorAll('#scopeToggle button[data-scope]').forEach(function (el) {
+			el.addEventListener('click', function () {
+				document.querySelectorAll('#scopeToggle button[data-scope]').forEach(function (b) {
+					b.classList.remove('active');
+				});
+				el.classList.add('active');
+				chart.updateSeries(seriesFor(currentScope(), CHART_DATA), true);
+			});
+		});
+	}
+
+	function currentScope() {
+		var active = document.querySelector('#scopeToggle button[data-scope].active');
+		return active ? active.getAttribute('data-scope') : "global";
 	}
 </script>
 

@@ -14,6 +14,7 @@ using EGG9000.Site.Services;
 using MassTransit;
 
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
@@ -33,10 +34,14 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Web;
 
+using Prometheus;
+
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 
@@ -54,11 +59,51 @@ builder.Host.UseNLog();
 ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
+
+#if RELEASE
+// Apply pending migrations on startup. Production only - dev runs against the live DB and must
+// stay manual. Single shared ApplicationDbContext; EF takes an advisory lock so the bot and site
+// applying concurrently serialize safely.
+using (var migrateScope = app.Services.CreateScope())
+{
+    var migrateFactory = migrateScope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+    using var migrateCtx = migrateFactory.CreateDbContext();
+    migrateCtx.Database.Migrate();
+}
+#endif
+
+// Must run before any middleware that reads the request scheme/host (HTTPS redirect, auth,
+// OAuth redirect_uri generation). Honors X-Forwarded-Proto from the TLS-terminating proxy so
+// the Discord OAuth callback is built as https, not the proxy's internal http hop.
+app.UseForwardedHeaders();
+
+// Security response headers on every response (incl. static files). Set before the rest of the
+// pipeline so they apply regardless of which handler produces the response. CSP is report-only
+// for now so violations are observable (browser console) without breaking Stripe.js / Discord
+// OAuth / existing inline assets - tighten to enforcing once the report is clean.
+app.Use(async (context, next) => {
+    var headers = context.Response.Headers;
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["Content-Security-Policy-Report-Only"] =
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
+        "style-src 'self' 'unsafe-inline'; " +
+        "img-src 'self' data: https:; " +
+        "font-src 'self' data:; " +
+        "frame-src https://js.stripe.com https://hooks.stripe.com; " +
+        "connect-src 'self' https://api.stripe.com; " +
+        "frame-ancestors 'none'";
+    await next();
+});
+
 if(app.Environment.IsDevelopment()) {
     app.UseDeveloperExceptionPage();
     app.UseMigrationsEndPoint();
 } else {
     app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
 }
 
 app.UseHttpsRedirection();
@@ -67,7 +112,10 @@ app.UseStaticFiles(new StaticFileOptions {
 });
 
 app.UseRouting();
-app.UseCors("SiteCorsPolicy");
+// Capture per-request HTTP metrics (duration/count by route + status) into the default Prometheus
+// registry, which also auto-exports GC/memory/process counters. Exposed at the gated /metrics
+// endpoint below.
+app.UseHttpMetrics();
 app.UseResponseCaching();
 app.UseAuthentication(); 
 app.UseAuthorization();
@@ -86,12 +134,29 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
 
+// Prometheus scrape endpoint. Behind Discord auth (cookie -> Discord OAuth login) AND the global
+// Admin role only. The explicit RequireAuthorization overrides the deny-by-default FallbackPolicy:
+// unauthenticated users hit the Discord login flow, authenticated non-Admins get 403. GuildAdmin /
+// GuildLesserAdmin are intentionally excluded - runtime/host metrics are a global ops concern.
+app.MapMetrics().RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute { Roles = "Admin" });
+
 app.MapRazorPages();
 app.Run();
 
 
 void ConfigureServices(IServiceCollection services, IConfiguration Configuration) {
-    services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>().SetApplicationName("EGG9000");
+    var dataProtection = services.AddDataProtection().PersistKeysToDbContext<ApplicationDbContext>().SetApplicationName("EGG9000");
+    // Keys are persisted to the DB; encrypt them at rest with a key-encryption certificate so a DB
+    // leak cannot be used to forge auth/OAuth cookies. The PFX lives outside the DB (Docker secret /
+    // mounted file). If not configured the keys stay unencrypted - acceptable for local dev only.
+    var dpCertPath = SecretsHelper.GetConfigOrSecret(Configuration, "DataProtection:CertPath", "dataprotection_cert_path");
+    var dpCertPassword = SecretsHelper.GetConfigOrSecret(Configuration, "DataProtection:CertPassword", "dataprotection_cert_password");
+    if(!string.IsNullOrEmpty(dpCertPath) && File.Exists(dpCertPath)) {
+        var dpCert = X509CertificateLoader.LoadPkcs12FromFile(dpCertPath, dpCertPassword);
+        dataProtection.ProtectKeysWithCertificate(dpCert);
+    } else {
+        logger.Warn("DataProtection key-encryption certificate not configured (DataProtection:CertPath / dataprotection_cert_path). Data-protection keys are persisted UNENCRYPTED in the database.");
+    }
     services.AddDbContext<ApplicationDbContext>(
         options => options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection"), x => x.CommandTimeout(30)),
         contextLifetime: ServiceLifetime.Scoped,
@@ -103,10 +168,12 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
             x.MigrationsAssembly("EGG9000.Common");
             x.CommandTimeout(30);
         });
+        // Kept on in prod on purpose: inlined parameter values are needed to debug user issues.
+        // The JSON-blob noise that produces is suppressed by NLog (drop messages >5000 chars), not here.
         options.EnableSensitiveDataLogging(true);
     });
 
-    services.AddIdentity<IdentityUser, IdentityRole>(options => {
+    services.AddIdentity<ApplicationUser, IdentityRole>(options => {
         options.SignIn.RequireConfirmedAccount = false;
         options.User.RequireUniqueEmail = false;
     })
@@ -137,6 +204,9 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.ExpireTimeSpan = TimeSpan.FromDays(45);
         options.Cookie.Name = "egg9000Cookie";
         options.Cookie.Expiration = TimeSpan.FromDays(45);
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
         options.SlidingExpiration = true;
         options.LoginPath = $"/Identity/Account/Login";
         options.LogoutPath = $"/Identity/Account/Logout";
@@ -145,20 +215,13 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
 
 
-#if RELEASE
-        services.Configure<ActiveMonitorOptions>(options => {
-            options.ServiceType = "site";
-            options.ColorConfigKey = "SITE_COLOR";
-            options.PollIntervalSeconds = 10;
-        });
-        // Register active monitor so every instance watches the shared deployment record
-        // 1. Register the concrete class as a Singleton so other services can find it
-        services.AddSingleton<ActiveMonitorHostedService>();
-        // 2. Register it as a Hosted Service by resolving the existing Singleton instance
-        services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
-#endif
-
     services.AddResponseCaching();
+    services.AddAuthorization(options => {
+        options.FallbackPolicy = new AuthorizationPolicyBuilder()
+            .RequireAuthenticatedUser()
+            .Build();
+    });
+
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
@@ -170,7 +233,14 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.Configure<ForwardedHeadersOptions>(options => {
         options.ForwardedHeaders =
             ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
-        options.KnownIPNetworks.Add(new System.Net.IPNetwork(IPAddress.Parse("192.168.0.0"), 24));
+
+        // Trusted proxy subnet(s) come from TRUSTED_PROXY_NETWORKS (comma-separated CIDR). Forwarded
+        // headers from any other source IP are ignored. Falls back to the prior hardcoded value when
+        // unset so an un-updated deploy keeps its old behavior instead of trusting nothing.
+        string trustedNetworks = Configuration["TRUSTED_PROXY_NETWORKS"] ?? "192.168.0.0/24";
+        foreach (string cidr in trustedNetworks.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
+            options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr));
+        }
     });
 
 
@@ -213,11 +283,16 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         }
     });
 
+    // Re-exposes bot runtime snapshots (received below) as bot_* gauges on /metrics.
+    services.AddSingleton<EGG9000.Site.Services.BotMetricsExporter>();
+
     services.AddMassTransit(x => {
         x.AddConsumer<ExpireCacheConsumer>();
         // Per-instance temporary queue so a version update fans out to every running process
         // instead of being load-balanced across a shared queue.
         x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
+        // Same broadcast pattern: every site instance applies every bot metrics snapshot.
+        x.AddConsumer<EGG9000.Site.Consumers.BotMetricsSnapshotConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
         var host = Configuration.GetConnectionString("RabbitMQServer");
         if(string.IsNullOrEmpty(host)) {
             x.UsingInMemory((context, cfg) => {

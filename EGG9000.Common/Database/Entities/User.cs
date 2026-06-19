@@ -37,6 +37,9 @@ namespace EGG9000.Common.Database.Entities {
         public bool DMSBlocked { get; set; } = false;
         public bool TempDisabled { get; set; }
         public bool showEB { get; set; }
+        // High-water mark of the highest rank (oom) we have already announced a rank-up for.
+        // Gates rank-up messages so an EB dip-and-recover spike does not re-announce. -1 = never announced.
+        public int HighestAnnouncedOom { get; set; } = -1;
 
         public DateTimeOffset? OnBreakSince { get; set; }
         public bool SkipNoPE { get; set; }
@@ -134,6 +137,14 @@ namespace EGG9000.Common.Database.Entities {
 
         public byte[] _contractRegistrationByte { get; set; }
 
+        // Builds an in-memory DBUser carrying only the two columns the EggIncAccounts getter reads
+        // to enumerate account ids. Callers that just need "which EIDs are registered" can project
+        // these columns instead of loading every user's full row (ship-DM / coop-setting / backup
+        // blobs). _CustomBackups only hydrates account.Backup, which id checks never touch, so the
+        // id set is identical to the full entity. Covered by DBUserProjectionTests.
+        public static DBUser FromAccountColumns(string eggIncIds, byte[] contractRegistrationByte)
+            => new() { _eggIncIds = eggIncIds, _contractRegistrationByte = contractRegistrationByte };
+
         [NotMapped]
         private List<EggIncAccount> _accounts = null;
         [NotMapped]
@@ -189,12 +200,9 @@ namespace EGG9000.Common.Database.Entities {
                 } catch(Exception) { throw; }
             }
             set {
-                if(value == null) {
-                    Console.WriteLine("Trying to save NULL EggIncAccounts");
-                } else {
-                    _accounts = value;
-                    UpdateAccounts();
-                }
+                if(value is null) return;
+                _accounts = value;
+                UpdateAccounts();
             }
 
         }
@@ -241,9 +249,11 @@ namespace EGG9000.Common.Database.Entities {
         public bool UpdateDMStatus(DiscordHelpersExt.DMResult dmResult) {
             switch(dmResult) {
                 case DiscordHelpersExt.DMResult.Success:
-                    if(DMSBlocked) DMSBlocked = false; return true;
+                    if(DMSBlocked) { DMSBlocked = false; return true; }
+                    return false;
                 case DiscordHelpersExt.DMResult.CannotSendToUser:
-                    if(!DMSBlocked) DMSBlocked = true; return true;
+                    if(!DMSBlocked) { DMSBlocked = true; return true; }
+                    return false;
                 default:
                     break;
             }
@@ -396,7 +406,6 @@ namespace EGG9000.Common.Database.Entities {
         public string AfxSetsImageHash { get; set; } = "";
         [Key(41)]
         public List<string> AfxSetsImageUrls { get; set; } = new();
-
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
                 return UltraGroup;

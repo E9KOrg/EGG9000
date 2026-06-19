@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class ExternalLoginsModel(
-        UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager) : PageModel
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
 
         public IList<UserLoginInfo> CurrentLogins { get; set; }
 

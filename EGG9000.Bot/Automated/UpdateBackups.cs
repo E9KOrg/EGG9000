@@ -62,7 +62,6 @@ namespace EGG9000.Bot.Automated {
                 }, cancellationToken));
             }
             await Task.WhenAll(tasks);
-            Console.WriteLine(String.Join(",", tasks.Select(x => x.IsCompleted ? "X" : "_")));
             times.Set("Updated Backups");
             await _db.SaveChangesAsync(cancellationToken);
 
@@ -126,7 +125,7 @@ namespace EGG9000.Bot.Automated {
                 await DiscoverUnknownContracts(account.Id, firstContact?.Backup, knownContractIds, discoveredContractDefs);
 
                 var oldLevel = account.SubscriptionLevel;
-                var backup = new CustomBackup(firstContact.Backup, cachedContracts);
+                var backup = new CustomBackup(firstContact.Backup, cachedContracts, account.Backup);
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
                 if(backup?.Farms is not null) {

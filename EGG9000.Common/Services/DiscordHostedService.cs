@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.ImageSharp.Processing;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -47,7 +48,7 @@ namespace EGG9000.Common.Services {
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent,
 
         };
-        private static readonly List<DiscordSemaphore> _serverSemaphores = [];
+        private static readonly ConcurrentDictionary<ulong, SemaphoreSlim> _serverSemaphores = new();
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
 
         // The gateway socket client, for use by CommandService and extension methods
@@ -96,7 +97,7 @@ namespace EGG9000.Common.Services {
             _cache = cache;
 
             foreach(var guild in _gateway.Guilds) {
-                _serverSemaphores.Add(new DiscordSemaphore(guild, new(1, 1)));
+                _serverSemaphores.TryAdd(guild.Id, new SemaphoreSlim(1, 1));
             }
         }
 
@@ -232,13 +233,7 @@ namespace EGG9000.Common.Services {
             }
         }
         public static SemaphoreSlim GetOrCreateSemaphore(SocketGuild guild) {
-            var semaphore = _serverSemaphores.FirstOrDefault(s => s.Guild == guild);
-            if(semaphore is null) {
-                semaphore = new DiscordSemaphore(guild, new(1, 1));
-                _serverSemaphores.Add(semaphore);
-            }
-
-            return semaphore.Semaphore;
+            return _serverSemaphores.GetOrAdd(guild.Id, _ => new SemaphoreSlim(1, 1));
         }
         public static TimeSpan GetSemaphoreTimeout() {
             return _semaphoreTimeoutTime;
@@ -248,11 +243,6 @@ namespace EGG9000.Common.Services {
     }
 
 
-
-    public class DiscordSemaphore(SocketGuild guild, SemaphoreSlim semaphore) {
-        public readonly SocketGuild Guild = guild;
-        public readonly SemaphoreSlim Semaphore = semaphore;
-    }
 
     public static class DiscordExtensions {
         public static async Task SendDMToKendrome(this DiscordSocketClient _discord, string message) {
@@ -438,7 +428,7 @@ namespace EGG9000.Common.Services {
             // Download the image from aux
             var imageUrl = newEgg.Icon.Url.ToString();
             byte[] imageBytes;
-            var _httpClient = new HttpClient();
+            using var _httpClient = new HttpClient();
             using var response = await _httpClient.GetAsync(imageUrl, CancellationToken.None);
             response.EnsureSuccessStatusCode();
             imageBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);

@@ -102,7 +102,7 @@ namespace EGG9000.Common.Database {
         }
     }
 
-    public class ApplicationDbContext : IdentityDbContext<IdentityUser>, IDataProtectionKeyContext {
+    public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionKeyContext {
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<Guild> Guilds { get; set; }
         public DbSet<Contract> Contracts { get; set; }
@@ -128,8 +128,11 @@ namespace EGG9000.Common.Database {
         public DbSet<UpcomingContract> UpcomingContracts { get; set; }
         public DbSet<UserCsHistoryEntry> UserCsHistoryEntries { get; set; }
         public DbSet<FAQTopic> FAQTopics { get; set; }
+        public DbSet<RankupMessage> RankupMessages { get; set; }
         public DbSet<ResearchCostSubmission> ResearchCostSubmissions { get; set; }
         public DbSet<NasaApod> NasaApods { get; set; }
+        public DbSet<SeasonInfo> SeasonInfos { get; set; }
+        public DbSet<UserSeasonProgress> UserSeasonProgresses { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -142,11 +145,12 @@ namespace EGG9000.Common.Database {
 
         public async Task<FrozenSet<Ei.Contract>> CachedEiContractsAsync() {
             return await _cache.GetOrCreateAsync("DbContext-EiContracts", async entry => {
-                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
                 var dbcontracts = await Contracts.ToListAsync();
                 var (eiContracts, _) = await EggIncAPI.EggIncApi.GetContractsArchive(EggIncAPI.EggIncApi.UserId);
 
-                var contracts = eiContracts.Archive.Select(x => x.Contract).ToList();
+                var contracts = eiContracts?.Archive?.Select(x => x.Contract).ToList() ?? [];
+                // Archive fetch failed (e.g. API timeout) - fall back to DB contracts and retry soon instead of caching the degraded set for an hour.
+                entry.AbsoluteExpirationRelativeToNow = contracts.Count > 0 ? TimeSpan.FromHours(1) : TimeSpan.FromMinutes(1);
                 contracts.AddRange(dbcontracts.Where(dbc => !contracts.Any(c => c.Identifier == dbc.ID)).Select(x => x.Details));
                 return contracts.ToFrozenSet();
             });
@@ -246,14 +250,22 @@ namespace EGG9000.Common.Database {
         }
 
 
-        // Npgsql 'timestamp with time zone' only accepts UTC (offset 0). Normalize every
-        // DateTimeOffset the model writes or compares (including query parameters - EF routes
-        // them through this converter) to UTC, so a stray local-offset value such as
-        // DateTimeOffset.Now can never crash a write or a query. The instant is preserved.
-        // Reads keep Npgsql's default materialization (local offset, same instant); the app
-        // compares DateTimeOffsets by instant, so the offset representation is irrelevant.
+        // Npgsql 'timestamp with time zone' only accepts UTC (offset 0). This converter normalizes
+        // every mapped DateTimeOffset column write to UTC, so a stray local-offset value such as
+        // DateTimeOffset.Now can never crash a write. It does NOT cover query parameters that are
+        // not tied to a converted column (a literal in a Where/OrderBy, raw SQL) -
+        // UtcDateTimeOffsetCommandInterceptor is the runtime safety net for those. The instant is
+        // preserved. Reads keep Npgsql's default materialization (local offset, same instant); the
+        // app compares DateTimeOffsets by instant, so the offset representation is irrelevant.
         private sealed class UtcDateTimeOffsetConverter : Microsoft.EntityFrameworkCore.Storage.ValueConversion.ValueConverter<DateTimeOffset, DateTimeOffset> {
             public UtcDateTimeOffsetConverter() : base(v => v.ToUniversalTime(), v => v) { }
+        }
+
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
+            base.OnConfiguring(optionsBuilder);
+            // Last-line normalization of any non-UTC DateTimeOffset command parameter.
+            // Registered here so every consumer gets it.
+            optionsBuilder.AddInterceptors(UtcDateTimeOffsetCommandInterceptor.Instance);
         }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) {
@@ -265,6 +277,7 @@ namespace EGG9000.Common.Database {
             base.OnModelCreating(builder);
             builder.Entity<UserCoopXref>().HasKey(x => new { x.UserId, x.CoopId, x.EggIncId });
             builder.Entity<UserSnapShot>().HasKey(x => new { x.UserId, x.Date, x.EggIncID });
+            builder.Entity<UserSeasonProgress>().HasKey(x => new { x.EggIncId, x.SeasonId });
             builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League });
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
             builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
@@ -282,6 +295,9 @@ namespace EGG9000.Common.Database {
             builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
             builder.Entity<Guild>().HasIndex(x => x.DiscordSeverId);
             builder.Entity<GuildContract>().HasIndex(x => x.DiscordChannelId);
+
+            builder.Entity<Coop>().HasIndex(x => new { x.GuildId, x.ContractID, x.League })
+                .HasFilter("NOT \"Finished\" AND NOT \"DeletedChannel\" AND NOT \"ThreadArchived\"");
 
             // DEV test-harness coops are excluded from every Coop query by default so they can never
             // trigger real thread/API creation or status polling. The harness opts back in where it
