@@ -388,6 +388,9 @@
                 <li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calc</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#colleggtibles@(index)" role="tab" aria-selected="false">Colleggtibles</a>
+                </li>
                 <!--<li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#inventoryview(index)" role="tab" aria-selected="false">Inventory View</a>
                 </li>-->
@@ -516,6 +519,11 @@
                         newModel.Backup = backup;
                         newModel.CustomEggs = Model.CustomEggs;
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
+                    }
+                </div>
+                <div class="tab-pane" id="colleggtibles@(index)" role="tabpanel">
+                    @{
+                        await Html.RenderPartialAsync("-Colleggtibles", (backup, Model.CustomEggs));
                     }
                 </div>
             </div>

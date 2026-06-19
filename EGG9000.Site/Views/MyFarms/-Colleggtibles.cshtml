@@ -1,0 +1,75 @@
+@using EGG9000.Common.Helpers
+@model (CustomBackup Backup, List<DBCustomEgg> CustomEggs)
+
+@{
+    var rows = ColleggtibleHelper.BuildRows(Model.Backup, Model.CustomEggs);
+}
+
+<style>
+    .bootstrap-dark .colleggtibles-table .table-success,
+    .bootstrap-dark .colleggtibles-table .table-success > td,
+    .bootstrap-dark .colleggtibles-table .table-success > th {
+        background-color: rgba(40, 167, 69, 0.25);
+        color: inherit;
+    }
+    .bootstrap-dark .colleggtibles-table .table-secondary,
+    .bootstrap-dark .colleggtibles-table .table-secondary > td,
+    .bootstrap-dark .colleggtibles-table .table-secondary > th {
+        background-color: rgba(108, 117, 125, 0.2);
+        color: inherit;
+        border-top-color: rgba(255, 255, 255, 0.08);
+    }
+</style>
+
+<div class="card" style="margin-top:15px">
+    <h4 class="card-header">Colleggtibles</h4>
+    <div class="table-responsive">
+        <table class="table table-striped colleggtibles-table">
+            <thead>
+                <tr>
+                    <th style="text-align:left">Name</th>
+                    <th class="d-none d-md-table-cell" style="text-align:left">Effect</th>
+                    <th class="text-center">Level</th>
+                    <th class="text-center">1 <span class="d-none d-md-inline">(10M)</span></th>
+                    <th class="text-center">2 <span class="d-none d-md-inline">(100M)</span></th>
+                    <th class="text-center">3 <span class="d-none d-md-inline">(1B)</span></th>
+                    <th class="text-center">4 <span class="d-none d-md-inline">(10B)</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in rows) {
+                    <tr class="@(row.Missing ? "table-secondary" : "")">
+                        <td>
+                            @if (!string.IsNullOrEmpty(row.IconUrl)) {
+                                <img src="@row.IconUrl" style="max-height:22px; margin-right:5px;" />
+                            }
+                            <strong>@row.Name</strong>
+                            @if (row.Missing) {
+                                <span class="badge badge-secondary" style="margin-left:4px;">Missing</span>
+                            }
+                            @if (!string.IsNullOrEmpty(row.FarmReachedText)) {
+                                <small class="text-muted" style="margin-left:4px;">reached @row.FarmReachedText</small>
+                            }
+                        </td>
+                        <td class="d-none d-md-table-cell" style="white-space:nowrap">@row.Dimension</td>
+                        <td class="text-center">
+                            <span class="badge @(row.Missing ? "badge-secondary" : row.Level == 4 ? "badge-success" : "badge-warning")">
+                                @row.Level/4
+                            </span>
+                        </td>
+                        @foreach (var cell in row.Cells) {
+                            <td class="text-center@(cell.Active ? " table-success" : cell.Future ? " text-muted" : "")">
+                                @if (cell.HasValue) {
+                                    <span title='×@cell.RawValue.ToString("F3", System.Globalization.CultureInfo.InvariantCulture)'>@cell.Percent</span>
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+                @if (rows.Count == 0) {
+                    <tr><td colspan="7" class="text-center text-muted">No colleggtible data available.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
