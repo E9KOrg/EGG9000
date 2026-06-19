@@ -208,8 +208,9 @@ public static class BotHostFactory {
             services.AddHostedService<DiscordUserService>();
             services.AddHostedService<UserGrades>();
 
-            //services.AddSingleton<IMetricServer>(_ => new MetricServer(port: botColor == "blue" ? 9464 : 9465));
-            //services.AddHostedService<PrometheusMetricServerHostedService>();
+            // Publishes a runtime snapshot over the bus every 15s; the site re-exposes it as bot_*
+            // gauges on its /metrics for cross-scope reporting.
+            services.AddHostedService<BotMetricsPublisher>();
 #endif
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");

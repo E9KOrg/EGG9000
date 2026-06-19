@@ -202,6 +202,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool PingOnTachyonChange { get; set; }
         [Key(7)]
         public bool PingOnCompleteOnCheckIn { get; set; }
+        [Key(8)]
+        public bool PingOnCoopCreatedEvenIfJoined { get; set; }
 
         [IgnoreMember]
         public bool this[string propertyName] {
@@ -222,30 +224,32 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public CoopSetting(UserCoopXref xref, DBUser user, Guild userGuild) {
-            if(user.CoopSetting is null)
-                user.CoopSetting = new CoopSetting();
+            user.CoopSetting ??= new CoopSetting();
 
-            PingOnFull = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnFull) || user.CoopSetting.PingOnFull || xref.PingOnFull;
-            PingOnHighestEB = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnHighestEB) || user.CoopSetting.PingOnHighestEB || xref.PingOnHighestEB;
-            PingOnFinished = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnFinished) || user.CoopSetting.PingOnFinished;
-            PingOnEveryoneCheckedIn = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnEveryoneCheckedIn) ||  user.CoopSetting.PingOnEveryoneCheckedIn || xref.PingOnFinished;
-            PingOnMessage = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnMessage) ||  user.CoopSetting.PingOnMessage;
-            PingOnCoopCreated = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnCoopCreated) || user.CoopSetting.PingOnCoopCreated;
-            PingOnTachyonChange = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnTachyonChange) || user.CoopSetting.PingOnTachyonChange;
-            PingOnCompleteOnCheckIn = userGuild.IsLockedAndEnabled(GuildCoopSetting.PingOnCompleteOnCheckIn) || user.CoopSetting.PingOnCompleteOnCheckIn;
+            // Resolve every ping setting uniformly off the GuildCoopSetting enum: a server
+            // force-enable or the user's saved default turns it on. New settings need no wiring here -
+            // just a matching CoopSetting property and enum value (settings without a property, if
+            // any, are skipped, mirroring the settings menu).
+            foreach(var setting in Enum.GetValues<GuildCoopSetting>()) {
+                var name = setting.ToString();
+                if(typeof(CoopSetting).GetProperty(name) is null)
+                    continue;
+                this[name] = userGuild.IsLockedAndEnabled(setting) || user.CoopSetting[name];
+            }
 
-            var disableOverrides = Enum.GetValues(typeof(GuildCoopSetting))
-                .Cast<GuildCoopSetting>()
-                .ToDictionary(setting => setting, userGuild.IsLockedAndDisabled);
+            // Legacy per-xref opt-ins layered on top of the user/guild defaults.
+            PingOnFull |= xref.PingOnFull;
+            PingOnHighestEB |= xref.PingOnHighestEB;
+            PingOnEveryoneCheckedIn |= xref.PingOnFinished;
 
-            if(disableOverrides[GuildCoopSetting.PingOnFull]) PingOnFull = false;
-            if(disableOverrides[GuildCoopSetting.PingOnHighestEB]) PingOnHighestEB = false;
-            if(disableOverrides[GuildCoopSetting.PingOnFinished]) PingOnFinished = false;
-            if(disableOverrides[GuildCoopSetting.PingOnEveryoneCheckedIn]) PingOnEveryoneCheckedIn = false;
-            if(disableOverrides[GuildCoopSetting.PingOnMessage]) PingOnMessage = false;
-            if(disableOverrides[GuildCoopSetting.PingOnCoopCreated]) PingOnCoopCreated = false;
-            if(disableOverrides[GuildCoopSetting.PingOnTachyonChange]) PingOnTachyonChange = false;
-            if(disableOverrides[GuildCoopSetting.PingOnCompleteOnCheckIn]) PingOnCompleteOnCheckIn = false;
+            // A server force-disable wins over user defaults and the per-xref opt-ins above.
+            foreach(var setting in Enum.GetValues<GuildCoopSetting>()) {
+                var name = setting.ToString();
+                if(typeof(CoopSetting).GetProperty(name) is null)
+                    continue;
+                if(userGuild.IsLockedAndDisabled(setting))
+                    this[name] = false;
+            }
         }
     }
 }
