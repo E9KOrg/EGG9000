@@ -161,12 +161,14 @@ namespace EGG9000.Common.Database.Entities {
         PingOnEveryoneCheckedIn = 3,
         [Description("Any non-bot message is sent in channel")]
         PingOnMessage = 4,
-        [Description("Additional DM alongside the standard @mention in the co-op channel")]
+        [Description("DM when your co-op is created, only if you have not already joined")]
         PingOnCoopCreated = 5,
         [Description("Get notified when someone adds/removes a Tachyon Deflector")]
         PingOnTachyonChange = 6,
         [Description("Get notified when your co-op will complete as soon as everyone checks in")]
-        PingOnCompleteOnCheckIn = 7
+        PingOnCompleteOnCheckIn = 7,
+        [Description("DM when your co-op is created, even if you have already joined")]
+        PingOnCoopCreatedEvenIfJoined = 8
     }
 
     [NotMapped]
