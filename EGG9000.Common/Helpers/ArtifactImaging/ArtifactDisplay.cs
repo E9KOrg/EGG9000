@@ -86,6 +86,7 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
             if(artifact is null || artifact.Additive ||
                artifact.Boost == JsonData.EiStatics.EggIncBoostTypeEnum.HostArtifactsOnElightenment)
                 return jsonSize ?? "";
+            if(artifact.Value == 9999) return "Guaranteed";
             if(artifact.Value >= 2) return $"{artifact.Value}x";
             return jsonSize ?? "";
         }
