@@ -683,7 +683,8 @@ namespace EGG9000.Site.Controllers {
             return View();
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        // Read tier: leaderboard name-links land here and redirect to MyFarms.ViewUser (also read tier).
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> ViewUser(Guid id) {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.Id == id);
             return RedirectToAction("ViewUser", "MyFarms", new { discordId = user.DiscordId });

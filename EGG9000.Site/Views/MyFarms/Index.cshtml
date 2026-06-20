@@ -23,7 +23,10 @@
     Guild dbguild = Model.DBGuild;
 
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
-    var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
+    // Read/staff tier - gates display-only context when viewing another user's farms (titles, status
+    // badges, extra columns). All write controls (remove merit/demerit) are gated on isAdmin instead, so
+    // the read-only GuildReadOnlyAdmin (CT) tier is safe to include here.
+    var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
     var isSelf = Model.IsSelf;
 
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
