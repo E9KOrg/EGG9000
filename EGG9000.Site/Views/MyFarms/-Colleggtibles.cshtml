@@ -28,7 +28,7 @@
             <thead>
                 <tr>
                     <th style="text-align:left">Name</th>
-                    <th class="d-none d-md-table-cell" style="text-align:left">Effect</th>
+                    <th style="text-align:left">Effect</th>
                     <th class="text-center">Level</th>
                     <th class="text-center">1 <span class="d-none d-md-inline">(10M)</span></th>
                     <th class="text-center">2 <span class="d-none d-md-inline">(100M)</span></th>
@@ -39,7 +39,7 @@
             <tbody>
                 @foreach (var row in rows) {
                     <tr class="@(row.Missing ? "table-secondary" : "")">
-                        <td>
+                        <td style="white-space:nowrap">
                             @if (!string.IsNullOrEmpty(row.IconUrl)) {
                                 <img src="@row.IconUrl" style="max-height:22px; margin-right:5px;" />
                             }
@@ -51,7 +51,7 @@
                                 <small class="text-muted" style="margin-left:4px;">reached @row.FarmReachedText</small>
                             }
                         </td>
-                        <td class="d-none d-md-table-cell" style="white-space:nowrap">@row.Dimension</td>
+                        <td style="white-space:nowrap">@row.Dimension</td>
                         <td class="text-center">
                             <span class="badge @(row.Missing ? "badge-secondary" : row.Level == 4 ? "badge-success" : "badge-warning")">
                                 @row.Level/4
