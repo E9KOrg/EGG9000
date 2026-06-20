@@ -382,9 +382,9 @@
                 <li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#colleggtibles@(index)" role="tab" aria-selected="false">Colleggtibles</a>
                 </li>
-                <!--<li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#inventoryview(index)" role="tab" aria-selected="false">Inventory View</a>
-                </li>-->
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#inventory@(index)" role="tab" aria-selected="false">Inventory</a>
+                </li>
             </ul>
 
             <div class="tab-content">
@@ -517,12 +517,18 @@
                         await Html.RenderPartialAsync("-Colleggtibles", (backup, Model.CustomEggs));
                     }
                 </div>
+                <div class="tab-pane" id="inventory@(index)" role="tabpanel">
+                    @{
+                        await Html.RenderPartialAsync("-ArtifactInventory", account.Id);
+                    }
+                </div>
             </div>
         </div>
     }
 </div>
 
 @section Scripts {
+    <script src="~/js/artifact-overlay.js" asp-append-version="true"></script>
     <script>
 
         function formatEpochToLocalDateTime(epochSeconds) {

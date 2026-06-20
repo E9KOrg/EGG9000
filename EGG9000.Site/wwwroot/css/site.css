@@ -125,6 +125,112 @@ body {
     }
 }
 
+/* Rich hover tooltip shared by the combos tiles and the inventory overlay hotspots. The markup lives
+   in a hidden .afx-tip-content child of each .has-tip element; artifact-overlay.js lifts it into a
+   single floating .afx-tooltip that follows the cursor.
+------------------------------------------- */
+
+.has-tip {
+    position: relative;
+}
+
+.afx-tip-content {
+    display: none;
+}
+
+.afx-tooltip {
+    position: fixed;
+    z-index: 1080;
+    pointer-events: none;
+    max-width: 280px;
+    background: rgba(18, 18, 20, 0.97);
+    color: #e9e9e9;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+.afx-tip-title {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.afx-tip-tier {
+    color: #9a9a9a;
+    font-weight: 400;
+}
+
+.afx-tip-count {
+    color: #9a9a9a;
+}
+
+.afx-tip-effect {
+    color: #d8d8d8;
+}
+
+.afx-tip-stone {
+    color: #bdbdbd;
+    font-style: italic;
+    padding-left: 8px;
+}
+
+/* The value (e.g. +20%, Guaranteed) is highlighted green, matching the in-game artifact card. */
+.afx-tip-value {
+    color: #4ade80;
+    font-style: normal;
+}
+
+/* Rarity word colours, matching the artifact thumbnail backgrounds. */
+.afx-rarity-1 { color: #b9b9b9; }
+.afx-rarity-2 { color: #6ab6ff; }
+.afx-rarity-3 { color: #c03fe2; }
+.afx-rarity-4 { color: #eeab42; }
+
+/* Inventory image with its grid of invisible hover targets
+------------------------------------------- */
+
+/* fit-content + max-width:100% lets the box shrink to the image yet never overflow the column.
+   inline-block here would trigger the classic max-width image-overflow bug, so use block. */
+.afx-overlay-wrap {
+    position: relative;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    line-height: 0;
+}
+
+/* width:100% makes the image fill the (already column-capped) wrap, so the percentage hotspots stay
+   aligned to the artwork at any size. */
+.afx-overlay-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+.afx-hotspot {
+    position: absolute;
+    cursor: help;
+    border-radius: 6px;
+}
+
+.afx-hotspot:hover {
+    outline: 2px solid rgba(255, 255, 255, 0.65);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* The Ships & Farms active-artifact set image sits under its "Artifacts" heading. */
+.afx-set-wrap {
+    margin-top: 4px;
+}
+
+.afx-hotspot-stone:hover {
+    outline-color: rgba(255, 255, 255, 0.85);
+}
+
 .copy-notification {
     display: none;
     position: fixed;
