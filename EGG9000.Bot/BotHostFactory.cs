@@ -63,19 +63,11 @@ public static class BotHostFactory {
                     x.MigrationsAssembly("EGG9000.Common");
                     x.CommandTimeout(30);
                 });
+                // Kept on in prod on purpose (param values needed to debug user issues); JSON-blob
+                // noise is suppressed by NLog (drop messages >5000 chars), not here.
                 options.EnableSensitiveDataLogging(true);
                 options.AddInterceptors(new QueryCountingInterceptor());
             });
-
-#if !DEBUG
-            services.Configure<ActiveMonitorOptions>(options => {
-                options.ServiceType = "bot";
-                options.ColorConfigKey = "BOT_COLOR";
-                options.PollIntervalSeconds = 10;
-            });
-            services.AddSingleton<ActiveMonitorHostedService>();
-            services.AddHostedService(provider => provider.GetRequiredService<ActiveMonitorHostedService>());
-#endif
 
             services.AddSingleton<DatabaseCache>();
             services.AddHostedService<UserCacheRefreshService>();
@@ -206,6 +198,7 @@ public static class BotHostFactory {
             services.AddHostedService<RefreshNasaApod>();
             services.AddHostedService<UpdateBackups>();
             services.AddHostedService<CleanAutomationLogs>();
+            services.AddHostedService<RankupMessageSeeder>();
 
             services.AddSingleton<CoopsBeingCreatedService>();
             services.AddSingleton<JobService>();
@@ -215,8 +208,9 @@ public static class BotHostFactory {
             services.AddHostedService<DiscordUserService>();
             services.AddHostedService<UserGrades>();
 
-            //services.AddSingleton<IMetricServer>(_ => new MetricServer(port: botColor == "blue" ? 9464 : 9465));
-            //services.AddHostedService<PrometheusMetricServerHostedService>();
+            // Publishes a runtime snapshot over the bus every 15s; the site re-exposes it as bot_*
+            // gauges on its /metrics for cross-scope reporting.
+            services.AddHostedService<BotMetricsPublisher>();
 #endif
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");

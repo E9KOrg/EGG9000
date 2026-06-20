@@ -110,6 +110,8 @@
     </None>
   </ItemGroup>
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(DOCKER_BUILD)' != 'true'">
-    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25H%25%25n%25%25an &lt;%25%25ae&gt;%25%25n%25%25at&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
+    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25h%25%25n%25%25an%25%25n%25%25ct&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
+    <Exec Command="git rev-parse --abbrev-ref HEAD &gt;&gt; &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
+    <Exec Command="git config --get remote.origin.url &gt;&gt; &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
   </Target>
 </Project>

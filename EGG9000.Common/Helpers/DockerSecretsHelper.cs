@@ -65,10 +65,33 @@ namespace EGG9000.Common.Helpers
         /// </summary>
         public static string ApiSalt { get; private set; }
 
+        /// <summary>
+        /// Shared secret authenticating control messages on the RabbitMQ bus (Restart / Shutdown /
+        /// UpdateApiVersions). Loaded from Docker secret <c>bus_control_secret</c> or
+        /// <c>ConnectionStrings:BusControlSecret</c>. Null/empty disables enforcement (back-compat /
+        /// local dev) - set it on every instance to enforce.
+        /// </summary>
+        public static string BusControlSecret { get; private set; }
+
+        /// <summary>
+        /// Constant-time check of a control-message secret against <see cref="BusControlSecret"/>.
+        /// Returns true (no enforcement) when no secret is configured.
+        /// </summary>
+        public static bool IsValidBusSecret(string provided)
+        {
+            var expected = BusControlSecret;
+            if (string.IsNullOrEmpty(expected)) return true;
+            if (string.IsNullOrEmpty(provided)) return false;
+            return System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                System.Text.Encoding.UTF8.GetBytes(expected),
+                System.Text.Encoding.UTF8.GetBytes(provided));
+        }
+
         public static void Initialize(IConfiguration config)
         {
             BotToken = GetConfigOrSecret(config, "ConnectionStrings:Token", "token");
             ApiSalt = GetConfigOrSecret(config, "ConnectionStrings:ApiSalt", "egg_inc_api_salt");
+            BusControlSecret = GetConfigOrSecret(config, "ConnectionStrings:BusControlSecret", "bus_control_secret");
         }
     }
 }

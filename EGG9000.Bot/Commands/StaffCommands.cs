@@ -608,7 +608,7 @@ namespace EGG9000.Bot.Commands {
 
             var runtimeHealth = Math.Min(apiCalls == 0 ? 1 : 1 - (double)apiFails / apiCalls, commands == 0 ? 1 : 1 - (double)cmdFails / commands);
             var discordHealth = Math.Min(latency < 0 ? 1 : HealthRange(latency, 150, 1000), HealthRange(backlog, 25, 500));
-            var processHealth = Math.Min(HealthRange(workingMb, 750, 4000), HealthRange(gcHeapMb, 500, 3000));
+            var processHealth = Math.Min(HealthRange(workingMb, 1200, 4000), HealthRange(gcHeapMb, 500, 3000));
             var dbHealth = Math.Min(HealthRange(pingMs, 50, 500), HealthRange(pending, 25, 250));
 
             return new SysLoadSnapshot(pingMs, workingMb, gcHeapMb, proc.Threads.Count, proc.TotalProcessorTime.TotalMinutes, cacheCount,
@@ -700,7 +700,7 @@ namespace EGG9000.Bot.Commands {
             return cb.Build();
         }
 
-        [SlashCommand(Description = "System load: runtime, Discord, DB, process (health-colored)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "a")]
+        [SlashCommand(Description = "System load: runtime, Discord, DB, process (health-colored)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
         public static async Task SysLoad(FauxCommand command, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider,
             [SlashParam(Required = false, Description = "Auto-refresh every N seconds (1-30, stops after 30s total)")] int refreshseconds = 0,
             [SlashParam(Required = false, Description = "Post visibly in the channel instead of only to you")] bool showinchannel = false) {
@@ -746,7 +746,7 @@ namespace EGG9000.Bot.Commands {
             }, cts.Token);
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SysLoadNav(SocketMessageComponent component, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider) {
             await component.DeferAsync();
             var section = component.Data.Values.FirstOrDefault() ?? "overview";
@@ -758,7 +758,7 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(snap); x.Embed = SysLoadSection(section, snap); x.Components = SysLoadComponents(section, refreshing, IsEphemeral(component.Message)); });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SysLoadRefresh(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordSocketClient client, IServiceProvider serviceProvider) {
             await component.DeferAsync();
             var section = string.IsNullOrEmpty(data) ? "overview" : data;
@@ -767,14 +767,14 @@ namespace EGG9000.Bot.Commands {
             await component.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(snap); x.Embed = SysLoadSection(section, snap); x.Components = SysLoadComponents(section, refreshing, IsEphemeral(component.Message)); });
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SysLoadStop(SocketMessageComponent component) {
             await component.DeferAsync();
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
                 session.Cts.Cancel();
         }
 
-        [ComponentCommand]
+        [ComponentCommand(AdminOnly = StaffOnlyLevel.FarmHand)]
         public static async Task SysLoadDismiss(SocketMessageComponent component) {
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
                 session.Cts.Cancel();
@@ -802,8 +802,6 @@ namespace EGG9000.Bot.Commands {
             var buildConfig = "Unknown";
 #endif
 
-            var botActive = Environment.GetEnvironmentVariable("BOT_ACTIVE") ?? "(unset)";
-            var botColor = Environment.GetEnvironmentVariable("BOT_COLOR") ?? "(unset)";
             var proc = Process.GetCurrentProcess();
             var uptime = (DateTime.Now - proc.StartTime).Humanize();
 
@@ -825,8 +823,6 @@ namespace EGG9000.Bot.Commands {
             var server = command.GuildId.HasValue ? stats.GetServerStats(command.GuildId.Value) : null;
 
             var rows = new List<List<FixedWidthCell>> {
-                new() { new("Bot Active"), new(botActive, CellAlignment.Right) },
-                new() { new("Bot Color"), new(botColor, CellAlignment.Right) },
                 new() { new("Build"), new(buildConfig, CellAlignment.Right) },
                 new() { new("Uptime"), new(uptime, CellAlignment.Right) },
                 null,

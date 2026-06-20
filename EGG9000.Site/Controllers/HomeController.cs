@@ -48,19 +48,20 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
-    public class HomeController(ILogger<HomeController> logger, UserManager<IdentityUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<IdentityUser> signInManager,
+    public class HomeController(ILogger<HomeController> logger, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<ApplicationUser> signInManager,
         DiscordSocketClient discord, ApplicationDbContext db, IMemoryCache cache, DatabaseCache databaseCache) : Controller {
 
         private readonly ILogger<HomeController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly RoleManager<IdentityRole> _roleManager = roleManager;
         private readonly DiscordSocketClient _discord = discord;
         private readonly IMemoryCache _cache = cache;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly DatabaseCache _databaseCache = databaseCache;
 
 #if DEBUG || DEV9002
+        [AllowAnonymous]
         public async Task<IActionResult> DebugLogin([FromQuery] string id) {
             var a = await _db.UserLogins.FirstOrDefaultAsync(x => x.ProviderKey == id);
             var user = await _userManager.Users.FirstAsync(x => x.Id == a.UserId);
@@ -76,27 +77,18 @@ namespace EGG9000.Site.Controllers {
             return Redirect("/");
         }
 #endif
+        [AllowAnonymous]
         public async Task<IActionResult> Alive() {
             var contract = await _db.Contracts.FirstAsync();
             return Content("Success");
         }
 
+        [AllowAnonymous]
         public IActionResult AliveDiscord() {
 
             if(_discord.ConnectionState == ConnectionState.Connected)
                 return Content("Success");
             else return StatusCode(503);
-        }
-
-        public async Task<IActionResult> GetMessage() {
-            var message = await _discord.Guilds.First(x => x.Id == 656455567858073601).GetTextChannel(933047117621100605).GetMessageAsync(933395126749896804);
-            return Json(message, new JsonSerializerOptions { ReferenceHandler = ReferenceHandler.IgnoreCycles });
-        }
-
-        public async Task<IActionResult> CheckBoost() {
-            var channel = _discord.GetGuild(656455567858073601).GetTextChannel(680431628950044676);
-            var msg = await channel.GetMessageAsync(847572559913549874);
-            return Json(msg);
         }
 
         [Authorize(Roles = "Admin,GuildLesserAdmin,GuildAdmin")]
@@ -132,6 +124,7 @@ namespace EGG9000.Site.Controllers {
             return Json(customBackup);
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CleanCoopPins() {
             var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && !x.ThreadArchived).ToListAsync();
 
@@ -174,38 +167,23 @@ namespace EGG9000.Site.Controllers {
             return Content("Success");
         }
 
-        [EnableCors("SiteCorsPolicy")]
-        public IActionResult XFinity([FromQuery] string usage) {
-            Console.WriteLine(usage);
-
-            var client = new HttpClient();
-            client.GetStringAsync("https://nr.dev.sglade.com/endpoint/xfinity/" + usage);
-            return Content("Success");
-        }
-
-        [EnableCors("SiteCorsPolicy")]
-        public IActionResult XFinityMobile([FromQuery] string usage) {
-            Console.WriteLine(usage);
-
-            var client = new HttpClient();
-            client.GetStringAsync("https://nr.dev.sglade.com/endpoint/xfinitymobile/" + usage);
-            return Content("Success");
-        }
-
-
+        [AllowAnonymous]
         public IActionResult Index() {
             return View();
         }
 
+        [AllowAnonymous]
         public IActionResult Privacy() {
             return View();
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CheckDiscord() {
             ViewBag.Discord = _discord;
             return View(await _db.DBUsers.AsQueryable().ToListAsync());
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateDiscord() {
             var Model = await _db.DBUsers.AsQueryable().ToListAsync();
             foreach(var user in Model.Where(x => x.Registered < DateTimeOffset.UtcNow.AddDays(-14))) {
@@ -220,6 +198,7 @@ namespace EGG9000.Site.Controllers {
             return Redirect("/home/checkdiscord");
         }
 
+        [AllowAnonymous]
         public IActionResult ClearCookies() {
             foreach(var cookie in Request.Cookies.Keys) {
                 Response.Cookies.Delete(cookie);
@@ -710,6 +689,7 @@ namespace EGG9000.Site.Controllers {
             return RedirectToAction("ViewUser", "MyFarms", new { discordId = user.DiscordId });
         }
 
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> ViewUserId(string id) {
             var user = new DBUser {
                 UserCoopXrefs = new List<UserCoopXref>()
@@ -720,15 +700,21 @@ namespace EGG9000.Site.Controllers {
             return View("ViewUser", user);
         }
 
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> ViewBackup(string id) {
             var user = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.Id.ToString() == id || x.DiscordUsername == id);
+            if(user == null) {
+                return NotFound();
+            }
             return Json(user.EggIncAccounts.Select(x => x.Backup));
         }
 
+        [AllowAnonymous]
         public IActionResult Embed(string returnUrl) {
             return View((object)returnUrl);
         }
 
+        [AllowAnonymous]
         public async Task<IActionResult> Coop([FromRoute] string ContractId, [FromRoute] string CoopId) {
             CoopId = CoopId.ToLower();
             var model = new CoopModel {
@@ -874,6 +860,7 @@ namespace EGG9000.Site.Controllers {
             Never
         }
 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CheckChannels() {
             var channels = _discord.GetGuild(656455567858073601).TextChannels.Where(x => x.CategoryId.HasValue && x.Category.Name.ToLower().Contains("coops"));
             var text = new StringBuilder();
@@ -898,11 +885,13 @@ namespace EGG9000.Site.Controllers {
         }
 
 
+        [AllowAnonymous]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error() {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
 
+        [AllowAnonymous]
         public IActionResult Invite() {
             return Redirect("https://discord.gg/cluckinghampalace");
         }

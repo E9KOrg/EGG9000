@@ -36,7 +36,7 @@
 			display: inline-block;
 			z-index: 3;
 			position: absolute;
-			bottom: 25px; /* Adjust this value as needed */
+			bottom: 25px;
 			left: 50%;
 			transform: translateX(-50%); /* Center the tooltip */
 		}
@@ -80,7 +80,7 @@
 
 	.speech-bubble {
 		position: relative;
-		padding: 10px; /* Adjust the padding to your preference */
+		padding: 10px;
 		margin: 10px auto; /* Center the bubble horizontally */
 		border-radius: 5px; /* Rounded corners for the bubble */
 	}
@@ -92,7 +92,7 @@
 			top: 100%;
 			left: 50%;
 			margin-left: -15px; /* Half of the triangle's width */
-			border-width: 15px; /* Adjust the size of the triangle */
+			border-width: 15px;
 			border-style: solid;
 			border-color: #ccc transparent transparent transparent;
 		}
@@ -149,8 +149,6 @@
 									</a>
 									@if (coop is not null && coop.ThreadID != 0 && !coop.ThreadArchived) {
 										<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.ThreadID/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
-									} else if(coop is not null && coop.DiscordChannelId != 0 && !coop.DeletedChannel){
-										<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
 									}
 								</td>
 								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
@@ -219,7 +217,7 @@
 								userFarmDetails = GetCoopParticipants(coop, coopContract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm?.ContractId);
-							var score = Model.scores.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract.Identifier) == farm?.ContractId)?.Evaluation;
+							var score = Model.scores?.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract?.Identifier) == farm?.ContractId)?.Evaluation;
 							<tr data-name="@(contract?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
 								<td>@(score?.Cxp.ToString() ?? "")</td>
 								<td>@(contract?.Name ?? farm.ContractId)</td>
@@ -229,8 +227,6 @@
 									</a>
 									@if (coop is not null && coop.ThreadID != 0 && !coop.ThreadArchived) {
 										<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.ThreadID/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
-									} else if(coop is not null && coop.DiscordChannelId != 0 && !coop.DeletedChannel){
-										<a href="discord://discordapp.com/channels/@coop.OverflowGuildId/@coop.DiscordChannelId/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
 									}
 								</td>
 								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
@@ -277,7 +273,7 @@
 								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
-							var score = Model.scores.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract.Identifier) == farm.ContractId)?.Evaluation;
+							var score = Model.scores?.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract?.Identifier) == farm.ContractId)?.Evaluation;
 							<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
 								<td>@(score?.Cxp.ToString() ?? "")</td>
 								<td>@(contract?.Name ?? farm.ContractId)</td>

@@ -4,19 +4,14 @@
 # DO NOT commit secrets or real credentials here.
 
 services:
-  bot_blue:
+  bot:
     environment:
       DOTNET_ENVIRONMENT: Development
       ASPNETCORE_ENVIRONMENT: Development
-      BOT_ACTIVE: "true"
-      BOT_COLOR: blue
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
 
-  bot_green:
-    restart: "no"
-
-  site_blue:
+  site:
     environment:
       DOTNET_ENVIRONMENT: Development
       ASPNETCORE_ENVIRONMENT: Development

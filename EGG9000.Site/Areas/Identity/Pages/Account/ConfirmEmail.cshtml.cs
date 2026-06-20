@@ -8,9 +8,9 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public class ConfirmEmailModel(UserManager<IdentityUser> userManager) : PageModel
+    public class ConfirmEmailModel(UserManager<ApplicationUser> userManager) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
 
         [TempData]
         public string StatusMessage { get; set; }

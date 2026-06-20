@@ -78,6 +78,23 @@ namespace EGG9000.Common.Database.Entities {
         [GuildConfig("FAQ Topic Cooldown (min)", "Numbers", GuildConfigKind.Int, Description = "Minutes between FAQ posts in a channel")]
         public int FAQTopicCooldownMinutes { get; set; }
 
+        [GuildConfig("Rank-up Messages Enabled", "Toggles", GuildConfigKind.Bool, Description = "Master toggle for rank-up announcements")]
+        public bool RankupMessagesEnabled { get; set; } = true;
+        [GuildConfig("Rank-up Exclusive Group Pool", "Toggles", GuildConfigKind.Bool, Description = "When a group has its own rank-up messages, do not mix in the global pool")]
+        public bool RankupExclusivePool { get; set; } = false;
+
+        public string _rankupDisabledGroupsCsv { get; set; } = "";
+        [NotMapped]
+        public List<int> RankupDisabledGroups {
+            get {
+                if(string.IsNullOrEmpty(_rankupDisabledGroupsCsv)) return [];
+                return [.. _rankupDisabledGroupsCsv.Split(",", System.StringSplitOptions.RemoveEmptyEntries).Select(int.Parse)];
+            }
+            set {
+                _rankupDisabledGroupsCsv = string.Join(",", value);
+            }
+        }
+
         public string _channelDetailsJson { get; set; }
         [NotMapped]
         private List<ChannelDetail> _channelDetails { get; set; }
@@ -144,12 +161,14 @@ namespace EGG9000.Common.Database.Entities {
         PingOnEveryoneCheckedIn = 3,
         [Description("Any non-bot message is sent in channel")]
         PingOnMessage = 4,
-        [Description("Additional DM alongside the standard @mention in the co-op channel")]
+        [Description("DM when your co-op is created, only if you have not already joined")]
         PingOnCoopCreated = 5,
         [Description("Get notified when someone adds/removes a Tachyon Deflector")]
         PingOnTachyonChange = 6,
         [Description("Get notified when your co-op will complete as soon as everyone checks in")]
-        PingOnCompleteOnCheckIn = 7
+        PingOnCompleteOnCheckIn = 7,
+        [Description("DM when your co-op is created, even if you have already joined")]
+        PingOnCoopCreatedEvenIfJoined = 8
     }
 
     [NotMapped]

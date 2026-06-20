@@ -235,6 +235,22 @@ namespace EGG9000.Common.EggIncAPI {
         }
 
 
+        public static async Task<ApiResult<ContractSeasonInfos>> GetSeasonInfosAsync() {
+            try {
+                var info = GetInfo(UserId);
+                var messageData = info.ToByteArray();
+                var authMessage = new AuthenticatedMessage { Message = ByteString.CopyFrom(messageData), Code = GetHash(messageData) };
+                var body = await GetBAC(GetEncodedMessage(authMessage));
+                var (responseBytes, error) = await PostRawWithError("ei_ctx/get_season_infos_v2", body, HeaderProfile.Android);
+                if(responseBytes == null) {
+                    return ApiResult<ContractSeasonInfos>.Fail(error ?? "No response");
+                }
+                return GetFromAuthenticatedMessage<ContractSeasonInfos>(responseBytes);
+            } catch(Exception e) {
+                return ApiResult<ContractSeasonInfos>.Fail("Bot Exception: " + e.Message);
+            }
+        }
+
         public static async Task<ApiResult<ContractPlayerInfo>> GetContractPlayerInfo(string UserId) {
             try {
                 var info = GetInfo(UserId);

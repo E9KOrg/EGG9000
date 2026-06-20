@@ -256,7 +256,10 @@ namespace EGG9000.Common.Database {
             DroneTakedowns = backup.Stats.DroneTakedowns;
             DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
             HyperloopPurchased = backup.Game.HyperloopStation;
-            TankLevel = backup.Artifacts.TankLevel;
+            var currentFarm = backup.Farms.ElementAtOrDefault((int)backup.Game.CurrentFarm);
+            var inVirtueDimension = currentFarm is not null && (int)currentFarm.EggType >= 50 && (int)currentFarm.EggType <= 54;
+            var activeTankArtifacts = inVirtueDimension && backup.Virtue?.Afx is not null ? backup.Virtue.Afx : backup.Artifacts;
+            TankLevel = activeTankArtifacts.TankLevel;
             //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
@@ -323,9 +326,9 @@ namespace EGG9000.Common.Database {
             }
 
             FuelAmounts = [];
-            for(var i = 0; i < backup.Artifacts.TankFuels.Count; i++) {
-                if(backup.Artifacts.TankFuels[i] > 0)
-                    FuelAmounts.Add((Ei.Egg)(i + 1), backup.Artifacts.TankFuels[i]);
+            for(var i = 0; i < activeTankArtifacts.TankFuels.Count; i++) {
+                if(activeTankArtifacts.TankFuels[i] > 0)
+                    FuelAmounts.Add((Ei.Egg)(i + 1), activeTankArtifacts.TankFuels[i]);
             }
 
             MaxFarmSizeReached = [];
@@ -335,21 +338,9 @@ namespace EGG9000.Common.Database {
             }
 
             CustomEggMaxFarmSizeReached = [];
-            var allContractList = backup.Contracts.Archive.Concat(backup.Contracts.Contracts).ToList();
-            foreach(var customEgg in backup.Contracts.CustomEggInfo.ToList()) {
-                var matchingContracts = allContractList.Where(f =>
-                    f?.MaxFarmSizeReached > 0
-                    && f.Contract?.Egg == Ei.Egg.CustomEgg
-                    && f.Contract.CustomEggId.ToLower() == customEgg.Identifier.ToLower()
-                ).ToList();
-
-                if(!matchingContracts.Any()) continue;
-
-                CustomEggMaxFarmSizeReached.Add(
-                    customEgg.Identifier,
-                    (ulong)matchingContracts.Max(f => f.MaxFarmSizeReached)
-                );
-            }
+            MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, backup.Contracts.Archive.Concat(backup.Contracts.Contracts), contracts);
+            if(lastBackup?.CustomEggMaxFarmSizeReached is not null)
+                MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, lastBackup.CustomEggMaxFarmSizeReached);
 
 
             var temp = backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => x.Ship);
@@ -512,20 +503,31 @@ namespace EGG9000.Common.Database {
             Farms.Add(customFarm);
         }
 
-        public uint GetColleggtibleLevel(DBCustomEgg customEgg) {
-            return GetColleggtibleLevel(customEgg.Identifier);
+        private static void MergeMaxFarmSizes(Dictionary<string, ulong> target, Dictionary<string, ulong> source) {
+            foreach(var kvp in source)
+                if(!target.TryGetValue(kvp.Key, out var existing) || kvp.Value > existing)
+                    target[kvp.Key] = kvp.Value;
+        }
+
+        private static void MergeMaxFarmSizes(Dictionary<string, ulong> target, IEnumerable<Ei.LocalContract> farms, FrozenSet<Ei.Contract> contracts) {
+            var eggIdByContractId = contracts
+                .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
+                .ToDictionary(c => c.Identifier, c => c.CustomEggId.ToLower());
+            MergeMaxFarmSizes(target,
+                farms.Where(f => f.MaxFarmSizeReached > 0 && eggIdByContractId.ContainsKey(f.ContractIdentifier))
+                     .GroupBy(f => eggIdByContractId[f.ContractIdentifier])
+                     .ToDictionary(g => g.Key, g => (ulong)g.Max(f => f.MaxFarmSizeReached)));
         }
 
         public uint GetColleggtibleLevel(string identifier) {
-            if(CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize)) {
-                return farmSize switch {
-                    > 10000000000 => 4,
-                    > 1000000000 => 3,
-                    > 100000000 => 2,
-                    > 10000000 => 1,
-                    _ => 0
-                };
-            } else return 0;
+            CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize);
+            return farmSize switch {
+                > 10000000000UL => 4,
+                > 1000000000UL => 3,
+                > 100000000UL => 2,
+                > 10000000UL => 1,
+                _ => 0
+            };
         }
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {

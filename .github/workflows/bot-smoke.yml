@@ -35,9 +35,7 @@ jobs:
         env:
           ConnectionStrings__Token: ${{ secrets.CI_DISCORD_TOKEN }}
           ConnectionStrings__DefaultConnection: ${{ secrets.CI_DB_CONNECTION }}
-          BOT_ACTIVE: 'false'
         run: |
-          # With BOT_ACTIVE=false the bot validates config and exits cleanly without connecting,
-          # proving the published image boots with the supplied secrets. Replace this with a fuller
-          # "connect to gateway + open DB, then exit" harness when one exists.
+          # Confirms the published image builds against the supplied secrets. Replace this with a
+          # fuller "connect to gateway + open DB, then exit" harness when one exists.
           dotnet build EGG9000.Bot -c Release

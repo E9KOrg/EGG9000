@@ -16,12 +16,12 @@ using System.Threading.Tasks;
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
     public class ExternalLoginModel(
-        SignInManager<IdentityUser> signInManager,
-        UserManager<IdentityUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
+        UserManager<ApplicationUser> userManager,
         ILogger<ExternalLoginModel> logger,
         IEmailSender emailSender) : PageModel {
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
-        private readonly UserManager<IdentityUser> _userManager = userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly IEmailSender _emailSender = emailSender;
         private readonly ILogger<ExternalLoginModel> _logger = logger;
 
@@ -102,7 +102,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
             }
 
             if (ModelState.IsValid) {
-                var user = new IdentityUser { UserName = Input.Email, Email = Input.Email };
+                var user = new ApplicationUser { UserName = Input.Email, Email = Input.Email };
                 var result = await _userManager.CreateAsync(user);
                 if (result.Succeeded) {
                     result = await _userManager.AddLoginAsync(user, info);

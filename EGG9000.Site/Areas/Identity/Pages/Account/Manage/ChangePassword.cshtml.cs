@@ -6,12 +6,12 @@ using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class ChangePasswordModel(
-        UserManager<IdentityUser> userManager,
-        SignInManager<IdentityUser> signInManager,
+        UserManager<ApplicationUser> userManager,
+        SignInManager<ApplicationUser> signInManager,
         ILogger<ChangePasswordModel> logger) : PageModel
     {
-        private readonly UserManager<IdentityUser> _userManager = userManager;
-        private readonly SignInManager<IdentityUser> _signInManager = signInManager;
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly ILogger<ChangePasswordModel> _logger = logger;
 
         [BindProperty]

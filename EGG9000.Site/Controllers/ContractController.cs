@@ -183,7 +183,14 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] string ContractID, [FromQuery] uint League) {
-            if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
+            // Admins may view any guild; everyone else is scoped to the guild on their own claim.
+            if(!User.IsInRole("Admin")) {
+                var claimGuildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+                if(GuildId != claimGuildId) {
+                    return NotFound();
+                }
+            }
+            {
                 await _discord.Guilds.First(x => x.Id == GuildId).DownloadUsersAsync();
 
                 var guildContract = await _db.GuildContracts.Include(x => x.Contract).FirstAsync(x => x.ContractID == ContractID && x.GuildID == GuildId);
@@ -198,10 +205,7 @@ namespace EGG9000.Site.Controllers {
                     CoopsBreakdown = coopsBreakdown,
                     League = League
                 });
-            } else {
-                return View("TempDisabled");
             }
-
         }
 
         public async Task<IActionResult> ScoreGraph([FromQuery] ulong GuildId, [FromQuery] string ContractID) {

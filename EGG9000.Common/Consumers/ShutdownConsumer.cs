@@ -1,4 +1,6 @@
-﻿using MassTransit;
+﻿using EGG9000.Common.Helpers;
+
+using MassTransit;
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,6 +15,10 @@ namespace EGG9000.Common.Consumers {
         private readonly ILogger<ShutdownConsumer> _logger = logger;
 
         public Task Consume(ConsumeContext<ShutdownMessage> context) {
+            if(!SecretsHelper.IsValidBusSecret(context.Message.Secret)) {
+                _logger.LogWarning("Rejected ShutdownMessage with invalid control secret");
+                return Task.CompletedTask;
+            }
             var assemblyConfigurationAttribute = typeof(ShutdownConsumer).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>();
             var buildConfigurationName = assemblyConfigurationAttribute?.Configuration;
 
@@ -31,9 +37,11 @@ namespace EGG9000.Common.Consumers {
             var buildConfigurationName = assemblyConfigurationAttribute?.Configuration;
             Configuration = buildConfigurationName;
             ProcessId = Environment.ProcessId;
+            Secret = SecretsHelper.BusControlSecret;
         }
         public int ProcessId { get; set; }
         public string Configuration { get; set; }
+        public string Secret { get; set; }
 
     }
 

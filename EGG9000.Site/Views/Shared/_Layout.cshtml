@@ -23,18 +23,10 @@
 	</style>
 	@RenderSection("Head", required: false)
 </head>
-<body ng-app="egg9000" class="bootstrap">
-	<script>
-		function getCookie (name) {
-			let value = `; ${document.cookie}`;
-			let parts = value.split(`; ${name}=`);
-			if (parts.length === 2) return parts.pop().split(';').shift();
-		}
-		if (getCookie('Egg9000Theme') == 'bootstrap-dark') {
-            document.body.classList.add("bootstrap-dark");
-			document.body.classList.remove("bootstrap");
-		};
-	</script>
+@{
+	var darkMode = User?.FindFirst("DarkMode")?.Value == "true";
+}
+<body ng-app="egg9000" class="@(darkMode ? "bootstrap-dark" : "bootstrap")">
 	<header>
 		<nav class="navbar navbar-expand-sm navbar-toggleable-sm border-bottom box-shadow mb-3 navbar-themed">
 			<div class="container">
@@ -103,7 +95,6 @@
 	<script src="~/lib/js-cookie/dist/js.cookie.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/angular@1.7.6/angular.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.15/lodash.min.js"></script>
-	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
 	<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 	<script src="~/js/site.js" asp-append-version="true"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-ui-bootstrap/2.5.0/ui-bootstrap.min.js"></script>
@@ -118,7 +109,6 @@
 	<script src="https://cdn.jsdelivr.net/npm/angular-messages@1.7.6/angular-messages.min.js"></script>
 	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/angular-material/1.1.12/angular-material.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/g/angular.ui-sortable"></script>
 	@RenderSection("Scripts", required: false)
 	<script>
 		if (window.ScriptsToExecute) {

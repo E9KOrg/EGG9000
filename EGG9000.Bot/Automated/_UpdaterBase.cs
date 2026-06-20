@@ -130,13 +130,24 @@ namespace EGG9000.Bot.Automated {
         }
 
         private async void _runTimer(object state) {
-            await _run(state);
+            // async void timer callback: any exception escaping _run (e.g. from the pre-try
+            // semaphore wait / scope creation) would otherwise go unobserved on the thread pool
+            // and can crash the process. Contain it here.
+            try {
+                await _run(state);
+            } catch(Exception e) {
+                try {
+                    _bugSnag.Notify(e);
+                    _logger.LogError(e, "Unobserved exception in timer callback");
+                } catch { }
+            }
         }
 
         private async Task _run(object state) {
             if(await _semaphoreSlim.WaitAsync(TimeSpan.Zero)) {
                 try {
-                    var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    using var scope = _provider.CreateScope();
+                    var _db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     _logger.LogInformation("Running");
                     LastStarted = DateTime.Now;
                     _lastAlive = DateTimeOffset.UtcNow;
@@ -162,7 +173,8 @@ namespace EGG9000.Bot.Automated {
                     _semaphoreSlim.Release();
                 }
             } else {
-                var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                using var scope = _provider.CreateScope();
+                var _db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 _db.AutomationLogs.Add(new AutomationLog { Type = GetType().Name, StartTime = DateTimeOffset.UtcNow, Skipped = true });
                 await _db.SaveChangesAsync();
                 _logger.LogWarning("Unable to run, already running for {time}", (DateTime.Now - LastStarted).Humanize());

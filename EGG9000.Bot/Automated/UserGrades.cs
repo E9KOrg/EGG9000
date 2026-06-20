@@ -1,6 +1,7 @@
-﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Helpers;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,24 +36,14 @@ namespace EGG9000.Bot.Automated {
                 tasks.Add(Task.Run(async () => {
                     foreach(var account in user.EggIncAccounts) {
                         try {
-                            var (info, error) = await EggIncApi.GetContractPlayerInfo(account.Id);
-                            if(info == null) {
-                                _logger.LogWarning($"No response getting grade for user {user.DiscordUsername} {account.Name}: {error}");
-                            } else if(info.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
-                                _logger.LogTrace($"Skipping non-final grade ({info.Status}) for user {user.DiscordUsername} {account.Name}");
-                            } else if(info.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset && info.Grade != account.LastGrade) {
-                                _logger.LogInformation($"Updating grade for user {user.DiscordUsername} {account.Name} from {account.LastGrade} to {info.Grade}");
-                                account.LastGrade = info.Grade;
-                                user.UpdateAccounts();
+                            using var scope = _provider.CreateScope();
+                            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                                using var writeScope = _provider.CreateScope();
-                                var writeDb = writeScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                                await writeDb.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
+                            if(await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger, CancellationToken.None)) {
+                                await db.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
                                     .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
-                                writeDb.Dispose();
-                            } else {
-                                _logger.LogInformation($"No grade change for user {user.DiscordUsername} {account.Name} grade: {info.Grade}");
                             }
+                            await db.SaveChangesAsync(CancellationToken.None);
                         } catch(Exception ex) {
                             _logger.LogError(ex, $"Error getting grade for user {user.DiscordUsername} {account.Name}");
                         } finally {
