@@ -339,10 +339,21 @@ namespace EGG9000.Site.Controllers {
             var accountFacts = Common.Contracts.Assignment.AccountFactsBuilder.Build(dbuser, account, contract, new List<Coop>(), latest, season, seasonProgresses);
 
             var dbGuild = _db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
-            var decision = Common.Contracts.Assignment.AssignmentEvaluator.Evaluate(accountFacts, contractFacts, account.Assignment, dbGuild?.RuleOverrides, dbGuild?.DisableBG ?? false);
+            var decision = Common.Contracts.Assignment.AssignmentEvaluator.Evaluate(accountFacts, contractFacts, account.Assignment, dbGuild?.RuleOverrides, dbGuild?.DisableBG ?? false, verbose: true);
 
             return Ok(new {
                 assigned = decision.Assigned,
+                diagnostics = new {
+                    isSeasonal = contractFacts.IsSeasonal,
+                    isLegacy = contractFacts.IsLegacy,
+                    isUltra = contractFacts.IsUltra,
+                    isColleggtible = contractFacts.IsColleggtible,
+                    missingSeasonalPe = accountFacts.MissingSeasonalPe,
+                    missingColleggtible = accountFacts.MissingColleggtible,
+                    previouslyCompleted = accountFacts.PreviouslyCompleted,
+                    previousScore = accountFacts.PreviousScoreOnThisContract,
+                    filtersDisabled = dbGuild?.DisableBG ?? false
+                },
                 results = decision.Results.Select(r => new {
                     rule = r.Rule.ToString(),
                     tier = r.Tier.ToString(),

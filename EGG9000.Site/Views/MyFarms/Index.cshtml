@@ -767,20 +767,47 @@
         }
 
         function renderTestResult(result, data) {
-            const verdict = data.assigned
-                ? '<h5 style="color:green;">Assigned</h5>'
-                : '<h5 style="color:red;">Not assigned</h5>';
+            const verdict = '<div style="display:inline-block; padding:6px 14px; border-radius:6px; font-weight:700; font-size:1.05em; color:#fff; background:'
+                + (data.assigned ? '#2e7d32' : '#c62828') + ';">'
+                + (data.assigned ? 'Assigned' : 'Not assigned') + '</div>';
 
-            let firstHighlightDone = false;
-            const lines = (data.results || []).map(r => {
-                const highlight = !firstHighlightDone && (r.outcome === 'Exclude' || r.outcome === 'ForceInclude');
-                if (highlight) firstHighlightDone = true;
-                const style = highlight ? ' style="font-weight:bold; background-color:#fff3cd;"' : '';
-                const text = '[' + r.tier + '] ' + r.reason + ' -> ' + r.outcome;
-                return '<li' + style + '>' + escapeHtml(text) + '</li>';
+            const d = data.diagnostics || {};
+            const yn = v => v ? 'Yes' : 'No';
+            const diagParts = [
+                'Seasonal contract: ' + yn(d.isSeasonal),
+                'Missing seasonal PE: ' + yn(d.missingSeasonalPe),
+                'Colleggtible contract: ' + yn(d.isColleggtible),
+                'Missing colleggtible: ' + yn(d.missingColleggtible),
+                'Previously completed: ' + yn(d.previouslyCompleted)
+            ];
+            if (d.previousScore != null) diagParts.push('Prev score: ' + Math.round(d.previousScore).toLocaleString());
+            if (d.filtersDisabled) diagParts.push('Filters OFF (server uses roles)');
+            const diag = '<div style="margin:8px 0; font-size:.85em; color:#9aa0a6; line-height:1.6;">' + escapeHtml(diagParts.join('  ·  ')) + '</div>';
+
+            const outMeta = {
+                'Pass': { c: '#66bb6a', t: 'Pass' },
+                'Exclude': { c: '#ef5350', t: 'Excluded' },
+                'ForceInclude': { c: '#66bb6a', t: 'Force assigned' },
+                'NotApplicable': { c: '#888', t: 'N/A' }
+            };
+            const tierColor = { 'Gate': '#5c6bc0', 'Force': '#26a69a', 'Include': '#8e7cc3' };
+
+            let decisiveDone = false;
+            const rows = (data.results || []).map(r => {
+                const m = outMeta[r.outcome] || { c: '#aaa', t: r.outcome };
+                const decisive = !decisiveDone && (r.outcome === 'Exclude' || r.outcome === 'ForceInclude');
+                if (decisive) decisiveDone = true;
+                const rowBg = decisive ? (r.outcome === 'Exclude' ? 'rgba(239,83,80,.16)' : 'rgba(102,187,106,.16)') : 'transparent';
+                const tc = tierColor[r.tier] || '#888';
+                const dim = r.outcome === 'NotApplicable' ? '#888' : '#dadce0';
+                return '<div style="display:flex; align-items:center; gap:10px; padding:4px 8px; border-radius:4px; background:' + rowBg + ';">'
+                    + '<span style="min-width:62px; font-size:.72em; font-weight:600; color:#fff; background:' + tc + '; padding:2px 6px; border-radius:10px; text-align:center;">' + escapeHtml(r.tier) + '</span>'
+                    + '<span style="flex:1; color:' + dim + ';">' + escapeHtml(r.reason) + '</span>'
+                    + '<span style="font-weight:600; color:' + m.c + '; white-space:nowrap;">' + escapeHtml(m.t) + '</span>'
+                    + '</div>';
             }).join('');
 
-            result.innerHTML = verdict + '<ul>' + lines + '</ul>';
+            result.innerHTML = verdict + diag + '<div style="display:flex; flex-direction:column; gap:2px; margin-top:6px;">' + rows + '</div>';
         }
 
         function escapeHtml(text) {

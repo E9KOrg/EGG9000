@@ -5,20 +5,24 @@ using System.Linq;
 
 namespace EGG9000.Common.Contracts.Assignment {
     public static class AssignmentEvaluator {
+        // verbose = full diagnostic trace: records every rule including not-applicable and
+        // server-disabled ones (used by the site "test my settings" tool). Non-verbose is the live
+        // path and records only decisive/applied outcomes, byte-identical to before.
         public static AssignmentDecision Evaluate(
             AccountFacts facts,
             ContractFacts contract,
             AssignmentSettings settings,
             IReadOnlySet<AssignmentRuleId> forbidden = null,
-            bool filtersDisabled = false) {
+            bool filtersDisabled = false,
+            bool verbose = false) {
 
             var results = new List<RuleResult>();
             settings ??= new AssignmentSettings();
 
             foreach(var rule in AssignmentRuleSet.Gate) {
-                if(Skip(rule, contract, forbidden)) continue;
+                if(SkipRecorded(results, rule, contract, forbidden, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
-                Record(results, rule, outcome);
+                Record(results, rule, outcome, verbose);
                 if(outcome == RuleOutcome.Exclude) return Decision(false, results);
             }
 
@@ -26,17 +30,17 @@ namespace EGG9000.Common.Contracts.Assignment {
             if(filtersDisabled) return Decision(true, results);
 
             foreach(var rule in AssignmentRuleSet.Force) {
-                if(Skip(rule, contract, forbidden)) continue;
+                if(SkipRecorded(results, rule, contract, forbidden, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
-                Record(results, rule, outcome);
+                Record(results, rule, outcome, verbose);
                 if(outcome == RuleOutcome.ForceInclude) return Decision(true, results);
                 if(outcome == RuleOutcome.Exclude) return Decision(false, results);
             }
 
             foreach(var rule in AssignmentRuleSet.Include) {
-                if(Skip(rule, contract, forbidden)) continue;
+                if(SkipRecorded(results, rule, contract, forbidden, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
-                Record(results, rule, outcome);
+                Record(results, rule, outcome, verbose);
                 if(outcome == RuleOutcome.Exclude) return Decision(false, results);
             }
 
@@ -84,12 +88,43 @@ namespace EGG9000.Common.Contracts.Assignment {
         private static bool GradeMatch(AccountFacts self, AccountFacts other, ContractFacts contract) =>
             self.Grade == other.Grade || (contract.IsUltra && self.HasActiveSubscription && other.HasActiveSubscription);
 
-        private static bool Skip(IAssignmentRule rule, ContractFacts contract, IReadOnlySet<AssignmentRuleId> forbidden) =>
-            (forbidden != null && forbidden.Contains(rule.Id)) || !rule.AppliesTo(contract);
+        public static readonly IReadOnlyDictionary<AssignmentRuleId, string> RuleLabels = new Dictionary<AssignmentRuleId, string> {
+            [AssignmentRuleId.GradeUnset] = "Grade",
+            [AssignmentRuleId.BackupMissing] = "Backup",
+            [AssignmentRuleId.UserDisabled] = "Account enabled",
+            [AssignmentRuleId.OnBreak] = "Break",
+            [AssignmentRuleId.NoSubscription] = "Subscription",
+            [AssignmentRuleId.InsufficientSoulEggs] = "Soul eggs",
+            [AssignmentRuleId.EggLocked] = "Egg unlocked",
+            [AssignmentRuleId.AlreadyFarming] = "Active farm",
+            [AssignmentRuleId.AlreadyAssigned] = "Existing co-op",
+            [AssignmentRuleId.MissingColleggtible] = "Missing colleggtible",
+            [AssignmentRuleId.MissingSeasonalPe] = "Seasonal PE",
+            [AssignmentRuleId.NewRewardFilter] = "New reward filter",
+            [AssignmentRuleId.LegacyRewardFilter] = "Leggacy reward filter",
+            [AssignmentRuleId.RedoCompleted] = "Redo / previously completed",
+            [AssignmentRuleId.TwoToThree] = "Bump 2 to 3"
+        };
 
-        private static void Record(List<RuleResult> results, IAssignmentRule rule, RuleOutcome outcome) {
-            if(outcome == RuleOutcome.NotApplicable) return;
-            results.Add(new RuleResult(rule.Id, rule.Tier, outcome, rule.Describe(outcome)));
+        private static string Label(AssignmentRuleId id) => RuleLabels.TryGetValue(id, out var l) ? l : id.ToString();
+
+        // Returns true if the rule is skipped. In verbose mode the skip is recorded with a reason.
+        private static bool SkipRecorded(List<RuleResult> results, IAssignmentRule rule, ContractFacts contract, IReadOnlySet<AssignmentRuleId> forbidden, bool verbose) {
+            if(forbidden != null && forbidden.Contains(rule.Id)) {
+                if(verbose) results.Add(new RuleResult(rule.Id, rule.Tier, RuleOutcome.NotApplicable, $"{Label(rule.Id)}: disabled by server"));
+                return true;
+            }
+            if(!rule.AppliesTo(contract)) {
+                if(verbose) results.Add(new RuleResult(rule.Id, rule.Tier, RuleOutcome.NotApplicable, $"{Label(rule.Id)}: does not apply to this contract"));
+                return true;
+            }
+            return false;
+        }
+
+        private static void Record(List<RuleResult> results, IAssignmentRule rule, RuleOutcome outcome, bool verbose) {
+            if(outcome == RuleOutcome.NotApplicable && !verbose) return;
+            var reason = verbose ? Label(rule.Id) : rule.Describe(outcome);
+            results.Add(new RuleResult(rule.Id, rule.Tier, outcome, reason));
         }
 
         private static AssignmentDecision Decision(bool assigned, List<RuleResult> results) =>
