@@ -51,7 +51,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             return new ColleggtibleRow(
-                Name: egg.Name.ToLowerInvariant().FirstCharToUpper(),
+                Name: System.Globalization.CultureInfo.InvariantCulture.TextInfo.ToTitleCase(egg.Name.ToLowerInvariant()),
                 IconUrl: egg.Icon?.URL ?? "",
                 Dimension: dimension,
                 Level: intLevel,
