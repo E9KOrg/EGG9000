@@ -31,7 +31,7 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
         public static string Effect(EggIncArtifactInstance artifact) {
             if(artifact is null || IsFragment(artifact)) return "";
             var effect = SafeEffect(artifact);
-            if(effect.HasValue && !string.IsNullOrWhiteSpace(effect.Value.Size)) return effect.Value.Size;
+            if(effect.HasValue && !string.IsNullOrWhiteSpace(effect.Value.Size)) return FormatEffectSize(effect.Value.Size, artifact);
             return DerivedValue(artifact);
         }
 
@@ -71,11 +71,29 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
             if(IsFragment(artifact)) return null;
             var effect = SafeEffect(artifact);
             if(effect.HasValue && !string.IsNullOrWhiteSpace(effect.Value.Target)) {
-                return $"<span class=\"afx-tip-value\">{Encode(effect.Value.Size)}</span> {Encode(effect.Value.Target)}";
+                var size = FormatEffectSize(effect.Value.Size, artifact);
+                if(string.IsNullOrWhiteSpace(size) || IsZeroEffect(size)) return Encode(effect.Value.Target);
+                return $"<span class=\"afx-tip-value\">{Encode(size)}</span> {Encode(effect.Value.Target)}";
             }
             // No data-backed sentence (e.g. a synthetic combos instance): show just the derived value.
             var derived = DerivedValue(artifact);
             return string.IsNullOrEmpty(derived) ? null : $"<span class=\"afx-tip-value\">{Encode(derived)}</span>";
+        }
+
+        // Converts large percentage strings from JSON (e.g. "+1100%") to multiplier format ("12x"),
+        // matching the same threshold DerivedValue uses.
+        private static string FormatEffectSize(string jsonSize, EggIncArtifactInstance artifact) {
+            if(artifact is null || artifact.Additive ||
+               artifact.Boost == JsonData.EiStatics.EggIncBoostTypeEnum.HostArtifactsOnElightenment)
+                return jsonSize ?? "";
+            if(artifact.Value >= 2) return $"{artifact.Value}x";
+            return jsonSize ?? "";
+        }
+
+        private static bool IsZeroEffect(string size) {
+            if(string.IsNullOrWhiteSpace(size)) return false;
+            var trimmed = size.Trim().TrimStart('+', '-').TrimEnd('%', 'x');
+            return double.TryParse(trimmed, out var val) && val == 0;
         }
 
         // One line per distinct stone slotted into the artifact. Identical stones collapse into a single
@@ -95,7 +113,11 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
                 var prefix = groupCount > 1 ? $"<span class=\"afx-tip-count\">(x{groupCount})</span> " : "";
                 var effect = SafeEffect(stone);
                 if(effect.HasValue && !string.IsNullOrWhiteSpace(effect.Value.Target)) {
-                    yield return $"{prefix}<span class=\"afx-tip-value\">{Encode(effect.Value.Size)}</span> {Encode(effect.Value.Target)}";
+                    var size = FormatEffectSize(effect.Value.Size, stone);
+                    if(string.IsNullOrWhiteSpace(size) || IsZeroEffect(size))
+                        yield return $"{prefix}{Encode(effect.Value.Target)}";
+                    else
+                        yield return $"{prefix}<span class=\"afx-tip-value\">{Encode(size)}</span> {Encode(effect.Value.Target)}";
                 } else {
                     yield return $"{prefix}{Encode(_titleCase.ToTitleCase(SafeName(stone)))}";
                 }
@@ -113,10 +135,14 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
         private static string DerivedValue(EggIncArtifactInstance artifact) {
             if(artifact is null) return "";
             if(artifact.Boost == JsonData.EiStatics.EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-                return $"{Math.Round(artifact.Value * 100)}%";
+                var pct = Math.Round(artifact.Value * 100);
+                return pct == 0 ? "" : $"{pct}%";
             }
-            if(artifact.Additive) return $"+{artifact.Value}";
-            if(artifact.Value < 2) return $"+{Math.Round((artifact.Value - 1) * 100)}%";
+            if(artifact.Additive) return artifact.Value == 0 ? "" : $"+{artifact.Value}";
+            if(artifact.Value < 2) {
+                var pct = Math.Round((artifact.Value - 1) * 100);
+                return pct == 0 ? "" : $"+{pct}%";
+            }
             return $"{artifact.Value}x";
         }
 
