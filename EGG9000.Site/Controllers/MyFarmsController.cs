@@ -67,7 +67,7 @@ namespace EGG9000.Site.Controllers {
             return await ViewUser(ulong.Parse(logins.First().ProviderKey));
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
 
 

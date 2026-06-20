@@ -5,7 +5,8 @@
     Guild dbguild = ViewBag.DBGuild;
     SocketGuild guild = ViewBag.Guild;
     var contract = (ViewBag.Contract as Contract).Details;
-    var isLesserAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+    // isLesserAdmin = read/staff tier (read-only data exposure); isAdmin = write tier (start/reload buttons).
+    var isLesserAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
     var boardingGroups = Model.coopGroups.GroupBy(x => x.BoardingGroup).Select(x => new
     {

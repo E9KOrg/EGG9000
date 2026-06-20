@@ -1,7 +1,8 @@
 ﻿@model (List<EGG9000.Common.Database.Entities.GuildContract> Contracts, Guild DbGuild )
 @{
     ViewData["Title"] = "Contracts";
-    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+    // Read/staff tier - gates only the recent-scores-grid button (a read-only view).
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
 }
 
 @if (isAdmin || (Model.DbGuild?.PublicScoreGrid ?? false))
