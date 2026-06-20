@@ -349,7 +349,12 @@ namespace EGG9000.Bot.Automated.Coops {
                     _db.Add(xref);
                     participant.AddXref(xref);
                 }
+                var (xrefsSaved, _) = await _db.SaveChangesAsyncRetry(retryCount: 3, cancellationToken: CancellationToken.None, logger: _logger);
                 foreach(var participant in participantsInCoopButWithoutXref) {
+                    if(!xrefsSaved) {
+                        _logger.LogError("ProcessCoop {coop}: failed to save xref for {user} — skipping 'has joined' to prevent repeat ping", coop.Name, participant.DBUser.DiscordUsername);
+                        continue;
+                    }
                     if(coop.UserCoopsXrefs.Any(x => x.UserId == participant.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
                         _queue.EnqueueLow(() => coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account."));
                         await BoolSendDm(participant.DiscordUser, $"It looks like you might have joined the coop with the wrong account in {coopThread.Mention}.", _db);
