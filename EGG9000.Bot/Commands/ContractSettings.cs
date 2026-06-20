@@ -354,8 +354,8 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            var modal = new ModalBuilder().WithTitle("Update CS Threshold").WithCustomId($"RlThreshUpdate:{index},{dbuser.DiscordId}")
-                .AddTextInput(label: $"Enter CS Threshold between 0 and {maxThresh}", value: account.Assignment.Redo.ScoreThreshold.ToString(), customId: "num", required: true).Build();
+            var modal = new ModalBuilder().WithTitleSafe("Update CS Threshold").WithCustomId($"RlThreshUpdate:{index},{dbuser.DiscordId}")
+                .AddTextInputSafe(label: $"Enter CS Threshold between 0 and {maxThresh}", value: account.Assignment.Redo.ScoreThreshold.ToString(), customId: "num", required: true).Build();
 
             await component.RespondWithModalAsync(modal);
         }
@@ -482,10 +482,10 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
 
             var modal = new ModalBuilder()
-                .WithTitle("Set Seasonal CXP Threshold")
+                .WithTitleSafe("Set Seasonal CXP Threshold")
                 .WithCustomId($"SeasonalPeThreshUpdate:{index},{dbuser.DiscordId}")
-                .AddTextInput(
-                    label: "Assign me when my contract score is below this value",
+                .AddTextInputSafe(
+                    label: "Assign when contract score is below",
                     value: (account.Assignment.Get(PermanentRewardKind.SeasonalPe).CsFloor ?? 0).ToString("N0"),
                     customId: "num",
                     required: true)
@@ -930,8 +930,8 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            var modal = new ModalBuilder().WithTitle("Enter Guild Name (leave blank for none)").WithCustomId($"MCSGuildUpdate:{index},{dbuser.DiscordId}")
-                .AddTextInput(label: $"Enter Guild Name (leave blank for none)", value: account.Guild, customId: "name", required: false).Build();
+            var modal = new ModalBuilder().WithTitleSafe("Enter Guild Name (leave blank for none)").WithCustomId($"MCSGuildUpdate:{index},{dbuser.DiscordId}")
+                .AddTextInputSafe(label: $"Enter Guild Name (leave blank for none)", value: account.Guild, customId: "name", required: false).Build();
 
             await component.RespondWithModalAsync(modal);
 

@@ -659,11 +659,18 @@
         }
 
         function showCsStatus(container, text, ok) {
-            const status = container.querySelector('.cs-status');
-            if (!status) return;
-            status.textContent = text;
-            status.style.color = ok ? 'green' : 'red';
-            setTimeout(() => { status.textContent = ''; }, 2500);
+            let toast = document.getElementById('cs-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'cs-toast';
+                toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:1080;padding:8px 16px;border-radius:6px;color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.45);opacity:0;transition:opacity .2s;pointer-events:none;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = text;
+            toast.style.background = ok ? '#2e7d32' : '#c62828';
+            toast.style.opacity = '1';
+            clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
         }
 
         function saveContractSetting(container, accountIndex, field, value, revert) {
