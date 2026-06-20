@@ -51,7 +51,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             return new ColleggtibleRow(
-                Name: egg.Name,
+                Name: egg.Name.ToLowerInvariant().FirstCharToUpper(),
                 IconUrl: egg.Icon?.URL ?? "",
                 Dimension: dimension,
                 Level: intLevel,
