@@ -29,7 +29,8 @@ namespace EGG9000.Common.Helpers {
                             return (false, -1);
                         }
                         if(e is NpgsqlException { IsTransient: true } || e.InnerException is NpgsqlException { IsTransient: true }) {
-                            logger?.LogWarning("SaveChangesAsyncRetry: Postgres transient error, retrying ({retry}/{max})", currentRetry, retryCount);
+                            logger?.LogWarning(e, "SaveChangesAsyncRetry: Postgres transient error, failing fast");
+                            return (false, -1);
                         }
                         await Task.Delay(100, cancellationToken);
                     }
