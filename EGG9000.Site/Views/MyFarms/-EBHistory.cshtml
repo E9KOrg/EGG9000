@@ -1,8 +1,10 @@
 @model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts, (int Earned, int Max) peFromSeasons, List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe> missingSeasonalPEs)
 @{
+    double merValue(double se, double pe) =>
+        (se > 0 && double.IsFinite(se)) ? (91.0 * Math.Log10(se / 1e18) + 200.0 - pe) / 10.0 : 0.0;
+
     string calculateMER(double se, ulong pe) {
-        se = se / 1e18;
-        var result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
+        var result = merValue(se, (double)pe);
         return String.Format(result % 1 == 0 ? "{0:0}" : "{0:0.00}", result);
     }
 
@@ -17,28 +19,21 @@
         else collapsedSnapshots.Add(s);
     }
 
+    var makePoint = (DateTime date, double eb, double se, double pe, double eot) => new {
+        date = date.ToString("yyyy-MM-dd"),
+        logEb = (eb > 0 && double.IsFinite(eb)) ? Math.Log10(eb) : 0.0,
+        ebStr = eb.ToEggString(numberOfDecimalPlaces: 3),
+        logSe = (se > 0 && double.IsFinite(se)) ? Math.Log10(se) : 0.0,
+        seStr = se.ToEggString(numberOfDecimalPlaces: 3),
+        pe,
+        eot,
+        mer = merValue(se, pe)
+    };
+
     var ebStatsPoints = collapsedSnapshots
         .OrderBy(s => s.Date)
-        .Select(s => new {
-            date = s.Date.ToString("yyyy-MM-dd"),
-            logEb = (s.EarningsBonus > 0 && double.IsFinite(s.EarningsBonus)) ? Math.Log10(s.EarningsBonus) : 0.0,
-            ebStr = s.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3),
-            logSe = (s.SoulEggs > 0 && double.IsFinite(s.SoulEggs)) ? Math.Log10(s.SoulEggs) : 0.0,
-            seStr = s.SoulEggs.ToEggString(numberOfDecimalPlaces: 3),
-            pe = (double)s.EggsOfProphecy,
-            eot = (double)s.EggsOfTruth,
-            mer = (s.SoulEggs > 0 && double.IsFinite(s.SoulEggs)) ? (91.0 * Math.Log10(s.SoulEggs / 1e18) + 200.0 - (double)s.EggsOfProphecy) / 10.0 : 0.0
-        })
-        .Append(new {
-            date = DateTime.Today.ToString("yyyy-MM-dd"),
-            logEb = (Model.backup.EarningsBonus > 0 && double.IsFinite(Model.backup.EarningsBonus)) ? Math.Log10(Model.backup.EarningsBonus) : 0.0,
-            ebStr = Model.backup.EarningsBonus.ToEggString(numberOfDecimalPlaces: 3),
-            logSe = (Model.backup.SoulEggs > 0 && double.IsFinite(Model.backup.SoulEggs)) ? Math.Log10(Model.backup.SoulEggs) : 0.0,
-            seStr = Model.backup.SoulEggs.ToEggString(numberOfDecimalPlaces: 3),
-            pe = (double)Model.backup.EggsOfProphecy,
-            eot = (double)Model.backup.EggsOfTruth,
-            mer = (Model.backup.SoulEggs > 0 && double.IsFinite(Model.backup.SoulEggs)) ? (91.0 * Math.Log10(Model.backup.SoulEggs / 1e18) + 200.0 - (double)Model.backup.EggsOfProphecy) / 10.0 : 0.0
-        })
+        .Select(s => makePoint(s.Date, s.EarningsBonus, s.SoulEggs, (double)s.EggsOfProphecy, (double)s.EggsOfTruth))
+        .Append(makePoint(DateTime.Today, Model.backup.EarningsBonus, Model.backup.SoulEggs, (double)Model.backup.EggsOfProphecy, (double)Model.backup.EggsOfTruth))
         .ToArray();
 
     var ebStatsJson = JsonConvert.SerializeObject(ebStatsPoints, new JsonSerializerSettings { FloatFormatHandling = FloatFormatHandling.DefaultValue });

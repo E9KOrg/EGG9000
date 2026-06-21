@@ -234,7 +234,7 @@ function initEbStatsChart(suffix, snapData) {
             renderChart(activeContainerId());
         }
 
-        $('[data-toggle="tab"]').on('shown.bs.tab', function(e) {
+        $('[data-toggle="tab"]').on('shown.bs.tab.ebstats' + suffix, function(e) {
             if (state.chart) return;
             var href = $(e.target).attr('href');
             if (!href) return;
@@ -244,7 +244,7 @@ function initEbStatsChart(suffix, snapData) {
             }
         });
 
-        $('[data-toggle="tab"]').on('hidden.bs.tab', function(e) {
+        $('[data-toggle="tab"]').on('hidden.bs.tab.ebstats' + suffix, function(e) {
             if (!state.chart) return;
             var href = $(e.target).attr('href');
             if (!href) return;
