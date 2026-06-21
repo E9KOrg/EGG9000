@@ -533,13 +533,6 @@ namespace EGG9000.Site.Controllers {
             return View((leaderboard, customEggs));
         }
 
-        public async Task<IActionResult> EnlightenmentTest() {
-            var guild = await _db.Guilds.AsQueryable().FirstAsync();
-            var leaderboard = await _getLeaderboard(guild.Id);
-            var customEggs = await _db.GetCustomEggsAsync();
-
-            return View("Enlightenment", (leaderboard, customEggs));
-        }
 
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
@@ -879,12 +872,6 @@ namespace EGG9000.Site.Controllers {
         public IActionResult Boosts() {
             return View();
         }
-
-        public async Task<IActionResult> Test1() {
-            var userStatuses = await _db.UserCoopStatuses.AsQueryable().Where(x => x.CoopId == Guid.Parse("9C515840-2651-4FB2-CAB5-08D7FD8FF968")).OrderByDescending(x => x.CreatedOn).ToListAsync();
-            return Json(userStatuses);
-        }
-
 
         [AllowAnonymous]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

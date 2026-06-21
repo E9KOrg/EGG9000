@@ -360,7 +360,13 @@ namespace EGG9000.Site.Controllers {
             return Redirect("~/");
         }
 
-        public async Task<IActionResult> SendTestDM([FromQuery] string target, [FromQuery] ulong discorduserid) {
+        public async Task<IActionResult> SendTestDM([FromQuery] string target) {
+            // Target is always the authenticated user - never trust a caller-supplied id, or anyone
+            // could spam an arbitrary Discord user / channel-ping through the bot.
+            var loginUser = await _userManager.GetUserAsync(User);
+            var logins = loginUser is null ? null : await _userManager.GetLoginsAsync(loginUser);
+            if(!ulong.TryParse(logins?.FirstOrDefault()?.ProviderKey, out var discorduserid))
+                return BadRequest();
             switch(target) {
                 case "dm":
                     var discordUser = await _discord.GetUserAsync(discorduserid);
