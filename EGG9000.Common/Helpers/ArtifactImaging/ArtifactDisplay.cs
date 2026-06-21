@@ -109,16 +109,32 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
 
             foreach(var (stone, groupCount) in groups) {
                 var prefix = groupCount > 1 ? $"<span class=\"afx-tip-count\">(x{groupCount})</span> " : "";
+                var icon = IconUrl(stone, true);
+                var iconHtml = icon is null ? "" : $"<img class=\"afx-tip-icon\" src=\"{Encode(icon)}\" /> ";
                 var effect = SafeEffect(stone);
                 if(effect.HasValue && !string.IsNullOrWhiteSpace(effect.Value.Target)) {
                     var size = MultiplierLabel(stone) ?? effect.Value.Size ?? "";
                     if(string.IsNullOrWhiteSpace(size))
-                        yield return $"{prefix}{Encode(effect.Value.Target)}";
+                        yield return $"{prefix}{iconHtml}{Encode(effect.Value.Target)}";
                     else
-                        yield return $"{prefix}<span class=\"afx-tip-value\">{Encode(size)}</span> {Encode(effect.Value.Target)}";
+                        yield return $"{prefix}{iconHtml}<span class=\"afx-tip-value\">{Encode(size)}</span> {Encode(effect.Value.Target)}";
                 } else {
-                    yield return $"{prefix}{Encode(_titleCase.ToTitleCase(SafeName(stone)))}";
+                    yield return $"{prefix}{iconHtml}{Encode(_titleCase.ToTitleCase(SafeName(stone)))}";
                 }
+            }
+        }
+
+        // Site-relative sprite path, matching the image folders (e.g. /images/artifacts/CLARITY_STONE/
+        // CLARITY_STONE_2.png). Stones use a +1 tier offset, the same convention the renderer uses.
+        // Returns null when the family can't be resolved so the caller just omits the icon.
+        public static string IconUrl(EggIncArtifactInstance artifact, bool stone) {
+            if(artifact is null) return null;
+            try {
+                var name = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
+                var tier = artifact.Tier + (stone ? 1 : 0);
+                return $"/images/artifacts/{name}/{name}_{tier}.png";
+            } catch {
+                return null;
             }
         }
 

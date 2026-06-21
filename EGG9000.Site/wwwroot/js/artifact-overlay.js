@@ -9,41 +9,50 @@
 (function () {
     // -- Floating tooltip ---------------------------------------------------------------------------
     // One element reused for every hover target on the page. Any element with class .has-tip that
-    // contains a hidden .afx-tip-content child shows that content on hover and follows the cursor.
+    // contains a hidden .afx-tip-content child shows that content on hover.
+    //
+    // The tooltip is ANCHORED to the hovered element, not the cursor. A cursor-following tooltip lags a
+    // frame behind the pointer and visibly chases it, which reads as jitter no matter how cheap the math
+    // is. Anchoring positions the tooltip once on enter and then leaves it alone while the pointer moves
+    // within the item, so there is zero per-move work and nothing to stutter.
     var tip = null;
+    var active = null;   // the .has-tip currently being hovered
 
     function ensureTip() {
         if (tip) return tip;
         tip = document.createElement('div');
         tip.className = 'afx-tooltip';
         tip.style.display = 'none';
+        tip.style.left = '0';
+        tip.style.top = '0';
         document.body.appendChild(tip);
         return tip;
     }
 
-    function showTip(html, x, y) {
+    function showTipFor(el, html) {
         var t = ensureTip();
         t.innerHTML = html;
         t.style.display = 'block';
-        moveTip(x, y);
+
+        var r = el.getBoundingClientRect();
+        var tw = t.offsetWidth;
+        var th = t.offsetHeight;
+        var pad = 8;
+
+        // Prefer directly above the item, left-aligned to it; drop below when there's no room above, and
+        // nudge horizontally so we never spill off the viewport.
+        var left = r.left;
+        var top = r.top - th - pad;
+        if (top < 4) top = r.bottom + pad;
+        if (left + tw > window.innerWidth - 4) left = window.innerWidth - 4 - tw;
+        if (left < 4) left = 4;
+
+        t.style.transform = 'translate3d(' + Math.round(left) + 'px,' + Math.round(top) + 'px,0)';
     }
 
     function hideTip() {
+        active = null;
         if (tip) tip.style.display = 'none';
-    }
-
-    function moveTip(x, y) {
-        if (!tip || tip.style.display === 'none') return;
-        var pad = 14;
-        var rect = tip.getBoundingClientRect();
-        // Prefer above-right of the cursor; flip when we'd run off an edge.
-        var left = x + pad;
-        var top = y - rect.height - pad;
-        if (left + rect.width > window.innerWidth - 4) left = x - rect.width - pad;
-        if (left < 4) left = 4;
-        if (top < 4) top = y + pad;
-        tip.style.left = left + 'px';
-        tip.style.top = top + 'px';
     }
 
     function tipHtmlFor(el) {
@@ -53,14 +62,12 @@
 
     document.addEventListener('mouseover', function (e) {
         var el = e.target.closest ? e.target.closest('.has-tip') : null;
-        if (!el) return;
+        if (!el || el === active) return;
         var html = tipHtmlFor(el);
-        if (html) showTip(html, e.clientX, e.clientY);
-    });
-
-    document.addEventListener('mousemove', function (e) {
-        if (!tip || tip.style.display === 'none') return;
-        if (e.target.closest && e.target.closest('.has-tip')) moveTip(e.clientX, e.clientY);
+        if (html) {
+            active = el;
+            showTipFor(el, html);
+        }
     });
 
     document.addEventListener('mouseout', function (e) {

@@ -140,9 +140,12 @@ body {
 
 .afx-tooltip {
     position: fixed;
+    top: 0;
+    left: 0;
+    will-change: transform;
     z-index: 1080;
     pointer-events: none;
-    max-width: 280px;
+    max-width: 520px;
     background: rgba(18, 18, 20, 0.97);
     color: #e9e9e9;
     border: 1px solid #555;
@@ -153,9 +156,12 @@ body {
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
 }
 
+/* Name, tier and rarity always share the first line; the tooltip widens to fit rather than wrapping the
+   rarity down. Mobile is the only place we let it wrap (see media query below). */
 .afx-tip-title {
     font-weight: 600;
     margin-bottom: 2px;
+    white-space: nowrap;
 }
 
 .afx-tip-tier {
@@ -172,9 +178,15 @@ body {
 }
 
 .afx-tip-stone {
-    color: #bdbdbd;
-    font-style: italic;
-    padding-left: 8px;
+    color: #c8c8c8;
+    padding-left: 10px;
+}
+
+.afx-tip-icon {
+    width: 1.15em;
+    height: 1.15em;
+    vertical-align: -0.22em;
+    margin-right: 1px;
 }
 
 /* The value (e.g. +20%, Guaranteed) is highlighted green, matching the in-game artifact card. */
@@ -188,6 +200,17 @@ body {
 .afx-rarity-2 { color: #6ab6ff; }
 .afx-rarity-3 { color: #c03fe2; }
 .afx-rarity-4 { color: #eeab42; }
+
+/* On phones a long name genuinely can't fit beside the rarity, so let the title wrap there. */
+@media (max-width: 768px) {
+    .afx-tooltip {
+        max-width: 90vw;
+    }
+
+    .afx-tip-title {
+        white-space: normal;
+    }
+}
 
 /* Inventory image with its grid of invisible hover targets
 ------------------------------------------- */
@@ -219,7 +242,6 @@ body {
 
 .afx-hotspot:hover {
     outline: 2px solid rgba(255, 255, 255, 0.65);
-    background: rgba(255, 255, 255, 0.08);
 }
 
 /* The Ships & Farms active-artifact set image sits under its "Artifacts" heading. */
