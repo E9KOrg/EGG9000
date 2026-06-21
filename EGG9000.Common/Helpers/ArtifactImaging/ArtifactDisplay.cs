@@ -17,6 +17,18 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
     public static class ArtifactDisplay {
         private static readonly TextInfo _titleCase = new CultureInfo("en-US", false).TextInfo;
 
+        // Sentinel the game uses for a "Guaranteed" effect; treat it as no multiplier so we show the
+        // data-backed "Guaranteed" label instead of "9999x".
+        private const double GuaranteedSentinel = 9999;
+
+        // "{Value}x" for a multiplier artifact/stone (e.g. a 5x boost), or null when the instance isn't a
+        // plain multiplier (additive, sub-2x percent, or the Guaranteed sentinel) and the caller should use
+        // its data-backed Size string instead.
+        private static string MultiplierLabel(EggIncArtifactInstance artifact) =>
+            !artifact.Additive && artifact.Value >= 2 && artifact.Value < GuaranteedSentinel
+                ? $"{artifact.Value}x"
+                : null;
+
         public static string RarityName(int rarity) => rarity switch {
             1 => "Common",
             2 => "Rare",
@@ -32,8 +44,7 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
             if(artifact is null || IsFragment(artifact)) return "";
             var effect = SafeEffect(artifact);
             if(effect.HasValue && !string.IsNullOrWhiteSpace(effect.Value.Size)) {
-                if(!artifact.Additive && artifact.Value >= 2 && artifact.Value < 9999) return $"{artifact.Value}x";
-                return effect.Value.Size;
+                return MultiplierLabel(artifact) ?? effect.Value.Size;
             }
             return DerivedValue(artifact);
         }
@@ -74,9 +85,7 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
             if(IsFragment(artifact)) return null;
             var effect = SafeEffect(artifact);
             if(effect.HasValue && !string.IsNullOrWhiteSpace(effect.Value.Target)) {
-                var size = (!artifact.Additive && artifact.Value >= 2 && artifact.Value < 9999)
-                    ? $"{artifact.Value}x"
-                    : (effect.Value.Size ?? "");
+                var size = MultiplierLabel(artifact) ?? effect.Value.Size ?? "";
                 if(string.IsNullOrWhiteSpace(size)) return Encode(effect.Value.Target);
                 return $"<span class=\"afx-tip-value\">{Encode(size)}</span> {Encode(effect.Value.Target)}";
             }
@@ -102,9 +111,7 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
                 var prefix = groupCount > 1 ? $"<span class=\"afx-tip-count\">(x{groupCount})</span> " : "";
                 var effect = SafeEffect(stone);
                 if(effect.HasValue && !string.IsNullOrWhiteSpace(effect.Value.Target)) {
-                    var size = (!stone.Additive && stone.Value >= 2 && stone.Value < 9999)
-                        ? $"{stone.Value}x"
-                        : (effect.Value.Size ?? "");
+                    var size = MultiplierLabel(stone) ?? effect.Value.Size ?? "";
                     if(string.IsNullOrWhiteSpace(size))
                         yield return $"{prefix}{Encode(effect.Value.Target)}";
                     else
