@@ -42,7 +42,7 @@ using Contract = EGG9000.Common.Database.Entities.Contract;
 using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 
 namespace EGG9000.Site.Controllers {
-    [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+    [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
     public class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
@@ -58,76 +58,6 @@ namespace EGG9000.Site.Controllers {
             public UserSnapShot SnapShot { get; set; }
             public DBUser User { get; set; }
             public ulong Gain { get; set; }
-        }
-
-        public async Task<IActionResult> TestKick() {
-
-
-            var wrongcoopcode = "ialwayswin";
-            var contractID = "easter-rush-2022";
-            var DiscordUserID = (ulong)804144041284993064;
-            var db = _db;
-
-
-
-            var coopStatus = await EggIncApi.GetCoopStatus(contractID, wrongcoopcode.ToLower().Trim());
-            if(coopStatus is null) {
-                return Content("1");
-            }
-
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == DiscordUserID);
-
-            var egginids = user.EggIncAccounts.Select(x => x.Id).ToList();
-
-            var participant = coopStatus.Participants.FirstOrDefault(x => egginids.Contains(x.UserId));
-            if(participant is null) {
-                return Content("2");
-            }
-
-            if(coopStatus.Public) {
-                var r2 = await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                    ClientVersion = EggIncApi.ClientVersion,
-                    ContractIdentifier = contractID,
-                    CoopIdentifier = wrongcoopcode,
-                    Public = false,
-                    RequestingUserId = coopStatus.CreatorId
-                }, coopStatus.CreatorId);
-            }
-
-            var r = await EggIncApi.Send(new Ei.KickPlayerCoopRequest {
-                ClientVersion = EggIncApi.ClientVersion,
-                ContractIdentifier = contractID,
-                CoopIdentifier = wrongcoopcode,
-                PlayerIdentifier = participant.UserId,
-                Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-                RequestingUserId = coopStatus.CreatorId
-            }, coopStatus.CreatorId);
-
-            if(coopStatus.Public)
-                await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                    ClientVersion = EggIncApi.ClientVersion,
-                    ContractIdentifier = contractID,
-                    CoopIdentifier = wrongcoopcode,
-                    Public = true,
-                    RequestingUserId = coopStatus.CreatorId
-                }, coopStatus.CreatorId);
-
-            if(!r) {
-                return Content(coopStatus.Public ? "4" : "3");
-            }
-            return Content("Success");
-        }
-
-        public async Task<IActionResult> CheckForDuplicateXrefs() {
-            var xrefs = await _db.UserCoopXrefs.Where(x => x.Coop.ContractID == "diamonds-2022").ToListAsync();
-
-            var groups = xrefs.GroupBy(x => x.EggIncId);
-
-            foreach(var group in groups.Where(x => x.Count() > 1)) {
-                var user = await _db.DBUsers.FirstAsync(x => x.Id == group.First().UserId);
-                Console.WriteLine($"Duplicate xrefs for {user.DiscordUsername}");
-            }
-            return Content("");
         }
 
 

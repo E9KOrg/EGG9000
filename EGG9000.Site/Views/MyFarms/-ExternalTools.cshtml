@@ -90,7 +90,7 @@
 
 		window.egg9000module.controller('ExternalTools@(EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
             $scope.SendTestDM = function(target) {
-                $http.post("/myfarms/sendtestdm?target=" + target + "&discorduserid=@(Model.Item2.DiscordId)", {}).then(function Success(response) {
+                $http.post("/myfarms/sendtestdm?target=" + target, {}).then(function Success(response) {
                     alert("Sent");
                 }, function Error(response) {
                     alert("Error");
