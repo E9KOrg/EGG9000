@@ -64,7 +64,7 @@
 								<a class="nav-link" asp-area="" asp-controller="Contract" asp-action="Index">Contracts</a>
 							</li>
 						}
-						@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin")) {
+						@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin")) {
 							<li class="nav-item">
 								<a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">Admin</a>
 							</li>
