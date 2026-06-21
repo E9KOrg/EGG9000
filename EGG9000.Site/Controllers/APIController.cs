@@ -25,12 +25,13 @@ using static EGG9000.Common.Helpers.ArtifactHelpers;
 namespace EGG9000.Site.Controllers {
 
     [AllowAnonymous]
-    public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env) : Controller {
+    public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env, EGG9000.Site.Services.ArtifactImageRenderer renderer) : Controller {
         private readonly ApplicationDbContext _db = db;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
         private readonly IServiceProvider _provider = provider;
         private readonly ILogger<APIController> _logger = logger;
         private readonly IWebHostEnvironment _env = env;
+        private readonly EGG9000.Site.Services.ArtifactImageRenderer _renderer = renderer;
 
         private string GetWWWRelativePath(List<string> relativePathJoins) {
             var imageDur = _env.WebRootPath;
@@ -137,102 +138,12 @@ namespace EGG9000.Site.Controllers {
                 return BadRequest(new { message = $"Account with EID {userObject.EID} was not found for the user {user.DiscordUsername}" });
             }
 
-            var config = userObject.Config;
-            if(config is null) return BadRequest(new { message = "Config was null." });
-            if(!config.IsValid(out var configError)) return BadRequest(new { message = configError });
-            var rows = config.Rows;
-            var columns = config.Columns;
-
-            var orderedList = GetOrderedInventory(account);
-            if(orderedList is null) return BadRequest(new { message = $"`orderedList` was null." });
-
-            var baseImage = new Image<Rgba32>(config.TotalWidth, config.TotalHeight);
-            baseImage.Mutate(x => x.Fill(Color.ParseHex("#242422")));
-
-            var fontFilePath = GetWWWRelativePath(["Always Together.otf"]);
-            if(fontFilePath == null) return BadRequest(new { message = $"`Always Together.otf` could not be found." });
-            var font = new FontCollection().Add(fontFilePath).CreateFont(config.TextFontSize, FontStyle.Bold);
-
-            var index = 0;
-            foreach(var groupedAf in orderedList) {
-                var isFrag = groupedAf.Artifact.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
-                var afName = groupedAf.Artifact.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
-                var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? groupedAf.Artifact.Tier + 1 : groupedAf.Artifact.Tier);
-                var afCount = groupedAf.Count;
-                var afStones = groupedAf.Artifact.Stones;
-
-                var (x, y) = GetPositionInGrid(index, rows, columns, config.AFSize, config.Padding);
-
-                var backgroundColor = groupedAf.Artifact.Rarity switch {
-                    1 => Color.ParseHex("#383834"),
-                    2 => Color.ParseHex("#6cb6d9"),
-                    3 => Color.ParseHex("#b72de0"),
-                    4 => Color.ParseHex("#f2d61b"),
-                    _ => Color.ParseHex("#383834")
-                };
-
-                var afImagePath = GetWWWRelativePath([
-                    "images/artifacts",
-                    afName,
-                    $"{afName}_{afTier}.png"
-                ]);
-                if(afImagePath == null) continue;
-                using var afImage = Image.Load(afImagePath);
-
-                afImage.Mutate(i => { i.Resize(new Size(config.AFSize, config.AFSize)); });
-
-                var stoneImages = new List<Image>();
-                foreach(var stone in afStones) {
-                    var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
-                    var stoneTier = stone.Tier + 1;
-                    var stonePath = GetWWWRelativePath([
-                        "images/artifacts",
-                        stoneName,
-                        $"{stoneName}_{stoneTier}.png"
-                    ]);
-                    if(stonePath == null) continue;
-                    var stoneImage = Image.Load(stonePath);
-                    stoneImage.Mutate(i => { i.Resize(new Size(config.StoneSize, config.StoneSize), true); });
-                    stoneImages.Add(stoneImage);
-                }
-
-                Image textImage = null;
-                if(afCount != 1) {
-                    var textWidth = Math.Max(config.TextHeight, (afCount.ToString().Length * config.TextBaseWidth) + config.TextBaseWidth);
-                    textImage = new Image<Rgba32>(textWidth, config.TextHeight);
-                    textImage.Mutate(x => x
-                        .Fill(Color.ParseHex("#4f4f4f")) // Fill the image with a background color
-                        .Fill(Color.Transparent, new RectangularPolygon(config.TextCornerRadius, config.TextCornerRadius, textWidth - config.TextCornerRadius, config.TextCornerRadius))); // Create a transparent rectangle with rounded corners
-                    textImage.Mutate(x => x.ApplyRoundedCorners(config.TextCornerRadius));
-                    var text = afCount.ToString();
-                    var center = new PointF(textImage.Width / 2, textImage.Height / 2);
-                    var measured = TextMeasurer.MeasureSize(text, new TextOptions(font));
-                    var textPosition = new PointF(center.X - measured.Width / 2, center.Y - measured.Height / 2);
-
-                    textImage.Mutate(x => x.DrawText(text, font, Color.White, textPosition));
-                }
-
-                using var backgroundImage = BackgroundImage(backgroundColor, config.AFSize, config.AFCornerRadius);
-                backgroundImage.Mutate(i => { i.DrawImage(afImage, new Point(0, 0), 1f); });
-
-                baseImage.Mutate(b => { b.DrawImage(backgroundImage, new Point(x, y), 1f); });
-                if(textImage != null) {
-                    var baseCenter = new Point(x + backgroundImage.Width, y + backgroundImage.Height);
-                    var textPosition = new Point(baseCenter.X - (int)(textImage.Width / 1.5), baseCenter.Y - (int)(textImage.Height / 1.5));
-                    baseImage.Mutate(b => { b.DrawImage(textImage, textPosition, 1f); });
-                } else if(stoneImages.Count > 0) {
-                    var stoneIndex = 1;
-                    foreach(var stoneImage in stoneImages) {
-                        baseImage.Mutate(b => { b.DrawImage(stoneImage, new Point(x + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), (int)(y + config.AFSize - (config.Padding * 1.5))), 1f); });
-                        stoneIndex++;
-                    }
-                }
-                index++;
-            }
-
-            using var ms = new MemoryStream();
-            baseImage.Save(ms, new JpegEncoder());
-            return File(ms.ToArray(), "image/jpeg");
+            // The drawing (and the matching hover-target manifest) lives in ArtifactImageRenderer so the
+            // bot endpoint and the MyFarms inventory tab paint from the exact same code. The bot only
+            // wants the image bytes here; the manifest is ignored.
+            var render = _renderer.RenderInventory(account, userObject.Config);
+            if(!render.Ok) return BadRequest(new { message = render.Error });
+            return File(render.Jpeg, "image/jpeg");
         }
 
         [HttpPost]

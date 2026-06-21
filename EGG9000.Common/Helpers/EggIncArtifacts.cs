@@ -177,6 +177,49 @@ namespace EGG9000.Common.Helpers {
             return artifact is null ? throw new Exception("Unable to locate artifact family: " + instance.Artifact) : artifact.id;
         }
 
+        // The tier number we show to players: 1-4 for artifacts, 2-4 for stones (a stone's stored Tier is
+        // zero-based and one behind its displayed tier), and 1 for fragments. Mirrors the tier offset
+        // logic in GetTierName so the "(T#)" label matches the resolved tier name.
+        public static int GetDisplayTier(EggIncArtifactInstance instance) {
+            var isFragment = instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase);
+            var family = ResolveFamily(instance, isFragment);
+            var isStone = family is not null && family.type.Equals("Stone", StringComparison.OrdinalIgnoreCase);
+            return instance.Tier + (isStone && !isFragment ? 1 : 0);
+        }
+
+        // The artifact's in-game effect for its exact tier and rarity, as the game presents it: a value
+        // string ("+20%", "+1000%", "Guaranteed") and the thing it affects ("internal hatchery rate").
+        // Both come straight from eiafx-data.json, so they read exactly like the in-game artifact card.
+        // Returns null for fragments and anything without a matching effect row.
+        public static (string Size, string Target)? GetEffectDisplay(EggIncArtifactInstance instance) {
+            var isFragment = instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase);
+            if(isFragment) return null;
+
+            var family = ResolveFamily(instance, isFragment);
+            if(family is null) return null;
+
+            var tierNumber = GetDisplayTier(instance);
+            var tier = family.tiers.FirstOrDefault(x => x.tier_number == tierNumber);
+            if(tier?.effects is null || tier.effects.Count == 0) return null;
+
+            // Stored rarity is 1-based (1 = Common); the data file is 0-based. Fall back to the base
+            // (afx_rarity 0) row, then to whatever the tier offers, so we never throw mid-tooltip.
+            var effect = tier.effects.FirstOrDefault(e => e.afx_rarity == instance.Rarity - 1)
+                ?? tier.effects.FirstOrDefault(e => e.afx_rarity == 0)
+                ?? tier.effects[0];
+
+            if(string.IsNullOrWhiteSpace(effect.effect_target)) return null;
+            return (effect.effect_size, effect.effect_target);
+        }
+
+        private static ArtifactFamily ResolveFamily(EggIncArtifactInstance instance, bool isFragment) {
+            var data = GetEiAfxData();
+            var lookupName = isFragment
+                ? instance.Artifact.Replace("Fragment", string.Empty, StringComparison.OrdinalIgnoreCase).TrimEnd()
+                : instance.Artifact;
+            return data.artifact_families.FirstOrDefault(x => x.name.Equals(lookupName, StringComparison.OrdinalIgnoreCase));
+        }
+
 
         public static double GetMaxRunningBonusAdditive(CustomFarm farm) {
             double val = 0;

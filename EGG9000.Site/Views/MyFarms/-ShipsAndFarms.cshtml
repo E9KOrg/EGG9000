@@ -8,75 +8,13 @@
 @using static Ei.MissionInfo.Types;
 @using static EGG9000.Common.Helpers.MissionHelpers;
 @inject DiscordSocketClient DiscordClient
+@inject EGG9000.Site.Services.ArtifactImageRenderer ArtifactRenderer
 @model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts, List<DBCustomEgg> CustomEggs)
 
 @{
     string properCaseAndSuffix(string inputString, int number){
         var suffix = (number == 0 || number > 1) ? "s" : "";
         return inputString.FirstCharToUpper() + suffix;
-    }
-
-    string properSpacing(string input) {
-        StringBuilder result = new StringBuilder(input.Length * 2);
-        result.Append(input[0]); // Add the first character as is
-        for (int i = 1; i < input.Length; i++) {
-            if (char.IsUpper(input[i])) result.Append(' ');
-            result.Append(input[i]);
-        }
-        return result.ToString();
-    }
-
-    void artifactBackground(EggIncArtifactInstance artifact, bool stone) {
-        if (artifact == null) {
-            <div></div>
-        } else {
-            var subClass = "afx-img";
-            var bgClass = artifact.Rarity switch {
-                1 => "bg-common afx-bg", //Common
-                2 => "bg-rare afx-bg", //Rare
-                3 => "bg-epic afx-bg", //Epic
-                4 => "bg-legendary afx-bg", //Legendary
-                _ => "bg-common afx-bg" //Default to gray
-            };
-            if (stone) {
-                bgClass = "afx-stone";
-                subClass = "afx-stone";
-            }
-            var image = artifactImage(artifact, stone);
-            var size = stone ? 15 : 70;
-            var textInfo = new CultureInfo("en-US", false).TextInfo;
-            <div class="rounded-full @(bgClass)">
-                <img class="position-absolute @subClass" src="@image" />
-            </div>
-        }
-    }
-
-    string artifactImage(EggIncArtifactInstance artifact, bool stone) {
-        if (artifact == null) {
-            return "";
-        } else {
-            var properName = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
-            return "/images/artifacts/" + properName + "/" + properName + "_" + (artifact.Tier + (stone ? 1 : 0)) + ".png";
-        }
-    }
-
-    void artifactTemplate(EggIncArtifactInstance artifact, bool stone) {
-        <tr>
-            <td>@{artifactBackground(artifact, stone);}</td>
-            <td>@artifact.Artifact</td>
-                @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-                    <td>@Math.Round((artifact.Value) * 100)%</td>
-                } else if(artifact.Boost == EggIncBoostTypeEnum.ResearchCost) {
-                            <td>-@((artifact.Value - 1).ToString("P0"))</td>
-                } else if (artifact.Additive) {
-                            <td>+@artifact.Value</td>
-                } else if (+artifact.Value < 2) {
-                            <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
-                } else {
-                            <td>@(artifact.Value)x</td>
-                }
-            <td>@properSpacing(artifact.Boost.ToString().Replace("Members", ""))</td>
-        </tr>
     }
 
     int index = Model.Index;
@@ -690,28 +628,14 @@
                     </div>
                 }
             </div>
-            <div class="card-body" style="padding-bottom: 0;">
+            <div class="card-body" style="padding-bottom: 12px;">
                 <h6>Artifacts</h6>
-            </div>
-            <table class="table table-sm" style="margin-bottom: 0;">
                 @if (farm.Artifacts.Count == 0) {
-                    <tr><td><i>No Artifacts</i></td></tr>
+                    <i>No Artifacts</i>
+                } else {
+                    await Html.RenderPartialAsync("-ArtifactSetImage", ArtifactRenderer.RenderSet(farm.Artifacts));
                 }
-                @foreach (var artifact in farm.Artifacts) {
-                    artifactTemplate(artifact, false);
-                    @if (artifact.Stones != null && artifact.Stones.Count > 0) {
-                        <tr>
-                            <td colspan="99" style="padding-left: 10px; padding-top: 0; ">
-                                <table>
-                                    @foreach (var stone in artifact.Stones) {
-                                        artifactTemplate(stone, true);
-                                    }
-                                </table>
-                            </td>
-                        </tr>
-                    }
-                }
-            </table>
+            </div>
         </div>
     }
 }

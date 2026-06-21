@@ -235,6 +235,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
+    services.AddSingleton<EGG9000.Site.Services.ArtifactImageRenderer>();
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
     services.AddHostedService<UserCacheRefreshService>();
