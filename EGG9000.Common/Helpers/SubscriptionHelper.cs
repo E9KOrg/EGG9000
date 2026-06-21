@@ -1,3 +1,4 @@
+using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Common.Helpers;
@@ -14,12 +15,12 @@ namespace EGG9000.Common.Helpers {
     public class SubscriptionHelper {
 
 #nullable enable
-        public static async Task SubscriptionLevelChanged(DiscordSocketClient gateway, SocketGuild guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger? logger = null, UserSubscriptionInfo.Types.Level? oldLevel = null) {
+        public static async Task SubscriptionLevelChanged(DiscordSocketClient gateway, IGuild? guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger? logger = null, UserSubscriptionInfo.Types.Level? oldLevel = null) {
 #nullable disable
             var standardRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.StandardSubscription)?.Id ?? default;
             var proRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id ?? default;
 
-            var discordUser = guild?.GetUser(user.DiscordId);
+            var discordUser = guild is null ? null : await guild.GetUserAsync(user.DiscordId);
             if(discordUser is not null) {
                 var changed = false;
                 if(await CheckRole(standardRoleId, user, false, discordUser, logger)) {
@@ -51,12 +52,12 @@ namespace EGG9000.Common.Helpers {
         }
 
 #nullable enable
-        public static async Task<bool> CheckRole(ulong roleId, DBUser dbUser, bool pro, SocketGuildUser user, ILogger? logger = null) {
+        public static async Task<bool> CheckRole(ulong roleId, DBUser dbUser, bool pro, IGuildUser user, ILogger? logger = null) {
 #nullable disable
             if(roleId == default || dbUser is null || dbUser.EggIncAccounts?.Count == 0 || user is null)
                 return false;
             var needsRole = dbUser.EggIncAccounts.Any(y => y.SubscriptionLevel == (pro ? UserSubscriptionInfo.Types.Level.Pro : UserSubscriptionInfo.Types.Level.Standard) && (y.HasActiveSubscription() ));
-            var hasRole = user?.Roles?.Any(x => x.Id == roleId) ?? false;
+            var hasRole = user?.RoleIds?.Any(x => x == roleId) ?? false;
             var changed = false;
             if(hasRole && !needsRole) {
                 await user.RemoveRoleAsync(roleId);
