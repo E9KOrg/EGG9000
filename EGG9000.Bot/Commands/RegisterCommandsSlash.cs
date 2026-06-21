@@ -259,14 +259,14 @@ namespace EGG9000.Bot.Commands {
             return _Register(command, db, _client, bugsnag, eggincid, command.User, logger);
         }
         public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger) {
-            await command.DeferAsync();
             eggincid = eggincid.ToUpper();
 
-            if(!eggincid.StartsWith("EI")) {
-                await command.DeleteOriginalResponseAsync();
-                await command.FollowupAsync(embed: EmbedError("Your EggInc ID must start with `EI` followed by 16 numbers. To find your ID, go to Settings → Privacy & Data → Copy button next to the EID near the bottom in the Egg Inc app."), ephemeral: true);
+            if(!Regex.IsMatch(eggincid, @"^EI\d{16}$")) {
+                await command.RespondAsync(embed: EmbedError("Your EggInc ID must start with `EI` followed by 16 numbers. To find your ID, go to Settings → Privacy & Data → Copy button next to the EID near the bottom in the Egg Inc app."), ephemeral: true);
                 return;
             }
+
+            await command.DeferAsync();
 
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
