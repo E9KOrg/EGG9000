@@ -937,6 +937,9 @@ namespace EGG9000.Site.Controllers {
             return Json(true);
         }
 
+        // Read-only admins (GuildReadOnlyAdmin) can view MyFarms directly, so the search box that just
+        // routes to MyFarms.ViewUser must allow them too - the class policy omits that tier.
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> SearchID([FromQuery] string id) {
             var discordIDRegex = new Regex(@"^\d+$");
 

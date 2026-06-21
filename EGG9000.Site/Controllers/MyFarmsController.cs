@@ -35,7 +35,7 @@ namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         RoleManager<IdentityRole> roleManager, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache,
-        IServiceScopeFactory scopeFactory) : Controller {
+        IServiceScopeFactory scopeFactory, EGG9000.Site.Services.ArtifactImageRenderer artifactRenderer) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -46,6 +46,7 @@ namespace EGG9000.Site.Controllers {
         private readonly IMemoryCache _cache = cache;
         private readonly DatabaseCache _databaseCache = databaseCache;
         private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+        private readonly EGG9000.Site.Services.ArtifactImageRenderer _artifactRenderer = artifactRenderer;
 
         public async Task<IActionResult> Index() {
             var sw = new Stopwatch();
@@ -155,6 +156,33 @@ namespace EGG9000.Site.Controllers {
 
             Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId));
+        }
+
+        // Lazily renders the artifact-inventory image plus its hover-target manifest for one account. The
+        // MyFarms inventory tab fetches this the first time it's opened, so the main page load never pays
+        // for the image generation. Access is restricted to the account's owner or a staff member, matching
+        // who is allowed to view the farms in the first place.
+        [HttpGet]
+        public async Task<IActionResult> InventoryOverlay(string eid) {
+            if(string.IsNullOrWhiteSpace(eid)) return BadRequest(new { error = "Missing account id." });
+
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+
+            var owner = await _db.DBUsers.FirstOrDefaultAsync(x => x.EIDs.Contains(eid));
+            if(owner is null) return NotFound(new { error = "Account not found." });
+
+            var isStaff = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+            if(owner.DiscordId != loginUserId && !isStaff) return Forbid();
+
+            var account = owner.EggIncAccounts.FirstOrDefault(a => a.Id == eid);
+            if(account is null) return NotFound(new { error = "Account not found." });
+
+            var render = _artifactRenderer.RenderInventory(account);
+            if(!render.Ok) return Json(new { error = render.Error });
+
+            return Json(new { imageB64 = Convert.ToBase64String(render.Jpeg), manifest = render.Manifest });
         }
 
         private async Task GetScores(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {

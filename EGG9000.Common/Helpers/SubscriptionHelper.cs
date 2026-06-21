@@ -15,12 +15,17 @@ namespace EGG9000.Common.Helpers {
     public class SubscriptionHelper {
 
 #nullable enable
-        public static async Task SubscriptionLevelChanged(DiscordSocketClient gateway, IGuild? guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger? logger = null, UserSubscriptionInfo.Types.Level? oldLevel = null) {
+        public static async Task SubscriptionLevelChanged(DiscordSocketClient gateway, SocketGuild guild, Guild dbGuild, DBUser user, EggIncAccount account, ILogger? logger = null, UserSubscriptionInfo.Types.Level? oldLevel = null) {
 #nullable disable
             var standardRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.StandardSubscription)?.Id ?? default;
             var proRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id ?? default;
 
-            var discordUser = guild is null ? null : await guild.GetUserAsync(user.DiscordId);
+            // GetUser only hits the gateway member cache; a cache miss (member not downloaded
+            // since startup, evicted, or joined after the last full download) would otherwise
+            // silently skip role enforcement, so fall back to a REST fetch.
+            IGuildUser discordUser = guild is null
+                ? null
+                : guild.GetUser(user.DiscordId) ?? await ((IGuild)guild).GetUserAsync(user.DiscordId);
             if(discordUser is not null) {
                 var changed = false;
                 if(await CheckRole(standardRoleId, user, false, discordUser, logger)) {

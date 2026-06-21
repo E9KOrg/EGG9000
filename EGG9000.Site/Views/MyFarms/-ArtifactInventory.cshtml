@@ -1,0 +1,18 @@
+@model string
+
+@*
+    The inventory image is heavy to generate, so we don't render it on page load. The container below
+    just carries the account id; artifact-overlay.js fetches the image plus its hover-target manifest
+    from /MyFarms/InventoryOverlay the first time this tab is actually opened, then lays the hotspots
+    over the image so each artifact and stone shows its name on hover.
+*@
+<div class="card" style="margin-top:15px">
+    <h4 class="card-header">Inventory</h4>
+    <div class="card-body">
+        <ul>
+            <li>Every artifact you own, grouped by rarity</li>
+            <li>Hover over an artifact or stone to see what it is</li>
+        </ul>
+        <div class="afx-inventory" data-eid="@Model">Open this tab to load your inventory.</div>
+    </div>
+</div>
