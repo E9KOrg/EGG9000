@@ -44,11 +44,15 @@ namespace EGG9000.Bot.Automated {
                     await PurgePendingAssignments(_db, missingFromServer, guild.Id);
                 }
 
-                var returned = users.Where(x => x.GuildId == 0 && x.LastGuild == guild.Id && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
+                // Re-associate any registered user who is present in this server but whose GuildId is unset.
+                // Presence is reliable even on a partial cache (only absence is not), so this is safe to run
+                // unconditionally. Covers both LastGuild-trail returns and the no-trail users that earlier
+                // zeroing left with GuildId = 0 and no record of their original guild.
+                var returned = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
                 var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync(CancellationToken.None);
                 membersReturn.ForEach(x => {
                     x.GuildId = guild.Id;
-                    _logger.LogInformation("Return member to the guild {name}", x.DiscordUsername);
+                    _logger.LogInformation("Re-associating member {name} to guild {guild} (present in server, GuildId was unset)", x.DiscordUsername, guild.Name);
                     StillAlive();
                 });
 
