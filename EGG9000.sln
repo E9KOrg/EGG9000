@@ -9,6 +9,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Site", "EGG9000.Sit
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Common", "EGG9000.Common\EGG9000.Common.csproj", "{C1984A6C-8660-424F-8A22-0262B9DDAF70}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Test", "EGG9000.Test\EGG9000.Test.csproj", "{2050A667-DF5D-4971-B07C-774BF1E478C9}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Test.Integration", "EGG9000.Test.Integration\EGG9000.Test.Integration.csproj", "{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}"
+EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B01298DD-2A61-469A-BE83-1A5F7C6BC57D}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
@@ -16,18 +20,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Common.Test", "EGG9000.Common.Test\EGG9000.Common.Test.csproj", "{2050A667-DF5D-4971-B07C-774BF1E478C9}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EGG9000.Common.IntegrationTests", "EGG9000.Common.IntegrationTests\EGG9000.Common.IntegrationTests.csproj", "{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Docker", "Docker", "{0F8969B7-8E86-4A21-BECC-F28963FBC1AD}"
 	ProjectSection(SolutionItems) = preProject
 		deploy-secrets-remote.ps1 = deploy-secrets-remote.ps1
 		docker-compose.yml = docker-compose.yml
 		publish-docker.ps1 = publish-docker.ps1
 	EndProjectSection
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EGG9000.Migrator", "EGG9000.Migrator\EGG9000.Migrator.csproj", "{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -165,30 +163,6 @@ Global
 		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.Release|x64.Build.0 = Release|Any CPU
 		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.Release|x86.ActiveCfg = Release|Any CPU
 		{A81F2869-AE8A-4484-8A2C-E9670FD3A05E}.Release|x86.Build.0 = Release|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Debug|x64.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Debug|x86.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9001|Any CPU.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9001|Any CPU.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9001|x64.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9001|x64.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9001|x86.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9001|x86.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9002|Any CPU.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9002|Any CPU.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9002|x64.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9002|x64.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9002|x86.ActiveCfg = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.DEV9002|x86.Build.0 = Debug|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|x64.ActiveCfg = Release|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|x64.Build.0 = Release|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|x86.ActiveCfg = Release|Any CPU
-		{A1F9DC28-EE31-43E6-8BF7-6EDCEABDEB75}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
