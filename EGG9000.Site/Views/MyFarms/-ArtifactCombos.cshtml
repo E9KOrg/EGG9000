@@ -5,6 +5,7 @@
 @using EGG9000.Site.Controllers;
 @using System.Globalization;
 @using EGG9000.Common.Coops;
+@using EGG9000.Common.Helpers.ArtifactImaging;
 @inject DiscordSocketClient DiscordClient
 @model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
 
@@ -24,20 +25,6 @@
             </div>
         </td>
     }
-    string artifactTemplate(EggIncArtifactInstance artifact) {
-        if (artifact == null) {
-            return "";
-        } else if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-            return $"{Math.Round((artifact.Value) * 100)}%";
-        } else if (artifact.Additive) {
-            return $"+{artifact.Value}";
-        } else if (+artifact.Value < 2) {
-            return $"+{Math.Round((artifact.Value - 1) * 100)}%";
-        } else {
-            return $"{artifact.Value}x";
-        }
-    }
-
     string artifactImage(EggIncArtifactInstance artifact, bool stone) {
         if (artifact == null) {
             return "";
@@ -64,11 +51,9 @@
                 subClass = "afx-stone";
             }
             var image = artifactImage(artifact, stone);
-            var size = stone ? 15 : 70;
-            var textInfo = new CultureInfo("en-US", false).TextInfo;
-            var name = textInfo.ToTitleCase(EggIncArtifacts.GetProperNameFromJson(artifact)) + " " + artifactTemplate(artifact);
-            <div class="rounded-full @(bgClass)">
-                <img class="position-absolute @subClass" src="@image" title="@name" />
+            <div class="rounded-full has-tip @(bgClass)">
+                <img class="position-absolute @subClass" src="@image" />
+                <span class="afx-tip-content">@Html.Raw(ArtifactDisplay.TooltipHtml(artifact))</span>
             </div>
         }
     }

@@ -7,7 +7,7 @@
 
 	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@forevolve/bootstrap-dark@1.0.0/dist/css/toggle-bootstrap.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@@forevolve/bootstrap-dark@1.0.0/dist/css/toggle-bootstrap-dark.min.css" />
-	<link rel="stylesheet" href="~/css/site.css" />
+	<link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
 
 	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
 	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
@@ -64,7 +64,7 @@
 								<a class="nav-link" asp-area="" asp-controller="Contract" asp-action="Index">Contracts</a>
 							</li>
 						}
-						@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin")) {
+						@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin")) {
 							<li class="nav-item">
 								<a class="nav-link" asp-area="" asp-controller="Admin" asp-action="Index">Admin</a>
 							</li>

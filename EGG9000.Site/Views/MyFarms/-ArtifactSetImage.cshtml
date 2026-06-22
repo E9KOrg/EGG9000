@@ -1,0 +1,23 @@
+@using System.Globalization
+@model EGG9000.Site.Services.ArtifactImageRenderer.RenderResult
+
+@*
+    Renders a generated artifact-set image with the same hover overlay as the inventory tab, but built
+    server-side (the set is small, so there's no need for the lazy fetch the inventory uses). The hotspot
+    divs carry their tooltip markup in a hidden .afx-tip-content child; artifact-overlay.js picks any
+    .has-tip element up globally, so these work with no extra wiring.
+*@
+@if (Model is not null && Model.Ok)
+{
+    var b64 = Convert.ToBase64String(Model.Jpeg);
+    <div class="afx-overlay-wrap afx-set-wrap">
+        <img class="afx-overlay-img" src="data:image/jpeg;base64,@b64" alt="Active artifacts" />
+        @foreach (var h in Model.Manifest.Hotspots)
+        {
+            <div class="afx-hotspot has-tip"
+                 style="left:@h.X.ToString(CultureInfo.InvariantCulture)%;top:@h.Y.ToString(CultureInfo.InvariantCulture)%;width:@h.W.ToString(CultureInfo.InvariantCulture)%;height:@h.H.ToString(CultureInfo.InvariantCulture)%">
+                <span class="afx-tip-content">@Html.Raw(h.Tip)</span>
+            </div>
+        }
+    </div>
+}

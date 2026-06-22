@@ -59,7 +59,10 @@ namespace EGG9000.Bot.Automated {
                             var tankSize = MissionHelpers.GetTankCapacity(backup.TankLevel);
                             foreach(var fa in backup.FuelAmounts) {
                                 var pct = tankSize > 0 ? fa.Value / tankSize * 100 : 0;
-                                fuelTank.Add(new ShipReturnDmBuilder.FuelLine(EggIncStatics.GetEggById(fa.Key, null, dbEggs).emoji, fa.Value, pct));
+                                // GetEggById returns null for a fuel egg the statics don't know about; fall
+                                // back to the generic edible-egg emoji rather than dereferencing null.
+                                var fuelEmoji = EggIncStatics.GetEggById(fa.Key, null, dbEggs)?.emoji ?? "<:Edible_Egg:712424206276755516>";
+                                fuelTank.Add(new ShipReturnDmBuilder.FuelLine(fuelEmoji, fa.Value, pct));
                             }
                         }
 
@@ -108,12 +111,12 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
             }
-            var timespan = await UpdateNextShipDM(users, _db);
+            var timespan = await UpdateNextShipDM(users, _db, _logger);
             ChangeUpdateInterval(timespan);
             await _db.SaveChangesAsync(CancellationToken.None);
         }
 
-        public static async Task<TimeSpan> UpdateNextShipDM(List<DBUser> dbusers, ApplicationDbContext _db) {
+        public static async Task<TimeSpan> UpdateNextShipDM(List<DBUser> dbusers, ApplicationDbContext _db, ILogger logger) {
             foreach(var user in dbusers.Where(x => x.DMOnShipReturn)) {
                 try {
 
@@ -156,7 +159,9 @@ namespace EGG9000.Bot.Automated {
                         var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == user.Id);
                         dbuser.NextShipReturnDMDue = NextShipReturnDMDue;
                     }
-                } catch(Exception) {}
+                } catch(Exception e) {
+                    logger.LogWarning(e, "Failed to update NextShipReturnDMDue for {user}", user.DiscordUsername);
+                }
             }
             await _db.SaveChangesAsync();
 
