@@ -1,8 +1,10 @@
-﻿@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts, (int Earned, int Max) peFromSeasons, List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe> missingSeasonalPEs)
+@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts, (int Earned, int Max) peFromSeasons, List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe> missingSeasonalPEs)
 @{
+    double merValue(double se, double pe) =>
+        (se > 0 && double.IsFinite(se)) ? (91.0 * Math.Log10(se / 1e18) + 200.0 - pe) / 10.0 : 0.0;
+
     string calculateMER(double se, ulong pe) {
-        se = se / 1e18;
-        var result = (91 * (Math.Log10(se)) + 200 - pe) / 10;
+        var result = merValue(se, (double)pe);
         return String.Format(result % 1 == 0 ? "{0:0}" : "{0:0.00}", result);
     }
 
@@ -16,10 +18,54 @@
         if (collapsedSnapshots.Count > 0 && displayKey(collapsedSnapshots[^1]) == displayKey(s)) collapsedSnapshots[^1] = s;
         else collapsedSnapshots.Add(s);
     }
+
+    var makePoint = (DateTime date, double eb, double se, double pe, double eot) => new {
+        date = date.ToString("yyyy-MM-dd"),
+        logEb = (eb > 0 && double.IsFinite(eb)) ? Math.Log10(eb) : 0.0,
+        ebStr = eb.ToEggString(numberOfDecimalPlaces: 3),
+        logSe = (se > 0 && double.IsFinite(se)) ? Math.Log10(se) : 0.0,
+        seStr = se.ToEggString(numberOfDecimalPlaces: 3),
+        pe,
+        eot,
+        mer = merValue(se, pe)
+    };
+
+    var ebStatsPoints = collapsedSnapshots
+        .OrderBy(s => s.Date)
+        .Select(s => makePoint(s.Date, s.EarningsBonus, s.SoulEggs, (double)s.EggsOfProphecy, (double)s.EggsOfTruth))
+        .Append(makePoint(DateTime.Today, Model.backup.EarningsBonus, Model.backup.SoulEggs, (double)Model.backup.EggsOfProphecy, (double)Model.backup.EggsOfTruth))
+        .ToArray();
+
+    var ebStatsJson = JsonConvert.SerializeObject(ebStatsPoints, new JsonSerializerSettings { FloatFormatHandling = FloatFormatHandling.DefaultValue });
+    var ebStatsSuffix = Regex.Replace(Model.backup.EggIncId, @"[^a-zA-Z0-9]", "");
 }
 
 <div class="container">
-    <div class="row">
+
+    <!-- FULL-WIDTH EXPANDED ROW (hidden by default) -->
+    <div class="row" id="ebStatsFullRow-@(ebStatsSuffix)" style="display:none; margin-top:15px;">
+        <div class="col-12">
+            <div class="card">
+                <h4 class="card-header d-flex justify-content-between align-items-center">
+                    <span>Progress Graph</span>
+                    <div>
+                        <button class="btn btn-sm btn-primary mr-1"           id="ebStatsBtn-eb-full-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('eb')">EB</button>
+                        <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-se-full-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('se')">SE</button>
+                        <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-pe-full-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('pe')">PE</button>
+                        <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-eot-full-@(ebStatsSuffix)" onclick="ebStatsToggle_@(ebStatsSuffix)('eot')">EoT</button>
+                        <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-mer-full-@(ebStatsSuffix)" onclick="ebStatsToggle_@(ebStatsSuffix)('mer')">MER</button>
+                        <button class="btn btn-sm btn-outline-primary"        id="ebStatsCollapse-@(ebStatsSuffix)"     onclick="ebStatsCollapse_@(ebStatsSuffix)()">&#x26F6; Collapse</button>
+                    </div>
+                </h4>
+                <div class="card-body p-2">
+                    <div id="ebStatsChartFull-@(ebStatsSuffix)"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- NORMAL TWO-COLUMN ROW -->
+    <div class="row" id="ebStatsNarrowRow-@(ebStatsSuffix)">
         <div class="col-sm">
             <div class="card" style="margin-top:15px;">
                 <h4 class="card-header" style="text-align: center">Egg of Prophecy Progress</h4>
@@ -119,6 +165,24 @@
 
         </div>
         <div class="col-sm">
+            <!-- CHART CARD (narrow, default visible) -->
+            <div class="card" style="margin-top:15px;" id="ebStatsNarrowCard-@(ebStatsSuffix)">
+                <h4 class="card-header d-flex justify-content-between align-items-center flex-nowrap">
+                    <span style="white-space: nowrap; margin-right: 8px;">Progress Graph</span>
+                    <div style="white-space: nowrap; flex-shrink: 0;">
+                        <button class="btn btn-sm btn-primary mr-1"           id="ebStatsBtn-eb-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('eb')">EB</button>
+                        <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-se-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('se')">SE</button>
+                        <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-pe-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('pe')">PE</button>
+                        <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-eot-@(ebStatsSuffix)" onclick="ebStatsToggle_@(ebStatsSuffix)('eot')">EoT</button>
+                        <button class="btn btn-sm btn-outline-secondary mr-1" id="ebStatsBtn-mer-@(ebStatsSuffix)" onclick="ebStatsToggle_@(ebStatsSuffix)('mer')">MER</button>
+                        <button class="btn btn-sm btn-outline-primary"        id="ebStatsExpand-@(ebStatsSuffix)"  onclick="ebStatsExpand_@(ebStatsSuffix)()">&#x26F6; Expand</button>
+                    </div>
+                </h4>
+                <div class="card-body p-2">
+                    <div id="ebStatsChartNarrow-@(ebStatsSuffix)"></div>
+                </div>
+            </div>
+            <!-- EXISTING EB HISTORY TABLE (unchanged) -->
             <div class="card" style="margin-top:15px;">
                 <h4 class="card-header" style="text-align: center;">Earnings Bonus History</h4>
                 <div class="table-responsive">
@@ -166,6 +230,7 @@
             </div>
         </div>
     </div>
+
 </div>
 <style>
     .toggleHide {
@@ -181,7 +246,7 @@
     }
 
     @@media (min-width: 992px) {
-       
+
         #content-collapse tr {
             display: none;
         }
@@ -199,3 +264,8 @@
         }
     }
 </style>
+<partial name="_ApexCharts" />
+<script src="~/js/eb-stats-chart.js"></script>
+<script>
+    initEbStatsChart('@(ebStatsSuffix)', @Html.Raw(ebStatsJson));
+</script>
