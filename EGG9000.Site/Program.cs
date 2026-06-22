@@ -256,7 +256,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
 
     var config = new DiscordSocketConfig() {
-        GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers
+        GatewayIntents = GatewayIntents.AllUnprivileged | GatewayIntents.GuildMembers,
+        AlwaysDownloadUsers = true
     };
     var client = new DiscordSocketClient(config);
     client.LoginAsync(Discord.TokenType.Bot, Configuration.GetConnectionString("Token")).Wait();
