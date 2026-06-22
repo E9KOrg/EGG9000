@@ -159,6 +159,7 @@ namespace EGG9000.Bot.Commands {
             });
         }
 
+#nullable enable
         private static (Embed embed, MessageComponent? components) BuildMeritPage(
             List<Merit> merits, int page, ulong invokerDiscordId, ulong targetDiscordId, string targetMention) {
 
@@ -201,6 +202,7 @@ namespace EGG9000.Bot.Commands {
 
             return (embedBuilder.Build(), messageComponents);
         }
+#nullable restore
     }
 }
 

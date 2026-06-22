@@ -1,4 +1,3 @@
-using DotNet.Testcontainers.Builders;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Testcontainers.PostgreSql;
 
@@ -14,9 +13,10 @@ public static class PostgresFixture {
 
     [AssemblyInitialize]
     public static async Task AssemblyInit(TestContext _) {
-        _container = new PostgreSqlBuilder()
-            .WithImage("postgres:16-alpine")
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(5432))
+        // The PostgreSql module applies its own pg_isready-based readiness wait, so no explicit
+        // WithWaitStrategy is needed. Testcontainers 4.12 takes the image in the constructor and
+        // removed both the parameterless builder and UntilPortIsAvailable.
+        _container = new PostgreSqlBuilder("postgres:16-alpine")
             .Build();
         await _container.StartAsync();
     }

@@ -10,12 +10,10 @@ namespace EGG9000.Bot {
     public class Words
     {
         private readonly Random _rnd;
-        private readonly List<string> _wordList;
 
         public Words()
         {
             _rnd = new Random();
-            _wordList = WordList;
         }
 
         public string GetRandomWord()
@@ -23,10 +21,20 @@ namespace EGG9000.Bot {
             return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);
         }
 
+        // Pick a second word that does not start with the first word's last character (avoids
+        // double-letter mashups like "BankKite"). The old version allocated a full filtered copy of
+        // the ~1600-word list on every coop creation; rejection sampling is allocation-free and the
+        // excluded letter only trims a few percent, so it converges in ~1 try. Bounded retries guard
+        // the degenerate case where the pool somehow lacks any other starting letter.
         public string GetRandomSecondWord(string firstWord)
         {
-            var FilteredWordList = WordList.FindAll(e => !e.StartsWith(firstWord.Last()));
-            return FirstCharToUpper(FilteredWordList[_rnd.Next(FilteredWordList.Count)]);
+            var exclude = char.ToLowerInvariant(firstWord.Last());
+            for(var attempt = 0; attempt < 16; attempt++) {
+                var candidate = WordList[_rnd.Next(WordList.Count)];
+                if(candidate.Length == 0 || char.ToLowerInvariant(candidate[0]) != exclude)
+                    return FirstCharToUpper(candidate);
+            }
+            return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);
         }
 
         public string GetRandomNumber()

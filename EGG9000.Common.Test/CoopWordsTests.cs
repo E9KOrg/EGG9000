@@ -42,5 +42,18 @@ namespace EGG9000.Common.Test {
             var present = CoopWords.Get().Where(offenders.Contains).ToList();
             Assert.AreEqual(0, present.Count, $"offenders still present: {string.Join(", ", present)}");
         }
+
+        [TestMethod]
+        public void Second_word_avoids_first_words_last_letter() {
+            var words = new EGG9000.Bot.Words();
+            for(var i = 0; i < 500; i++) {
+                var first = words.GetRandomWord();
+                var second = words.GetRandomSecondWord(first);
+                Assert.AreNotEqual(
+                    char.ToLowerInvariant(first[^1]),
+                    char.ToLowerInvariant(second[0]),
+                    $"'{first}' + '{second}' repeats the boundary letter");
+            }
+        }
     }
 }
