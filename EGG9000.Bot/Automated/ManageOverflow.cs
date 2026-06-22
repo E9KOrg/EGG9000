@@ -31,8 +31,8 @@ namespace EGG9000.Bot.Automated {
                 var members = users.Where(x => x.GuildId == guild.Id).ToList();
                 var missingFromServer = members.Where(x => mainServer.GetUser(x.DiscordId) is null).Select(x => x.Id).ToList();
 
-                if(mainServer.Users.Count == 0 || DepartureSpikeTooLarge(members.Count, missingFromServer.Count)) {
-                    _logger.LogWarning("Skipping departure handling for {name}: {missing}/{members} members flagged missing, likely an incomplete member download", guild.Name, missingFromServer.Count, members.Count);
+                if(!mainServer.HasAllMembers || mainServer.Users.Count == 0 || DepartureSpikeTooLarge(members.Count, missingFromServer.Count)) {
+                    _logger.LogWarning("Skipping departure handling for {name}: {missing}/{members} members flagged missing, HasAllMembers={hasAll}, likely an incomplete member download", guild.Name, missingFromServer.Count, members.Count, mainServer.HasAllMembers);
                 } else {
                     var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(CancellationToken.None);
                     membersMissing.ForEach(x => {
