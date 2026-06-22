@@ -24,17 +24,14 @@ namespace EGG9000.Common.Helpers {
                         db.Database.SetCommandTimeout(TimeSpan.FromMinutes(1));
                         return (true, await db.SaveChangesAsync(cancellationToken));
                     } catch(Exception e) {
-                        // Fail fast so the caller can release resources
-                        if(e is NpgsqlException { IsTransient: true } || e.InnerException is NpgsqlException { IsTransient: true }) {
-                            logger?.LogWarning("SaveChangesAsyncRetry: Postgres transient error, not retrying");
-                            return (false, -1);
-                        }
-                        //If we reached max retry count, exit
                         if(currentRetry++ > retryCount) {
                             logger?.LogError(e, "SaveChangesAsyncRetry Max Retries Reached");
                             return (false, -1);
                         }
-                        //Slight delay between attempts
+                        if(e is NpgsqlException { IsTransient: true } || e.InnerException is NpgsqlException { IsTransient: true }) {
+                            logger?.LogWarning(e, "SaveChangesAsyncRetry: Postgres transient error, failing fast");
+                            return (false, -1);
+                        }
                         await Task.Delay(100, cancellationToken);
                     }
                 }
