@@ -46,7 +46,7 @@ namespace EGG9000.Common.Services {
         private static readonly DiscordSocketConfig config = new() {
             GatewayIntents = GatewayIntents.GuildMembers | GatewayIntents.Guilds | GatewayIntents.GuildMessages |
                              GatewayIntents.GuildMessageReactions | GatewayIntents.DirectMessages | GatewayIntents.MessageContent,
-
+            AlwaysDownloadUsers = true,
         };
         private static readonly ConcurrentDictionary<ulong, SemaphoreSlim> _serverSemaphores = new();
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
