@@ -14,7 +14,7 @@
 <table class="table table-striped">
     <caption style="caption-side: top; text-align: center; font-weight: bold;">
         Latest Demerits for @Model.GuildName (@Model.Count Total)
-        @if(Model.Limited || true)
+        @if(Model.Limited)
         {
             <a class="btn btn-primary" href="/admin/latestdemerits?count=@(Model.Count + 100)" title="Show 100 more">Show 100 more</a>
         }

@@ -70,7 +70,7 @@ namespace EGG9000.Bot.Commands {
                 var guildUser = guild.Users.First(x => x.Id == command.User.Id);
                 var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
                 if(dbguild != null && dbguild.OverflowServers.Count > 0) {
-                    var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
+                    var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Overflow);
                     if(overflowRole != null) {
                         await guildUser.AddRoleAsync(overflowRole);
                     }
@@ -143,7 +143,7 @@ namespace EGG9000.Bot.Commands {
                     await DiscordHelpers.CheckRoles(db, guild, (command.User as SocketGuildUser), dbUser, _client, null, []);
                     await command.DeleteOriginalResponseAsync();
                     await ChannelHelper.DetermineAndSend(_client.Gateway, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
-                    var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
+                    var activeRole = guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Active);
                     if(activeRole != null) {
                         await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
                     }
@@ -158,7 +158,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 } else {
                     await ChannelHelper.DetermineAndSend(_client.Gateway, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.General, new() { Text = $"Welcome back {targetUser.Mention}!" });
-                    var activeRole = guild.Roles.FirstOrDefault(x => x.Id == 798284088967430144);
+                    var activeRole = guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Active);
                     if(activeRole != null) await ((SocketGuildUser)targetUser).AddRoleAsync(activeRole);
                     await CleanWelcomeChannel(guild, _client, targetUser);
                     return;
@@ -350,7 +350,7 @@ namespace EGG9000.Bot.Commands {
             if(!dbuser.Registered.HasValue) {
                 dbuser.Registered = DateTimeOffset.UtcNow;
                 await db.SaveChangesAsync();
-                var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
+                var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Unjoined);
                 if(unjoinedRole is not null) {
                     await socketGuildUser.AddRoleAsync(unjoinedRole);
                 }
@@ -385,7 +385,7 @@ namespace EGG9000.Bot.Commands {
             if(firstContactResponse == null) await command.Channel.SendMessageAsync(compiledMessage);
 
             if(dbuser.EggIncAccounts.Count == 1) {
-                var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
+                var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Overflow);
                 if(overflowRole != null) {
                     await socketGuildUser.AddRoleAsync(overflowRole);
                 }
@@ -399,7 +399,9 @@ namespace EGG9000.Bot.Commands {
                         await channel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                     }
                 }
-            } catch(Exception) { }
+            } catch(Exception e) {
+                logger.LogWarning(e, "Failed to grant contract-channel permissions for {user}", user.Username);
+            }
 
             var responseId = (await command.GetOriginalResponseAsync()).Id;
             await CleanWelcomeChannel(guild, _client, user, excludeId: responseId);
@@ -413,7 +415,9 @@ namespace EGG9000.Bot.Commands {
                     } catch(HttpException) {
                         logger.LogWarning("Unable to update nickname for {user}", user.Username);
                     }
-                } catch(Exception) { }
+                } catch(Exception e) {
+                    logger.LogWarning(e, "Failed to set nickname for {user}", user.Username);
+                }
             }
 
             await command.DeleteResponseFix();

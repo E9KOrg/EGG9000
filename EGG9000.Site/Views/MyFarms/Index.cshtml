@@ -24,7 +24,10 @@
     Guild dbguild = Model.DBGuild;
 
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
-    var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
+    // Read/staff tier - gates display-only context when viewing another user's farms (titles, status
+    // badges, extra columns). All write controls (remove merit/demerit) are gated on isAdmin instead, so
+    // the read-only GuildReadOnlyAdmin (CT) tier is safe to include here.
+    var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
     var isSelf = Model.IsSelf;
 
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
@@ -397,9 +400,9 @@
                 <li class="nav-item">
                     <a class="nav-link" data-toggle="tab" href="#contractsettings@(index)" role="tab" aria-selected="false">Contract Settings</a>
                 </li>
-                <!--<li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#inventoryview(index)" role="tab" aria-selected="false">Inventory View</a>
-                </li>-->
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#inventory@(index)" role="tab" aria-selected="false">Inventory</a>
+                </li>
             </ul>
 
             <div class="tab-content">
@@ -541,12 +544,19 @@
                         await Html.RenderPartialAsync("_TestAssignment", (account, index, contracts));
                     }
                 </div>
+                <div class="tab-pane" id="inventory@(index)" role="tabpanel">
+                    @{
+                        await Html.RenderPartialAsync("-ArtifactInventory", account.Id);
+
+                    }
+                </div>
             </div>
         </div>
     }
 </div>
 
 @section Scripts {
+    <script src="~/js/artifact-overlay.js" asp-append-version="true"></script>
     <script>
 
         function formatEpochToLocalDateTime(epochSeconds) {

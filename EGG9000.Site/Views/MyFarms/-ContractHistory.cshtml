@@ -5,7 +5,9 @@
 @{
 	var backup = Model.backup;
 	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
-	var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
+	// Read/staff tier - gates display-only extra columns (cheat metrics). Includes the read-only
+	// GuildReadOnlyAdmin (CT) tier; no write controls are gated on this flag.
+	var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
 	var contracts = Model.contracts;
 
 	var farms = backup.Farms;

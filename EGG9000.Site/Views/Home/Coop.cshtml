@@ -33,7 +33,8 @@
 	var projectPercentWidth = Math.Min(projectPercent, 100) - percent;
 	var projectPercentEveryoneWidth = Math.Min(projectPercentEveryone, 100) - projectPercentWidth - percent;
 
-	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+	// Read/staff tier - gates read-only detail column + MyFarms lookup link on this read-only page.
+	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
 }
 
 

@@ -18,13 +18,15 @@
 
     var count = currentCoops.Count;
     var ebrgx = new Regex(@"\(.+?\)");
-    // LesserAdmins are intentionally excluded: on this page admin gates coop names, member ids, the
-    // remove (X) button and move controls. The backend move/remove endpoints already reject LesserAdmin,
-    // so showing them the controls only leaks coop names and dangles dead buttons.
-    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+    // Two staff tiers gate this page. isAdmin = write tier (remove users from coops) - global Admins,
+    // guild admins, and GuildLesserAdmin (FH/CC staff). isStaff = read tier - everyone in isAdmin plus
+    // GuildReadOnlyAdmin, the read-only CT learners who get coop names, thread links and the spots panel
+    // but no write controls. Member discord/egg ids and the X button stay on isAdmin.
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+    var isStaff = isAdmin || User.IsInRole("GuildReadOnlyAdmin");
 
     var activeCoops = currentCoops.Select(c => new {
-        Name = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
+        Name = (isStaff || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
         c.Coop.ContractID,
         CurrentCoop = c.CoopParticipants.Any(x => x.DiscordUser?.Id.ToString() == discordId),
         Status = c.Coop.Finished ? "Finished" : c.TimeRemaining < TimeSpan.Zero ? "Complete once everyone checks in" : $"Time to complete {c.TimeRemaining.Humanize(precision: 2).ShortenTime()}",
@@ -228,7 +230,7 @@
         }
 
     </div>
-    @if(isAdmin && !isSolo) {
+    @if(isStaff && !isSolo) {
     <div style="float: right;">
         <table>
             <tr>
@@ -245,12 +247,12 @@
     <div style="clear: both;"></div>
     <div class="row scrollable">
         <div class="col-sm" ng-if="ActiveCoops.length > 0">
-            <h2>Active Coops 
-            @if(isAdmin) {
+            <h2>Active Coops
+            @if(isStaff) {
             <span  class="btn btn-sm btn-primary" ng-click="ToggleAll()">Toggle All</span>
             }
             </h2>
-            @if(isAdmin) {
+            @if(isStaff) {
             <p ng-if>
                 Note: The co-ops are sorted such that the top ones listed have spots available with the soonest ending on top.
             </p>
@@ -258,15 +260,15 @@
             <div class="card" ng-repeat="coop in ActiveCoops" ng-class="{ CurrentCoop: coop.CurrentCoop}">
                 <div style="position: relative; top: -20px;" id="{{coop.Name}}" ng-if="coop.CurrentCoop"></div>
                 <h5 class="card-header" ng-click="coop.Hide = !coop.Hide">
-                    <a ng-click="$event.stopPropagation();" ng-if="IsAdmin || coop.CurrentCoop" ng-href="/coop/{{coop.ContractID}}/{{coop.Name}}">{{coop.Name}}</a>
+                    <a ng-click="$event.stopPropagation();" ng-if="IsStaff || coop.CurrentCoop" ng-href="/coop/{{coop.ContractID}}/{{coop.Name}}">{{coop.Name}}</a>
 
-                    <a ng-click="$event.stopPropagation();" ng-if="(IsAdmin || coop.CurrentCoop) && !coop.DeletedChannel" ng-href="discord://discordapp.com/channels/{{coop.OverflowGuildId}}/{{coop.DiscordChannelId}}/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+                    <a ng-click="$event.stopPropagation();" ng-if="(IsStaff || coop.CurrentCoop) && !coop.DeletedChannel" ng-href="discord://discordapp.com/channels/{{coop.OverflowGuildId}}/{{coop.DiscordChannelId}}/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
 
                     <span style="font-size: 0;"> - {{coop.MaxSize - coop.Users.length}} spot{{coop.MaxSize - coop.Users.length > 1 ? 's' : ''}}</span>
 
-                    <div ng-if="!IsAdmin">Co-op</div>
+                    <div ng-if="!IsStaff">Co-op</div>
                     <span style="user-select: none;">{{coop.Status}}</span>
-                    <abbr ng-if="IsAdmin" style="user-select: none;">
+                    <abbr ng-if="IsStaff" style="user-select: none;">
                         {{coop.Users.length}}/{{coop.MaxSize}}&nbsp;
                     </abbr>
                 </h5>
@@ -484,7 +486,9 @@
                 }
             ])
             .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+                // IsAdmin gates write actions; IsStaff gates read-only display (names, links, counts).
                 $scope.IsAdmin = @JsonConvert.SerializeObject(isAdmin);
+                $scope.IsStaff = @JsonConvert.SerializeObject(isStaff);
 
                 $scope.ActiveCoops = @Html.Raw(JsonConvert.SerializeObject(activeCoops));
                 $scope.EmptyCoops = [];

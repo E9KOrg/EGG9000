@@ -235,7 +235,7 @@ namespace EGG9000.Site.Controllers {
         }
 
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> MoveToCoop([FromQuery] Guid CoopId, [FromQuery] Guid UserId, [FromQuery] string EggIncId) {
             var targetCoop = await _db.Coops.Include(x => x.Contract).AsQueryable().FirstAsync(x => x.Id == CoopId);
             var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == UserId);
@@ -273,7 +273,7 @@ namespace EGG9000.Site.Controllers {
             });
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> RemoveXref([FromBody] RemoveXrefModel model) {
             var xref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.UserId == model.UserId && x.CoopId == model.CoopId && x.EggIncId == model.EggIncId);
             if(xref == null) {

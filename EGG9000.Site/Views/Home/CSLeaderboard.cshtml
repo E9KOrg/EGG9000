@@ -8,7 +8,8 @@
 	var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
 
 	var myAccounts = Model.Where(x => x.DiscordUser.Id.ToString() == discordId);
-	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
+	// Read/staff tier - gates only the clickable player-name link to MyFarms on this read-only page.
+	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
 }
 
 

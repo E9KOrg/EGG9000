@@ -248,7 +248,7 @@ namespace EGG9000.Bot.Automated {
 
             var msgs = (await channel.GetMessagesAsync().FlattenAsync()).ToList();
 
-            msgs = msgs.OrderBy(x => x.CreatedAt).Where(x => x.Author.Id == 514257192803893272).ToList();
+            msgs = msgs.OrderBy(x => x.CreatedAt).Where(x => x.Author.Id == KnownUsers.Bot).ToList();
 
             table1.Add("@@@EMBED");
 
