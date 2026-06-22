@@ -31,10 +31,10 @@ $apiSalt = $secrets.ConnectionStrings.ApiSalt
 # Function to create secret on remote Linux host
 function New-RemoteDockerSecret {
     param(
-        [string]$Name, 
-        [string]$Value, 
-        [string]$Host, 
-        [string]$User
+        [string]$Name,
+        [string]$Value,
+        [string]$RemoteHost,
+        [string]$RemoteUser
     )
     
     # Base64 encode the value to safely transfer special characters
@@ -48,7 +48,7 @@ echo '$base64' | base64 -d | docker secret create $Name -
 "@
     
     # Execute via SSH
-    $result = ssh "$User@$Host" $cmd 2>&1
+    $result = ssh "$RemoteUser@$RemoteHost" $cmd 2>&1
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✓ Created secret: $Name" -ForegroundColor Green
