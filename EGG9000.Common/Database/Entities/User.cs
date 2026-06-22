@@ -475,5 +475,36 @@ namespace EGG9000.Common.Database.Entities {
 
             return false;
         }
+
+        // Dual-write: pushes the consolidated Assignment blob back onto the old scalar keys so the live
+        // old filter logic honors edits made through the new (blob-writing) settings UI. Call before
+        // UpdateAccounts in any settings write path. The new Redo.ExcludeSeasonal has no old-key
+        // equivalent and is intentionally not synced (it only affects the shadow engine until cutover).
+        public void SyncLegacyKeysFromAssignment() {
+            var a = Assignment;
+            if(a is null) return;
+
+            AutoRegisterRewards = a.NewContractRewardFilter is null ? null : new List<Ei.RewardType>(a.NewContractRewardFilter);
+            LeggacyAutoRegisterRewards = a.LegacyRewardFilter is null ? null : new List<Ei.RewardType>(a.LegacyRewardFilter);
+            RedoLeggacySelection = a.Redo?.Mode ?? RedoLeggacyOption.NotSet;
+            RedoScoreThreshold = a.Redo?.ScoreThreshold ?? 20000;
+            DoTwoToThreeContracts = a.TwoToThree;
+
+            DoUnfinishedCollegtibles = a.Get(Contracts.Assignment.PermanentRewardKind.Colleggtible).Mode == Contracts.Assignment.ForceMode.AssignIfMissing;
+
+            var pe = a.Get(Contracts.Assignment.PermanentRewardKind.SeasonalPe);
+            switch(pe.Mode) {
+                case Contracts.Assignment.ForceMode.AssignIfMissing:
+                    SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing;
+                    break;
+                case Contracts.Assignment.ForceMode.BelowThreshold:
+                    SeasonalPeOption = SeasonalPeOption.AssignIfBelowThreshold;
+                    SeasonalPeThreshold = pe.CsFloor ?? 0;
+                    break;
+                default:
+                    SeasonalPeOption = SeasonalPeOption.NotSet;
+                    break;
+            }
+        }
     }
 }

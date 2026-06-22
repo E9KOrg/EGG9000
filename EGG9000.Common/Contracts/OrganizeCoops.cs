@@ -33,30 +33,11 @@ namespace EGG9000.Common.Contracts {
                 RoleId = dbGuild is not null && dbGuild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbGuild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
             })).ToList();
 
-            // The assignment decision lives in the pure engine. Build a fact snapshot per account,
-            // evaluate each user's accounts together (two-pass resolves YesOtherAccountMatch), then
-            // partition into kept vs excluded preserving the existing exclusion-reason tuple shape.
-            var contractFacts = Assignment.ContractFactsBuilder.Build(contract, contractSeason);
-            var forbidden = dbGuild?.RuleOverrides;
-            var filtersDisabled = dbGuild is not null && dbGuild.DisableBG;
+            // LIVE assignment uses the proven old filter logic. The new engine (Assignment/) runs only in
+            // shadow, compared against this in AssignmentShadowRecorder. Do not call the engine here.
+            LegacyAssignmentFilter.ApplyFilters(accounts, excluded, contract, existingCoops, dbGuild, contractSeason, seasonProgresses);
 
-            var factOwners = accounts.ToDictionary(
-                uba => Assignment.AccountFactsBuilder.Build(uba.User, uba.Account, contract, existingCoops, uba.UserCsHistoryEntry, contractSeason, seasonProgresses),
-                uba => uba);
 
-            var keep = new List<UserByAccount>();
-            foreach(var userGroup in factOwners.GroupBy(kv => kv.Value.User)) {
-                var inputs = userGroup.Select(kv => (kv.Key, kv.Value.Account.Assignment ?? new Assignment.AssignmentSettings())).ToList();
-                foreach(var (facts, decision) in Assignment.AssignmentEvaluator.EvaluateUser(inputs, contractFacts, forbidden, filtersDisabled)) {
-                    var uba = factOwners[facts];
-                    if(decision.Assigned) keep.Add(uba);
-                    else excluded.Add((decision.ExclusionReason, uba));
-                }
-            }
-
-            accounts = keep;
-
-            
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                 if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
                     continue;
