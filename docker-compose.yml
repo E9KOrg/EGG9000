@@ -1,5 +1,3 @@
-version: "3.9"
-
 x-environment: &default-environment
   DOTNET_ENVIRONMENT: Production
   ASPNETCORE_ENVIRONMENT: Production

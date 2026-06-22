@@ -141,9 +141,10 @@ publish/
 # Publish Web Output
 *.[Pp]ublish.xml
 *.azurePubxml
-# TODO: Comment the next line if you want to checkin your web deploy settings
-# but database connection strings (with potential passwords) will be unencrypted
-#*.pubxml
+# Publish profiles often embed deploy hosts/IPs/credentials - ignore by default.
+# Negated below: the Docker container-registry profiles carry no secrets and are kept.
+*.pubxml
+!**/PublishProfiles/registry.hub.docker.com_*.pubxml
 *.publishproj
 
 # Microsoft Azure Web App publish settings. Comment the next line if you want to

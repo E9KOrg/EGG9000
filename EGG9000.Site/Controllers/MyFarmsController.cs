@@ -147,7 +147,7 @@ namespace EGG9000.Site.Controllers {
             // (the view dereferences account.Backup directly). Fresh backups are refreshed out of band below.
             var accountsNeedingBackup = user.EggIncAccounts.Where(a => a.Backup is null).ToList();
             if(accountsNeedingBackup.Count > 0) {
-                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(a => AccountRefresh.RefreshBackupAsync(a, cachedContracts)));
+                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(a => AccountRefresh.RefreshBackupAsync(a, cachedContracts, _logger)));
                 if(fetched.Any(b => b is not null)) {
                     user.UpdateAccounts();
                     await _db.SaveChangesAsync();
@@ -215,7 +215,7 @@ namespace EGG9000.Site.Controllers {
                     if(user is null) return;
                     var cachedContracts = await db.CachedEiContractsAsync();
                     // Backups are network-only + per-account in memory, so fetch them concurrently.
-                    await Task.WhenAll(user.EggIncAccounts.Select(account => AccountRefresh.RefreshBackupAsync(account, cachedContracts)));
+                    await Task.WhenAll(user.EggIncAccounts.Select(account => AccountRefresh.RefreshBackupAsync(account, cachedContracts, _logger)));
                     // Extras stage DB writes, so run them sequentially against the single context.
                     foreach(var account in user.EggIncAccounts)
                         await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger);

@@ -49,7 +49,7 @@ namespace EGG9000.Bot.Commands {
             if(pullFreshBackup) {
                 var cachedContracts = await db.CachedEiContractsAsync();
                 foreach(var account in dbuser.EggIncAccounts) {
-                    var backup = await AccountRefresh.RefreshBackupAsync(account, cachedContracts);
+                    var backup = await AccountRefresh.RefreshBackupAsync(account, cachedContracts, logger);
                     if(backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;

@@ -191,7 +191,11 @@ namespace EGG9000.Site.Controllers {
                 if(user.GuildId == 0 && guilds.Count() == 1) {
                     user.GuildId = guilds.First().Id;
                 } else if(user.GuildId > 0 && guilds.Count() == 0) {
-                    user.GuildId = 0;
+                    var assigned = _discord.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                    if(assigned is not null && assigned.HasAllMembers) {
+                        user.LastGuild = user.GuildId;
+                        user.GuildId = 0;
+                    }
                 }
             }
             await _db.SaveChangesAsync();

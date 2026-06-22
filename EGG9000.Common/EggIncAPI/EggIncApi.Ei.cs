@@ -143,16 +143,24 @@ namespace EGG9000.Common.EggIncAPI {
         /// endpoint fails AND a salt is configured. With no salt the fallback self-cripples and the
         /// method returns the bot endpoint's failure response.
         /// </summary>
-        public static async Task<EggIncFirstContactResponse> FirstContact(string UserId) {
+        public static async Task<EggIncFirstContactResponse> FirstContact(string UserId, ILogger _logger = null) {
             var botResult = await BotFirstContact(UserId);
             if(botResult is { Success: true }) {
                 return botResult;
             }
 
             if(!EggIncApiSecrets.IsSaltAvailable) {
+                _logger?.LogWarning("bot_first_contact failed for {UserId} ({Error}) and no salt is configured for first_contact_secure fallback", UserId, botResult?.Error);
                 return botResult;
             }
-            return await FirstContactSecure(UserId);
+            _logger?.LogInformation("bot_first_contact did not return a backup for {UserId} ({Error}); falling back to first_contact_secure", UserId, botResult?.Error);
+            var secureResult = await FirstContactSecure(UserId);
+            if(secureResult is { Success: true }) {
+                _logger?.LogInformation("first_contact_secure recovered a backup for {UserId} that bot_first_contact missed", UserId);
+            } else {
+                _logger?.LogWarning("first_contact_secure also failed for {UserId} ({Error})", UserId, secureResult?.Error);
+            }
+            return secureResult;
         }
 
         /// <summary>
@@ -175,7 +183,13 @@ namespace EGG9000.Common.EggIncAPI {
                 if(responseBytes == null) {
                     return new EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
                 }
-                var backup = EggIncFirstContactResponse.Parser.ParseFrom(responseBytes);
+                var backup = ParseTolerant<EggIncFirstContactResponse>(responseBytes);
+                // bot_first_contact can return a parseable-but-empty response (no Backup) for accounts
+                // the salt-signed endpoint still serves. Report failure so FirstContact falls through to
+                // first_contact_secure instead of masking it as success-with-null-backup.
+                if(backup.Backup is null) {
+                    return new EggIncFirstContactResponse { Success = false, Error = "bot_first_contact returned no backup" };
+                }
                 backup.Success = true;
                 return backup;
             } catch(Exception e) {
@@ -206,7 +220,7 @@ namespace EGG9000.Common.EggIncAPI {
                 }
                 var backup = isEi
                     ? GetFromAuthenticatedMessage<EggIncFirstContactResponse>(responseBytes)
-                    : EggIncFirstContactResponse.Parser.ParseFrom(responseBytes);
+                    : ParseTolerant<EggIncFirstContactResponse>(responseBytes);
                 backup.Success = true;
                 return backup;
             } catch(Exception e) {
