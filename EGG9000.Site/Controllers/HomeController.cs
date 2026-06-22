@@ -147,7 +147,7 @@ namespace EGG9000.Site.Controllers {
                     try {
                         var pinned = await channel.GetMessagesAsync(1000).FlattenAsync();
                         Console.WriteLine(pinned.Count(x => x.IsPinned));
-                        foreach(var msg in pinned.Where(x => x.Author.Id == 514257192803893272)) {
+                        foreach(var msg in pinned.Where(x => x.Author.Id == KnownUsers.Bot)) {
                             if(msg.IsPinned || msg.Embeds.Count > 0) {
                                 if(!UpdateMessageIDs.Contains(msg.Id)) {
                                     await msg.DeleteAsync();
@@ -487,8 +487,8 @@ namespace EGG9000.Site.Controllers {
             public ulong PrestigeCount { get; set; }
         }
 
-        public async Task<IActionResult> Results([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
-            if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
+        public async Task<IActionResult> Results([FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
+            if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
 
 
                 var snapshots = (await _db.UserSnapShots.AsQueryable().Where(x => x.Date < new DateTime(2021, 07, 14)).OrderByDescending(x => x.Date).ToListAsync()).GroupBy(x => x.EggIncID).Select(x => x.First()).ToList();

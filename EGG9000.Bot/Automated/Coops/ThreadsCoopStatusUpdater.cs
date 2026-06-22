@@ -75,15 +75,6 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsNoTracking().ToListAsync(CancellationToken.None);
 
 #if DEBUG
-            //coops = [.. coops.Where(x => x.Id == Guid.Parse("eb1353a9-32ae-4c03-e379-08de4a63aaaf"))];
-            //coops = coops.Where(x => x.Created > DateTimeOffset.UtcNow.AddDays(-1) && x.GuildId == 656455567858073601 && x.OverflowGuildId == 1147264073659064420).ToList();
-            //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
-            //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
-            //coops = coops.Take(20).ToList();
-            //coops = [.. coops.Where(x => x.Name == "unitedsmalls1")];
-            //coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
-            //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
-            //coops = [.. coops.Where(x => x.OverflowGuildId == 798897541717688390)];
             coops = [.. coops.Where(x => x.LastUpdateToChannel is null)];
 #endif
 
@@ -519,7 +510,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         userStatus.Xref.JoinedCoop = true;
                         // Joined - drop from the "find my coop" lookup (they're in the thread now).
                         _provider.GetService<CoopAssignmentLookup>()?.Remove(userStatus.Xref.UserId, coop.ContractID);
-                        var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
+                        var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Unjoined);
                         if(unjoinedRole != null) {
                             await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
                         }

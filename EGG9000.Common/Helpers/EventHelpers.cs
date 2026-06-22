@@ -29,11 +29,11 @@ namespace EGG9000.Common.Helpers {
 
         public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, string eventType) {
 #if DEV9002
-            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
+            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
 #else
-            var palaceGuild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == 656455567858073601);
+            var palaceGuild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
             if(palaceGuild == null) {
-                palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == 1108127105088241746);
+                palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
             }
 #endif
             var gCustomizations = await db.GetCustomizationsAsync(dbguild);

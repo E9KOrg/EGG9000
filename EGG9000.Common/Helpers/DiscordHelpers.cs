@@ -338,7 +338,7 @@ namespace EGG9000.Bot.Helpers {
         private static async Task CheckUnjoined(SocketGuild Guild, IGuildUser DiscordUser, LeaderboardUser luser) {
             if(luser?.RecentXrefs is null)
                 return;
-            var unjoinedRole = Guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
+            var unjoinedRole = Guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Unjoined);
             var needsUnjoined = luser.RecentXrefs.Count == 0 || luser.RecentXrefs.All(x => !x.Joined);
             await RoleToggle.ApplyAsync(DiscordUser, unjoinedRole, needsUnjoined, "unjoined Role", canAdd: false);
         }

@@ -25,7 +25,7 @@ namespace EGG9000.Common.Database {
             _lastCacheUpdateUser = DateTimeOffset.UtcNow;
             _cachedUsers = db.DBUsers.AsNoTracking().ToList();
 
-            RefreshActiveCoopsCache().Wait();
+            _cachedActiveCoops = db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived).ToList();
         }
 
         private volatile List<DBUser> _cachedUsers;

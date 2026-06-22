@@ -17,10 +17,10 @@ namespace EGG9000.Common.Helpers.Discord {
             var sb = new StringBuilder();
             var commands = await mainServer.GetApplicationCommandsAsync();
 
-            var overflowCommands = overflowServers.SelectMany(x => x.GetApplicationCommandsAsync().Result).ToList();
+            var overflowCommands = (await Task.WhenAll(overflowServers.Select(x => x.GetApplicationCommandsAsync()))).SelectMany(x => x).ToList();
 
             foreach(var command in commands) {
-                var permissions = await DiscordRest.GetAsBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{mainServer.Id}/commands/{command.Id}/permissions", client_secret);
+                var permissions = await DiscordRest.GetAsBot<GuildApplicationCommandPermissions>($"applications/{KnownUsers.Bot}/guilds/{mainServer.Id}/commands/{command.Id}/permissions", client_secret);
 
                 if(permissions.Permissions is null)
                     continue;
@@ -42,7 +42,7 @@ namespace EGG9000.Common.Helpers.Discord {
 
                     var overflowCommand = overflowCommands.FirstOrDefault(x => x.Guild.Id == overflowServer.Id && x.Name == command.Name);
 
-                    var currentOverflowPermissions = await DiscordRest.GetAsBot<GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", client_secret);
+                    var currentOverflowPermissions = await DiscordRest.GetAsBot<GuildApplicationCommandPermissions>($"applications/{KnownUsers.Bot}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", client_secret);
 
 
                     var match = true;
@@ -58,7 +58,7 @@ namespace EGG9000.Common.Helpers.Discord {
                     }
 
                     if(match == false) {
-                        var response = await DiscordRest.PutAsUser<GuildApplicationCommandPermissions, GuildApplicationCommandPermissions>($"applications/{514257192803893272}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", user_access_token, overflowPermissions);
+                        var response = await DiscordRest.PutAsUser<GuildApplicationCommandPermissions, GuildApplicationCommandPermissions>($"applications/{KnownUsers.Bot}/guilds/{overflowServer.Id}/commands/{overflowCommand.Id}/permissions", user_access_token, overflowPermissions);
                         sb.AppendLine("Permissions for " + command.Name + " on " + overflowServer.Name);
                     } else {
                         sb.AppendLine("Skipping permissions for " + command.Name + " on " + overflowServer.Name);
