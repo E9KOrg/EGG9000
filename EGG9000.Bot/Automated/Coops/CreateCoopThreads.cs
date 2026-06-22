@@ -275,7 +275,9 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(dException.DiscordCode == DiscordErrorCode.MaximumActiveThreadsReached) {
                     //Expected?
                 }
-            } catch(Exception) { }
+            } catch(Exception e) {
+                _logger.LogWarning(e, "Failed to create thread {thread}", threadName);
+            }
             return null;
         }
 

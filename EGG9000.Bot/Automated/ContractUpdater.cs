@@ -284,8 +284,8 @@ namespace EGG9000.Bot.Automated {
             if(channelName != channel.Name) {
                 try {
                     await channel.ModifyAsync(x => x.Name = channelName);
-                } catch(Exception) {
-
+                } catch(Exception e) {
+                    _logger.LogWarning(e, "Failed to rename contract channel to {channelName}", channelName);
                 }
             }
         }

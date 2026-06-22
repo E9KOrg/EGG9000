@@ -314,29 +314,6 @@ namespace EGG9000.Common.Helpers {
             return coopsBreakdown;
         }
 
-        //public static async Task<List<UserPreFarm>> GetBackupsForAliens(List<Coop> coops, List<UserPreFarm> allPrefarms, List<DBCustomEgg> customEggs, Contract contract) {
-        //    var tasks = new List<Task<CustomBackup>>();
-        //    foreach(var coop in coops) {
-        //        if(coop.LastStatusUpdate != null) {
-        //            foreach(var c in coop.LastStatusUpdate.Contributors) {
-        //                var prefarm = allPrefarms.FirstOrDefault(x => x.EggIncId == c.UserId);
-        //                if(prefarm == null) {
-        //                    tasks.Add(EggIncApi.GetBackupAsync(c.UserId, await db.CachedEiContractsAsync()));
-        //                }
-        //            }
-        //        }
-        //    }
-        //    await Task.WhenAll(tasks);
-        //    var alienPrefarms = new List<UserPreFarm>();
-        //    foreach(var task in tasks) {
-        //        var lUser = new LeaderboardUser { Backup = task.Result };
-        //        if(lUser.Backup != null) {
-        //            alienPrefarms.Add(BackupToPreFarm(lUser, contract, customEggs));
-        //        }
-        //    }
-        //    return alienPrefarms;
-        //}
-
         public static List<UserPreFarm> GetPrefarmsForCoop(Coop coop, List<UserPreFarm> allPrefarms, List<UserPreFarm> alienPrefarms) {
             var prefarms = new List<UserPreFarm>();
 

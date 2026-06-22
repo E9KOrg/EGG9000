@@ -282,12 +282,7 @@ namespace EGG9000.Site.Controllers {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
 
-#if DEV9002
-            var palaceGuildId = (ulong)1108127105088241746;
-#else
-            var palaceGuildId = (ulong)656455567858073601;
-#endif
-            var palaceGuild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == palaceGuildId);
+            var palaceGuild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
 
             var palaceFaqs = await _db.FAQTopics.Where(x => x.GuildId == palaceGuild.Id).ToListAsync();
             var guildFaqs = await _db.FAQTopics.Where(x => x.GuildId == guild.Id).ToListAsync(); ;
@@ -299,7 +294,7 @@ namespace EGG9000.Site.Controllers {
             var model = new FAQCustomizationModel() {
                 PalaceFAQTopics = palaceFaqs,
                 GuildFAQTopics = guildFaqs,
-                PalaceGuildId = palaceGuildId,
+                PalaceGuildId = KnownGuilds.Palace,
                 GuildId = guildId,
                 GuildName = guild.Name,
                 UserDiscordUsername = user.DiscordUsername,
@@ -736,7 +731,7 @@ namespace EGG9000.Site.Controllers {
             foreach(var message in allMessages.Where(x => x.MentionedUserIds.Count == 1)) {
                 if(!allGhosts.Any(g => g.DiscordId == message.MentionedUserIds.First())) {
                     var discorduser = guild.Users.FirstOrDefault(x => x.Id == message.MentionedUserIds.First());
-                    if(discorduser is not null && !discorduser.Roles.Any(x => x.Id == 775547850134257675)) {
+                    if(discorduser is not null && !discorduser.Roles.Any(x => x.Id == KnownRoles.Overflow)) {
                         await message.DeleteAsync();
                     }
                 }

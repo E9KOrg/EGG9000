@@ -106,24 +106,30 @@ namespace EGG9000.Site.Controllers {
             var seasonProgresses = await _db.UserSeasonProgresses
                 .Where(x => eggIncIds.Contains(x.EggIncId))
                 .ToListAsync();
-            var seasonIds = seasonProgresses.Select(x => x.SeasonId).Distinct().ToList();
-            var seasonInfos = await _db.SeasonInfos
-                .Where(x => seasonIds.Contains(x.Id))
-                .ToListAsync();
-            var seasonInfoMap = seasonInfos.ToDictionary(si => si.Id);
+            // Every started season that awards PE, not only the ones the player already has progress in.
+            // A season the player never touched has no UserSeasonProgress row, but they can still be
+            // missing all of its PE - default that case to 0 CXP at the account's current grade.
+            var seasonInfos = (await _db.SeasonInfos.ToListAsync())
+                .Where(x => x.StartTime <= DateTimeOffset.UtcNow)
+                .ToList();
             var seasonPEByEggIncId = new Dictionary<string, (int Earned, int Max)>();
             var missingSeasonalPEByEggIncId = new Dictionary<string, List<MissingSeasonalPe>>();
-            foreach(var id in eggIncIds) {
+            foreach(var account in user.EggIncAccounts.DistinctBy(a => a.Id)) {
+                var id = account.Id;
                 var earned = 0;
                 var max = 0;
                 var missing = new List<MissingSeasonalPe>();
-                foreach(var sp in seasonProgresses.Where(sp => sp.EggIncId == id)) {
-                    if(!seasonInfoMap.TryGetValue(sp.SeasonId, out var info)) continue;
-                    var grade = (Ei.Contract.Types.PlayerGrade)sp.StartingGrade;
-                    earned += info.GetPeEarned(grade, sp.TotalCxp);
+                foreach(var info in seasonInfos) {
+                    var sp = seasonProgresses.FirstOrDefault(x => x.EggIncId == id && x.SeasonId == info.Id);
+                    var totalCxp = sp?.TotalCxp ?? 0;
+                    var grade = sp is not null
+                        ? (Ei.Contract.Types.PlayerGrade)sp.StartingGrade
+                        : account.GetGrade();
+                    if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset) continue;
+                    earned += info.GetPeEarned(grade, totalCxp);
                     max += info.GetMaxPe(grade);
-                    foreach(var goal in info.GetUnearnedGoals(grade, sp.TotalCxp))
-                        missing.Add(new MissingSeasonalPe(info.Name, sp.TotalCxp, goal.Cxp, goal.PeAmount, info.StartTime));
+                    foreach(var goal in info.GetUnearnedGoals(grade, totalCxp))
+                        missing.Add(new MissingSeasonalPe(info.Name, totalCxp, goal.Cxp, goal.PeAmount, info.StartTime));
                 }
                 seasonPEByEggIncId[id] = (Earned: earned, Max: max);
                 missingSeasonalPEByEggIncId[id] = missing.OrderBy(m => m.StartTime).ToList();
