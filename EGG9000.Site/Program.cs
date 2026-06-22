@@ -72,6 +72,16 @@ using (var migrateScope = app.Services.CreateScope())
 }
 #endif
 
+// Ensure the read-only staff role exists. Site roles are granted by hand in the admin Permissions UI,
+// so the IdentityRole row must be present before an admin can assign it. Idempotent: creates only when
+// missing, so it is safe to run on every startup (incl. dev against the live DB).
+using (var roleScope = app.Services.CreateScope()) {
+    var roleManager = roleScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    if(!await roleManager.RoleExistsAsync("GuildReadOnlyAdmin")) {
+        await roleManager.CreateAsync(new IdentityRole("GuildReadOnlyAdmin"));
+    }
+}
+
 // Must run before any middleware that reads the request scheme/host (HTTPS redirect, auth,
 // OAuth redirect_uri generation). Honors X-Forwarded-Proto from the TLS-terminating proxy so
 // the Discord OAuth callback is built as https, not the proxy's internal http hop.
@@ -225,6 +235,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
+    services.AddSingleton<EGG9000.Site.Services.ArtifactImageRenderer>();
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
     services.AddHostedService<UserCacheRefreshService>();

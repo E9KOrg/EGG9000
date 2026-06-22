@@ -261,8 +261,8 @@ namespace EGG9000.Bot.Services {
                     } else {
                         await arg.RespondAsync(text: "", embed: EmbedExceptionFrame(e));
                     }
-                } catch(Exception) {
-
+                } catch(Exception inner) {
+                    _logger.LogWarning(inner, "Failed to send command-error response to user");
                 }
             } finally {
                 if(semaphoreAcquired) _semaphoreSlim.Release();

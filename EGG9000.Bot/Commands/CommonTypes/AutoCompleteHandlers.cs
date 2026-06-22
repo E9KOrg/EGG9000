@@ -93,18 +93,23 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly DatabaseCache _cache = cache;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                // GuildId is null in DMs; bail rather than dereferencing it.
+                if(arg.GuildId is not ulong guildId) return;
+                var guildIdStr = guildId.ToString();
+                var guild = guilds.FirstOrDefault(x => x.Id == guildId || (x.OverflowServersJson?.Contains(guildIdStr) ?? false));
                 if(guild is null) return;
                 var allusers = _cache.GetCachedUsers();
+                if(allusers is null) return;
                 var users = allusers
                     .Where(x => x.GuildId == guild.Id && x.DiscordId == arg.User.Id)
                     .Take(10);
 
-                var accounts = users.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
+                // EggIncAccounts can be null for a user whose accounts blob hasn't materialised yet.
+                var accounts = users.SelectMany(x => (x.EggIncAccounts ?? []).Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
 
                 var results = new List<AutocompleteResult>();
                 foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
-                    if(account.User.EggIncAccounts.Count > 1) {
+                    if((account.User.EggIncAccounts?.Count ?? 0) > 1) {
                         var name = account.Account.Backup?.UserName;
                         results.Add(new AutocompleteResult($"{account.User.DiscordUsername} - {name ?? account.Account.Backup?.UserName ?? "(No Name)"} {account.Account.Backup?.EarningsBonus.ToEggString() ?? "?"}", $"{account.User.Id}|{account.User.EggIncAccounts.ToList().IndexOf(account.Account)}"));
                     } else {

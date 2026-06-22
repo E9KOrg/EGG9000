@@ -42,7 +42,7 @@ using Contract = EGG9000.Common.Database.Entities.Contract;
 using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 
 namespace EGG9000.Site.Controllers {
-    [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+    [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
     public class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
@@ -58,76 +58,6 @@ namespace EGG9000.Site.Controllers {
             public UserSnapShot SnapShot { get; set; }
             public DBUser User { get; set; }
             public ulong Gain { get; set; }
-        }
-
-        public async Task<IActionResult> TestKick() {
-
-
-            var wrongcoopcode = "ialwayswin";
-            var contractID = "easter-rush-2022";
-            var DiscordUserID = (ulong)804144041284993064;
-            var db = _db;
-
-
-
-            var coopStatus = await EggIncApi.GetCoopStatus(contractID, wrongcoopcode.ToLower().Trim());
-            if(coopStatus is null) {
-                return Content("1");
-            }
-
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == DiscordUserID);
-
-            var egginids = user.EggIncAccounts.Select(x => x.Id).ToList();
-
-            var participant = coopStatus.Participants.FirstOrDefault(x => egginids.Contains(x.UserId));
-            if(participant is null) {
-                return Content("2");
-            }
-
-            if(coopStatus.Public) {
-                var r2 = await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                    ClientVersion = EggIncApi.ClientVersion,
-                    ContractIdentifier = contractID,
-                    CoopIdentifier = wrongcoopcode,
-                    Public = false,
-                    RequestingUserId = coopStatus.CreatorId
-                }, coopStatus.CreatorId);
-            }
-
-            var r = await EggIncApi.Send(new Ei.KickPlayerCoopRequest {
-                ClientVersion = EggIncApi.ClientVersion,
-                ContractIdentifier = contractID,
-                CoopIdentifier = wrongcoopcode,
-                PlayerIdentifier = participant.UserId,
-                Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
-                RequestingUserId = coopStatus.CreatorId
-            }, coopStatus.CreatorId);
-
-            if(coopStatus.Public)
-                await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                    ClientVersion = EggIncApi.ClientVersion,
-                    ContractIdentifier = contractID,
-                    CoopIdentifier = wrongcoopcode,
-                    Public = true,
-                    RequestingUserId = coopStatus.CreatorId
-                }, coopStatus.CreatorId);
-
-            if(!r) {
-                return Content(coopStatus.Public ? "4" : "3");
-            }
-            return Content("Success");
-        }
-
-        public async Task<IActionResult> CheckForDuplicateXrefs() {
-            var xrefs = await _db.UserCoopXrefs.Where(x => x.Coop.ContractID == "diamonds-2022").ToListAsync();
-
-            var groups = xrefs.GroupBy(x => x.EggIncId);
-
-            foreach(var group in groups.Where(x => x.Count() > 1)) {
-                var user = await _db.DBUsers.FirstAsync(x => x.Id == group.First().UserId);
-                Console.WriteLine($"Duplicate xrefs for {user.DiscordUsername}");
-            }
-            return Content("");
         }
 
 
@@ -352,12 +282,7 @@ namespace EGG9000.Site.Controllers {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
 
-#if DEV9002
-            var palaceGuildId = (ulong)1108127105088241746;
-#else
-            var palaceGuildId = (ulong)656455567858073601;
-#endif
-            var palaceGuild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == palaceGuildId);
+            var palaceGuild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
 
             var palaceFaqs = await _db.FAQTopics.Where(x => x.GuildId == palaceGuild.Id).ToListAsync();
             var guildFaqs = await _db.FAQTopics.Where(x => x.GuildId == guild.Id).ToListAsync(); ;
@@ -369,7 +294,7 @@ namespace EGG9000.Site.Controllers {
             var model = new FAQCustomizationModel() {
                 PalaceFAQTopics = palaceFaqs,
                 GuildFAQTopics = guildFaqs,
-                PalaceGuildId = palaceGuildId,
+                PalaceGuildId = KnownGuilds.Palace,
                 GuildId = guildId,
                 GuildName = guild.Name,
                 UserDiscordUsername = user.DiscordUsername,
@@ -806,7 +731,7 @@ namespace EGG9000.Site.Controllers {
             foreach(var message in allMessages.Where(x => x.MentionedUserIds.Count == 1)) {
                 if(!allGhosts.Any(g => g.DiscordId == message.MentionedUserIds.First())) {
                     var discorduser = guild.Users.FirstOrDefault(x => x.Id == message.MentionedUserIds.First());
-                    if(discorduser is not null && !discorduser.Roles.Any(x => x.Id == 775547850134257675)) {
+                    if(discorduser is not null && !discorduser.Roles.Any(x => x.Id == KnownRoles.Overflow)) {
                         await message.DeleteAsync();
                     }
                 }
@@ -937,6 +862,9 @@ namespace EGG9000.Site.Controllers {
             return Json(true);
         }
 
+        // Read-only admins (GuildReadOnlyAdmin) can view MyFarms directly, so the search box that just
+        // routes to MyFarms.ViewUser must allow them too - the class policy omits that tier.
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> SearchID([FromQuery] string id) {
             var discordIDRegex = new Regex(@"^\d+$");
 

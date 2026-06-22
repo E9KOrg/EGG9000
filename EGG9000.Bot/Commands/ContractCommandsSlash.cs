@@ -167,7 +167,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Move a user to a different grade of coop", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task MoveGrade(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount,
+        public static async Task MoveGrade(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, ILogger logger, [SlashParam(AutocompleteHandler = typeof(UserAccountChannelSpecificAutoComplete))] string useraccount,
             [SlashParam(AutocompleteHandler = typeof(MoveGradeAutoComplete))] uint newgrade) {
             await command.DeferAsync();
             var targetCoop = await db.Coops.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
@@ -235,9 +235,11 @@ namespace EGG9000.Bot.Commands {
                 var mainGuild = _client.Guilds.FirstOrDefault(g => g.Id == dbGuild.DiscordSeverId);
                 var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
 
-                //Fetch a new backup so they don't lose access to this channel when role update happens
-                var rawBackup = await EggIncApi.FirstContact(account.Id);
-                var customBackup = new CustomBackup(rawBackup.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
+                //Pull a fresh backup (so they keep channel access through the role update) and refresh the
+                //grade via the extras path - the backup alone no longer carries the grade, ApplyExtrasAsync
+                //fetches it through get_contract_player_info so account.LastGrade is genuinely current.
+                var freshBackup = await AccountRefresh.RefreshBackupAsync(account, await db.CachedEiContractsAsync());
+                await AccountRefresh.ApplyExtrasAsync(dbuser, account, db, logger);
 
                 if((uint)account.LastGrade != newgrade) {
                     await command.ModifyOriginalResponseAsync(x => {
@@ -246,8 +248,7 @@ namespace EGG9000.Bot.Commands {
                     });
                     return;
                 }
-                if(customBackup?.Farms is not null) {
-                    account.Backup = customBackup;
+                if(freshBackup is not null) {
                     dbuser.UpdateAccounts();
                 }
                 await mainGuild.GetUser(dbuser.DiscordId).AddRoleAsync(socketGradeRole.Id);
