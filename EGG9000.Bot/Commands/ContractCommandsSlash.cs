@@ -311,12 +311,13 @@ namespace EGG9000.Bot.Commands {
 
                 //Fetch a new backup so they don't lose access to this channel when role update happens
                 var rawBackup = await EggIncApi.FirstContact(account.Id);
-                var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                var customBackup = new CustomBackup(rawBackup.Backup, await Db.CachedEiContractsAsync(), account?.Backup ?? null);
+                var pulledGrade = customBackup.GetMostRecentContractGrade().Grade;
 
-                if((uint)customBackup.Grade != newgrade) {
+                if((uint)pulledGrade != newgrade) {
                     await Context.Interaction.ModifyOriginalResponseAsync(x => {
                         x.Content = ""; x.Embed = EmbedWarning($"A new backup was pulled, and the obtained grade " +
-                        $"({PlayerGradeDetails.GetEmoji(customBackup.Grade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji(newgrade)}).\nTry forcing a new backup?");
+                        $"({PlayerGradeDetails.GetEmoji(pulledGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)newgrade)}).\nTry forcing a new backup?");
                     });
                     return;
                 }

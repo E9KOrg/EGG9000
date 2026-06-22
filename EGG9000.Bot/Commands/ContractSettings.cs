@@ -245,7 +245,7 @@ namespace EGG9000.Bot.Commands {
         private static string getAccountColleggtibles(CustomBackup backup, List<DBCustomEgg> customEggs) {
             var sb = new StringBuilder();
             foreach(var customEgg in customEggs) {
-                var colleggtibleLevel = backup.GetColleggtibleLevel(customEgg);
+                var colleggtibleLevel = backup.GetColleggtibleLevel(customEgg.Identifier);
                 if(colleggtibleLevel == 0) {
                     sb.AppendLine($"{customEgg.Emoji} - _Not unlocked_ {GetTheoreticalModifierString(customEgg)}");
                 } else {

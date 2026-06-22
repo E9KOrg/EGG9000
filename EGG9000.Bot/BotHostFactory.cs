@@ -170,6 +170,13 @@ public static class BotHostFactory {
 
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
+            services.AddSingleton(provider => new Discord.Interactions.InteractionService(
+                provider.GetRequiredService<DiscordHostedService>().Gateway,
+                new Discord.Interactions.InteractionServiceConfig {
+                    DefaultRunMode = Discord.Interactions.RunMode.Sync,
+                    UseCompiledLambda = true
+                }));
+            services.AddHostedService<InteractionRoutingService>();
 
             services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             services.AddHostedService<LeaderboardUpdater>();
@@ -204,7 +211,7 @@ public static class BotHostFactory {
             services.AddSingleton<JobService>();
             services.AddHostedService(provider => provider.GetService<JobService>());
 
-            services.AddHostedService<CommandService>();
+            services.AddHostedService<MessageHandlerService>();
             services.AddHostedService<DiscordUserService>();
             services.AddHostedService<UserGrades>();
 

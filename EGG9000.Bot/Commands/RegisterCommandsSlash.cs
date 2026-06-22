@@ -122,7 +122,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             var response = await EggIncApi.FirstContact(eggincid);
-            var backup = new CustomBackup(response.Backup);
+            var backup = new CustomBackup(response.Backup, await db.CachedEiContractsAsync());
             if(backup == null || backup.Farms == null || backup.Farms.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
                 return;
@@ -159,8 +159,9 @@ namespace EGG9000.Bot.Commands {
             if(user.EggIncAccounts.Count > 1) user.EggIncAccounts[accountnumber - 1] = newAccount;
             else user.EggIncAccounts = [newAccount];
 
+            var cachedContracts = await db.CachedEiContractsAsync();
             foreach(var account in user.EggIncAccounts) {
-                var customBackup = new CustomBackup((await EggIncApi.FirstContact(account.Id))?.Backup, account?.Backup ?? null);
+                var customBackup = new CustomBackup((await EggIncApi.FirstContact(account.Id))?.Backup, cachedContracts, account?.Backup ?? null);
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                 }
@@ -208,14 +209,16 @@ namespace EGG9000.Bot.Commands {
             }
 
             var firstContactResponse = await EggIncApi.FirstContact(eggincid);
-            var backup = new CustomBackup(firstContactResponse.Backup);
+            var cachedContractsRa = await db.CachedEiContractsAsync();
+            var backup = new CustomBackup(firstContactResponse.Backup, cachedContractsRa);
             if(backup?.Farms == null || backup.Farms.Count == 0) {
                 var id = new Regex(@"\d+").Match(eggincid).Value;
                 if(eggincid.StartsWith("E1")) {
                     id = id[1..];
                 }
                 if(id.Length > 7) {
-                    backup = await EggIncApi.GetBackupAsync(eggincid);
+                    var (b, _) = await EggIncApi.GetBackupAsync(eggincid, cachedContractsRa);
+                    backup = b;
                 }
             }
 
@@ -387,7 +390,7 @@ namespace EGG9000.Bot.Commands {
                 dbUser.GuildId = guild.Id;
                 await Db.SaveChangesAsync();
 
-                var response = await EggIncApi.GetBackupAsync(dbUser.EggIncAccounts.First().Id);
+                var (response, _) = await EggIncApi.GetBackupAsync(dbUser.EggIncAccounts.First().Id, await Db.CachedEiContractsAsync());
                 var earningsBonus = response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == Context.User.Id);

@@ -1,6 +1,6 @@
 using Discord;
 using Discord.Interactions;
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
@@ -167,7 +167,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static async Task<Embed> LLCCalculate(EggIncAccount account, string userName, IMemoryCache _cache, ILogger _logger) {
-            var backup = await ContractsAPI.FirstContact(account.Id);
+            var backup = await EggIncApi.FirstContact(account.Id);
 
             if(backup?.Backup?.ArtifactsDb?.MissionArchive is null || account?.Backup?.ArtifactHall is null) {
                 return EmbedError($"Unable to retrieve backup, please try again later.");

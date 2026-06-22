@@ -67,7 +67,7 @@ namespace EGG9000.Bot.Commands {
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
-                backup = new CustomBackup((await EggIncApi.FirstContact(id.Id)).Backup, await db.CachedEiContractsAsync(), backup);
+                backup = new CustomBackup((await EggIncApi.FirstContact(id.Id)).Backup, await Db.CachedEiContractsAsync(), backup);
                 if(dbUser.EggIncAccounts.Count > 1) {
                     builder.AddField("――――――――――――――――――", $"**{backup.UserName}**");
                 }
@@ -127,7 +127,7 @@ namespace EGG9000.Bot.Commands {
                 var backup = id.Backup;
                 if(backup == null)
                     continue;
-                backup = new CustomBackup((await EggIncApi.FirstContact(id.Id)).Backup, await db.CachedEiContractsAsync(), backup);
+                backup = new CustomBackup((await EggIncApi.FirstContact(id.Id)).Backup, await Db.CachedEiContractsAsync(), backup);
                 var nextSubRank = SIPrefix.GetNextRankInfo(backup, true);
 
                 var nextRankText = "";

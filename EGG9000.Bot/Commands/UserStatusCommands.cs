@@ -2,7 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 
-using EGG9000.Bot.EggIncAPI;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Contracts;
@@ -36,13 +36,14 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(pullFreshBackup) {
+                var cachedContracts = await db.CachedEiContractsAsync();
                 foreach(var account in dbuser.EggIncAccounts) {
-                    var rawBackup = await ContractsAPI.FirstContact(account.Id);
+                    var rawBackup = await EggIncApi.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;
                     }
-                    var customBackup = new CustomBackup(rawBackup.Backup, account?.Backup ?? null);
+                    var customBackup = new CustomBackup(rawBackup.Backup, cachedContracts, account?.Backup ?? null);
                     if(customBackup?.Farms is not null) {
                         account.Backup = customBackup;
                     }
@@ -85,6 +86,7 @@ namespace EGG9000.Bot.Commands {
 
         static async internal Task<List<EmbedBuilder>> AccountsString(ApplicationDbContext db, DBUser user, bool admin) {
             var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
+            var cachedContracts = await db.CachedEiContractsAsync();
             var builderList = new List<EmbedBuilder>();
             var footers = new List<string>();
             var builder = new EmbedBuilder {
@@ -100,7 +102,7 @@ namespace EGG9000.Bot.Commands {
                     builder = new EmbedBuilder();
                 }
 
-                var backup = await ContractsAPI.GetBackupAsync(account.Id);
+                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, cachedContracts);
                 if(backup == null)
                     continue;
 
@@ -143,8 +145,8 @@ namespace EGG9000.Bot.Commands {
                     builder.AddField("Guild", string.IsNullOrWhiteSpace(account.Guild) ? "None" : account.Guild, true);
                 }
 
-                if(backup.ClientVersion < ContractsAPI.ClientVersion && backup.ClientVersion > 0) {
-                    footers.Add($"⚠️ Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {ContractsAPI.ClientVersion} ⚠️");
+                if(backup.ClientVersion < EggIncApi.ClientVersion && backup.ClientVersion > 0) {
+                    footers.Add($"⚠️ Game outdated for {backup.UserName}, showing {backup.ClientVersion}, new version is {EggIncApi.ClientVersion} ⚠️");
                 }
 
                 if(index + 1 == accounts.Count()) {

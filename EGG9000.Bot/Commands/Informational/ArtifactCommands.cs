@@ -22,7 +22,7 @@ namespace EGG9000.Bot.Commands {
     public static class ArtifactCommands {
 
         public static async Task _viewInventory(SocketInteraction command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
-            var backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, account.Backup ?? null);
+            var backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
             account.Backup.ArtifactHall = backup.ArtifactHall;
             user.UpdateAccounts();
             await db.SaveChangesAsync();
@@ -74,6 +74,11 @@ namespace EGG9000.Bot.Commands {
             var green = (byte)random.Next(256);
             var blue = (byte)random.Next(256);
             return new Color(red, green, blue);
+        }
+
+        public static string TrimImageUrl(string baseUrl) {
+            var i = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
+            return i != -1 ? baseUrl[..i] : baseUrl;
         }
     }
 
