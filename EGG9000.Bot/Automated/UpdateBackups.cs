@@ -69,7 +69,7 @@ namespace EGG9000.Bot.Automated {
             if(registered > 0)
                 _logger.LogInformation("Self-healed {count} contract(s) missing from the DB from player backups", registered);
 
-            await ShipReturnDM.UpdateNextShipDM(usersToCheck, _db);
+            await ShipReturnDM.UpdateNextShipDM(usersToCheck, _db, _logger);
             var finished = times.Finished();
             _logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
         }

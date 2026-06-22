@@ -154,13 +154,16 @@ namespace EGG9000.Bot.Automated {
                 /* 'Normal' Game Events channel*/
                 var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 if(channel != default) {
-                    var eventsWithCustom = recentEvents.Where(x => !x.Ended && !x.CcOnly).Select(async x => new EventWithCustom {
-                        Event = x,
-                        Customization = await _db.GetCustomizationAsync(dbguild, x)
-                    }).Select(t => t.Result).ToList();
+                    var eventsWithCustom = new List<EventWithCustom>();
+                    foreach(var x in recentEvents.Where(x => !x.Ended && !x.CcOnly)) {
+                        eventsWithCustom.Add(new EventWithCustom {
+                            Event = x,
+                            Customization = await _db.GetCustomizationAsync(dbguild, x)
+                        });
+                    }
 
                     foreach(var e in eventsWithCustom) {
-                        if(e.Customization?.Priority > 0 || true) {
+                        if(e.Customization?.Priority > 0) {
                             stackedEmoji += e.Customization?.Emoji ?? "";
                         } else {
                             singleEmoji = e.Customization?.Emoji ?? "";
@@ -188,13 +191,16 @@ namespace EGG9000.Bot.Automated {
                 /* Subscriber-Only Game Events channel */
                 var ccChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
                 if(ccChannel != null) {
-                    var ccEventsWithCustom = recentEvents.Where(x => !x.Ended && x.CcOnly).Select(async x => new EventWithCustom {
-                        Event = x,
-                        Customization = await _db.GetCustomizationAsync(dbguild, x)
-                    }).Select(t => t.Result).ToList();
+                    var ccEventsWithCustom = new List<EventWithCustom>();
+                    foreach(var x in recentEvents.Where(x => !x.Ended && x.CcOnly)) {
+                        ccEventsWithCustom.Add(new EventWithCustom {
+                            Event = x,
+                            Customization = await _db.GetCustomizationAsync(dbguild, x)
+                        });
+                    }
 
                     foreach(var se in ccEventsWithCustom) {
-                        if(se.Customization?.Priority > 0 || true) {
+                        if(se.Customization?.Priority > 0) {
                             stackedEmoji += se.Customization?.Emoji ?? "";
                         } else {
                             singleEmoji = se.Customization?.Emoji ?? "";
