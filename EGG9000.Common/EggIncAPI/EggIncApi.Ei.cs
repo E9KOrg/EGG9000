@@ -183,7 +183,7 @@ namespace EGG9000.Common.EggIncAPI {
                 if(responseBytes == null) {
                     return new EggIncFirstContactResponse { Success = false, Error = "Error response from API" };
                 }
-                var backup = EggIncFirstContactResponse.Parser.ParseFrom(responseBytes);
+                var backup = ParseTolerant<EggIncFirstContactResponse>(responseBytes);
                 // bot_first_contact can return a parseable-but-empty response (no Backup) for accounts
                 // the salt-signed endpoint still serves. Report failure so FirstContact falls through to
                 // first_contact_secure instead of masking it as success-with-null-backup.
@@ -220,7 +220,7 @@ namespace EGG9000.Common.EggIncAPI {
                 }
                 var backup = isEi
                     ? GetFromAuthenticatedMessage<EggIncFirstContactResponse>(responseBytes)
-                    : EggIncFirstContactResponse.Parser.ParseFrom(responseBytes);
+                    : ParseTolerant<EggIncFirstContactResponse>(responseBytes);
                 backup.Success = true;
                 return backup;
             } catch(Exception e) {
