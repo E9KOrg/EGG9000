@@ -1,6 +1,6 @@
-﻿
+using Discord.Interactions;
 using Discord.WebSocket;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
@@ -11,23 +11,27 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public static class ContextUserCommands {
-        [UserCommand(Name = "Userstatus", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task Userstatus(SocketUserCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger logger) {
-            await UserStatusCommands._userstatus(command, db, _client, logger, command.Data.Member, true, false);
+    public class ContextUserModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
+
+        [UserCommand("Userstatus")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        public async Task Userstatus(SocketGuildUser target) {
+            await UserStatusCommands._userstatus(Context.Interaction, Db, _client, target, true, false);
         }
 
-        [UserCommand(Name = "Contract Settings", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task ContractSettings(SocketUserCommand command, ApplicationDbContext db) {
-            await ContractSettingsCommands.ContractSettings(command, db, (command.Data.Member as SocketGuildUser));
+        [UserCommand("Contract Settings")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        public async Task ContractSettings(SocketGuildUser target) {
+            await ContractSettingsCommands.OpenContractSettings(Context.Interaction, Db, target);
         }
 
-        [UserCommand(Name = "Rockets Tracker", AdminOnly = StaffOnlyLevel.FarmHand)]
-        public static async Task RocketsTrackerLinks(SocketUserCommand command, ApplicationDbContext db)
-        {
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.Data.Member.Id);
+        [UserCommand("Rockets Tracker")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        public async Task RocketsTrackerLinks(SocketGuildUser target) {
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == target.Id);
             if(dbUser == null) {
-                await command.RespondAsync(text: "", embed: EmbedError($"Unable to locate DBUser entry for <@{command.Data.Member.Id}>"));
+                await Context.Interaction.RespondAsync(text: "", embed: EmbedError($"Unable to locate DBUser entry for <@{target.Id}>"));
                 return;
             } else {
                 var sb = new StringBuilder();
@@ -36,10 +40,8 @@ namespace EGG9000.Bot.Commands {
                     if(sb.ToString() != "") sb.Append("\n\n");
                     sb.Append(backup.UserName + ": " + $"<https://wasmegg-carpet.netlify.app/rockets-tracker/?playerId={id.Id}>");
                 }
-                await command.RespondAsync(sb.ToString(), ephemeral: true);
+                await Context.Interaction.RespondAsync(sb.ToString(), ephemeral: true);
             }
         }
     }
 }
-
-

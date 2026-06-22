@@ -1,7 +1,8 @@
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -18,15 +19,9 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    /// <summary>
-    /// `/a configure` - the site's Configure Server page, inside Discord. Built
-    /// dynamically: channels/roles from <see cref="GuildChannelType"/> + its Description
-    /// prefixes (/TC/, /R/), coop toggles from <see cref="GuildCoopSetting"/>, and scalar
-    /// settings from <c>[GuildConfig]</c>-annotated <see cref="Guild"/> properties. Adding
-    /// a setting = annotating a property or adding an enum value; nothing here changes.
-    /// Native channel/role select components; modals only for numbers/text.
-    /// </summary>
-    public static class ConfigureCommands {
+    [Group("a", "Admin commands")]
+    [DefaultMemberPermissions(GuildPermission.Administrator)]
+    public class ConfigureModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
         private static string EnumDesc(GuildChannelType v) =>
             typeof(GuildChannelType).GetField(v.ToString())?.GetCustomAttribute<DescriptionAttribute>()?.Description ?? v.ToString();
         private static string EnumDesc(GuildCoopSetting v) =>
@@ -85,11 +80,6 @@ namespace EGG9000.Bot.Commands {
         private static ButtonBuilder BackTo(string target, string label = "← Back") =>
             new ButtonBuilder().WithLabel(label).WithCustomId($"CfgBack:{target}").WithStyle(ButtonStyle.Secondary);
 
-        // Two-step model: a section first shows only its picker(s) + Back; once an item is
-        // chosen (payload set) it shows ONLY that item's setter + Back + Clear, so there are
-        // never more than ~2 controls stacked at once. The embed is intentionally minimal -
-        // on a setter screen it carries just the item's description (the one thing the
-        // selectors don't convey); the live values live in the controls themselves.
         private static (Embed embed, MessageComponent components) BuildView(string section, Guild g, string payload = null) {
             var cb = new ComponentBuilder();
             var eb = new EmbedBuilder().WithAuthor("Server Configuration").WithColor(Color.Blue);
@@ -101,7 +91,6 @@ namespace EGG9000.Bot.Commands {
                     var types = (roles ? RoleTypes() : ChannelTypes()).ToList();
 
                     if(payload is not null && Enum.TryParse<GuildChannelType>(payload, out var t) && IsRole(EnumDesc(t)) == roles) {
-                        // detail: one setter + back + clear
                         var desc = EnumDesc(t);
                         var cur = g.GetChannelId(t);
                         var set = new SelectMenuBuilder().WithCustomId($"{(roles ? "CfgSetRole" : "CfgSetChannel")}:{t}")
@@ -114,7 +103,6 @@ namespace EGG9000.Bot.Commands {
                         cb.WithButton("Clear", customId: $"CfgClear:{t}", style: ButtonStyle.Danger, row: 1);
                         eb.WithTitle(Pretty(desc)).WithDescription($"{Pretty(desc)}\n\n{(cur is > 0 ? (roles ? $"Current: <@&{cur}>" : $"Current: <#{cur}>") : "_Not set_")}");
                     } else {
-                        // list: pickers + back
                         var row = 0;
                         if(roles) {
                             foreach(var (chunk, idx) in types.Chunk(25).Select((c, i) => (c, i))) {
@@ -217,163 +205,163 @@ namespace EGG9000.Bot.Commands {
             return (eb.Build(), cb.Build());
         }
 
-        [SlashCommand(Description = "Configure this server (same as the website)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
-        public static async Task Configure(FauxCommand command, ApplicationDbContext db) {
-            await command.DeferAsync(ephemeral: true);
-            var g = await LoadGuild(db, command.GuildId);
+        [SlashCommand("configure", "Configure this server (same as the website)")]
+        public async Task Configure() {
+            await Context.Interaction.DeferAsync(ephemeral: true);
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(g is null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find this server's config record."); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find this server's config record."); });
                 return;
             }
             var (embed, components) = BuildView("overview", g);
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgNav(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = BuildView(component.Data.Values.FirstOrDefault() ?? "overview", g);
-            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("CfgNav")]
+        public async Task CfgNav(string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = BuildView(values.FirstOrDefault() ?? "overview", g);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgPickChannel(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = BuildView("channels", g, component.Data.Values.FirstOrDefault());
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("CfgPickChannel:*")]
+        public async Task CfgPickChannel(string slot, string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = BuildView("channels", g, values.FirstOrDefault());
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgPickRole(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = BuildView("roles", g, component.Data.Values.FirstOrDefault());
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("CfgPickRole:*")]
+        public async Task CfgPickRole(string slot, string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = BuildView("roles", g, values.FirstOrDefault());
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgPickCoop(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = BuildView("coop", g, component.Data.Values.FirstOrDefault());
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("CfgPickCoop")]
+        public async Task CfgPickCoop(string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = BuildView("coop", g, values.FirstOrDefault());
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgPickList(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = BuildView("lists", g, component.Data.Values.FirstOrDefault());
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("CfgPickList")]
+        public async Task CfgPickList(string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = BuildView("lists", g, values.FirstOrDefault());
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgSetChannel(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgSetChannel:*")]
+        public async Task CfgSetChannel(string data, IChannel[] channels) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildChannelType>(data, out var t)) {
-                SetChannel(g, t, component.Data.Channels.FirstOrDefault()?.Id ?? 0);
-                await db.SaveChangesAsync();
+                SetChannel(g, t, channels.FirstOrDefault()?.Id ?? 0);
+                await Db.SaveChangesAsync();
             }
             var (embed, components) = BuildView("channels", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgSetRole(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgSetRole:*")]
+        public async Task CfgSetRole(string data, IRole[] roles) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildChannelType>(data, out var t)) {
-                SetChannel(g, t, component.Data.Roles.FirstOrDefault()?.Id ?? 0);
-                await db.SaveChangesAsync();
+                SetChannel(g, t, roles.FirstOrDefault()?.Id ?? 0);
+                await Db.SaveChangesAsync();
             }
             var (embed, components) = BuildView("roles", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgClear(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgClear:*")]
+        public async Task CfgClear(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildChannelType>(data, out var t)) {
                 SetChannel(g, t, 0);
-                await db.SaveChangesAsync();
+                await Db.SaveChangesAsync();
             }
             var section = RoleTypes().Any(r => r.ToString() == data) ? "roles" : "channels";
             var (embed, components) = BuildView(section, g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgCoopEn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgCoopEn:*")]
+        public async Task CfgCoopEn(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildCoopSetting>(data, out var s)) {
                 SetCoop(g, s, !g.GetCoopSetting(s).Enabled, null);
-                await db.SaveChangesAsync();
+                await Db.SaveChangesAsync();
             }
             var (embed, components) = BuildView("coop", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgCoopLock(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgCoopLock:*")]
+        public async Task CfgCoopLock(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildCoopSetting>(data, out var s)) {
                 SetCoop(g, s, null, !g.GetCoopSetting(s).Locked);
-                await db.SaveChangesAsync();
+                await Db.SaveChangesAsync();
             }
             var (embed, components) = BuildView("coop", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgToggle(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgToggle:*")]
+        public async Task CfgToggle(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
             if(f is not null && f.Kind == GuildConfigKind.Bool) {
                 f.Property.SetValue(g, !(bool)f.Property.GetValue(g));
-                await db.SaveChangesAsync();
+                await Db.SaveChangesAsync();
             }
             var (embed, components) = BuildView("toggles", g);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgSetCsvCat(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgSetCsvCat:*")]
+        public async Task CfgSetCsvCat(string data, IChannel[] channels) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
             if(f is not null) {
-                f.Property.SetValue(g, string.Join(",", component.Data.Channels.Select(c => c.Id)));
-                await db.SaveChangesAsync();
+                f.Property.SetValue(g, string.Join(",", channels.Select(c => c.Id)));
+                await Db.SaveChangesAsync();
             }
             var (embed, components) = BuildView("lists", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgSetCsvRole(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgSetCsvRole:*")]
+        public async Task CfgSetCsvRole(string data, IRole[] roles) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
             if(f is not null) {
-                f.Property.SetValue(g, string.Join(",", component.Data.Roles.Select(r => r.Id)));
-                await db.SaveChangesAsync();
+                f.Property.SetValue(g, string.Join(",", roles.Select(r => r.Id)));
+                await Db.SaveChangesAsync();
             }
             var (embed, components) = BuildView("lists", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgEdit(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgEdit:*")]
+        public async Task CfgEdit(string data) {
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
-            if(f is null) { await component.DeferAsync(); return; }
+            if(f is null) { await Context.Interaction.DeferAsync(); return; }
             var cur = f.Property.GetValue(g)?.ToString() ?? "";
             var hint = f.Kind switch {
                 GuildConfigKind.Int => $"{f.Description} (whole number, 0 or more)",
@@ -384,14 +372,15 @@ namespace EGG9000.Bot.Commands {
                 .AddTextInput(Trunc(f.Label, 45), customId: "val", placeholder: Trunc(hint, 100), value: cur, required: false,
                     maxLength: f.Kind == GuildConfigKind.String ? 100 : 20)
                 .Build();
-            await component.RespondWithModalAsync(modal);
+            await Context.Interaction.RespondWithModalAsync(modal);
         }
 
-        [Modal(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgEditModal(SocketModal modal, [ComponentData] string data, ApplicationDbContext db) {
-            var g = await LoadGuild(db, modal.GuildId);
+        [ModalInteraction("CfgEditModal:*", ignoreGroupNames: true)]
+        public async Task CfgEditModal(string data, ConfigEditModal form) {
+            var modal = (SocketModal)Context.Interaction;
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
-            var raw = modal.Data.Components.FirstOrDefault(c => c.CustomId == "val")?.Value?.Trim() ?? "";
+            var raw = form.Val?.Trim() ?? "";
             string error = null;
             if(f is not null) {
                 switch(f.Kind) {
@@ -409,18 +398,27 @@ namespace EGG9000.Bot.Commands {
                         f.Property.SetValue(g, string.IsNullOrWhiteSpace(raw) ? null : raw);
                         break;
                 }
-                if(error is null) await db.SaveChangesAsync();
+                if(error is null) await Db.SaveChangesAsync();
             }
             var (embed, components) = BuildView("numbers", g);
             await modal.UpdateAsync(x => { x.Content = error is null ? "" : $"⚠️ {error}"; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task CfgBack(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("CfgBack:*", ignoreGroupNames: true)]
+        public async Task CfgBack(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = BuildView(string.IsNullOrEmpty(data) ? "overview" : data, g);
-            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
+    }
+
+    public class ConfigEditModal : IModal {
+        public string Title => "Edit";
+
+        [InputLabel("Value")]
+        [ModalTextInput("val", maxLength: 100)]
+        [RequiredInput(false)]
+        public string Val { get; set; }
     }
 }

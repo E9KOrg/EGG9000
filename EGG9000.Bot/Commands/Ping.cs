@@ -1,22 +1,29 @@
-﻿using EGG9000.Common.Commands;
+using Discord.Interactions;
+using EGG9000.Bot.Interactions;
+using EGG9000.Common.Database;
 using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
-    public class PingCommands {
-        [SlashCommand(Description = "Test to see if bot is alive", AllowInDMs = true)]
-        public static async Task Ping(FauxCommand command) {
-            await command.RespondAsync("Pong!", ephemeral: false);
-        }
+    public class PingModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
 
-        [SlashCommand(Description = "Test to see if bot is alive/check version", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task Ping(FauxCommand command, ILogger _logger, [SlashParam(Required = false)] bool showInChannel = false) {
+        [SlashCommand("ping", "Test to see if bot is alive")]
+        [EnabledInDm(true)]
+        public async Task Ping() {
+            await Context.Interaction.RespondAsync("Pong!", ephemeral: false);
+        }
+    }
+
+    public partial class AdminModule {
+        [SlashCommand("ping", "Test to see if bot is alive/check version")]
+        public async Task Ping([Summary("showinchannel")] bool showInChannel = false) {
 
             var gitVersion = string.Empty;
-    
+
             using(var stream = Assembly.GetExecutingAssembly()
                     .GetManifestResourceStream("EGG9000.Bot.version.txt"))
             using(var reader = new StreamReader(stream)) {
@@ -41,8 +48,8 @@ namespace EGG9000.Bot.Commands {
                 $"\n**Author**:\t{author}\n**Message**:\t{commitMessage}\n**Timestamp:**\t<t:{commitTimestamp}:R>";
 
             _logger.LogInformation($"Responding to ping...");
-            await command.RespondAsync(response, ephemeral: !showInChannel);
-            _logger.LogInformation($"Responded to ping, {command.HasResponded}");
+            await Context.Interaction.RespondAsync(response, ephemeral: !showInChannel);
+            _logger.LogInformation($"Responded to ping, {Context.Interaction.HasResponded}");
         }
 
         private const string DefaultRepoUrl = "https://github.com/E9KOrg/EGG9000";

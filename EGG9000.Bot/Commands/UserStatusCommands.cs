@@ -1,9 +1,10 @@
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -11,7 +12,6 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 using System;
 using System.Collections.Generic;
@@ -23,18 +23,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class UserStatusCommands {
 
-        [SlashCommand(Description = "Get a users status", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger logger, [SlashParam] SocketUser user, [SlashParam(Required = false)] bool showinchannel = false,
-            [SlashParam(Required = false, Description = "Pull a fresh backup for all accounts of this user before reporting their status")] bool pullfreshbackup = false) {
-            return _userstatus(command, db, _client, logger, user, true, showinchannel, pullfreshbackup);
-        }
-
-        [SlashCommand(Description = "Get your status", AllowInDMs = true)]
-        public static Task UserStatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger logger) {
-            return _userstatus(command, db, _client, logger, command.User);
-        }
-
-        public static async Task _userstatus(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, ILogger logger, IUser user, bool admin = false, bool showInChannel = false, bool pullFreshBackup = false) {
+        public static async Task _userstatus(SocketInteraction command, ApplicationDbContext db, DiscordHostedService _client, IUser user, bool admin = false, bool showInChannel = false, bool pullFreshBackup = false) {
             await command.DeferAsync(ephemeral: !showInChannel);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -49,12 +38,15 @@ namespace EGG9000.Bot.Commands {
             if(pullFreshBackup) {
                 var cachedContracts = await db.CachedEiContractsAsync();
                 foreach(var account in dbuser.EggIncAccounts) {
-                    var backup = await AccountRefresh.RefreshBackupAsync(account, cachedContracts, logger);
-                    if(backup is null) {
+                    var rawBackup = await EggIncApi.FirstContact(account.Id);
+                    if(rawBackup is null || rawBackup.Backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;
                     }
-                    await AccountRefresh.ApplyExtrasAsync(dbuser, account, db, logger);
+                    var customBackup = new CustomBackup(rawBackup.Backup, cachedContracts, account?.Backup ?? null);
+                    if(customBackup?.Farms is not null) {
+                        account.Backup = customBackup;
+                    }
                 }
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
@@ -89,11 +81,12 @@ namespace EGG9000.Bot.Commands {
                 _ = await DiscordHelpers.CheckRoles(db, _client.GetGuild(dbuser.GuildId), guildUser, dbuser, _client, null, []);
             }
 
-            await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
+            await command.RespondAsyncGettingMessage("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
         }
 
         static async internal Task<List<EmbedBuilder>> AccountsString(ApplicationDbContext db, DBUser user, bool admin) {
             var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
+            var cachedContracts = await db.CachedEiContractsAsync();
             var builderList = new List<EmbedBuilder>();
             var footers = new List<string>();
             var builder = new EmbedBuilder {
@@ -109,7 +102,7 @@ namespace EGG9000.Bot.Commands {
                     builder = new EmbedBuilder();
                 }
 
-                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, await db.CachedEiContractsAsync());
+                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, cachedContracts);
                 if(backup == null)
                     continue;
 
@@ -199,6 +192,25 @@ namespace EGG9000.Bot.Commands {
             }
 
             return builderList;
+        }
+    }
+
+    public class UserStatusModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
+
+        [SlashCommand("userstatus", "Get your status")]
+        [EnabledInDm(true)]
+        public Task UserStatus() {
+            var command = Context.Interaction;
+            return UserStatusCommands._userstatus(command, Db, _client, Context.User);
+        }
+    }
+
+    public partial class AdminModule {
+        [Discord.Interactions.SlashCommand("userstatus", "Get a users status")]
+        public Task UserStatus([Discord.Interactions.Summary("user")] SocketUser user, [Discord.Interactions.Summary("showinchannel")] bool showinchannel = false,
+            [Discord.Interactions.Summary("pullfreshbackup", "Pull a fresh backup for all accounts of this user before reporting their status")] bool pullfreshbackup = false) {
+            return UserStatusCommands._userstatus(Context.Interaction, Db, client, user, true, showinchannel, pullfreshbackup);
         }
     }
 }

@@ -51,7 +51,7 @@ namespace EGG9000.Common.Services {
         private static readonly ConcurrentDictionary<ulong, SemaphoreSlim> _serverSemaphores = new();
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
 
-        // The gateway socket client, for use by CommandService and extension methods
+        // The gateway socket client, for use by command modules and extension methods
         public DiscordSocketClient Gateway => _gateway;
 
         // Forwarding properties so _UpdaterBase and background jobs (_client.Guilds, _client.GetGuild etc.) work unchanged
