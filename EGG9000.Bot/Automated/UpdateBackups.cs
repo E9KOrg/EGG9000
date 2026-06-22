@@ -134,7 +134,7 @@ namespace EGG9000.Bot.Automated {
                     account.Backup = backup;
 
                     if(firstContact.Backup.SubInfo is null) {
-                        _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
+                        _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API. Last backup: {account.Backup?.GetLastBackupDateTime()}");
                         var (subscription, subError) = await EggIncApi.GetUserSubscription(backup.EggIncId);
                         if(subscription is null) {
                             _logger.LogWarning($"Failed to fetch subscription for {user.DiscordUsername} {account.Id}: {subError}");
