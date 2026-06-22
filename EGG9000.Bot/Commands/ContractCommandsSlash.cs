@@ -20,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -188,12 +189,13 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class ContractModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, DiscordHostedService client, Words words, IServiceProvider provider, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger<ContractModule> logger) : E9KModuleBase(dbFactory) {
+    public class ContractModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, DiscordHostedService client, Words words, IServiceProvider provider, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, CoopAssignmentLookup lookup, ILogger<ContractModule> logger) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _gateway = gateway;
         private readonly DiscordHostedService _client = client;
         private readonly Words _words = words;
         private readonly IServiceProvider _provider = provider;
         private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads = coopStatusUpdaterThreads;
+        private readonly CoopAssignmentLookup _lookup = lookup;
         private readonly ILogger<ContractModule> _logger = logger;
 
         [SlashCommand("fixfullcooperror", "Fix for getting full co-op error")]
@@ -696,6 +698,56 @@ namespace EGG9000.Bot.Commands {
                 }
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to create the co-op with."; x.Components = builder.Build(); });
             }
+        }
+
+        [ComponentInteraction("FindMyCoop", ignoreGroupNames: true)]
+        public async Task FindMyCoop() {
+            var component = (SocketMessageComponent)Context.Interaction;
+            await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
+
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            if(dbUser is null || dbUser.GuildId != component.GuildId) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find your record - are you registered correctly?"); });
+                return;
+            }
+
+            var guildContract = await Db.GuildContracts.Include(gc => gc.Contract)
+                .FirstOrDefaultAsync(c => c.GuildID == component.GuildId && c.DiscordChannelId == component.ChannelId);
+            if(guildContract is null) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("This command must be used in a contract channel."); });
+                return;
+            }
+
+            // Fast path: prebuilt lookup. On a miss, fall back to the DB so a missed cache prune is
+            // never wrong, only slightly slower. Both paths scoped to assigned-but-not-yet-joined.
+            var found = _lookup.Get(dbUser.Id, guildContract.ContractID)
+                ?? (await Db.UserCoopXrefs
+                    .Where(x => x.UserId == dbUser.Id
+                             && !x.JoinedCoop
+                             && x.Coop.ContractID == guildContract.ContractID
+                             && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
+                             && x.Coop.CoopEnds > DateTimeOffset.UtcNow && !x.Coop.PseudoExpired)
+                    .Select(x => new AssignedCoop(x.Coop.Id, x.Coop.ThreadID, x.Coop.DiscordChannelId, x.Coop.Name, x.Coop.ContractID))
+                    .ToListAsync())
+                    .GroupBy(c => c.CoopId).Select(g => g.First()).ToList();
+
+            if(found.Count == 0) {
+                await component.ModifyOriginalResponseAsync(x => {
+                    x.Content = "";
+                    x.Embed = EmbedWarning($"You do not have an unjoined co-op for **{guildContract.Contract.Name}**. Either you've already joined yours, or co-ops are still being formed - once boarding groups launch this button becomes \"Find Coop Spot\" so you can grab an open seat.");
+                });
+                return;
+            }
+
+            var sb = new StringBuilder();
+            foreach(var coop in found) {
+                var channelId = coop.ThreadId != 0 ? coop.ThreadId : coop.DiscordChannelId;
+                sb.AppendLine($"Thread: <#{channelId}>");
+                sb.AppendLine($"Co-op code: `{coop.ContractId}` / `{coop.Name}`");
+                sb.AppendLine();
+            }
+
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess(sb.ToString().TrimEnd()); });
         }
 
         [ComponentInteraction("CreateCoopButton:*", ignoreGroupNames: true)]

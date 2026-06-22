@@ -230,18 +230,12 @@ namespace EGG9000.Bot.Commands {
             [Summary("role")] SocketRole role,
             [Summary("timespan")] string timespan,
             [Summary("reason")] string reason,
-            [Summary("user1", "User 1")] SocketGuildUser user1,
-            [Summary("user2", "User 2")] SocketGuildUser user2 = null,
-            [Summary("user3", "User 3")] SocketGuildUser user3 = null,
-            [Summary("user4", "User 4")] SocketGuildUser user4 = null,
-            [Summary("user5", "User 5")] SocketGuildUser user5 = null,
-            [Summary("user6", "User 6")] SocketGuildUser user6 = null,
-            [Summary("user7", "User 7")] SocketGuildUser user7 = null,
-            [Summary("user8", "User 8")] SocketGuildUser user8 = null,
-            [Summary("user9", "User 9")] SocketGuildUser user9 = null,
-            [Summary("user10", "User 10")] SocketGuildUser user10 = null
-            ) {
-            var users = EGG9000.Bot.Interactions.UserParams.CoalesceGuildUsers(user1, user2, user3, user4, user5, user6, user7, user8, user9, user10);
+            [Summary("users", "Mention one or more users (e.g. @a @b) or paste IDs")] string usersInput) {
+            var users = EGG9000.Bot.Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
+            if(users.Length == 0) {
+                await Context.Interaction.RespondAsyncGettingMessage("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs.");
+                return;
+            }
             DateTimeOffset expireTime;
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);

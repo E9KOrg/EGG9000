@@ -96,11 +96,21 @@ namespace EGG9000.Bot.Commands {
     public class BanModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
-        [SlashCommand("kick", "Kick user with dm")]
+        [SlashCommand("kick", "Kick user(s) with DM")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        public async Task Kick([Summary("user1", "User to kick 1")] SocketUser user1, [Summary("reason", "reason")] string reason, [Summary("banaccount", "banaccount")] bool banaccount = false, [Summary("user2", "User to kick 2")] SocketUser user2 = null, [Summary("user3", "User to kick 3")] SocketUser user3 = null, [Summary("user4", "User to kick 4")] SocketUser user4 = null, [Summary("user5", "User to kick 5")] SocketUser user5 = null, [Summary("user6", "User to kick 6")] SocketUser user6 = null, [Summary("user7", "User to kick 7")] SocketUser user7 = null, [Summary("user8", "User to kick 8")] SocketUser user8 = null, [Summary("user9", "User to kick 9")] SocketUser user9 = null, [Summary("user10", "User to kick 10")] SocketUser user10 = null) {
+        public async Task Kick(
+            [Summary("users", "Mention one or more users (e.g. @a @b @c) or paste IDs")] string usersInput,
+            [Summary("reason", "reason")] string reason,
+            [Summary("banaccount", "banaccount")] bool banaccount = false) {
             await Context.Interaction.DeferAsync();
-            var users = EGG9000.Bot.Interactions.UserParams.CoalesceUsers(user1, user2, user3, user4, user5, user6, user7, user8, user9, user10);
+            var users = EGG9000.Bot.Interactions.UserParams.ParseUsers(usersInput, _client.Gateway, out var missing);
+            if(users.Length == 0) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs."); });
+                return;
+            }
+            if(missing.Count > 0) {
+                await Context.Interaction.FollowupAsync(embed: EmbedWarning($"Could not resolve: {string.Join(", ", missing.Select(id => $"`{id}`"))}"), ephemeral: true);
+            }
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
             var dbGuild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == Context.Interaction.GuildId || g.OverflowServersJson.Contains(Context.Interaction.GuildId.ToString()));
 
