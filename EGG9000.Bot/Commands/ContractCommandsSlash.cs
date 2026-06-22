@@ -238,7 +238,7 @@ namespace EGG9000.Bot.Commands {
                 //Pull a fresh backup (so they keep channel access through the role update) and refresh the
                 //grade via the extras path - the backup alone no longer carries the grade, ApplyExtrasAsync
                 //fetches it through get_contract_player_info so account.LastGrade is genuinely current.
-                var freshBackup = await AccountRefresh.RefreshBackupAsync(account, await db.CachedEiContractsAsync());
+                var freshBackup = await AccountRefresh.RefreshBackupAsync(account, await db.CachedEiContractsAsync(), logger);
                 await AccountRefresh.ApplyExtrasAsync(dbuser, account, db, logger);
 
                 if((uint)account.LastGrade != newgrade) {

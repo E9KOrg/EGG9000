@@ -22,14 +22,20 @@ namespace EGG9000.Common.Helpers {
         // Pulls a fresh backup for one account and assigns it (carry-forward via the prior backup so
         // monotonic data like colleggtible levels is preserved). Returns the new backup, or null if the
         // API failed or returned no farms. In-memory only - caller persists the account blob.
-        public static async Task<CustomBackup> RefreshBackupAsync(EggIncAccount account, FrozenSet<Ei.Contract> cachedContracts) {
-            var firstContact = await EggIncApi.FirstContact(account.Id);
-            if(firstContact?.Backup is null)
+        public static async Task<CustomBackup> RefreshBackupAsync(EggIncAccount account, FrozenSet<Ei.Contract> cachedContracts, ILogger logger = null) {
+            var firstContact = await EggIncApi.FirstContact(account.Id, logger);
+            if(firstContact?.Backup is null) {
+                logger?.LogWarning("RefreshBackupAsync got no backup for account {Account} ({Id}): Success={Success}, Error={Error}",
+                    account.Name, account.Id, firstContact?.Success, firstContact?.Error);
                 return null;
+            }
 
             var backup = new CustomBackup(firstContact.Backup, cachedContracts, account.Backup);
-            if(backup?.Farms is null)
+            if(backup?.Farms is null) {
+                logger?.LogWarning("RefreshBackupAsync got a backup with no farms for account {Account} ({Id}); EmptyBackup={Empty}",
+                    account.Name, account.Id, backup?.EmptyBackup);
                 return null;
+            }
 
             account.Backup = backup;
             return backup;
