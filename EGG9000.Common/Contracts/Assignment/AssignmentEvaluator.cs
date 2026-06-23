@@ -20,17 +20,17 @@ namespace EGG9000.Common.Contracts.Assignment {
             settings ??= new AssignmentSettings();
 
             foreach(var rule in AssignmentRuleSet.Gate) {
-                if(SkipRecorded(results, rule, contract, forbidden, verbose)) continue;
+                if(SkipRecorded(results, rule, contract, forbidden, filtersDisabled, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
                 Record(results, rule, outcome, verbose);
                 if(outcome == RuleOutcome.Exclude) return Decision(false, results);
             }
 
-            // DisableBG: gates still apply, but reward/redo/seasonal filters are disabled.
-            if(filtersDisabled) return Decision(true, results);
-
+            // DisableBG: gates apply, the reward filter and seasonal rule are disabled, but the
+            // colleggtible force and the previously-completed/redo include rule STILL run (matches the
+            // old logic, which only disabled reward + seasonal under DisableBG).
             foreach(var rule in AssignmentRuleSet.Force) {
-                if(SkipRecorded(results, rule, contract, forbidden, verbose)) continue;
+                if(SkipRecorded(results, rule, contract, forbidden, filtersDisabled, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
                 Record(results, rule, outcome, verbose);
                 if(outcome == RuleOutcome.ForceInclude) return Decision(true, results);
@@ -38,7 +38,7 @@ namespace EGG9000.Common.Contracts.Assignment {
             }
 
             foreach(var rule in AssignmentRuleSet.Include) {
-                if(SkipRecorded(results, rule, contract, forbidden, verbose)) continue;
+                if(SkipRecorded(results, rule, contract, forbidden, filtersDisabled, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
                 Record(results, rule, outcome, verbose);
                 if(outcome == RuleOutcome.Exclude) return Decision(false, results);
@@ -99,19 +99,28 @@ namespace EGG9000.Common.Contracts.Assignment {
             [AssignmentRuleId.AlreadyFarming] = "Active farm",
             [AssignmentRuleId.AlreadyAssigned] = "Existing co-op",
             [AssignmentRuleId.MissingColleggtible] = "Missing colleggtible",
-            [AssignmentRuleId.MissingSeasonalPe] = "Seasonal PE",
-            [AssignmentRuleId.NewRewardFilter] = "New reward filter",
-            [AssignmentRuleId.LegacyRewardFilter] = "Leggacy reward filter",
+            [AssignmentRuleId.SeasonalContracts] = "Seasonal contracts",
+            [AssignmentRuleId.RewardFilter] = "Reward filter",
             [AssignmentRuleId.RedoCompleted] = "Redo / previously completed",
             [AssignmentRuleId.TwoToThree] = "Bump 2 to 3"
         };
 
         private static string Label(AssignmentRuleId id) => RuleLabels.TryGetValue(id, out var l) ? l : id.ToString();
 
+        // Rules disabled when the guild has boarding groups off (DisableBG). Reward + seasonal are the
+        // only filters disabled under DisableBG; colleggtible-force and previously-completed still run.
+        private static readonly HashSet<AssignmentRuleId> DisabledUnderFiltersOff = new() {
+            AssignmentRuleId.SeasonalContracts, AssignmentRuleId.RewardFilter
+        };
+
         // Returns true if the rule is skipped. In verbose mode the skip is recorded with a reason.
-        private static bool SkipRecorded(List<RuleResult> results, IAssignmentRule rule, ContractFacts contract, IReadOnlySet<AssignmentRuleId> forbidden, bool verbose) {
+        private static bool SkipRecorded(List<RuleResult> results, IAssignmentRule rule, ContractFacts contract, IReadOnlySet<AssignmentRuleId> forbidden, bool filtersDisabled, bool verbose) {
             if(forbidden != null && forbidden.Contains(rule.Id)) {
                 if(verbose) results.Add(new RuleResult(rule.Id, rule.Tier, RuleOutcome.NotApplicable, $"{Label(rule.Id)}: disabled by server"));
+                return true;
+            }
+            if(filtersDisabled && DisabledUnderFiltersOff.Contains(rule.Id)) {
+                if(verbose) results.Add(new RuleResult(rule.Id, rule.Tier, RuleOutcome.NotApplicable, $"{Label(rule.Id)}: disabled (server uses roles)"));
                 return true;
             }
             if(!rule.AppliesTo(contract)) {

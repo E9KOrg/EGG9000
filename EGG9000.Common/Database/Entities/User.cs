@@ -194,6 +194,11 @@ namespace EGG9000.Common.Database.Entities {
                             if(account.Assignment is null) {
                                 account.Assignment = Contracts.Assignment.AssignmentSettingsMigration.FromLegacyKeys(account);
                                 needsUpdate = true;
+                            } else {
+                                // Heal partial v1 blobs: Seasonal (Key 5) and RewardFilter were added in v2,
+                                // so blobs persisted before then deserialize with these as null.
+                                if(account.Assignment.Seasonal is null) { account.Assignment.Seasonal = new(); needsUpdate = true; }
+                                if(account.Assignment.RewardFilter is null) { account.Assignment.RewardFilter = new(); needsUpdate = true; }
                             }
                         });
                         if(needsUpdate) {
@@ -484,25 +489,27 @@ namespace EGG9000.Common.Database.Entities {
             var a = Assignment;
             if(a is null) return;
 
-            AutoRegisterRewards = a.NewContractRewardFilter is null ? null : new List<Ei.RewardType>(a.NewContractRewardFilter);
-            LeggacyAutoRegisterRewards = a.LegacyRewardFilter is null ? null : new List<Ei.RewardType>(a.LegacyRewardFilter);
+            // Single v2 reward filter maps onto both old lists so the old logic uses it everywhere.
+            var filter = a.RewardFilter is null ? new List<Ei.RewardType>() : new List<Ei.RewardType>(a.RewardFilter);
+            AutoRegisterRewards = new List<Ei.RewardType>(filter);
+            LeggacyAutoRegisterRewards = new List<Ei.RewardType>(filter);
+
             RedoLeggacySelection = a.Redo?.Mode ?? RedoLeggacyOption.NotSet;
             RedoScoreThreshold = a.Redo?.ScoreThreshold ?? 20000;
             DoTwoToThreeContracts = a.TwoToThree;
-
             DoUnfinishedCollegtibles = a.Get(Contracts.Assignment.PermanentRewardKind.Colleggtible).Mode == Contracts.Assignment.ForceMode.AssignIfMissing;
 
-            var pe = a.Get(Contracts.Assignment.PermanentRewardKind.SeasonalPe);
-            switch(pe.Mode) {
-                case Contracts.Assignment.ForceMode.AssignIfMissing:
-                    SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing;
-                    break;
-                case Contracts.Assignment.ForceMode.BelowThreshold:
+            // Lossy: the richer v2 Seasonal model is approximated onto the old SeasonalPeOption. The
+            // RewardFilterAfter toggle and AlwaysAssign-after-PE have no old equivalent (surfaces as a
+            // shadow diff, which is expected during the shadow period).
+            var seasonal = a.Seasonal ?? new Contracts.Assignment.SeasonalRule();
+            switch(seasonal.Mode) {
+                case Contracts.Assignment.SeasonalMode.UntilCsGoal:
                     SeasonalPeOption = SeasonalPeOption.AssignIfBelowThreshold;
-                    SeasonalPeThreshold = pe.CsFloor ?? 0;
+                    SeasonalPeThreshold = seasonal.CsGoal;
                     break;
                 default:
-                    SeasonalPeOption = SeasonalPeOption.NotSet;
+                    SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing;
                     break;
             }
         }

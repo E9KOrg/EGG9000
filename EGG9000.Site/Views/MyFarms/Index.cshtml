@@ -321,13 +321,10 @@
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
                     <span style="margin-right:10px;" title="Date/Time displayed in local time"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToLocalTime().ToString("yyyy-MM-dd h:mm:ss tt")</span>
                 }
-                @if ((account.Assignment.NewContractRewardFilter?.Count ?? 0) > 0) {
-                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.Assignment.NewContractRewardFilter)</span>
+                @if ((account.Assignment.RewardFilter?.Count ?? 0) > 0) {
+                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.Assignment.RewardFilter)</span>
                 } else {
                     <span style="margin-right:10px;"><b><u>Filter</u></b>: All</span>
-                }
-                @if ((account.Assignment.LegacyRewardFilter?.Count ?? 0) > 0) {
-                    <span style="margin-right:10px;"><b><u>Leggacy Filter</u></b>: @string.Join(",", account.Assignment.LegacyRewardFilter)</span>
                 }
                 <span style="margin-right:10px;">
                     <b><u>Redo Leggacies</u></b>:
@@ -348,14 +345,14 @@
                     <b><u>Skip Seasonal Replays</u></b>: @(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")
                 </span>
                 <span style="margin-right:10px;">
-                    <b><u>Seasonal PE</u></b>:
-                    @{ var seasonalRule = account.Assignment.Get(PermanentRewardKind.SeasonalPe); }
-                    @if (seasonalRule.Mode == ForceMode.AssignIfMissing) {
-                        @:Yes (always)
-                    } else if (seasonalRule.Mode == ForceMode.BelowThreshold) {
-                        @:Yes (contract score under @((seasonalRule.CsFloor ?? 0).ToString("N0")))
+                    <b><u>Seasonal</u></b>:
+                    @{ var seasonalRule = account.Assignment.Seasonal; }
+                    @if (seasonalRule.Mode == SeasonalMode.AlwaysAssign) {
+                        @:Always assign
+                    } else if (seasonalRule.Mode == SeasonalMode.UntilPeEarned) {
+                        @:Assign until PE earned
                     } else {
-                        @:Not set
+                        @:Assign until CS goal (@(seasonalRule.CsGoal.ToString("N0")))
                     }
                 </span>
                 @if(account?.LatestRunningScore != 0){
@@ -708,9 +705,11 @@
                         const field = el.dataset.field;
                         const value = controlValue(el);
                         const before = prior;
-                        if (field === 'seasonalPeMode') {
-                            const wrap = container.querySelector('.cs-seasonalfloor-wrap-' + accountIndex);
-                            if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
+                        if (field === 'seasonalMode') {
+                            const goalWrap = container.querySelector('.cs-seasonalgoal-wrap-' + accountIndex);
+                            if (goalWrap) goalWrap.style.display = (value === '2') ? '' : 'none';
+                            const afterWrap = container.querySelector('.cs-seasonalafter-wrap-' + accountIndex);
+                            if (afterWrap) afterWrap.style.display = (value === '1' || value === '2') ? '' : 'none';
                         }
                         if (field === 'redoMode') {
                             const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);

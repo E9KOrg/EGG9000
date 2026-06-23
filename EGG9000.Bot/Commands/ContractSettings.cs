@@ -104,29 +104,15 @@ namespace EGG9000.Bot.Commands {
                 RedoLeggacyOption.YesOtherAccountMatch => "Yes (alt match)",
                 _ => "No"
             };
-            var seasonalPe = account.Assignment.Get(PermanentRewardKind.SeasonalPe);
-            var seasonalSummary = seasonalPe.Mode switch {
-                ForceMode.AssignIfMissing => "If missing",
-                ForceMode.BelowThreshold => $"If <{seasonalPe.CsFloor ?? 0:N0}",
-                _ => "Not set"
-            };
             var colleggtibleOn = account.Assignment.Get(PermanentRewardKind.Colleggtible).Mode == ForceMode.AssignIfMissing;
 
-            var newDict = GetNewRewardDictionary();
-            var legacyDict = GetLegacyRewardDictionary();
-            account.Assignment.NewContractRewardFilter ??= [];
-            account.Assignment.LegacyRewardFilter ??= [];
+            var rewardDict = GetRewardDictionary();
+            account.Assignment.RewardFilter ??= [];
 
-            var newRewards = account.Assignment.NewContractRewardFilter.Any() ? string.Join(", ", account.Assignment.NewContractRewardFilter.Select(x => newDict[x])) : "All";
-            var legRewards = account.Assignment.LegacyRewardFilter.Any() ? string.Join(", ", account.Assignment.LegacyRewardFilter.Select(x => legacyDict[x])) : "Follows main";
+            var rewards = account.Assignment.RewardFilter.Any() ? string.Join(", ", account.Assignment.RewardFilter.Select(x => rewardDict[x])) : "All";
 
-            eBuilder.AddField("__Always Assign Me If__",
-                $"Colleggtibles: {(colleggtibleOn ? "Yes" : "No")}\nSeasonal PE: {seasonalSummary}");
-
-            eBuilder.AddField("__New Contracts__", $"Rewards: {newRewards}");
-
-            eBuilder.AddField("__Leggacy Contracts__",
-                $"Leg. Rewards: {legRewards}\nRedo: {redoSummary}\nSkip Seasonal: {(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")}\n2 -> 3: {(account.Assignment.TwoToThree ? "Yes" : "No")}");
+            eBuilder.AddField("__Assignment Rules__",
+                $"Rewards Filter: {rewards}\nColleggtibles: {(colleggtibleOn ? "Yes" : "No")}\nSeasonal Contracts: {SeasonalSummary(account)}\nRedo: {redoSummary}\nSkip Seasonal Replays: {(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")}\n2 -> 3: {(account.Assignment.TwoToThree ? "Yes" : "No")}");
 
             var placementLines = new List<string> { $"Break: {MCSBreakMessage(account)}" };
             if(!dbguild.DisableBG) {
@@ -142,10 +128,9 @@ namespace EGG9000.Bot.Commands {
 
             // Filter settings always show their edit buttons (matching their always-shown fields and the
             // Colleggtibles/Redo/2->3 buttons). Only Boarding Group is BG-mode-specific and stays gated.
-            buttons.Add(("Colleggtibles Setting", $"MCSColleggtible:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
-            buttons.Add(("Seasonal PE", $"MCSSeasonalPe:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             buttons.Add(("Rewards Filter", $"MCSRewards:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
-            buttons.Add(("Leggacy Rewards Filter", $"MCSLeggacyRewards:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
+            buttons.Add(("Colleggtibles Setting", $"MCSColleggtible:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
+            buttons.Add(("Seasonal Contracts", $"MCSSeasonalPe:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             buttons.Add(("Redo Completed Leggacies", $"MCSRL:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             buttons.Add(("2 -> 3 Setting", $"MCSTwoToThree:{index},{dbuser.DiscordId}", ButtonStyle.Primary));
             if(!dbguild.DisableBG) {
@@ -177,21 +162,8 @@ namespace EGG9000.Bot.Commands {
             return props;
         }
 
-        public static Dictionary<Ei.RewardType, string> GetNewRewardDictionary() {
+        public static Dictionary<Ei.RewardType, string> GetRewardDictionary() {
             return new Dictionary<Ei.RewardType, string> {
-                { Ei.RewardType.Artifact, "Artifacts" },
-                { Ei.RewardType.PiggyMultiplier, "Piggy Bank" },
-                { Ei.RewardType.ShellScript, "Shell Tickets" },
-                { Ei.RewardType.Gold, "Golden Eggs" },
-                { Ei.RewardType.Boost, "Any Boost" },
-                { Ei.RewardType.EpicResearchItem, "Epic Research" },
-                { Ei.RewardType.UnknownReward, "** Any Reward **" },
-            };
-        }
-
-        public static Dictionary<Ei.RewardType, string> GetLegacyRewardDictionary() {
-            return new Dictionary<Ei.RewardType, string> {
-                { Ei.RewardType.EggsOfProphecy, "Eggs Of Prophecy" },
                 { Ei.RewardType.Artifact, "Artifacts" },
                 { Ei.RewardType.PiggyMultiplier, "Piggy Bank" },
                 { Ei.RewardType.ShellScript, "Shell Tickets" },
@@ -426,33 +398,39 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            await component.UpdateAsync(x => { x.Components = GetSeasonalPeComponents(index, account, dbuser); x.Embed = SeasonalPeEmbed(dbuser, account).Build(); });
+            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
         }
 
-        private static string GetSeasonalPeText(EggIncAccount account) {
-            var rule = account.Assignment.Get(PermanentRewardKind.SeasonalPe);
-            return rule.Mode switch {
-                ForceMode.AssignIfMissing => "Yes - assign while PE is missing",
-                ForceMode.BelowThreshold => $"Yes - assign when contract score is under {(rule.CsFloor ?? 0):N0}",
-                _ => "Not set (assigned normally)"
+        public static string SeasonalSummary(EggIncAccount account) {
+            var seasonal = account.Assignment.Seasonal ?? new SeasonalRule();
+            var after = seasonal.RewardFilterAfter ? ", then reward filter" : "";
+            return seasonal.Mode switch {
+                SeasonalMode.UntilPeEarned => $"Until PE earned{after}",
+                SeasonalMode.UntilCsGoal => $"Until CS {seasonal.CsGoal:N0}{after}",
+                _ => "Always assign"
             };
         }
 
-        private static EmbedBuilder SeasonalPeEmbed(DBUser dbuser, EggIncAccount account) {
-            var content = "Seasonal PE Filter Text"; // UI: Daveed (text for the seasonal pe filter embed) 
-            return MenuEmbedTemplate("Seasonal PE Menu", content, account, dbuser).AddField("Current Setting", GetSeasonalPeText(account));
+        private static EmbedBuilder SeasonalEmbed(DBUser dbuser, EggIncAccount account) {
+            var content = "Seasonal Contracts are always assigned to you. Choose how long you should keep being assigned to them.";
+            return MenuEmbedTemplate("Seasonal Contracts Menu", content, account, dbuser).AddField("Current Setting", SeasonalSummary(account));
         }
 
-        private static MessageComponent GetSeasonalPeComponents(int index, EggIncAccount account, DBUser dbuser) {
-            var mode = account.Assignment.Get(PermanentRewardKind.SeasonalPe).Mode;
+        private static MessageComponent GetSeasonalComponents(int index, EggIncAccount account, DBUser dbuser) {
+            var seasonal = account.Assignment.Seasonal ?? new SeasonalRule();
+            var mode = seasonal.Mode;
             var builder = new ComponentBuilder().WithSelectMenu($"MCSSeasonalPeSet:{index},{dbuser.DiscordId}", [
-                new("Not set (assigned normally)", "0", isDefault: mode == ForceMode.NotSet),
-                new("Yes - always assign while PE is missing", "1", isDefault: mode == ForceMode.AssignIfMissing),
-                new("Yes - assign when my CXP is below a threshold", "2", isDefault: mode == ForceMode.BelowThreshold),
+                new("Always assign", "0", isDefault: mode == SeasonalMode.AlwaysAssign),
+                new("Assign until I earn the PE", "1", isDefault: mode == SeasonalMode.UntilPeEarned),
+                new("Assign until a CS goal", "2", isDefault: mode == SeasonalMode.UntilCsGoal),
             ]);
 
-            if (mode == ForceMode.BelowThreshold) {
-                builder.WithButton("Change CXP Threshold", $"SeasonalPeThreshModal:{index},{dbuser.DiscordId}");
+            if(mode == SeasonalMode.UntilCsGoal) {
+                builder.WithButton("Set CS Goal", $"SeasonalPeThreshModal:{index},{dbuser.DiscordId}");
+            }
+
+            if(mode == SeasonalMode.UntilPeEarned || mode == SeasonalMode.UntilCsGoal) {
+                builder.WithButton($"Reward filter after: {(seasonal.RewardFilterAfter ? "ON" : "OFF")}", $"MCSSeasonalFilterAfter:{index},{dbuser.DiscordId}");
             }
 
             builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}", ButtonStyle.Secondary);
@@ -465,17 +443,26 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            var mode = int.Parse(component.Data.Values.First()) switch {
-                1 => ForceMode.AssignIfMissing,
-                2 => ForceMode.BelowThreshold,
-                _ => ForceMode.NotSet
-            };
-            var existingFloor = account.Assignment.Get(PermanentRewardKind.SeasonalPe).CsFloor;
-            account.Assignment.SetForce(PermanentRewardKind.SeasonalPe, mode, mode == ForceMode.BelowThreshold ? existingFloor : null);
+            account.Assignment.Seasonal ??= new SeasonalRule();
+            account.Assignment.Seasonal.Mode = (SeasonalMode)int.Parse(component.Data.Values.First());
             account.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Components = GetSeasonalPeComponents(index, account, dbuser); x.Embed = SeasonalPeEmbed(dbuser, account).Build(); });
+            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
+        }
+
+        [ComponentCommand]
+        public static async Task MCSSeasonalFilterAfter(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
+            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
+            var index = int.Parse(data.Split(",")[0]);
+            var account = dbuser.EggIncAccounts[index];
+            account.Assignment.Seasonal ??= new SeasonalRule();
+            account.Assignment.Seasonal.RewardFilterAfter = !account.Assignment.Seasonal.RewardFilterAfter;
+            account.SyncLegacyKeysFromAssignment();
+            dbuser.UpdateAccounts();
+            await db.SaveChangesAsync();
+            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
         }
 
         [ComponentCommand]
@@ -486,11 +473,11 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
 
             var modal = new ModalBuilder()
-                .WithTitleSafe("Set Seasonal CXP Threshold")
+                .WithTitleSafe("Set Seasonal CS Goal")
                 .WithCustomId($"SeasonalPeThreshUpdate:{index},{dbuser.DiscordId}")
                 .AddTextInputSafe(
-                    label: "Assign when contract score is below",
-                    value: (account.Assignment.Get(PermanentRewardKind.SeasonalPe).CsFloor ?? 0).ToString("N0"),
+                    label: "Assign until contract score reaches",
+                    value: (account.Assignment.Seasonal?.CsGoal ?? 0).ToString("N0"),
                     customId: "num",
                     required: true)
                 .Build();
@@ -511,20 +498,21 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            if (!isNum || num <= 0) {
-                var errMsg = $"⚠️ `{numText}` not accepted - enter a positive number (e.g. `5000` or `5k`)";
-                var embed = SeasonalPeEmbed(dbuser, account).AddField("ERROR", errMsg).WithColor(Color.Red).Build();
+            if (!isNum || num < 0) {
+                var errMsg = $"⚠️ `{numText}` not accepted - enter a number 0 or greater (e.g. `5000` or `5k`)";
+                var embed = SeasonalEmbed(dbuser, account).AddField("ERROR", errMsg).WithColor(Color.Red).Build();
                 var components = new ComponentBuilder()
                     .WithButton("Re-enter", $"SeasonalPeThreshModal:{index},{dbuser.DiscordId}")
                     .WithButton("Cancel", $"MCSSeasonalPe:{index},{dbuser.DiscordId}")
                     .Build();
                 await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embed; });
             } else {
-                account.Assignment.SetForce(PermanentRewardKind.SeasonalPe, ForceMode.BelowThreshold, num);
+                account.Assignment.Seasonal ??= new SeasonalRule();
+                account.Assignment.Seasonal.CsGoal = num;
                 account.SyncLegacyKeysFromAssignment();
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
-                await modal.UpdateAsync(x => { x.Components = GetSeasonalPeComponents(index, account, dbuser); x.Embed = SeasonalPeEmbed(dbuser, account).Build(); });
+                await modal.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
             }
         }
 
@@ -815,25 +803,24 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             var builder = new ComponentBuilder();
-            account.Assignment.NewContractRewardFilter ??= [];
+            account.Assignment.RewardFilter ??= [];
 
             var select2 = new SelectMenuBuilder()
                 .WithCustomId($"MCSRewardsSet:{index},{dbuser.DiscordId}")
                 .WithPlaceholder("Rewards Filter")
-                .WithMinValues(0).WithMaxValues(GetNewRewardDictionary().Count);
-            foreach(var item in GetNewRewardDictionary()) {
-                select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: account.Assignment.NewContractRewardFilter.Any(x => x == item.Key));
+                .WithMinValues(0).WithMaxValues(GetRewardDictionary().Count);
+            foreach(var item in GetRewardDictionary()) {
+                select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: account.Assignment.RewardFilter.Any(x => x == item.Key));
             }
             builder.WithSelectMenu(select2);
-            if(account.Assignment.NewContractRewardFilter != null && account.Assignment.NewContractRewardFilter.Count > 0)
+            if(account.Assignment.RewardFilter != null && account.Assignment.RewardFilter.Count > 0)
                 builder.WithButton("Clear Filter (Do all contracts)", $"MCSRewardsClear:{index},{dbuser.DiscordId}");
             builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
             await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = RewardsEmbed(dbuser, account); });
         }
 
         private static Embed RewardsEmbed(DBUser dbuser, EggIncAccount account) {
-            var content = $"**This filter will apply to New Contracts & Leggacy Contracts by default. To set a filter specific for leggacies, use `Leggacy Rewards Filter`.**" +
-                $"\n\nIf you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
+            var content = $"If you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
             return MenuEmbedTemplate("Rewards Filter Menu", content, account, dbuser).Build();
         }
 
@@ -844,11 +831,11 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
 
-            reg.Assignment.NewContractRewardFilter = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
-            if(reg.Assignment.NewContractRewardFilter.Any(x => x == Ei.RewardType.UnknownReward)) {
-                reg.Assignment.NewContractRewardFilter = [];
+            reg.Assignment.RewardFilter = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
+            if(reg.Assignment.RewardFilter.Any(x => x == Ei.RewardType.UnknownReward)) {
+                reg.Assignment.RewardFilter = [];
             }
-            logger.LogInformation("{user}'s rewards updated to {list}", dbuser.DiscordUsername, string.Join(",", reg.Assignment.NewContractRewardFilter.Select(r => r.ToString())));
+            logger.LogInformation("{user}'s rewards updated to {list}", dbuser.DiscordUsername, string.Join(",", reg.Assignment.RewardFilter.Select(r => r.ToString())));
             reg.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
@@ -861,70 +848,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
-            reg.Assignment.NewContractRewardFilter = [];
-            reg.SyncLegacyKeysFromAssignment();
-            dbuser.UpdateAccounts();
-            await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
-        }
-        #endregion
-
-        #region LeggacyRewards
-        [ComponentCommand]
-        public static async Task MCSLeggacyRewards(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var index = int.Parse(data.Split(",")[0]);
-            var account = dbuser.EggIncAccounts[index];
-            var builder = new ComponentBuilder();
-            account.Assignment.LegacyRewardFilter ??= [];
-
-            var select2 = new SelectMenuBuilder()
-                .WithCustomId($"MCSLeggacyRewardsSet:{index},{dbuser.DiscordId}")
-                .WithPlaceholder("Leggacy Rewards Filter")
-                .WithMinValues(0).WithMaxValues(GetLegacyRewardDictionary().Count);
-            foreach(var item in GetLegacyRewardDictionary()) {
-                select2.AddOption(item.Value, ((int)item.Key).ToString(), isDefault: account.Assignment.LegacyRewardFilter.Any(x => x == item.Key));
-            }
-            builder.WithSelectMenu(select2);
-            if(account.Assignment.LegacyRewardFilter != null && account.Assignment.LegacyRewardFilter.Count > 0)
-                builder.WithButton("Clear Filter (Follow main filter)", $"MCSLeggacyRewardsClear:{index},{dbuser.DiscordId}");
-            builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}");
-            await component.UpdateAsync(x => { x.Components = builder.Build(); x.Embed = LeggacyRewardsEmbed(dbuser, dbuser.EggIncAccounts[index]); });
-        }
-
-        private static Embed LeggacyRewardsEmbed(DBUser dbuser, EggIncAccount account) {
-            var content = $"**This filter applies _only_ to Leggacy Contracts. If it is empty, your normal filter will be applied instead**." +
-                $"\n\nIf you only want to do contracts with certain rewards, please select those rewards below. You won't be automatically added to any contract that doesn't contain those rewards. If you select Clear Filter it'll set you to do all contracts regardless of rewards.";
-            return MenuEmbedTemplate("Leggacy Rewards Filter Menu", content, account, dbuser).Build();
-        }
-
-        [ComponentCommand]
-        public static async Task MCSLeggacyRewardsSet(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, ILogger logger) {
-            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var index = int.Parse(data.Split(",")[0]);
-            var reg = dbuser.EggIncAccounts[index];
-
-            reg.Assignment.LegacyRewardFilter = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
-            if(reg.Assignment.LegacyRewardFilter.Any(x => x == Ei.RewardType.UnknownReward)) {
-                reg.Assignment.LegacyRewardFilter = [];
-            }
-            logger.LogInformation("{user}'s leggacy rewards updated to {list}", dbuser.DiscordUsername, string.Join(",", reg.Assignment.LegacyRewardFilter.Select(r => r.ToString())));
-            reg.SyncLegacyKeysFromAssignment();
-            dbuser.UpdateAccounts();
-            await db.SaveChangesAsync();
-            var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
-        }
-        [ComponentCommand]
-        public static async Task MCSLeggacyRewardsClear(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var index = int.Parse(data.Split(",")[0]);
-            var reg = dbuser.EggIncAccounts[index];
-            reg.Assignment.LegacyRewardFilter = [];
+            reg.Assignment.RewardFilter = [];
             reg.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();

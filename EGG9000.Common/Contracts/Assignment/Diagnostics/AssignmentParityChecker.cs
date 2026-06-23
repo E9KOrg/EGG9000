@@ -64,27 +64,39 @@ namespace EGG9000.Common.Contracts.Assignment.Diagnostics {
             return new ParityReport(contract.ID, total, total - mismatches.Count, mismatches);
         }
 
-        // The approved ruling deviations: the new engine no longer skips seasonal-PE players the way
-        // the old SeasonalPeOption did. True when the contract is seasonal AND the old option would
-        // have excluded a player the new engine now lets through.
+        // By-design seasonal deviations under v2 (mandatory Seasonal Contracts, migrated from the old
+        // option). True when a seen old-vs-new mismatch stems from the intended seasonal redesign, not a
+        // regression. The reward-filter collapse / PE-dropped diffs are intentionally NOT flagged here -
+        // those are rarer and left as "unexpected" for human review.
         public static bool IsExpectedSeasonalDeviation(EggIncAccount account, SeasonInfo contractSeason, List<UserSeasonProgress> seasonProgresses) {
             if(contractSeason is null) return false;
+
+            // New-only seasonal capabilities have no old-key equivalent, and the lossy dual-write cannot
+            // represent them, so any seasonal diff they cause is by-design (not a regression):
+            //   - AlwaysAssign keeps force-assigning even after PE (dual-writes to AlwaysAssignIfMissing,
+            //     which the old logic excludes once PE is earned).
+            //   - RewardFilterAfter changes the post-condition behavior the old option cannot express.
+            var seasonal = account.Assignment?.Seasonal;
+            if(seasonal != null && (seasonal.Mode == SeasonalMode.AlwaysAssign || seasonal.RewardFilterAfter))
+                return true;
 
             return ClassifySeasonalDeviation(
                 account.SeasonalPeOption,
                 () => SeasonalPeProgress.IsMissing(account.Id, account.GetGrade(), contractSeason, seasonProgresses));
         }
 
-        // Pure classifier, extracted so it is unit-testable without a full DBUser/Backup graph.
-        // missingPe is evaluated lazily because it is only consulted for the assign-if-missing options.
+        // Pure classifier, unit-testable without a DBUser/Backup graph. Migration maps the old option to
+        // a v2 SeasonalRule (DontAssign/AlwaysAssignIfMissing/NotSet -> UntilPeEarned after=false;
+        // AssignIfBelowThreshold -> UntilCsGoal). On a seasonal contract the intended divergences are:
+        //   - DontAssign: old always excluded; new force-assigns while PE is still missing.
+        //   - NotSet: old always assigned; new excludes once PE is earned (mandatory stop-after-PE).
+        // AlwaysAssignIfMissing and AssignIfBelowThreshold map 1:1 and produce no divergence.
         public static bool ClassifySeasonalDeviation(SeasonalPeOption option, System.Func<bool> missingPe) {
-            if(option == SeasonalPeOption.DontAssign) return true;
-
-            if(option == SeasonalPeOption.AlwaysAssignIfMissing || option == SeasonalPeOption.AssignIfBelowThreshold) {
-                return !missingPe();
-            }
-
-            return false;
+            return option switch {
+                SeasonalPeOption.DontAssign => missingPe(),
+                SeasonalPeOption.NotSet => !missingPe(),
+                _ => false
+            };
         }
     }
 }

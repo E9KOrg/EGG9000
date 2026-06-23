@@ -11,12 +11,12 @@ namespace EGG9000.Common.Contracts.Assignment {
         };
 
         public static readonly IReadOnlyList<IAssignmentRule> Force = new List<IAssignmentRule> {
-            new ColleggtibleForceRule(), new SeasonalPeForceRule()
+            new ColleggtibleForceRule(), new SeasonalContractsRule()
         };
 
-        // Reward filters run before the previously-completed check (matches legacy order).
+        // Reward filter runs before the previously-completed check (matches legacy order).
         public static readonly IReadOnlyList<IAssignmentRule> Include = new List<IAssignmentRule> {
-            new NewRewardFilterRule(), new LegacyRewardFilterRule(), new PreviouslyCompletedRule()
+            new RewardFilterRule(), new PreviouslyCompletedRule()
         };
 
         public static IReadOnlyList<IAssignmentRule> All => Gate.Concat(Force).Concat(Include).ToList();

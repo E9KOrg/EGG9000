@@ -1,42 +1,21 @@
 using EGG9000.Common.Helpers;
 
-using System.Collections.Generic;
-
 namespace EGG9000.Common.Contracts.Assignment {
     internal static class IncludeRuleHelpers {
         public static GradeRewardFacts GradeOrNull(ContractFacts c, Ei.Contract.Types.PlayerGrade grade) =>
             c.GradeRewards != null && c.GradeRewards.TryGetValue(grade, out var g) ? g : null;
-
-        // Mirrors GetRegisterRewards: legacy contracts use the legacy list, falling back to the new
-        // list when legacy is empty; new contracts always use the new list.
-        public static IReadOnlyList<Ei.RewardType> EffectiveFilter(ContractFacts c, AssignmentSettings s) {
-            if(c.IsLegacy)
-                return s.LegacyRewardFilter != null && s.LegacyRewardFilter.Count > 0 ? s.LegacyRewardFilter : s.NewContractRewardFilter;
-            return s.NewContractRewardFilter;
-        }
     }
 
-    public sealed class NewRewardFilterRule : IAssignmentRule {
-        public AssignmentRuleId Id => AssignmentRuleId.NewRewardFilter;
+    // One reward filter for all contracts (the new/legacy split is gone). Empty filter = match all.
+    // PE is never in the filter; seasonal PE is governed by SeasonalContractsRule.
+    public sealed class RewardFilterRule : IAssignmentRule {
+        public AssignmentRuleId Id => AssignmentRuleId.RewardFilter;
         public RuleTier Tier => RuleTier.Include;
-        public bool AppliesTo(ContractFacts c) => !c.IsLegacy;
+        public bool AppliesTo(ContractFacts c) => true;
         public RuleOutcome Evaluate(AccountFacts f, ContractFacts c, AssignmentSettings s) {
             var grade = IncludeRuleHelpers.GradeOrNull(c, f.Grade);
             if(grade is null) return RuleOutcome.Exclude;
-            return RewardMatch.Matches(grade, s.NewContractRewardFilter, f.CompletedGoalsOnThisContract)
-                ? RuleOutcome.Pass : RuleOutcome.Exclude;
-        }
-        public string Describe(RuleOutcome o) => "Rewards not selected";
-    }
-
-    public sealed class LegacyRewardFilterRule : IAssignmentRule {
-        public AssignmentRuleId Id => AssignmentRuleId.LegacyRewardFilter;
-        public RuleTier Tier => RuleTier.Include;
-        public bool AppliesTo(ContractFacts c) => c.IsLegacy;
-        public RuleOutcome Evaluate(AccountFacts f, ContractFacts c, AssignmentSettings s) {
-            var grade = IncludeRuleHelpers.GradeOrNull(c, f.Grade);
-            if(grade is null) return RuleOutcome.Exclude;
-            return RewardMatch.Matches(grade, IncludeRuleHelpers.EffectiveFilter(c, s), f.CompletedGoalsOnThisContract)
+            return RewardMatch.Matches(grade, s.RewardFilter, f.CompletedGoalsOnThisContract)
                 ? RuleOutcome.Pass : RuleOutcome.Exclude;
         }
         public string Describe(RuleOutcome o) => "Rewards not selected";
@@ -65,9 +44,8 @@ namespace EGG9000.Common.Contracts.Assignment {
             var grade = IncludeRuleHelpers.GradeOrNull(c, f.Grade);
             if(c.HadTwoRewards && grade != null && grade.GoalRewards.Count == 3 && f.CompletedExactlyTwoGoals) {
                 if(!s.TwoToThree) return RuleOutcome.Exclude;
-                var filter = IncludeRuleHelpers.EffectiveFilter(c, s);
-                if(filter.Count == 0) return RuleOutcome.Pass;
-                foreach(var r in filter)
+                if(s.RewardFilter == null || s.RewardFilter.Count == 0) return RuleOutcome.Pass;
+                foreach(var r in s.RewardFilter)
                     if(RewardMatch.MatchesLast(grade, r)) return RuleOutcome.Pass;
                 return RuleOutcome.Exclude;
             }

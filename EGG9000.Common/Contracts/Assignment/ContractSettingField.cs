@@ -16,6 +16,8 @@ namespace EGG9000.Common.Contracts.Assignment {
         private const int MaxRedoThreshold = 90000;
 
         public static ContractSettingResult Apply(AssignmentSettings s, string field, string value) {
+            s.Seasonal ??= new SeasonalRule();
+            s.Redo ??= new RedoRule();
             switch(field) {
                 case "colleggtible":
                     return ParseBool(value, out var coll)
@@ -31,36 +33,21 @@ namespace EGG9000.Common.Contracts.Assignment {
                 case "redoThreshold":
                     if(!int.TryParse(value, out var rt) || rt < 0 || rt > MaxRedoThreshold) return Bad();
                     return Set(() => s.Redo.ScoreThreshold = rt);
-                case "seasonalPeMode":
-                    return ApplySeasonalPeMode(s, value);
-                case "seasonalPeFloor":
-                    if(!double.TryParse(value, out var floor) || floor < 0) return Bad();
-                    return Set(() => s.SetForce(PermanentRewardKind.SeasonalPe, ForceMode.BelowThreshold, floor));
-                case "newRewardFilter":
-                    return ParseRewards(value, out var nf)
-                        ? Set(() => s.NewContractRewardFilter = nf.Where(r => r != Ei.RewardType.EggsOfProphecy && r != Ei.RewardType.UnknownReward).ToList())
-                        : Bad();
-                case "legacyRewardFilter":
-                    return ParseRewards(value, out var lf)
-                        ? Set(() => s.LegacyRewardFilter = lf.Where(r => r != Ei.RewardType.UnknownReward).ToList())
+                case "seasonalMode":
+                    if(!int.TryParse(value, out var sm) || !Enum.IsDefined(typeof(SeasonalMode), sm)) return Bad();
+                    return Set(() => s.Seasonal.Mode = (SeasonalMode)sm);
+                case "seasonalCsGoal":
+                    if(!double.TryParse(value, out var goal) || goal < 0) return Bad();
+                    return Set(() => s.Seasonal.CsGoal = goal);
+                case "seasonalRewardFilterAfter":
+                    return ParseBool(value, out var after) ? Set(() => s.Seasonal.RewardFilterAfter = after) : Bad();
+                case "rewardFilter":
+                    return ParseRewards(value, out var rf)
+                        ? Set(() => s.RewardFilter = rf.Where(r => r != Ei.RewardType.EggsOfProphecy && r != Ei.RewardType.UnknownReward).ToList())
                         : Bad();
                 default:
                     return new ContractSettingResult(ContractSettingApplyStatus.UnknownField);
             }
-        }
-
-        private static ContractSettingResult ApplySeasonalPeMode(AssignmentSettings s, string value) {
-            if(!int.TryParse(value, out var v)) return Bad();
-            // 0/1/2 only; 3 (skip) is removed and rejected.
-            var mode = v switch {
-                0 => ForceMode.NotSet,
-                1 => ForceMode.AssignIfMissing,
-                2 => ForceMode.BelowThreshold,
-                _ => (ForceMode?)null
-            };
-            if(mode is null) return Bad();
-            var existingFloor = s.Get(PermanentRewardKind.SeasonalPe).CsFloor;
-            return Set(() => s.SetForce(PermanentRewardKind.SeasonalPe, mode.Value, mode == ForceMode.BelowThreshold ? existingFloor : null));
         }
 
         private static bool ParseBool(string value, out bool result) => bool.TryParse(value, out result);

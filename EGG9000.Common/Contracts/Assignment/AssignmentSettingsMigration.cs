@@ -12,11 +12,11 @@ namespace EGG9000.Common.Contracts.Assignment {
                     new() {
                         Kind = PermanentRewardKind.Colleggtible,
                         Mode = a.DoUnfinishedCollegtibles ? ForceMode.AssignIfMissing : ForceMode.NotSet
-                    },
-                    SeasonalPeRule(a)
+                    }
                 },
-                NewContractRewardFilter = CleanNew(a.AutoRegisterRewards),
-                LegacyRewardFilter = CleanLegacy(a.LeggacyAutoRegisterRewards),
+                RewardFilter = SingleRewardFilter(a),
+                LegacyRewardFilter = new List<Ei.RewardType>(),
+                Seasonal = SeasonalFromOption(a),
                 Redo = new RedoRule {
                     Mode = a.RedoLeggacySelection,
                     ScoreThreshold = a.RedoScoreThreshold,
@@ -26,34 +26,21 @@ namespace EGG9000.Common.Contracts.Assignment {
             };
         }
 
-        private static PermanentRewardRule SeasonalPeRule(EggIncAccount a) {
-            var rule = new PermanentRewardRule { Kind = PermanentRewardKind.SeasonalPe };
-            switch(a.SeasonalPeOption) {
-                case SeasonalPeOption.AlwaysAssignIfMissing:
-                    rule.Mode = ForceMode.AssignIfMissing;
-                    break;
-                case SeasonalPeOption.AssignIfBelowThreshold:
-                    rule.Mode = ForceMode.BelowThreshold;
-                    rule.CsFloor = a.SeasonalPeThreshold;
-                    break;
-                // DontAssign (skip) is removed by ruling -> treat as assigned-normally.
-                default:
-                    rule.Mode = ForceMode.NotSet;
-                    break;
-            }
-            return rule;
-        }
-
-        // PE dropped from the new filter; the "any reward" sentinel was never a real filter entry.
-        private static List<Ei.RewardType> CleanNew(List<Ei.RewardType> source) =>
-            (source ?? new List<Ei.RewardType>())
+        // Legacy list wins if set, else the main list; PE and the "any reward" sentinel are stripped.
+        private static List<Ei.RewardType> SingleRewardFilter(EggIncAccount a) {
+            var source = a.LeggacyAutoRegisterRewards is { Count: > 0 } ? a.LeggacyAutoRegisterRewards : a.AutoRegisterRewards;
+            return (source ?? new List<Ei.RewardType>())
                 .Where(r => r != Ei.RewardType.EggsOfProphecy && r != Ei.RewardType.UnknownReward)
                 .ToList();
+        }
 
-        // PE retained in the legacy filter; only the "any reward" sentinel is stripped.
-        private static List<Ei.RewardType> CleanLegacy(List<Ei.RewardType> source) =>
-            (source ?? new List<Ei.RewardType>())
-                .Where(r => r != Ei.RewardType.UnknownReward)
-                .ToList();
+        // Seasonal is mandatory in v2. The old "skip"/not-set states all migrate to assign-until-PE.
+        private static SeasonalRule SeasonalFromOption(EggIncAccount a) {
+            if(a.SeasonalPeOption == SeasonalPeOption.AssignIfBelowThreshold)
+                return new SeasonalRule { Mode = SeasonalMode.UntilCsGoal, CsGoal = a.SeasonalPeThreshold, RewardFilterAfter = false };
+
+            // NotSet, AlwaysAssignIfMissing, and DontAssign (skip removed) all become assign-until-PE.
+            return new SeasonalRule { Mode = SeasonalMode.UntilPeEarned, RewardFilterAfter = false };
+        }
     }
 }
