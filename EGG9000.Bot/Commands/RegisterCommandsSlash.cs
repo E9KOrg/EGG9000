@@ -252,13 +252,13 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
-            return _Register(command, db, _client, bugsnag, eggincid, user, logger);
+            return _Register(command, db, _client, bugsnag, eggincid, user, logger, isStaff: true);
         }
         [SlashCommand(Description = "Register your EggInc account with the bot")]
         public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
             return _Register(command, db, _client, bugsnag, eggincid, command.User, logger);
         }
-        public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger) {
+        public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger, bool isStaff = false) {
             eggincid = eggincid.ToUpper();
 
             if(!Regex.IsMatch(eggincid, @"^EI\d{16}$")) {
@@ -266,7 +266,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            await command.DeferAsync();
+            await command.DeferAsync(ephemeral: !isStaff);
 
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
