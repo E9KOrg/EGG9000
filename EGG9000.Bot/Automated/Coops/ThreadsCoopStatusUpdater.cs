@@ -11,6 +11,8 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
+using EGG9000.Common.Coops;
+using EGG9000.Common.Helpers.AfxSets;
 using EGG9000.Common.Services;
 
 using Ei;
@@ -32,6 +34,7 @@ using Polly;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
@@ -803,20 +806,39 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
 
                 var usersToCheckDeflector = usersWithStatus.Where(x => x.Status is not null && !x.Status.BuffHistory.Any(y => y.EggLayingRate > 0) && x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Where(y => y.Status is not null).Max(y => y.Status.Projected) / 2);
-                var usersNeedToAddDeflector = new List<UserWithStatus>();
+                var usersNeedToAddDeflector = new List<(UserWithStatus User, List<EggIncArtifactInstance> RecommendedSet)>();
                 if(!coop.FinishedOrFailed() && coop.CoopEnds > DateTimeOffset.UtcNow) {
                     foreach(var user in usersToCheckDeflector) {
                         var farm = user.Backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
-                        if(farm is not null && !farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts().Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
-                            usersNeedToAddDeflector.Add(user);
+                        if(farm is null) continue;
+                        if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) continue;
+                        if(!user.Backup.GetAvailableArtifacts().Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) continue;
+
+                        var withTachyonResult = ArtifactCombos.FindBestComboSet(user.Backup, farm, coop, withTachyon: true, allowChangingStones: false, customEggs, _logger);
+                        var withoutTachyonResult = ArtifactCombos.FindBestComboSet(user.Backup, farm, coop, withTachyon: false, allowChangingStones: false, customEggs, _logger);
+
+                        if(withTachyonResult is not null && withTachyonResult.Value.Rate > (withoutTachyonResult?.Rate ?? 0)) {
+                            usersNeedToAddDeflector.Add((user, withTachyonResult.Value.Artifacts));
                         }
                     }
                 }
 
 
 
-                if(usersNeedToAddDeflector.Any()) {
-                    lastMessage += $"\n\n**The following users have a Tachyon Deflector they should equip:** {string.Join(", ", usersNeedToAddDeflector.Select(y => y.DiscordUser?.Mention ?? $"<@{y.User?.DiscordId}>"))}";
+                foreach(var (deflectorUser, recommendedSet) in usersNeedToAddDeflector) {
+                    var mention = deflectorUser.DiscordUser?.Mention ?? $"<@{deflectorUser.User?.DiscordId}>";
+                    var (b64, renderError) = await AfxSetsRender.RenderSingleSetB64(recommendedSet);
+                    if(b64 is not null) {
+                        var capturedMention = mention;
+                        var capturedB64 = b64;
+                        _queue.EnqueueLow(async () => {
+                            using var file = new FileAttachment(new MemoryStream(Convert.FromBase64String(capturedB64)), "TachyonSuggestion.jpeg", "Recommended Artifact Set");
+                            await coopThread.SendFilesAsync([file], text: $"{capturedMention} should equip their **Tachyon Deflector**. Recommended set:");
+                        });
+                    } else {
+                        _logger.LogWarning("Tachyon image render failed for {user}: {error}", deflectorUser.User?.DiscordId, renderError);
+                        lastMessage += $"\n\n{mention} should equip their **Tachyon Deflector**.";
+                    }
                 }
 
 
