@@ -26,12 +26,26 @@ namespace EGG9000.Site.Services {
         private readonly IWebHostEnvironment _env = env;
 
         private const string BackgroundHex = "#242422";
+        // Background for the best (highest-rate) set so the winning combo reads as green at a glance.
+        private const string BestBackgroundHex = "#274629";
 
         public sealed class RenderResult {
             public byte[] Jpeg { get; init; }
             public ArtifactOverlayManifest Manifest { get; init; }
             public string Error { get; init; }
             public bool Ok => Error is null;
+        }
+
+        // Picks which candidate set wins (highest rate) so the page never decides the "best" itself - it
+        // asks the renderer, then renders that one set with highlightBest: true. Returns -1 when there are
+        // no candidates. Ties go to the first occurrence.
+        public static int BestSetIndex(IReadOnlyList<double> rates) {
+            if(rates is null || rates.Count == 0) return -1;
+            var bestIndex = 0;
+            for(var i = 1; i < rates.Count; i++) {
+                if(rates[i] > rates[bestIndex]) bestIndex = i;
+            }
+            return bestIndex;
         }
 
         // Convenience overload for the site: picks a near-square grid the same way the bot's InventoryB64
@@ -79,7 +93,7 @@ namespace EGG9000.Site.Services {
 
         // A single farm's active artifacts as one row of slots, with the same hover targets. Used inline by
         // the Ships & Farms cards in place of the old text list.
-        public RenderResult RenderSet(IReadOnlyList<EggIncArtifactInstance> artifacts) {
+        public RenderResult RenderSet(IReadOnlyList<EggIncArtifactInstance> artifacts, bool highlightBest = false) {
             var slots = artifacts?.Where(a => a is not null).ToList() ?? new List<EggIncArtifactInstance>();
             if(slots.Count == 0) return new RenderResult { Error = "No artifacts." };
 
@@ -92,7 +106,7 @@ namespace EGG9000.Site.Services {
             var height = afSize + (padding * 2);
 
             using var baseImage = new Image<Rgba32>(width, height);
-            baseImage.Mutate(x => x.Fill(Color.ParseHex(BackgroundHex)));
+            baseImage.Mutate(x => x.Fill(Color.ParseHex(highlightBest ? BestBackgroundHex : BackgroundHex)));
 
             var manifest = new ArtifactOverlayManifest { Width = width, Height = height };
 
