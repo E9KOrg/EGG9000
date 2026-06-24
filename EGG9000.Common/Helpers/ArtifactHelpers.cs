@@ -354,6 +354,35 @@ namespace EGG9000.Common.Helpers {
             return (rows, columns);
         }
 
+        // Builds a valid sample artifact set from a backup: at most four artifacts, one per family (the
+        // game never equips two of the same family), optionally including/excluding a deflector
+        // (CoopMembersEggLayingRates). `familyOffset` rotates the family pick order so different sample
+        // sets look distinct. Used to synthesise display sets (e.g. the DEV combos preview) without the
+        // page hand-rolling family-uniqueness rules.
+        public static List<EggIncArtifactInstance> BuildSampleSet(CustomBackup backup, bool withDeflector, int familyOffset = 0) {
+            if(backup?.ArtifactHall is null) return new List<EggIncArtifactInstance>();
+
+            var byFamily = backup.ArtifactHall
+                .Where(a => a.Count > 0 && a.Artifact is not null && !a.Artifact.Artifact.Contains("Stone", StringComparison.OrdinalIgnoreCase))
+                .Select(a => a.Artifact)
+                .GroupBy(a => a.Artifact) // artifact name resolves 1:1 to family
+                .Select(g => g.OrderByDescending(a => a.Rarity).ThenByDescending(a => a.Tier).First())
+                .ToList();
+
+            var deflectors = byFamily.Where(a => a.Boost == EGG9000.Common.JsonData.EiStatics.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+            var others = byFamily.Where(a => a.Boost != EGG9000.Common.JsonData.EiStatics.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+
+            var set = new List<EggIncArtifactInstance>();
+            if(withDeflector && deflectors.Count > 0) set.Add(deflectors[0]);
+
+            var slotsLeft = 4 - set.Count;
+            for(var i = 0; i < slotsLeft && others.Count > 0; i++) {
+                set.Add(others[(familyOffset + i) % others.Count]);
+            }
+            // Drop any accidental family duplicates from the offset wrap, then cap at four.
+            return set.GroupBy(a => a.Artifact).Select(g => g.First()).Take(4).ToList();
+        }
+
         public static List<ArtifactCount> GetOrderedInventory(EggIncAccount account) {
             if(account is null || account.Backup is null || account.Backup.ArtifactHall is null) return null;
             // Copy each ArtifactCount so collapsing duplicates never mutates the live backup. The same
