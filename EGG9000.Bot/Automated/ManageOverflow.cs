@@ -227,10 +227,13 @@ namespace EGG9000.Bot.Automated {
             foreach(var overflowServer in overflowServers) {
                 var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == originalRole.Name);
                 if(overflowRole != null) {
+                    var syncColors = overflowServer.Features.HasEnhancedRoleColors
+                        ? updatedRole.Colors
+                        : RoleColors.Solid(updatedRole.Colors.PrimaryColor);
                     try {
                         await overflowRole.ModifyAsync(x => {
                             x.Name = updatedRole.Name;
-                            x.Colors = updatedRole.Colors;
+                            x.Colors = syncColors;
                             x.Permissions = updatedRole.Permissions;
 
                             /**
@@ -260,14 +263,19 @@ namespace EGG9000.Bot.Automated {
                     if(cancellationToken.IsCancellationRequested) break;
 
                     IRole overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
+                    // Overflow servers usually aren't boosted high enough for EnhancedRoleColors;
+                    // a gradient/holographic RoleColors throws there, so downgrade to a solid color.
+                    var syncColors = overflowServer.Features.HasEnhancedRoleColors
+                        ? role.Colors
+                        : RoleColors.Solid(role.Colors.PrimaryColor);
                     if(overflowRole is null) {
-                        overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: role.Colors);
+                        overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: syncColors);
                     }/* else if(overflowRole.Icon is null && role.Icon is not null) {
                     }*/
                     else if(!role.Permissions.Equals(overflowRole.Permissions)) {
                         await overflowRole.ModifyAsync(x => {
                             x.Name = role.Name;
-                            x.Colors = role.Colors;
+                            x.Colors = syncColors;
                             x.Permissions = role.Permissions;
                         });
                     }

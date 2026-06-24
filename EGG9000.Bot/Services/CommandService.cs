@@ -438,7 +438,8 @@ namespace EGG9000.Bot.Services {
                     _logger.LogDebug("Autocomplete {Handler} completed in {Ms}ms", handler.Name, acSw.ElapsedMilliseconds);
                 } catch(Exception ex) {
                     var inner = ex is System.Reflection.TargetInvocationException ? ex.InnerException : ex;
-                    _logger.LogWarning("Autocomplete {Handler} failed after {Ms}ms: {Message}", handler.Name, acSw.ElapsedMilliseconds, inner?.Message);
+                    _logger.LogWarning(inner ?? ex, "Autocomplete {Handler} failed after {Ms}ms in guild {GuildId} (input: '{Input}')",
+                        handler.Name, acSw.ElapsedMilliseconds, arg.GuildId, arg.Data?.Current?.Value);
                     if(inner is not TimeoutException)
                         _bugsnag.Notify(inner ?? ex);
                 }
