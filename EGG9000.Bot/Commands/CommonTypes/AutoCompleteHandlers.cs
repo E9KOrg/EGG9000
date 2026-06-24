@@ -219,7 +219,11 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly DatabaseCache _dbCache = dbCache;
 
             public async Task Run(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                if(arg.GuildId is not ulong guildId) {
+                    await arg.RespondAsync(null, []);
+                    return;
+                }
+                var guild = guilds.FirstOrDefault(x => x.Id == guildId || x.OverflowServers.Contains(guildId));
                 if(guild == null) {
                     await arg.RespondAsync(null, []);
                     return;
