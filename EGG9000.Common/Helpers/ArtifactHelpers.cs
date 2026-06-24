@@ -356,8 +356,11 @@ namespace EGG9000.Common.Helpers {
 
         public static List<ArtifactCount> GetOrderedInventory(EggIncAccount account) {
             if(account is null || account.Backup is null || account.Backup.ArtifactHall is null) return null;
-            var orderedList = account.Backup.ArtifactHall.Where(a => a.Count > 0).ToList().OrderByDescending(i => i.Artifact.Rarity).ToList().Select(a => new InventoryArtifactCount() {
-                AF = a, Skip = false
+            // Copy each ArtifactCount so collapsing duplicates never mutates the live backup. The same
+            // ArtifactHall objects feed the fairness-score / cheater checks and get reused across renders;
+            // writing Count back into them inflated stacks and produced false cheater pings.
+            var orderedList = account.Backup.ArtifactHall.Where(a => a.Count > 0).OrderByDescending(i => i.Artifact.Rarity).Select(a => new InventoryArtifactCount() {
+                AF = new ArtifactCount { Count = a.Count, Artifact = a.Artifact, NumberCrafted = a.NumberCrafted }, Skip = false
             }).ToList();
             var rarityGroupedAfs = orderedList.GroupBy(a => a.AF.Artifact.Rarity).ToList();
             orderedList = new List<InventoryArtifactCount>();
@@ -367,7 +370,7 @@ namespace EGG9000.Common.Helpers {
             foreach(var acount in orderedList.Where(a => !a.Skip && a.AF.Artifact.Stones?.Count == 0)) {
                 var others = orderedList.Where(a => acount.AF.Artifact.Equals(a.AF.Artifact) && orderedList.IndexOf(a) != orderedList.IndexOf(acount)).ToList();
                 foreach(var other in others) other.Skip = true;
-                acount.AF.Count += others.Count;
+                acount.AF.Count += others.Sum(o => o.AF.Count);
             }
             return orderedList.Where(a => !a.Skip).Select(a => a.AF).ToList();
         }

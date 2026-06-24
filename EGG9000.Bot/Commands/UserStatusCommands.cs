@@ -46,21 +46,32 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
+            var socketGuild = dbuser.GuildId > 0 ? _client.GetGuild(dbuser.GuildId) : null;
+
             if(pullFreshBackup) {
                 var cachedContracts = await db.CachedEiContractsAsync();
                 foreach(var account in dbuser.EggIncAccounts) {
+                    // Capture before RefreshBackupAsync - the Backup setter auto-syncs account.SubscriptionLevel.
+                    var oldLevel = account.SubscriptionLevel;
                     var backup = await AccountRefresh.RefreshBackupAsync(account, cachedContracts, logger);
                     if(backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;
                     }
                     await AccountRefresh.ApplyExtrasAsync(dbuser, account, db, logger);
+                    await EnforceUltraAsync(_client, dbGuild, socketGuild, dbuser, account, logger, oldLevel);
                 }
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
+            } else {
+                // No API pull, but still enforce ULTRA roles + log so any userstatus update reconciles them.
+                foreach(var account in dbuser.EggIncAccounts) {
+                    await EnforceUltraAsync(_client, dbGuild, socketGuild, dbuser, account, logger, account.SubscriptionLevel);
+                }
             }
 
-            var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
+            var guild = dbGuild;
             var builders = await AccountsString(db, dbuser, admin);
             var lastBuilder = builders.LastOrDefault();
             if(lastBuilder.Footer == null) lastBuilder.WithFooter("");
@@ -90,6 +101,11 @@ namespace EGG9000.Bot.Commands {
             }
 
             await command.RespondAsync("", embeds: builders.Select(builder => builder.Build()).ToArray(), ephemeral: !showInChannel);
+        }
+
+        static async Task EnforceUltraAsync(DiscordHostedService _client, Guild dbGuild, SocketGuild socketGuild, DBUser dbuser, EggIncAccount account, ILogger logger, Ei.UserSubscriptionInfo.Types.Level? oldLevel) {
+            if(dbGuild is null || socketGuild is null) return;
+            await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, socketGuild, dbGuild, dbuser, account, logger, oldLevel);
         }
 
         static async internal Task<List<EmbedBuilder>> AccountsString(ApplicationDbContext db, DBUser user, bool admin) {
