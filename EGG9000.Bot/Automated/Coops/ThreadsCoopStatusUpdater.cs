@@ -809,6 +809,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var usersNeedToAddDeflector = new List<(UserWithStatus User, List<EggIncArtifactInstance> RecommendedSet)>();
                 if(!coop.FinishedOrFailed() && coop.CoopEnds > DateTimeOffset.UtcNow) {
                     foreach(var user in usersToCheckDeflector) {
+                        if(user.Xref?.TachyonDeflectorNotified == true) continue;
                         var farm = user.Backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
                         if(farm is null) continue;
                         if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) continue;
@@ -839,6 +840,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         _logger.LogWarning("Tachyon image render failed for {user}: {error}", deflectorUser.User?.DiscordId, renderError);
                         lastMessage += $"\n\n{mention} should equip their **Tachyon Deflector**.";
                     }
+                    if(deflectorUser.Xref is not null) deflectorUser.Xref.TachyonDeflectorNotified = true;
                 }
 
 

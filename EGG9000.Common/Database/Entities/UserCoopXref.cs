@@ -82,6 +82,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool OutsideCoop { get; set; }
         public bool HasTachyonDeflector { get; set; }
         public bool EquipedTachyonDeflector { get; set; }
+        public bool TachyonDeflectorNotified { get; set; }
         public bool PingOnFull { get; set; }
         public bool PingOnHighestEB { get; set; }
         public bool PingOnFinished { get; set; }

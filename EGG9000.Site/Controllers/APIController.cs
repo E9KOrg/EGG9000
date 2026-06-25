@@ -33,6 +33,40 @@ namespace EGG9000.Site.Controllers {
         private readonly IWebHostEnvironment _env = env;
         private readonly EGG9000.Site.Services.ArtifactImageRenderer _renderer = renderer;
 
+        private void DrawArtifactCell(Image<Rgba32> canvas, EggIncArtifactInstance inst, int cellX, int rowY, AfxSetsCreatorConfig config) {
+            var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
+            var afName = inst.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
+            var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? inst.Tier + 1 : inst.Tier);
+
+            var bg = inst.Rarity switch {
+                1 => Color.ParseHex("#383834"),
+                2 => Color.ParseHex("#6cb6d9"),
+                3 => Color.ParseHex("#b72de0"),
+                4 => Color.ParseHex("#f2d61b"),
+                _ => Color.ParseHex("#383834")
+            };
+
+            var afImagePath = GetWWWRelativePath(["images/artifacts", afName, $"{afName}_{afTier}.png"]);
+            if(afImagePath == null) return;
+            using var afImage = Image.Load(afImagePath);
+            afImage.Mutate(i => i.Resize(new Size(config.AFSize, config.AFSize)));
+
+            using var background = BackgroundImage(bg, config.AFSize, config.AFCornerRadius);
+            background.Mutate(i => i.DrawImage(afImage, new Point(0, 0), 1f));
+            canvas.Mutate(b => b.DrawImage(background, new Point(cellX, rowY), 1f));
+
+            var stoneIndex = 1;
+            foreach(var stone in inst.Stones ?? []) {
+                var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
+                var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
+                if(stonePath == null) continue;
+                using var stoneImage = Image.Load(stonePath);
+                stoneImage.Mutate(i => i.Resize(new Size(config.StoneSize, config.StoneSize), true));
+                canvas.Mutate(b => b.DrawImage(stoneImage, new Point(cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5)), 1f));
+                stoneIndex++;
+            }
+        }
+
         private string GetWWWRelativePath(List<string> relativePathJoins) {
             var imageDur = _env.WebRootPath;
             // If there are additional path segments, combine them with the root path
@@ -203,40 +237,8 @@ namespace EGG9000.Site.Controllers {
                     }
 
                     for(var c = 0; c < set.Count && c < config.SlotsPerRow; c++) {
-                        var inst = set[c];
                         var cellX = config.LabelWidth + config.Padding * (c + 1) + c * config.AFSize;
-
-                        var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
-                        var afName = inst.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
-                        var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? inst.Tier + 1 : inst.Tier);
-
-                        var bg = inst.Rarity switch {
-                            1 => Color.ParseHex("#383834"),
-                            2 => Color.ParseHex("#6cb6d9"),
-                            3 => Color.ParseHex("#b72de0"),
-                            4 => Color.ParseHex("#f2d61b"),
-                            _ => Color.ParseHex("#383834")
-                        };
-
-                        var afImagePath = GetWWWRelativePath(["images/artifacts", afName, $"{afName}_{afTier}.png"]);
-                        if(afImagePath == null) continue;
-                        using var afImage = Image.Load(afImagePath);
-                        afImage.Mutate(i => i.Resize(new Size(config.AFSize, config.AFSize)));
-
-                        using var background = BackgroundImage(bg, config.AFSize, config.AFCornerRadius);
-                        background.Mutate(i => i.DrawImage(afImage, new Point(0, 0), 1f));
-                        pageImage.Mutate(b => b.DrawImage(background, new Point(cellX, rowY), 1f));
-
-                        var stoneIndex = 1;
-                        foreach(var stone in inst.Stones ?? []) {
-                            var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
-                            var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
-                            if(stonePath == null) continue;
-                            using var stoneImage = Image.Load(stonePath);
-                            stoneImage.Mutate(i => i.Resize(new Size(config.StoneSize, config.StoneSize), true));
-                            pageImage.Mutate(b => b.DrawImage(stoneImage, new Point(cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5)), 1f));
-                            stoneIndex++;
-                        }
+                        DrawArtifactCell(pageImage, set[c], cellX, rowY, config);
                     }
                 }
 
@@ -282,38 +284,7 @@ namespace EGG9000.Site.Controllers {
                 var inst = request.Artifacts[c];
                 if(inst is null) continue;
                 var cellX = config.LabelWidth + config.Padding * (c + 1) + c * config.AFSize;
-
-                var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
-                var afName = inst.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
-                var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? inst.Tier + 1 : inst.Tier);
-
-                var bg = inst.Rarity switch {
-                    1 => Color.ParseHex("#383834"),
-                    2 => Color.ParseHex("#6cb6d9"),
-                    3 => Color.ParseHex("#b72de0"),
-                    4 => Color.ParseHex("#f2d61b"),
-                    _ => Color.ParseHex("#383834")
-                };
-
-                var afImagePath = GetWWWRelativePath(["images/artifacts", afName, $"{afName}_{afTier}.png"]);
-                if(afImagePath == null) continue;
-                using var afImage = Image.Load(afImagePath);
-                afImage.Mutate(i => i.Resize(new Size(config.AFSize, config.AFSize)));
-
-                using var background = BackgroundImage(bg, config.AFSize, config.AFCornerRadius);
-                background.Mutate(i => i.DrawImage(afImage, new Point(0, 0), 1f));
-                pageImage.Mutate(b => b.DrawImage(background, new Point(cellX, rowY), 1f));
-
-                var stoneIndex = 1;
-                foreach(var stone in inst.Stones ?? []) {
-                    var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
-                    var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
-                    if(stonePath == null) continue;
-                    using var stoneImage = Image.Load(stonePath);
-                    stoneImage.Mutate(i => i.Resize(new Size(config.StoneSize, config.StoneSize), true));
-                    pageImage.Mutate(b => b.DrawImage(stoneImage, new Point(cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5)), 1f));
-                    stoneIndex++;
-                }
+                DrawArtifactCell(pageImage, inst, cellX, rowY, config);
             }
 
             using var ms = new MemoryStream();
