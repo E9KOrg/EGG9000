@@ -299,7 +299,7 @@ namespace EGG9000.Bot.Commands {
                 .ToListAsync();
             if(existingAccountColumns.Any(u => DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte).EggIncAccounts.Any(a => a.Id.ToUpper() == eggincid))) {
                 await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
-                if (!isStaff) await NotifyStaffChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{command.Channel.Id}>, but it's already registered to another user.");
+                if (!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{command.Channel.Id}>, but it's already registered to another user.");
                 return;
             }
 
@@ -320,7 +320,7 @@ namespace EGG9000.Bot.Commands {
                     m.Content = "";
                     m.Embed = EmbedError($"Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by 16 numbers.");
                 });
-                if(!isStaff) await NotifyStaffChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{command.Channel.Id}>, but no valid backup was returned. Could be an invalid ID or API issue.");
+                if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{command.Channel.Id}>, but no valid backup was returned. Could be an invalid ID or API issue.");
                 return;
             }
 
@@ -340,7 +340,7 @@ namespace EGG9000.Bot.Commands {
             } else {
                 if(dbuser.EggIncAccounts.Any(y => y.Id == backup.EggIncId)) {
                     await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"You have already registered this EggInc ID with the bot."); });
-                    if (!isStaff) await NotifyStaffChannel($"{user.Mention} tried to register EggInc ID `{backup.EggIncId}` in <#{command.Channel.Id}>, but it's already registered to the same user.");
+                    if (!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{backup.EggIncId}` in <#{command.Channel.Id}>, but it's already registered to the same user.");
                     return;
                 }
                 if(dbuser.EggIncAccounts.Count == 0) {
@@ -431,11 +431,11 @@ namespace EGG9000.Bot.Commands {
 
             await command.DeleteResponseFix();
 
-            async Task NotifyStaffChannel(string description) {
-                if(guild is null || guildObj is null || !guildObj.HasChannel(GuildChannelType.CallStaffChannel)) return;
+            async Task NotifyRegistrationIssueChannel(string description) {
+                if(guild is null || guildObj is null || !guildObj.HasChannel(GuildChannelType.RegisterIssues)) return;
                 var staffRole = guild.Roles.FirstOrDefault(x => x.Id == (guildObj.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole)?.Id ?? 0));
                 var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
-                await ChannelHelper.DetermineAndSend(_client.Gateway, guildObj, GuildChannelType.CallStaffChannel, new() { Text = $"{staffTag}{description}" });
+                await ChannelHelper.DetermineAndSend(_client.Gateway, guildObj, GuildChannelType.RegisterIssues, new() { Text = $"{staffTag}{description}" });
             }
         }
 
