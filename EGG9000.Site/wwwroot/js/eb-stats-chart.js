@@ -91,9 +91,7 @@ function initEbStatsChart(suffix, snapData) {
     }
 
     function buildOptions() {
-        var isDark = (typeof getCookie === 'function' && getCookie('Egg9000Theme') === 'bootstrap-dark')
-                  || document.body.classList.contains('bootstrap-dark')
-                  || document.documentElement.classList.contains('bootstrap-dark');
+        var isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
         var textColor  = isDark ? '#e9ecef' : '#373d3f';
         var gridColor  = isDark ? '#444'    : '#e0e0e0';
         var axisLabelFmt = function(val) { return typeof val === 'number' ? val.toFixed(2) : val; };
@@ -192,7 +190,7 @@ function initEbStatsChart(suffix, snapData) {
             var containerId = state.expanded ? 'ebStatsChartFull-' + suffix : 'ebStatsChartNarrow-' + suffix;
             renderChart(containerId);
         } else {
-            var isDarkU = document.body.classList.contains('bootstrap-dark') || document.documentElement.classList.contains('bootstrap-dark');
+            var isDarkU = document.documentElement.getAttribute('data-bs-theme') === 'dark';
             var textColorU = isDarkU ? '#e9ecef' : '#373d3f';
             var fmtU = function(val) { return typeof val === 'number' ? val.toFixed(2) : val; };
             state.chart.updateOptions({
@@ -234,25 +232,27 @@ function initEbStatsChart(suffix, snapData) {
             renderChart(activeContainerId());
         }
 
-        $('[data-toggle="tab"]').on('shown.bs.tab.ebstats' + suffix, function(e) {
-            if (state.chart) return;
-            var href = $(e.target).attr('href');
-            if (!href) return;
-            var shownEl = document.querySelector(href);
-            if (shownEl && (shownEl === pane || shownEl.contains(pane)) && pane.classList.contains('active')) {
-                renderChart(activeContainerId());
-            }
-        });
+        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function(tab) {
+            tab.addEventListener('shown.bs.tab', function(e) {
+                if (state.chart) return;
+                var href = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+                if (!href) return;
+                var shownEl = document.querySelector(href);
+                if (shownEl && (shownEl === pane || shownEl.contains(pane)) && pane.classList.contains('active')) {
+                    renderChart(activeContainerId());
+                }
+            });
 
-        $('[data-toggle="tab"]').on('hidden.bs.tab.ebstats' + suffix, function(e) {
-            if (!state.chart) return;
-            var href = $(e.target).attr('href');
-            if (!href) return;
-            var hiddenEl = document.querySelector(href);
-            if (hiddenEl && (hiddenEl === pane || hiddenEl.contains(pane))) {
-                state.chart.destroy();
-                state.chart = null;
-            }
+            tab.addEventListener('hidden.bs.tab', function(e) {
+                if (!state.chart) return;
+                var href = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+                if (!href) return;
+                var hiddenEl = document.querySelector(href);
+                if (hiddenEl && (hiddenEl === pane || hiddenEl.contains(pane))) {
+                    state.chart.destroy();
+                    state.chart = null;
+                }
+            });
         });
     });
 

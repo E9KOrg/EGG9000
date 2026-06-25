@@ -110,7 +110,7 @@
         border-color: #00ff90;
     }
 
-    .bootstrap-dark #CurrentCoop {
+    [data-bs-theme="dark"] #CurrentCoop {
         border-color: #4c664b !important;
     }
 
@@ -126,7 +126,7 @@
         background-color: #a2ffa1;
     }
 
-    .bootstrap-dark .CurrentCoop .card-header {
+    [data-bs-theme="dark"] .CurrentCoop .card-header {
         background-color: #2c462b;
     }
 
@@ -154,7 +154,7 @@
         min-height: 42px;
     }
 
-    .bootstrap-dark .dndPlaceHolder {
+    [data-bs-theme="dark"] .dndPlaceHolder {
         background-color: #333 !important;
     }
 
@@ -183,7 +183,7 @@
     }
     
 
-    .bootstrap-dark .pb-3, .bootstrap-dark .py-3 {
+    [data-bs-theme="dark"] .pb-3, [data-bs-theme="dark"] .py-3 {
     padding-bottom: 0 !important;
 }
 </style>
@@ -195,7 +195,7 @@
 
 
 
-<div ng-controller="Page">
+<div x-data="detailsPage()">
     <div style="float: left;">
         <h3><img src="@PlayerGradeDetails.GetImage(Model.League)" style="height: 1em;" /> @Model.GuildContract.Contract.Name</h3>
         <select id="League">
@@ -235,76 +235,77 @@
         <table>
             <tr>
                 <td>Spots in active co-ops</td>
-                <td>{{SpotsActive()}}</td>
+                <td x-text="spotsActive()"></td>
             </tr>
             <tr>
                 <td>Spots in active co-ops >24h</td>
-                <td>{{SpotsActive24()}}</td>
+                <td x-text="spotsActive24()"></td>
             </tr>
         </table>
     </div>
     }
     <div style="clear: both;"></div>
     <div class="row scrollable">
-        <div class="col-sm" ng-if="ActiveCoops.length > 0">
+        <div class="col-sm" x-show="ActiveCoops.length > 0">
             <h2>Active Coops
             @if(isStaff) {
-            <span  class="btn btn-sm btn-primary" ng-click="ToggleAll()">Toggle All</span>
+            <span class="btn btn-sm btn-primary" @@click="toggleAll()">Toggle All</span>
             }
             </h2>
             @if(isStaff) {
-            <p ng-if>
+            <p>
                 Note: The co-ops are sorted such that the top ones listed have spots available with the soonest ending on top.
             </p>
             }
-            <div class="card" ng-repeat="coop in ActiveCoops" ng-class="{ CurrentCoop: coop.CurrentCoop}">
-                <div style="position: relative; top: -20px;" id="{{coop.Name}}" ng-if="coop.CurrentCoop"></div>
-                <h5 class="card-header" ng-click="coop.Hide = !coop.Hide">
-                    <a ng-click="$event.stopPropagation();" ng-if="IsStaff || coop.CurrentCoop" ng-href="/coop/{{coop.ContractID}}/{{coop.Name}}">{{coop.Name}}</a>
-
-                    <a ng-click="$event.stopPropagation();" ng-if="(IsStaff || coop.CurrentCoop) && !coop.DeletedChannel" ng-href="discord://discordapp.com/channels/{{coop.OverflowGuildId}}/{{coop.DiscordChannelId}}/"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
-
-                    <span style="font-size: 0;"> - {{coop.MaxSize - coop.Users.length}} spot{{coop.MaxSize - coop.Users.length > 1 ? 's' : ''}}</span>
-
-                    <div ng-if="!IsStaff">Co-op</div>
-                    <span style="user-select: none;">{{coop.Status}}</span>
-                    <abbr ng-if="IsStaff" style="user-select: none;">
-                        {{coop.Users.length}}/{{coop.MaxSize}}&nbsp;
-                    </abbr>
-                </h5>
-                <div class="card-body" ng-show="!coop.Hide">
-                    <table class="table table-striped">
-                        <tbody class="sortablers" ng-model="coop.Users" dnd-list="coop.Users" dnd-drop="dropCallback(item, coop)">
-                            <tr ng-repeat="user in coop.Users" ng-class="{ notsortable: user.Locked }">
-                                <td>{{user.Name}}
-                                <span ng-if="user.Guild.length > 0">[{{user.Guild}}]</span>
-
-                                </td>
-                                <td align="right">{{user.NumChickens}}</td>
-                                <td align="right">{{user.Rate}}</td>
-                                <td align="right">{{user.Projected}}</td>
-                                <td>
-                                    {{user.Status}}
-                                    @if(isAdmin) {
-                                    <button ng-if="user.UserId" ng-click="RemoveXref(user, coop)">X</button>
-                                    }
-                                </td>
-                            </tr>
-                            <tr class="dndPlaceholder"><td colspan="99"></td></tr>
-                            <tr ng-if="coop.Users.length == 0"><td colspan="99"><i>No Users</i></td></tr>
-                        </tbody>
-                        <tfoot>
-                            <tr>
-                                <td>{{coop.Users.length}}/{{coop.MaxSize}}</td>
-                                <td></td>
-                                <td align="right">{{coop.Rate}}</td>
-                                <td align="right">{{coop.Percent}}</td>
-                                <td></td>
-                            </tr>
-                        </tfoot>
-                    </table>
+            <template x-for="coop in ActiveCoops" :key="coop.Name">
+                <div class="card" :class="{ CurrentCoop: coop.CurrentCoop }">
+                    <div x-show="coop.CurrentCoop" style="position: relative; top: -20px;" :id="coop.Name"></div>
+                    <h5 class="card-header" @@click="coop.Hide = !coop.Hide" style="cursor:pointer;">
+                        <a @@click.stop="" x-show="IsStaff || coop.CurrentCoop" :href="'/coop/' + coop.ContractID + '/' + coop.Name" x-text="coop.Name"></a>
+                        <a @@click.stop="" x-show="(IsStaff || coop.CurrentCoop) && !coop.DeletedChannel" :href="'discord://discordapp.com/channels/' + coop.OverflowGuildId + '/' + coop.DiscordChannelId + '/'"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+                        <span style="font-size: 0;"> - <span x-text="coop.MaxSize - coop.Users.length"></span> <span x-text="coop.MaxSize - coop.Users.length > 1 ? 'spots' : 'spot'"></span></span>
+                        <div x-show="!IsStaff">Co-op</div>
+                        <span style="user-select: none;" x-text="coop.Status"></span>
+                        <abbr x-show="IsStaff" style="user-select: none;">
+                            <span x-text="coop.Users.length"></span>/<span x-text="coop.MaxSize"></span>&nbsp;
+                        </abbr>
+                    </h5>
+                    <div class="card-body" x-show="!coop.Hide">
+                        <table class="table table-striped">
+                            <tbody class="sortablers" :data-coop-id="coop.CoopId">
+                                <template x-for="user in coop.Users" :key="user.EggIncId || user.Name">
+                                    <tr :class="{ notsortable: user.Locked }" :data-egg-inc-id="user.EggIncId">
+                                        <td>
+                                            <span x-text="user.Name"></span>
+                                            <span x-show="user.Guild && user.Guild.length > 0">[<span x-text="user.Guild"></span>]</span>
+                                        </td>
+                                        <td align="right" x-text="user.NumChickens"></td>
+                                        <td align="right" x-text="user.Rate"></td>
+                                        <td align="right" x-text="user.Projected"></td>
+                                        <td>
+                                            <span x-text="user.Status"></span>
+                                            @if(isAdmin) {
+                                            <button x-show="user.UserId" @@click.stop="removeXref(user, coop)">X</button>
+                                            }
+                                        </td>
+                                    </tr>
+                                </template>
+                                <tr class="dndPlaceholder"><td colspan="99"></td></tr>
+                                <tr x-show="coop.Users.length === 0"><td colspan="99"><i>No Users</i></td></tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td><span x-text="coop.Users.length"></span>/<span x-text="coop.MaxSize"></span></td>
+                                    <td></td>
+                                    <td align="right" x-text="coop.Rate"></td>
+                                    <td align="right" x-text="coop.Percent"></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
-            </div>
+            </template>
         </div>
 
 
@@ -471,207 +472,174 @@
     //}
 }
 @section Scripts {
-    <script src="~/lib/angular-drag-and-drop-lists.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script>
-        //angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages', 'ui.sortable'])
-
-        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages', 'dndLists'])
-            .config( [
-                '$compileProvider',
-                function( $compileProvider )
-                {   
-                    $compileProvider.aHrefSanitizationWhitelist(/^\s*(https?|discord):/);
-                    //$compileProvider.urlSanitizationWhitelist(/^\s*(https?|discord):/)
-                    // Angular before v1.2 uses $compileProvider.urlSanitizationWhitelist(...)
-                }
-            ])
-            .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('detailsPage', () => ({
                 // IsAdmin gates write actions; IsStaff gates read-only display (names, links, counts).
-                $scope.IsAdmin = @JsonConvert.SerializeObject(isAdmin);
-                $scope.IsStaff = @JsonConvert.SerializeObject(isStaff);
+                IsAdmin: @JsonConvert.SerializeObject(isAdmin),
+                IsStaff: @JsonConvert.SerializeObject(isStaff),
+                ActiveCoops: [],
+                EmptyCoops: [],
+                ExpiredFarms: [],
+                PotentialCoops: [],
+                ShowPotential: true,
+                ShowAll: true,
+                SortAll: 'EBValue',
+                SortSolo: 'Name',
+                CurrentCoopCount: @count,
+                UsersByEB: [],
 
-                $scope.ActiveCoops = @Html.Raw(JsonConvert.SerializeObject(activeCoops));
-                $scope.EmptyCoops = [];
-                $scope.ExpiredFarms = @Html.Raw(JsonConvert.SerializeObject(expiredFarms));
-                $scope.PotentialCoops = @Html.Raw(JsonConvert.SerializeObject(potentialCoops));
-                $scope.ShowPotential = true;
-                $scope.ShowAll = true;
-                $scope.SortAll = 'EBValue';
-                $scope.SortSolo = 'Name';
+                init() {
+                    const _activeRaw = @Html.Raw(JsonConvert.SerializeObject(activeCoops));
+                    this.ActiveCoops = _activeRaw;
 
-                $scope.CurrentCoopCount = @count;
+                    const _expiredRaw = @Html.Raw(JsonConvert.SerializeObject(expiredFarms));
+                    this.ExpiredFarms = _expiredRaw;
 
-                $interval(function () {
-                    var top = $(".scrollable").position().top;
-                    var height = $(window).height();
-                    $(".scrollable").height(height - top - 1);
-                }, 1000);
+                    const _potentialRaw = @Html.Raw(JsonConvert.SerializeObject(potentialCoops));
+                    this.PotentialCoops = _potentialRaw;
 
-                $scope.PercentSum = function (users) {
-                    if (users.length == 0)
-                        return "";
-                    var percent = 0;
-                    angular.forEach(users, function (u) { percent += u.ProjectedPercent; });
-                    return percent;
-                };
+                    this.UsersByEB = this.getUsersByEB();
 
-                $scope.MinimumTime = function (users) {
-                    if (users.length == 0)
-                        return "";
-                    var min = _.minBy(users, function (o) { return o.TimeLeft; });
-                    return min.Status;
-                };
+                    setInterval(() => {
+                        const el = document.querySelector('.scrollable');
+                        if (el) {
+                            const top = el.getBoundingClientRect().top + window.scrollY;
+                            el.style.height = (window.innerHeight - el.getBoundingClientRect().top - 1) + 'px';
+                        }
+                    }, 1000);
 
-                $scope.dropCallback = function (item, coop) {
-                    if (confirm("Do you want to move " + item.Name + " to " + coop.Name)) {
-                        $http.post("/contract/movetocoop?CoopId=" + coop.CoopId + "&UserId=" + item.DatabaseId + "&EggIncId=" + item.EggIncId, {}).then(function Success(response) {
-                            if (response.data.error) {
-                                alert(response.data.error);
-                            } else {
-                                if (coop.Users.length == coop.MaxSize) {
-                                    coop.Hide = true;
+                    this.$nextTick(() => this.initSortable());
+                },
+
+                initSortable() {
+                    document.querySelectorAll('.sortablers').forEach(el => {
+                        if (el._sortable) el._sortable.destroy();
+                        el._sortable = Sortable.create(el, {
+                            group: 'coops',
+                            animation: 150,
+                            filter: '.notsortable',
+                            onAdd: (evt) => {
+                                const eggIncId = evt.item.dataset.eggIncId;
+                                const toCoopId = evt.to.dataset.coopId;
+                                const toCoop = this.ActiveCoops.find(c => String(c.CoopId) === String(toCoopId));
+                                if (!toCoop) return;
+                                // Find user across all potential coops
+                                let user = null;
+                                for (const coop of this.PotentialCoops) {
+                                    user = coop.Users.find(u => u.EggIncId === eggIncId);
+                                    if (user) break;
                                 }
-                                console.log(response);
-                                RemoveUser(item);
-                                //alert(response.data.userName + " moved to " + response.data.coopName);
-                            }
-                        }, function Error(response) {
-                            alert("Error");
-                            console.log(response);
-                        });
-                        return item;
-                    } else {
-                        return false;
-                    }
-                };
-
-                $scope.Start = function (coop, coopList, potential) {
-                    if (confirm("Are you sure you want to start this co-op?")) {
-                        var prefarms = [];
-                        angular.forEach(coop.Users, function (user) {
-                            prefarms.push({ EggIncId: user.EggIncId, DatabaseId: user.DatabaseId, Name: user.Name })
-                        });
-                        $http.post("/contract/startcoop?GuildId=@Model.GuildContract.GuildID&ContractID=@Model.GuildContract.ContractID&League=@Model.GuildContract.League", prefarms).then(function Success(response) {
-                            if (response.data.error) {
-                                alert(response.data.message);
-                                return;
-                            }
-                            console.log(response);
-                            //alert("Co-op " + response.data + " Created");
-                            $scope.ActiveCoops.unshift(coop);
-                            coop.Name = response.data.coopName;
-                            coop.Stats = "Just Created";
-                            //$.each(coop.Users, function () { this.Locked = true; });
-                            $.each(coopList, function (i) {
-                                console.log(coopList[i].Count, coop.Count);
-                                if (coopList[i].Count == coop.Count) {
-                                    coopList.splice(i, 1);
-                                    return;
-                                }
-                            });
-
-                            $.each(coop.Users, function (index, User) {
-                                RemoveUser(User);
-                            });
-
-                        }, function Error(response) {
-                            alert("Error");
-                            console.log(response);
-                        });
-                    }
-                };
-
-                $scope.RemoveXref = function (user, coop) {
-                    if (confirm("Are you sure you want to remove " + user.Name + " from the co-op?")) {
-                        $http.post("/contract/removexref", { UserId: user.UserId, EggIncId: user.EggIncId, CoopId: coop.CoopId }).then(function Success(response) {
-                            if (response.data.error) {
-                                alert(response.data.message);
-                                return;
-                            }
-                            var index = coop.Users.indexOf(user);
-                            coop.Users.splice(index, 1);
-                        }, function Error(response) {
-                            alert("Error");
-                            console.log(response);
-                        });
-                    }
-                };
-
-                function RemoveUser(user) {
-                    console.log(user);
-                    _.forEach($scope.PotentialCoops, function (coop) {
-                        _.forEach(coop.Users, function (coopUser, index) {
-                            if (!coopUser) {
-                                console.log(coopUser, index, coop);
-                                return;
-                            }
-                            if (coopUser.EggIncId == user.EggIncId) {
-                                coop.Users.splice(index, 1);
-                                console.log("Removed " + user.Name);
+                                if (!user) return;
+                                // Remove the DOM node SortableJS inserted (Alpine will re-render)
+                                evt.item.parentNode && evt.item.parentNode.removeChild(evt.item);
+                                this.dropCallback(user, toCoop);
                             }
                         });
                     });
+                },
 
-                    //$.each($scope.PotentialCoops, function (i) {
-                    //    $.each($scope.PotentialCoops[i].Users, function (coopUserIndex, coopUser) {
-                    //        if (user.EggIncId == coopUser.EggIncId) {
-                    //            $scope.PotentialCoops[i].Users.splice(coopUserIndex, 1);
-                    //            console.log("Removed " + user.Name);
-                    //        }
-                    //    });
-                    //});
-                    $scope.UsersByEB = _.sortBy(GetUsersByEB(), [$scope.SortAll]);
-                //    $.each($scope.UsersByEB, function (coopUserIndex, coopUser) {
-                //        if (!coopUser) {
-                //            console.log(coopUser)
-                //            return;
-                //        }
-                //        if (user.EggIncId == coopUser.EggIncId) {
-                //            $scope.UsersByEB.splice(coopUserIndex, 1);
-                //            console.log("Removed " + user.Name);
-                //        }
-                //    });
-                }
+                percentSum(users) {
+                    if (!users.length) return '';
+                    return users.reduce((s, u) => s + u.ProjectedPercent, 0);
+                },
 
-                $scope.UsersByEB = GetUsersByEB();
+                minimumTime(users) {
+                    if (!users.length) return '';
+                    return _.minBy(users, u => u.TimeLeft).Status;
+                },
 
-                function GetUsersByEB() {
-                    var users = [];
-                    _.forEach($scope.PotentialCoops, function (value, key) {
-                        _.forEach(value.Users, function (user, key) {
-                            users.push(user);
-                        });
-                    });
+                getUsersByEB() {
+                    const users = [];
+                    this.PotentialCoops.forEach(coop => coop.Users.forEach(u => users.push(u)));
                     return users;
-                }
+                },
 
-                $scope.$watch("SortAll", function (newValue) {
-                    $scope.UsersByEB = _.sortBy($scope.UsersByEB, [newValue]);
-                });
+                spotsActive() {
+                    return _.sumBy(this.ActiveCoops, o => o.Status === 'Finished' ? 0 : Math.max(0, o.MaxSize - o.Users.length));
+                },
 
+                spotsActive24() {
+                    return _.sumBy(this.ActiveCoops, o => (o.Status === 'Finished' || o.HoursToFinish < 24) ? 0 : Math.max(0, o.MaxSize - o.Users.length));
+                },
 
-                $scope.SpotsActive = function () {
-                    return _.sumBy($scope.ActiveCoops, function (o) { return o.Status == "Finished" ? 0 : Math.max(0, o.MaxSize - o.Users.length); });
-                };
+                toggleAll() {
+                    const allHidden = this.ActiveCoops.every(c => c.Hide);
+                    this.ActiveCoops.forEach(c => c.Hide = !allHidden);
+                },
 
-                $scope.SpotsActive24 = function () {
-                    return _.sumBy($scope.ActiveCoops, function (o) { return o.Status == "Finished" || o.HoursToFinish < 24 ? 0 :Math.max(0, o.MaxSize - o.Users.length); });
-                };
+                async dropCallback(item, toCoop) {
+                    if (!confirm('Do you want to move ' + item.Name + ' to ' + toCoop.Name)) return;
+                    try {
+                        const r = await fetch('/contract/movetocoop?CoopId=' + toCoop.CoopId + '&UserId=' + item.DatabaseId + '&EggIncId=' + item.EggIncId, { method: 'POST' });
+                        const data = await r.json();
+                        if (data.error) {
+                            alert(data.error);
+                        } else {
+                            if (toCoop.Users.length >= toCoop.MaxSize) toCoop.Hide = true;
+                            this.removeUser(item);
+                        }
+                    } catch (e) {
+                        alert('Error');
+                        console.error(e);
+                    }
+                },
 
-                $scope.ToggleAll = function () {
-                    _.forEach($scope.ActiveCoops, function (coop) {
-                        coop.Hide = !coop.Hide;
+                async start(coop, coopList) {
+                    if (!confirm('Are you sure you want to start this co-op?')) return;
+                    const prefarms = coop.Users.map(u => ({ EggIncId: u.EggIncId, DatabaseId: u.DatabaseId, Name: u.Name }));
+                    try {
+                        const r = await fetch('/contract/startcoop?GuildId=@Model.GuildContract.GuildID&ContractID=@Model.GuildContract.ContractID&League=@Model.GuildContract.League', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(prefarms)
+                        });
+                        const data = await r.json();
+                        if (data.error) { alert(data.message); return; }
+                        this.ActiveCoops.unshift(coop);
+                        coop.Name = data.coopName;
+                        coop.Status = 'Just Created';
+                        const idx = coopList.findIndex(c => c.Count === coop.Count);
+                        if (idx > -1) coopList.splice(idx, 1);
+                        coop.Users.forEach(u => this.removeUser(u));
+                        this.$nextTick(() => this.initSortable());
+                    } catch (e) {
+                        alert('Error');
+                        console.error(e);
+                    }
+                },
+
+                removeUser(user) {
+                    this.PotentialCoops.forEach(coop => {
+                        const idx = coop.Users.findIndex(u => u && u.EggIncId === user.EggIncId);
+                        if (idx > -1) coop.Users.splice(idx, 1);
                     });
-                };
-            }]);
-        angular.module('egg9000').filter('percentage', ['$filter', function ($filter) {
-            return function (input, decimals) {
-                return $filter('number')(input * 100, decimals) + '%';
-            };
-        }]);
+                    this.UsersByEB = _.sortBy(this.getUsersByEB(), [this.SortAll]);
+                },
 
-        $("#League").change(function(val) {
-            document.location = '/Contract/Details?GuildId=@(guild.Id)&ContractId=@(Model.GuildContract.ContractID)&League=' + $(val.target).val();
+                async removeXref(user, coop) {
+                    if (!confirm('Are you sure you want to remove ' + user.Name + ' from the co-op?')) return;
+                    try {
+                        const r = await fetch('/contract/removexref', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ UserId: user.UserId, EggIncId: user.EggIncId, CoopId: coop.CoopId })
+                        });
+                        const data = await r.json();
+                        if (data.error) { alert(data.message); return; }
+                        const idx = coop.Users.indexOf(user);
+                        if (idx > -1) coop.Users.splice(idx, 1);
+                    } catch (e) {
+                        alert('Error');
+                        console.error(e);
+                    }
+                }
+            }));
+        });
+
+        document.getElementById('League').addEventListener('change', function(e) {
+            document.location = '/Contract/Details?GuildId=@(guild.Id)&ContractId=@(Model.GuildContract.ContractID)&League=' + e.target.value;
         });
     </script>
 }
