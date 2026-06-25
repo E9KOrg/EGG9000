@@ -231,7 +231,7 @@ body {
     display: block;
     width: 100%;
     height: auto;
-    border-radius: 8px;
+    border-radius: 16px;
 }
 
 .afx-hotspot {
@@ -244,13 +244,139 @@ body {
     outline: 2px solid rgba(255, 255, 255, 0.65);
 }
 
-/* The Ships & Farms active-artifact set image sits under its "Artifacts" heading. */
+/* The Ships & Farms active-artifact set image sits under its "Artifacts" heading. Cap to ~75% of the
+   native 500px set render so the cards stay compact. */
 .afx-set-wrap {
     margin-top: 4px;
+    max-width: 375px;
 }
 
 .afx-hotspot-stone:hover {
     outline-color: rgba(255, 255, 255, 0.85);
+}
+
+/* Artifact Combos tab: Current tile on top, four suggestion tiles in a 2x2 grid. */
+.combo-body {
+    padding-top: 8px;
+}
+
+.combo-section {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    margin: 10px 0 4px;
+}
+
+.combo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.combo-tile {
+    border: 1px solid rgba(128, 128, 128, 0.25);
+    border-radius: 6px;
+    padding: 6px 8px;
+    min-width: 0;
+    /* Shrink the tile to its content (image + rates) so there is no empty space on the right. */
+    width: fit-content;
+    max-width: 100%;
+    justify-self: start;
+}
+
+/* The best (highest-rate) set: green border + tint to match the green-backgrounded set image the
+   renderer produces for the winning combo. */
+.combo-tile.best {
+    border-color: #3a7d44;
+    background: rgba(39, 70, 41, 0.35);
+}
+
+.combo-tile-label {
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.combo-tile-body {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* The set keeps its natural (capped) size; the TILE shrinks to image + rates so there is no dead space
+   to the right. The image never grows. */
+.combo-tile-set {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.combo-tile-set .afx-set-wrap {
+    width: auto;
+    max-width: 320px;
+}
+
+/* Rates hug the right edge of the image, vertically centered. */
+.combo-tile-rates {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    padding-left: 10px;
+}
+
+.combo-rate {
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.combo-rate-primary + .combo-rate-alt {
+    margin-top: 3px;
+}
+
+/* Shown beside a green Current tile when no suggestion beats the current set. */
+.combo-optimal {
+    flex: 0 0 auto;
+    align-self: center;
+    font-weight: bold;
+    color: #6fce7e;
+    padding-left: 14px;
+}
+
+.combo-rate-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.6;
+}
+
+/* q/h is the headline rate; T/m is the dimmed secondary line below it. */
+.combo-rate-primary {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 1rem;
+    font-weight: normal;
+}
+
+.combo-rate-alt {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    opacity: 0.55;
+}
+
+.combo-rate-egg {
+    height: 1em;
+    width: auto;
+    vertical-align: middle;
+}
+
+.combo-rate-per {
+    opacity: 0.7;
+    font-weight: normal;
 }
 
 .copy-notification {

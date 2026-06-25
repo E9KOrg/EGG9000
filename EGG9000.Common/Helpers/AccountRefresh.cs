@@ -55,6 +55,11 @@ namespace EGG9000.Common.Helpers {
                 logger.LogTrace("Skipping non-final grade ({Status}) for user {User} ({Account})", info.Status, user.DiscordUsername, account.Name);
                 return false;
             }
+            var csChanged = account.Backup is not null && (account.Backup.TotalCS != info.TotalCxp || account.Backup.SeasonCS != info.SeasonCxp);
+            if(csChanged) {
+                account.Backup.TotalCS = info.TotalCxp;
+                account.Backup.SeasonCS = info.SeasonCxp;
+            }
 
             // get_contract_player_info.Grade is the authoritative current grade. When it differs from
             // LastGrade the player was promoted, so stamp PromotionTime - otherwise GetGrade's
@@ -72,6 +77,10 @@ namespace EGG9000.Common.Helpers {
                     mutated = true;
                     logger.LogInformation("Re-stamped PromotionTime for {User} ({Account}) to keep authoritative grade {Grade}", user.DiscordUsername, account.Name, info.Grade);
                 } else {
+                    if(csChanged) {
+                        user.UpdateAccounts();
+                        mutated = true;
+                    }
                     logger.LogInformation("No grade change for user {User} ({Account}) grade: {Grade}", user.DiscordUsername, account.Name, info.Grade);
                 }
             }
