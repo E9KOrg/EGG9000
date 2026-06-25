@@ -123,7 +123,15 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static BigInteger GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {
-            return (ArtifactHall is null || ArtifactHall.Count == 0) ? 0 : (BigInteger)ArtifactHall.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
+            if(ArtifactHall is null || ArtifactHall.Count == 0) return 0;
+            // Collapse duplicate rows for the same artifact instance before scoring. A real hall has one
+            // row per distinct artifact; stray duplicates (from a corrupted/legacy backup) would otherwise
+            // be summed separately and massively inflate the score, producing false cheater flags.
+            var collapsed = ArtifactHall
+                .Where(a => a.Artifact is not null)
+                .GroupBy(a => a.Artifact)
+                .Select(g => (Artifact: g.Key, Count: g.Sum(x => x.Count)));
+            return (BigInteger)collapsed.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
         }
 
         public static int GetAFOrder(string AF) {
