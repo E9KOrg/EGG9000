@@ -263,10 +263,6 @@ namespace EGG9000.Common.Database {
             //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
-            TotalCS = backup.Contracts.LastCpi?.TotalCxp ?? -1;
-            SeasonCS = backup.Contracts.LastCpi?.SeasonCxp ?? -1;
-
-
             VirtueEggsDelivered = backup.Virtue?.EggsDelivered.ToArray() ?? Array.Empty<double>();
             Resets = backup.Virtue?.Resets ?? 0;
             ShiftCount = backup.Virtue?.ShiftCount ?? 0;
