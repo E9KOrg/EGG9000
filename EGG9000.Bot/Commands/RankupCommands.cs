@@ -187,8 +187,8 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
         public static async Task RuAdd(SocketMessageComponent component, [ComponentData] string data) {
-            var modal = new ModalBuilder().WithTitle("New rank-up message").WithCustomId($"RuMsgModal:new:{data}")
-                .AddTextInput("Message", customId: "text", TextInputStyle.Paragraph, placeholder: "Use {{user}} {{rank}} {{eb}} {{oom}} {{emoji:name}}", required: true, maxLength: 1500)
+            var modal = new ModalBuilder().WithTitleSafe("New rank-up message").WithCustomId($"RuMsgModal:new:{data}")
+                .AddTextInputSafe("Message", customId: "text", TextInputStyle.Paragraph, placeholder: "Use {{user}} {{rank}} {{eb}} {{oom}} {{emoji:name}}", required: true, maxLength: 1500)
                 .Build();
             await component.RespondWithModalAsync(modal);
         }
@@ -197,8 +197,8 @@ namespace EGG9000.Bot.Commands {
         public static async Task RuEditBtn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
             var msg = await db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data);
             if(msg is null) { await component.DeferAsync(); return; }
-            var modal = new ModalBuilder().WithTitle("Edit rank-up message").WithCustomId($"RuMsgModal:edit:{data}")
-                .AddTextInput("Message", customId: "text", TextInputStyle.Paragraph, value: Trunc(msg.Text, 1500), required: true, maxLength: 1500)
+            var modal = new ModalBuilder().WithTitleSafe("Edit rank-up message").WithCustomId($"RuMsgModal:edit:{data}")
+                .AddTextInputSafe("Message", customId: "text", TextInputStyle.Paragraph, value: Trunc(msg.Text, 1500), required: true, maxLength: 1500)
                 .Build();
             await component.RespondWithModalAsync(modal);
         }

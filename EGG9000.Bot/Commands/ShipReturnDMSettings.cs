@@ -162,7 +162,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static Modal GetModal(string title, string modalid, string inputDescrption, string inputValue, string inputName) {
-            return new ModalBuilder().WithTitle(title).WithCustomId(modalid).AddTextInput(label: inputDescrption, value: inputValue, customId: inputName, required: true).Build();
+            return new ModalBuilder().WithTitleSafe(title).WithCustomId(modalid).AddTextInputSafe(label: inputDescrption, value: inputValue, customId: inputName, required: true).Build();
         }
     }
 }

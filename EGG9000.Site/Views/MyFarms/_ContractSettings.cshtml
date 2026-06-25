@@ -1,0 +1,119 @@
+@using EGG9000.Common.Contracts.Assignment
+@using EGG9000.Common.Database.Entities
+@using EGG9000.Common.Helpers
+@using Microsoft.AspNetCore.Html
+@model (EggIncAccount account, int index, bool isSelf)
+@{
+    var account = Model.account;
+    var index = Model.index;
+    var isSelf = Model.isSelf;
+    var s = account.Assignment ?? new AssignmentSettings();
+
+    var dis = isSelf ? "" : "disabled";
+
+    var colleggtibleOn = s.Get(PermanentRewardKind.Colleggtible).Mode == ForceMode.AssignIfMissing;
+
+    var rewardFilter = s.RewardFilter ?? new List<Ei.RewardType>();
+
+    var seasonalMode = (int)s.Seasonal.Mode;
+    var seasonalCsGoal = s.Seasonal.CsGoal;
+    var seasonalRewardFilterAfter = s.Seasonal.RewardFilterAfter;
+
+    var redoMode = (int)s.Redo.Mode;
+    var redoThreshold = s.Redo.ScoreThreshold;
+
+    // Reward types offered in the single filter. No Eggs Of Prophecy (PE is governed by the seasonal rule).
+    var rewardLabels = new (Ei.RewardType Type, string Label)[] {
+        (Ei.RewardType.Artifact, "Artifacts"),
+        (Ei.RewardType.PiggyMultiplier, "Piggy Bank"),
+        (Ei.RewardType.ShellScript, "Shell Tickets"),
+        (Ei.RewardType.Gold, "Golden Eggs"),
+        (Ei.RewardType.Boost, "Any Boost"),
+        (Ei.RewardType.EpicResearchItem, "Epic Research")
+    };
+
+    Func<int, int, string, IHtmlContent> opt = (val, current, label) =>
+        new HtmlString($"<option value=\"{val}\"{(val == current ? " selected" : "")}>{System.Net.WebUtility.HtmlEncode(label)}</option>");
+}
+
+<div class="contract-settings" data-account-index="@index" data-isself="@(isSelf ? "1" : "0")" style="margin-top:20px;">
+    @if (!isSelf) {
+        <div class="alert alert-secondary" style="padding:6px 10px;">Read-only: viewing another user's settings.</div>
+    }
+    <div class="card" style="margin-top:10px;">
+        <div class="card-header"><b>Assignment Rules</b></div>
+        <div class="card-body">
+            <div class="form-group">
+                <div style="font-weight:bold;">Rewards Filter</div>
+                <p style="font-size:0.85em; color:grey;">Assign me to contracts that reward (leave all unchecked for "any"):</p>
+                <div class="cs-reward-group" data-field="rewardFilter">
+                    @foreach (var r in rewardLabels) {
+                        <div class="form-check">
+                            <input class="form-check-input cs-reward" type="checkbox" value="@((int)r.Type)"
+                                   id="cs-reward-@(index)-@((int)r.Type)" @(rewardFilter.Contains(r.Type) ? "checked" : "") @dis />
+                            <label class="form-check-label" for="cs-reward-@(index)-@((int)r.Type)">@r.Label</label>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <hr />
+
+            <div class="form-check" style="margin-bottom:12px;">
+                <input class="form-check-input cs-input" type="checkbox" data-field="colleggtible"
+                       id="cs-colleggtible-@index" @(colleggtibleOn ? "checked" : "") @dis />
+                <label class="form-check-label" for="cs-colleggtible-@index">Assign me if missing a colleggtible</label>
+            </div>
+
+            <div class="form-group">
+                <label for="cs-seasonalmode-@index">Seasonal Contracts</label>
+                <select class="form-control cs-input" data-field="seasonalMode" id="cs-seasonalmode-@index" @dis>
+                    @opt(0, seasonalMode, "Always assign")
+                    @opt(1, seasonalMode, "Assign until PE earned")
+                    @opt(2, seasonalMode, "Assign until CS goal")
+                </select>
+            </div>
+            <div class="form-group cs-seasonalgoal-wrap-@index" style="@(seasonalMode == 2 ? "" : "display:none;")">
+                <label for="cs-seasonalgoal-@index">CS goal</label>
+                <input class="form-control cs-input" type="number" min="0" step="1" data-field="seasonalCsGoal"
+                       id="cs-seasonalgoal-@index" value="@seasonalCsGoal.ToString("0")" @dis />
+            </div>
+            <div class="form-check cs-seasonalafter-wrap-@index" style="margin-bottom:12px; @(seasonalMode == 1 || seasonalMode == 2 ? "" : "display:none;")">
+                <input class="form-check-input cs-input" type="checkbox" data-field="seasonalRewardFilterAfter"
+                       id="cs-seasonalafter-@index" @(seasonalRewardFilterAfter ? "checked" : "") @dis />
+                <label class="form-check-label" for="cs-seasonalafter-@index">Assign by reward filter after</label>
+            </div>
+
+            <hr />
+
+            <div class="form-group">
+                <label for="cs-redomode-@index">Redo leggacies</label>
+                <select class="form-control cs-input" data-field="redoMode" id="cs-redomode-@index" @dis>
+                    @opt((int)RedoLeggacyOption.NotSet, redoMode, "Not set")
+                    @opt((int)RedoLeggacyOption.YesAll, redoMode, "Yes (all)")
+                    @opt((int)RedoLeggacyOption.YesThreshold, redoMode, "Yes (under threshold)")
+                    @opt((int)RedoLeggacyOption.No, redoMode, "No")
+                    @opt((int)RedoLeggacyOption.YesOtherAccountMatch, redoMode, "Yes (if other account matches)")
+                    @opt((int)RedoLeggacyOption.YesNoUltra, redoMode, "Yes (no ultra-redos)")
+                </select>
+            </div>
+            <div class="form-group cs-redothreshold-wrap-@index" style="@(redoMode == (int)RedoLeggacyOption.YesThreshold ? "" : "display:none;")">
+                <label for="cs-redothreshold-@index">CS threshold</label>
+                <input class="form-control cs-input" type="number" min="0" max="90000" step="1" data-field="redoThreshold"
+                       id="cs-redothreshold-@index" value="@redoThreshold" @dis />
+            </div>
+            <div class="form-check" style="margin-bottom:8px;">
+                <input class="form-check-input cs-input" type="checkbox" data-field="excludeSeasonal"
+                       id="cs-excludeseasonal-@index" @(s.Redo.ExcludeSeasonal ? "checked" : "") @dis />
+                <label class="form-check-label" for="cs-excludeseasonal-@index">Skip seasonal replays</label>
+            </div>
+
+            <div class="form-check">
+                <input class="form-check-input cs-input" type="checkbox" data-field="twoToThree"
+                       id="cs-twotothree-@index" @(s.TwoToThree ? "checked" : "") @dis />
+                <label class="form-check-label" for="cs-twotothree-@index">Bump 2-goal completions to 3</label>
+            </div>
+        </div>
+    </div>
+    <span class="cs-status" id="cs-status-@index" style="margin-left:10px;"></span>
+</div>

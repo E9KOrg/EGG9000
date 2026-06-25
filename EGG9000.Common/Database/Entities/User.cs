@@ -189,6 +189,17 @@ namespace EGG9000.Common.Database.Entities {
                             if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
                                 account.DeviceID = account.Backup.DeviceId;
                             }
+
+                            //One-time migration of the scalar contract-settings keys into the consolidated blob.
+                            if(account.Assignment is null) {
+                                account.Assignment = Contracts.Assignment.AssignmentSettingsMigration.FromLegacyKeys(account);
+                                needsUpdate = true;
+                            } else {
+                                // Heal partial v1 blobs: Seasonal (Key 5) and RewardFilter were added in v2,
+                                // so blobs persisted before then deserialize with these as null.
+                                if(account.Assignment.Seasonal is null) { account.Assignment.Seasonal = new(); needsUpdate = true; }
+                                if(account.Assignment.RewardFilter is null) { account.Assignment.RewardFilter = new(); needsUpdate = true; }
+                            }
                         });
                         if(needsUpdate) {
                             UpdateAccounts();
@@ -406,6 +417,14 @@ namespace EGG9000.Common.Database.Entities {
         public string AfxSetsImageHash { get; set; } = "";
         [Key(41)]
         public List<string> AfxSetsImageUrls { get; set; } = new();
+        [Key(42)]
+        public SeasonalPeOption SeasonalPeOption { get; set; } = SeasonalPeOption.NotSet;
+        [Key(43)]
+        public double SeasonalPeThreshold { get; set; } = 0;
+        // Consolidated contract-assignment settings. Migrated once from the scalar keys above
+        // (which are retained as a recovery copy). See AssignmentSettingsMigration.
+        [Key(44)]
+        public Contracts.Assignment.AssignmentSettings Assignment { get; set; }
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
                 return UltraGroup;
@@ -460,6 +479,39 @@ namespace EGG9000.Common.Database.Entities {
             }
 
             return false;
+        }
+
+        // Dual-write: pushes the consolidated Assignment blob back onto the old scalar keys so the live
+        // old filter logic honors edits made through the new (blob-writing) settings UI. Call before
+        // UpdateAccounts in any settings write path. The new Redo.ExcludeSeasonal has no old-key
+        // equivalent and is intentionally not synced (it only affects the shadow engine until cutover).
+        public void SyncLegacyKeysFromAssignment() {
+            var a = Assignment;
+            if(a is null) return;
+
+            // Single v2 reward filter maps onto both old lists so the old logic uses it everywhere.
+            var filter = a.RewardFilter is null ? new List<Ei.RewardType>() : new List<Ei.RewardType>(a.RewardFilter);
+            AutoRegisterRewards = new List<Ei.RewardType>(filter);
+            LeggacyAutoRegisterRewards = new List<Ei.RewardType>(filter);
+
+            RedoLeggacySelection = a.Redo?.Mode ?? RedoLeggacyOption.NotSet;
+            RedoScoreThreshold = a.Redo?.ScoreThreshold ?? 20000;
+            DoTwoToThreeContracts = a.TwoToThree;
+            DoUnfinishedCollegtibles = a.Get(Contracts.Assignment.PermanentRewardKind.Colleggtible).Mode == Contracts.Assignment.ForceMode.AssignIfMissing;
+
+            // Lossy: the richer v2 Seasonal model is approximated onto the old SeasonalPeOption. The
+            // RewardFilterAfter toggle and AlwaysAssign-after-PE have no old equivalent (surfaces as a
+            // shadow diff, which is expected during the shadow period).
+            var seasonal = a.Seasonal ?? new Contracts.Assignment.SeasonalRule();
+            switch(seasonal.Mode) {
+                case Contracts.Assignment.SeasonalMode.UntilCsGoal:
+                    SeasonalPeOption = SeasonalPeOption.AssignIfBelowThreshold;
+                    SeasonalPeThreshold = seasonal.CsGoal;
+                    break;
+                default:
+                    SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing;
+                    break;
+            }
         }
     }
 }

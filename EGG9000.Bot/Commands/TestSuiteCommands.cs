@@ -4,6 +4,8 @@ using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
 using EGG9000.Common.Commands;
+using EGG9000.Common.Contracts;
+using EGG9000.Common.Contracts.Assignment.Diagnostics;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -14,7 +16,9 @@ using Microsoft.Extensions.Hosting;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
@@ -188,6 +192,120 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
 
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Assigned you to fake coop `{coop.Name}` for **{contract.Name}**. 'Find my Coop' in the contract channel should now return it. Clean up with `/test clearseed`."); });
+        }
+
+        // Read-only before/after validation. Sweeps every active contract per guild, runs the frozen
+        // legacy decision and the new engine over identical inputs, reports per-account mismatches.
+        // NEVER calls SaveChanges - the whole path is read-only by design.
+        [SlashCommand(Description = "[DEV] Validate new assignment engine vs frozen legacy across all active contracts", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "test")]
+        public static async Task Parity(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync(ephemeral: true);
+
+            var now = DateTimeOffset.UtcNow;
+            var guildContracts = await db.GuildContracts
+                .Include(x => x.Contract)
+                .Where(x => !x.DeletedChannel)
+                .ToListAsync();
+
+            // Active = a live (non-expired) contract that still has at least one non-deleted guild channel.
+            var activePairs = guildContracts
+                .Where(gc => gc.Contract != null)
+                .Where(gc => gc.Contract.GoodUntil.AddSeconds(gc.Contract.Details.LengthSeconds).AddDays(1) >= now)
+                .GroupBy(gc => (gc.GuildID, gc.ContractID))
+                .Select(g => g.First())
+                .ToList();
+
+            if(activePairs.Count == 0) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("No active contracts found to validate."); });
+                return;
+            }
+
+            var dbGuilds = await db.Guilds.ToListAsync();
+            var dbGuildById = dbGuilds.ToDictionary(g => g.Id);
+
+            var perContract = new List<AssignmentParityChecker.ParityReport>();
+            var reportEntries = new List<object>();
+
+            var grandTotal = 0;
+            var grandMatched = 0;
+            var grandUnexpected = 0;
+            var grandExpectedSeasonal = 0;
+
+            foreach(var pair in activePairs) {
+                if(!dbGuildById.TryGetValue(pair.GuildID, out var dbGuild)) continue;
+                var contract = pair.Contract;
+
+                var users = await db.DBUsers.Where(u => u.GuildId == pair.GuildID).ToListAsync();
+                var coops = await db.Coops
+                    .Include(c => c.UserCoopsXrefs)
+                    .Where(c => c.ContractID == contract.ID && c.Created > now.AddDays(-60))
+                    .ToListAsync();
+                var csHistory = await db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
+                var (contractSeason, seasonProgresses) = await OrganizeCoops.LoadContractSeasonData(db, contract, users);
+
+                var report = AssignmentParityChecker.Compare(users, contract, coops, dbGuild, contractSeason, seasonProgresses, csHistory);
+                perContract.Add(report);
+
+                grandTotal += report.Total;
+                grandMatched += report.Matched;
+                grandUnexpected += report.Mismatches.Count(m => !m.ExpectedSeasonalDeviation);
+                grandExpectedSeasonal += report.Mismatches.Count(m => m.ExpectedSeasonalDeviation);
+
+                reportEntries.Add(new {
+                    contractId = contract.ID,
+                    guildId = pair.GuildID,
+                    total = report.Total,
+                    matched = report.Matched,
+                    mismatches = report.Mismatches.Select(m => new {
+                        eggIncId = m.EggIncId,
+                        discordId = m.DiscordId,
+                        legacyAssigned = m.LegacyAssigned,
+                        newAssigned = m.NewAssigned,
+                        legacyReason = m.LegacyReason,
+                        newReason = m.NewReason,
+                        expectedSeasonalDeviation = m.ExpectedSeasonalDeviation
+                    }).ToList()
+                });
+            }
+
+            var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var distDir = Path.Combine(Directory.GetCurrentDirectory(), "dist");
+            Directory.CreateDirectory(distDir);
+            var reportPath = Path.Combine(distDir, $"parity-{timestamp}.json");
+            var json = JsonSerializer.Serialize(new {
+                generatedAt = DateTimeOffset.UtcNow,
+                grandTotal,
+                grandMatched,
+                grandUnexpected,
+                grandExpectedSeasonal,
+                contracts = reportEntries
+            }, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(reportPath, json);
+
+            var builder = new EmbedBuilder()
+                .WithTitle("Assignment Parity (legacy vs new engine)")
+                .WithColor(grandUnexpected > 0 ? Color.Red : Color.Green)
+                .WithDescription(
+                    $"Accounts: **{grandMatched}/{grandTotal}** matched\n" +
+                    $"Unexpected mismatches: **{grandUnexpected}**\n" +
+                    $"Expected seasonal deviations: **{grandExpectedSeasonal}**\n" +
+                    $"Full report: `{reportPath}`");
+
+            var lines = perContract
+                .OrderByDescending(r => r.Mismatches.Count(m => !m.ExpectedSeasonalDeviation))
+                .Take(20)
+                .Select(r => {
+                    var unexpected = r.Mismatches.Count(m => !m.ExpectedSeasonalDeviation);
+                    var mark = unexpected > 0 ? "🔴" : "🟢";
+                    return $"{mark} `{r.ContractId}` {r.Matched}/{r.Total}" + (unexpected > 0 ? $" - **{unexpected}** unexpected" : "");
+                })
+                .ToList();
+
+            if(lines.Count > 0) {
+                builder.AddField($"Per-contract ({perContract.Count} total, showing up to 20)", string.Join("\n", lines));
+            }
+
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = builder.Build(); });
         }
     }
 }

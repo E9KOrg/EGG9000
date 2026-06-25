@@ -89,12 +89,12 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static ModalBuilder TopicModal(string customId, FAQTopic existing) =>
-            new ModalBuilder().WithTitle("FAQ Topic").WithCustomId(customId)
-                .AddTextInput("Name", customId: "name", value: existing?.Name, required: true, maxLength: 100)
-                .AddTextInput("Keywords (comma-separated)", customId: "keywords", value: existing is null ? null : string.Join(", ", KeywordsOf(existing)), required: false, maxLength: 300)
-                .AddTextInput("Explanation", customId: "explanation", TextInputStyle.Paragraph, value: existing?.Explanation, required: true, maxLength: 1024)
-                .AddTextInput("Embed color (6-hex, optional)", customId: "color", value: existing?.EmbedColorHex, required: false, maxLength: 7)
-                .AddTextInput("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
+            new ModalBuilder().WithTitleSafe("FAQ Topic").WithCustomId(customId)
+                .AddTextInputSafe("Name", customId: "name", value: existing?.Name, required: true, maxLength: 100)
+                .AddTextInputSafe("Keywords (comma-separated)", customId: "keywords", value: existing is null ? null : string.Join(", ", KeywordsOf(existing)), required: false, maxLength: 300)
+                .AddTextInputSafe("Explanation", customId: "explanation", TextInputStyle.Paragraph, value: existing?.Explanation, required: true, maxLength: 1024)
+                .AddTextInputSafe("Embed color (6-hex, optional)", customId: "color", value: existing?.EmbedColorHex, required: false, maxLength: 7)
+                .AddTextInputSafe("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
 
         [SlashCommand(Description = "Edit this server's FAQ topics", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
         public static async Task EditFaq(FauxCommand command, ApplicationDbContext db, DiscordHostedService client) {
