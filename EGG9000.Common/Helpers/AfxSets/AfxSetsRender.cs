@@ -60,6 +60,16 @@ namespace EGG9000.Common.Helpers.AfxSets {
         public List<string> Pages { get; set; } = new();
     }
 
+    public class ArtifactSetRenderRequest {
+        public AfxSetsCreatorConfig Config { get; set; }
+        public List<EggIncArtifactInstance> Artifacts { get; set; }
+        public string Label { get; set; } = "Best Set";
+    }
+
+    public class ArtifactSetRenderResponse {
+        public string Page { get; set; }
+    }
+
     public static class AfxSetsRender {
         private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
@@ -95,6 +105,41 @@ namespace EGG9000.Common.Helpers.AfxSets {
                 return (parsed.Pages, null);
             } catch(Exception e) {
                 _logger.Error(e, $"AfxSetsB64: request to {apiUrl} threw");
+                return (null, $"{e.GetType().Name}: {e.Message} (target {apiUrl})");
+            }
+        }
+
+        public static async Task<(string page, string error)> RenderSingleSetB64(List<EggIncArtifactInstance> artifacts, string label = "Best Set") {
+            var request = new ArtifactSetRenderRequest {
+                Config = new AfxSetsCreatorConfig(100),
+                Artifacts = artifacts,
+                Label = label
+            };
+
+            var siteApi = SiteApiClient.Create();
+            using var client = siteApi.client;
+            var baseUrl = siteApi.baseUrl;
+            var apiUrl = $"{baseUrl}/api/generateartifactsetb64";
+            var content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
+
+            _logger.Info($"RenderSingleSetB64: POST {apiUrl} ({artifacts.Count} artifacts)");
+
+            try {
+                var response = await client.PostAsync(apiUrl, content);
+                var json = await response.Content.ReadAsStringAsync();
+                if(!response.IsSuccessStatusCode) {
+                    var body = json.Length > 500 ? json[..500] : json;
+                    var err = $"HTTP {(int)response.StatusCode} from {apiUrl}: {body}";
+                    _logger.Warn($"RenderSingleSetB64: {err}");
+                    return (null, err);
+                }
+                var parsed = JsonSerializer.Deserialize<ArtifactSetRenderResponse>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                if(string.IsNullOrEmpty(parsed?.Page)) {
+                    return (null, $"Site returned empty page from {apiUrl}");
+                }
+                return (parsed.Page, null);
+            } catch(Exception e) {
+                _logger.Error(e, $"RenderSingleSetB64: request to {apiUrl} threw");
                 return (null, $"{e.GetType().Name}: {e.Message} (target {apiUrl})");
             }
         }
