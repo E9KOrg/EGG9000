@@ -23,6 +23,7 @@ namespace EGG9000.Common.Coops {
             return (result.ArtiList, result.Set.CurrentShippingRate);
         }
 
+#nullable enable
         private static ScoredSet? FindBestComboCore(CustomBackup backup, CustomFarm farm, Coop coop, bool withTachyon, bool allowChangingStones, List<DBCustomEgg> customEggs, Microsoft.Extensions.Logging.ILogger logger) {
             if(!allowChangingStones) {
                 var available = backup.GetAvailableArtifacts(farm).Where(x => !x.Artifact.Artifact.Contains("Stone")).Select(x => new ArtifactInstanceStats(x.Artifact)).Where(x => x.Shipping > 1 || x.EggLaying > 1);
@@ -74,6 +75,7 @@ namespace EGG9000.Common.Coops {
                 return result;
             }
         }
+#nullable disable
 
         private class ArtifactCountWithSlots : ArtifactCount {
             public int Slots { get; set; }
@@ -104,6 +106,7 @@ namespace EGG9000.Common.Coops {
             return newCombos;
         }
 
+#nullable enable
         private static ScoredSet? Process(IEnumerable<ArtifactInstanceStats> available, CustomBackup backup, CustomFarm farm, Coop coop, List<DBCustomEgg> customEggs, bool withTachyon) {
             var farmWithoutArtifacts = new CustomFarm {
                 CommonResearch = farm.CommonResearch,
@@ -187,6 +190,7 @@ namespace EGG9000.Common.Coops {
 
             return maxSetsScored.OrderByDescending(s => s.Score).FirstOrDefault();
         }
+#nullable disable
 
         private static int SimilarityScoring(ArtifactSet current, ArtifactSet against) {
             var similarity = 0;

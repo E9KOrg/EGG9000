@@ -803,6 +803,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(farm == null)
                         continue;
                     u.Xref.EquipedTachyonDeflector = u.Xref.EquipedTachyonDeflector || farm.Artifacts.Any(a => a.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
+                    if(farm.Artifacts.Any(a => a.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates))
+                        u.Xref.TachyonDeflectorNotified = false;
                 }
 
                 var usersToCheckDeflector = usersWithStatus.Where(x => x.Status is not null && !x.Status.BuffHistory.Any(y => y.EggLayingRate > 0) && x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Where(y => y.Status is not null).Max(y => y.Status.Projected) / 2);
@@ -832,15 +834,17 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(b64 is not null) {
                         var capturedMention = mention;
                         var capturedB64 = b64;
+                        var capturedXref = deflectorUser.Xref;
                         _queue.EnqueueLow(async () => {
                             using var file = new FileAttachment(new MemoryStream(Convert.FromBase64String(capturedB64)), "TachyonSuggestion.jpeg", "Recommended Artifact Set");
                             await coopThread.SendFilesAsync([file], text: $"{capturedMention} should equip their **Tachyon Deflector**. Recommended set:");
+                            if(capturedXref is not null) capturedXref.TachyonDeflectorNotified = true;
                         });
                     } else {
                         _logger.LogWarning("Tachyon image render failed for {user}: {error}", deflectorUser.User?.DiscordId, renderError);
                         lastMessage += $"\n\n{mention} should equip their **Tachyon Deflector**.";
+                        if(deflectorUser.Xref is not null) deflectorUser.Xref.TachyonDeflectorNotified = true;
                     }
-                    if(deflectorUser.Xref is not null) deflectorUser.Xref.TachyonDeflectorNotified = true;
                 }
 
 
