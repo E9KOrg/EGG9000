@@ -70,28 +70,22 @@
 		white-space: nowrap;
 		text-align: center;
 		position: absolute;
+		background-color: rgba(130, 135, 140, 0.95);
 	}
 
-		.tooltiptext-custom .bootstrap-dark {
-			background-color: rgba(33, 37, 41, 0.95);
-		}
-
-		.tooltiptext-custom .bootstrap {
-			background-color: rgba(130, 135, 140, 0.95);
-		}
+	[data-bs-theme="dark"] .tooltiptext-custom {
+		background-color: rgba(33, 37, 41, 0.95);
+	}
 
 
-	.bootstrap-dark .speech-bubble {
+	[data-bs-theme="dark"] .speech-bubble {
 		background-color: rgba(33, 37, 41, 0.95);
 		color: white !important;
 	}
 
-	.bootstrap .speech-bubble {
+	.speech-bubble {
 		background-color: rgba(130, 135, 140, 0.95);
 		color: black !important;
-	}
-
-	.speech-bubble {
 		position: relative;
 		padding: 10px;
 		margin: 10px auto;
@@ -112,23 +106,17 @@
 	.custom-input {
 		display: inline-block;
 		padding: 4px;
-		border: 1px solid #ccc;
+		border: 1px solid #007bff;
 		border-radius: 3px;
 		color: #333;
 		background-color: #fff;
 		transition: border-color 0.3s;
 	}
 
-	.bootstrap-dark .custom-input {
+	[data-bs-theme="dark"] .custom-input {
 		border-color: #343a40;
 		color: #fff;
 		background-color: #343a40;
-	}
-
-	.bootstrap .custom-input {
-		border-color: #007bff;
-		color: #333;
-		background-color: #fff;
 	}
 
 </style>
