@@ -53,7 +53,7 @@ namespace EGG9000.Common.Coops {
                         maxSlot = nonBoostArtifacts.First();
                         nonBoostArtifacts.Remove(maxSlot);
                     }
-                    toProcess.Add(maxSlot);
+                    if(maxSlot is not null) toProcess.Add(maxSlot);
                 }
 
                 if(toProcess.All(x => x is null)) {
