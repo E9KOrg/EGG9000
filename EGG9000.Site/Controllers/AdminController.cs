@@ -263,7 +263,7 @@ namespace EGG9000.Site.Controllers {
             await _db.SaveChangesAsyncRetry(2);
             var guildKey = _db.InvalidateEventCustomizations(guild);
             await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));
-            return Content("Success");
+            return Json(new { });
         }
 
         public class FAQCustomizationModel() {
@@ -344,7 +344,7 @@ namespace EGG9000.Site.Controllers {
             var guildKey = _db.InvalidateFAQTopics(guild);
             await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));
             await _db.SaveChangesAsync();
-            return Content("Success");
+            return Json(new { });
         }
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]

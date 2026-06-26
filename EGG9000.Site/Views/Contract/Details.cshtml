@@ -257,7 +257,7 @@
                 Note: The co-ops are sorted such that the top ones listed have spots available with the soonest ending on top.
             </p>
             }
-            <template x-for="coop in ActiveCoops" :key="coop.Name">
+            <template x-for="(coop, coopIndex) in ActiveCoops" :key="coopIndex">
                 <div class="card" :class="{ CurrentCoop: coop.CurrentCoop }">
                     <div x-show="coop.CurrentCoop" style="position: relative; top: -20px;" :id="coop.Name"></div>
                     <h5 class="card-header" @@click="coop.Hide = !coop.Hide" style="cursor:pointer;">
@@ -273,7 +273,7 @@
                     <div class="card-body" x-show="!coop.Hide">
                         <table class="table table-striped">
                             <tbody class="sortablers" :data-coop-id="coop.CoopId">
-                                <template x-for="user in coop.Users" :key="user.EggIncId || user.Name">
+                                <template x-for="(user, userIndex) in coop.Users" :key="userIndex">
                                     <tr :class="{ notsortable: user.Locked }" :data-egg-inc-id="user.EggIncId">
                                         <td>
                                             <span x-text="user.Name"></span>
