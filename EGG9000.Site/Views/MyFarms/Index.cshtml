@@ -80,6 +80,48 @@
         margin-top: 10px;
     }
 
+    /* Don't let selects stretch the full card width; scale to their content where supported. */
+    .contract-settings select.cs-input {
+        width: auto;
+        field-sizing: content;
+        min-width: 160px;
+        max-width: 100%;
+    }
+
+    /* Humanized CS number inputs: stepper buttons either side, width scales to content. */
+    .contract-settings .cs-num-group {
+        display: inline-flex;
+        align-items: stretch;
+        max-width: 100%;
+    }
+
+    .contract-settings .cs-num {
+        width: auto;
+        field-sizing: content;
+        min-width: 90px;
+        max-width: 220px;
+        text-align: right;
+        border-radius: 0;
+    }
+
+    .contract-settings .cs-num-step {
+        flex: 0 0 auto;
+        width: 38px;
+        padding: 0;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .contract-settings .cs-num-group .cs-num-step:first-child {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .contract-settings .cs-num-group .cs-num-step:last-child {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+
     .Expired td {
         opacity: 60%;
     }
@@ -672,6 +714,54 @@
             return el.value;
         }
 
+        // Humanized number inputs (CS goal / CS threshold). Accept "200k", "1.5m", "200,000",
+        // "200.000" etc; store the plain integer in data-value; display localized grouping.
+        const csNumFmt = new Intl.NumberFormat();
+        const csNumSep = (() => {
+            const parts = csNumFmt.formatToParts(11111);
+            const g = parts.find(p => p.type === 'group');
+            const d = parts.find(p => p.type === 'decimal');
+            return { group: g ? g.value : ',', decimal: d ? d.value : '.' };
+        })();
+
+        function csParseHuman(str) {
+            if (str == null) return NaN;
+            let t = String(str).trim().toLowerCase().replace(/[\s_]/g, '');
+            if (!t) return NaN;
+            let mult = 1;
+            if (t.endsWith('m')) { mult = 1e6; t = t.slice(0, -1); }
+            else if (t.endsWith('k')) { mult = 1e3; t = t.slice(0, -1); }
+            // Drop the locale group separator, then normalize the locale decimal separator to '.'.
+            const grp = csNumSep.group.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            t = t.replace(new RegExp(grp, 'g'), '');
+            if (csNumSep.decimal !== '.') t = t.split(csNumSep.decimal).join('.');
+            // Remaining stray ',' (e.g. a US user on a non-US locale) treated as group separator.
+            t = t.replace(/,/g, '');
+            const n = parseFloat(t);
+            if (!isFinite(n)) return NaN;
+            return Math.round(n * mult);
+        }
+
+        function csClamp(el, n) {
+            const min = el.dataset.min != null ? parseFloat(el.dataset.min) : -Infinity;
+            const max = el.dataset.max != null ? parseFloat(el.dataset.max) : Infinity;
+            return Math.min(Math.max(n, min), max);
+        }
+
+        function csNumDisplay(el) {
+            const v = parseFloat(el.dataset.value);
+            el.value = isFinite(v) ? csNumFmt.format(v) : '';
+        }
+
+        // Set the stored value, refresh the display, return the integer (or null if unchanged).
+        function csNumSet(el, n) {
+            const clamped = Math.round(csClamp(el, n));
+            const changed = String(clamped) !== el.dataset.value;
+            el.dataset.value = String(clamped);
+            csNumDisplay(el);
+            return changed ? clamped : null;
+        }
+
         function showCsStatus(container, text, ok) {
             let toast = document.getElementById('cs-toast');
             if (!toast) {
@@ -698,8 +788,10 @@
                         // Server enforces the grade floor; reflect any clamp back into the input.
                         if (body && body.effectiveCsGoal != null) {
                             const input = container.querySelector('#cs-seasonalgoal-' + accountIndex);
-                            if (input && String(Math.round(body.effectiveCsGoal)) !== input.value) {
-                                input.value = Math.round(body.effectiveCsGoal);
+                            const eff = String(Math.round(body.effectiveCsGoal));
+                            if (input && eff !== input.dataset.value) {
+                                input.dataset.value = eff;
+                                csNumDisplay(input);
                                 showCsStatus(container, 'Adjusted to grade minimum', true);
                                 return;
                             }
@@ -717,6 +809,9 @@
         }
 
         function wireContractSettings() {
+            // Format every humanized number for display, even read-only (other users') panels.
+            document.querySelectorAll('.contract-settings .cs-num').forEach(csNumDisplay);
+
             document.querySelectorAll('.contract-settings').forEach(container => {
                 if (container.dataset.isself !== '1') return;
                 const accountIndex = parseInt(container.dataset.accountIndex);
@@ -743,6 +838,43 @@
                         });
                         prior = value;
                     });
+                });
+
+                container.querySelectorAll('.cs-num').forEach(el => {
+                    csNumDisplay(el);
+                    const field = el.dataset.field;
+
+                    const commit = (raw) => {
+                        const before = el.dataset.value;
+                        const parsed = csParseHuman(raw);
+                        if (!isFinite(parsed)) { csNumDisplay(el); return; } // bad input -> restore
+                        const changed = csNumSet(el, parsed);
+                        if (changed == null) return; // no net change
+                        saveContractSetting(container, accountIndex, field, el.dataset.value, () => {
+                            el.dataset.value = before;
+                            csNumDisplay(el);
+                        });
+                    };
+
+                    el.addEventListener('change', () => commit(el.value));
+                    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(el.value); el.blur(); } });
+
+                    const group = el.closest('.cs-num-group');
+                    if (group) {
+                        group.querySelectorAll('.cs-num-step').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                if (el.disabled) return;
+                                const cur = parseFloat(el.dataset.value) || 0;
+                                const before = el.dataset.value;
+                                const changed = csNumSet(el, cur + parseFloat(btn.dataset.step));
+                                if (changed == null) return;
+                                saveContractSetting(container, accountIndex, field, el.dataset.value, () => {
+                                    el.dataset.value = before;
+                                    csNumDisplay(el);
+                                });
+                            });
+                        });
+                    }
                 });
 
                 container.querySelectorAll('.cs-reward-group').forEach(group => {
