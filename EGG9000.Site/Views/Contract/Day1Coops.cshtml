@@ -91,7 +91,7 @@
                     @if (isAdmin) {
                         <input type="number" :value="group.CoopCount" @@input="group.CoopCount = parseInt($event.target.value) || 0" style="width: 60px;" />
                         <button class="btn btn-primary" @@click="reloadGrade(group)">Update Count</button>
-                        <button class="btn btn-primary" @@click="startAll(group)" :disabled="group.Disable">Start All</button>
+                        <button class="btn btn-primary" @@click="startAll(group)" :disabled="!!group.Disable">Start All</button>
                         <span>Assigned Users: <span x-text="total(group)"></span></span>
                         <span>| Free Spaces: <span x-text="freeSpaces(group)"></span></span>
                         @if(dbguild.DisableBG) {
@@ -125,7 +125,7 @@
                         <div class="card-footer">
                             Total EB <span x-text="coop.TotalEB"></span>
                             @if (isAdmin) {
-                                <button @@click="start(coop, group.Coops, group)" :disabled="coop.Disable || group.Disable">Start</button>
+                                <button @@click="start(coop, group.Coops, group)" :disabled="!!(coop.Disable || group.Disable)">Start</button>
                             }
                         </div>
                     </div>
@@ -185,6 +185,11 @@
 
                 init() {
                     const _bgRaw = @Html.Raw(JsonConvert.SerializeObject(boardingGroups));
+                    // Server omits the client-only Disable flag; seed it false so :disabled never binds undefined.
+                    _bgRaw.forEach(bgItem => bgItem.Grades.forEach(grade => {
+                        grade.Disable = false;
+                        grade.Coops.forEach(coop => coop.Disable = false);
+                    }));
                     this.boardingGroups = _bgRaw;
                     this.bg = this.boardingGroups[0] || null;
 
