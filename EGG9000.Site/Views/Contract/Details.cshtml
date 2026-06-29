@@ -554,11 +554,17 @@
                     if (!this.IsAdmin) return;
                     document.querySelectorAll('.sortablers').forEach(el => {
                         if (el._sortable) el._sortable.destroy();
+                        // Only active-coop tbodies carry data-coop-id and accept drops; potential
+                        // coops are drag sources only (put:false), so nothing lands in a non-target.
+                        const isDropTarget = el.dataset.coopId != null;
                         el._sortable = Sortable.create(el, {
-                            group: 'coops',
+                            group: { name: 'coops', pull: true, put: isDropTarget },
+                            sort: false,
                             animation: 150,
                             filter: '.notsortable',
                             onAdd: (evt) => {
+                                // Pull the node SortableJS inserted regardless of outcome; Alpine re-renders.
+                                evt.item.parentNode && evt.item.parentNode.removeChild(evt.item);
                                 const eggIncId = evt.item.dataset.eggIncId;
                                 const toCoopId = evt.to.dataset.coopId;
                                 const toCoop = this.ActiveCoops.find(c => String(c.CoopId) === String(toCoopId));
@@ -570,8 +576,6 @@
                                     if (user) break;
                                 }
                                 if (!user) return;
-                                // Remove the DOM node SortableJS inserted (Alpine will re-render)
-                                evt.item.parentNode && evt.item.parentNode.removeChild(evt.item);
                                 this.dropCallback(user, toCoop);
                             }
                         });
