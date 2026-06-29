@@ -549,7 +549,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> LeaderboardXML(ulong guildid) {
             var users = await _getLeaderboard(guildid);
             var leaderboard = users.Select(x => new LeaderboardItem {
-                Name = x.DiscordUser.GetCleanName(),
+                Name = x.DisplayName,
                 EggIncName = x.Backup.UserName,
                 SoulEggs = x.Backup.SoulEggs,
                 EggsOfProphecy = x.Backup.EggsOfProphecy,
@@ -593,7 +593,7 @@ namespace EGG9000.Site.Controllers {
                         u.Backup.EarningsBonus,
                         SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 
@@ -633,7 +633,7 @@ namespace EGG9000.Site.Controllers {
                         (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
                         u?.Backup?.TotalCS ?? 0
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 
@@ -674,7 +674,7 @@ namespace EGG9000.Site.Controllers {
                         (int)u?.Account?.Backup.GetCraftingLevel(),
                         (double)(u?.Account?.Backup?.CraftingXP)
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 
