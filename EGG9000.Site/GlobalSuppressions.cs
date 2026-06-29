@@ -7,3 +7,4 @@ using System.Diagnostics.CodeAnalysis;
 
 [assembly: SuppressMessage("Style", "IDE0011:Add braces", Justification = "General understanding of brace effectiveness")]
 [assembly: SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Stlyistic choice")]
+[assembly: SuppressMessage("Style", "IDE0025:Use block body for property", Justification = "<Pending>", Scope = "member", Target = "~P:EGG9000.Site.Services.ArtifactImageRenderer.RenderResult.Ok")]
