@@ -224,7 +224,9 @@ namespace EGG9000.Common.Coops {
         }
 
         public static bool CheckSet(ArtifactSet set, bool withTachyon) {
-            return !withTachyon || set.Artifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
+            var hasDeflector = set.Artifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
+            // "With Deflector" requires one; "No Deflector" forbids it. Either way the choice is explicit.
+            return withTachyon ? hasDeflector : !hasDeflector;
         }
 
         public class ArtifactSet {
