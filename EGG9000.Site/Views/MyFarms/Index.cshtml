@@ -93,22 +93,15 @@
         white-space: nowrap;
         text-align: center; /* Center the text within the tooltip */
         position: absolute;
+        background-color: rgba(130, 135, 140, 0.95);
     }
 
-        .tooltiptext-custom .bootstrap-dark {
+        [data-bs-theme="dark"] .tooltiptext-custom {
             background-color: rgba(33, 37, 41, 0.95);
         }
 
-        .tooltiptext-custom .bootstrap {
-            background-color: rgba(130, 135, 140, 0.95);
-        }
-
-    .bootstrap-dark .speech-bubble {
+    [data-bs-theme="dark"] .speech-bubble {
         background-color: rgba(33, 37, 41, 0.95);
-    }
-
-    .bootstrap .speech-bubble {
-        background-color: rgba(130, 135, 140, 0.95);
     }
 
     .speech-bubble {
@@ -116,6 +109,7 @@
         padding: 10px;
         margin: 10px auto; /* Center the bubble horizontally */
         border-radius: 5px; /* Rounded corners for the bubble */
+        background-color: rgba(130, 135, 140, 0.95);
     }
 
         /* Create the triangle */
@@ -258,7 +252,7 @@
         @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
             var account = Model.User.EggIncAccounts[index];
             <li class="nav-item">
-                <a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
+                <a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-bs-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
                     @account.Backup.UserName
                     <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;" />
                     @if (account.Backup.PermitLevel == 0) {
@@ -362,43 +356,43 @@
 
             <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link active" data-toggle="tab" href="#contracthistory@(index)" role="tab" aria-selected="true">Contract History</a>
+                    <a class="nav-link active" data-bs-toggle="tab" href="#contracthistory@(index)" role="tab" aria-selected="true">Contract History</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#shipsfarms@(index)" role="tab" aria-selected="false">Ships & Farms</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#shipsfarms@(index)" role="tab" aria-selected="false">Ships & Farms</a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#epicresearch@(index)" role="tab" aria-selected="false">Epic Research</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#epicresearch@(index)" role="tab" aria-selected="false">Epic Research</a>
                 </li>
                 @if (inDB) {
                     var tabName = isAdmin ? $"Merits ({Model.Merits.Count}) & Demerits ({Model.Demerits.Count})" : $"Merits & Demerits";
                     <li class="nav-item">
-                        <a class="nav-link" data-toggle="tab" href="#merits@(index)" role="tab" aria-selected="false">@tabName</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#merits@(index)" role="tab" aria-selected="false">@tabName</a>
                     </li>
                     @if (snapshots != null) {
                         <li class="nav-item">
-                            <a class="nav-link" data-toggle="tab" href="#ebhistory@(index)" role="tab" aria-selected="false">EB Stats</a>
+                            <a class="nav-link" data-bs-toggle="tab" href="#ebhistory@(index)" role="tab" aria-selected="false">EB Stats</a>
                         </li>
                     }
                 }
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#artifactcombos@(index)" role="tab" aria-selected="false">Artifact Combos</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#artifactcombos@(index)" role="tab" aria-selected="false">Artifact Combos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#externaltools@(index)" role="tab" aria-selected="false">External Tools</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#externaltools@(index)" role="tab" aria-selected="false">External Tools</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calc</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calc</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#colleggtibles@(index)" role="tab" aria-selected="false">Colleggtibles</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#colleggtibles@(index)" role="tab" aria-selected="false">Colleggtibles</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#contractsettings@(index)" role="tab" aria-selected="false">Contract Settings</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#contractsettings@(index)" role="tab" aria-selected="false">Contract Settings</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#inventory@(index)" role="tab" aria-selected="false">Inventory</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#inventory@(index)" role="tab" aria-selected="false">Inventory</a>
                 </li>
             </ul>
 
@@ -432,7 +426,7 @@
                                                 @if (Model.Merits.Count > 0) {
                                                     <tbody>
                                                         <tr>
-                                                            <th class="text-left">Date</th>
+                                                            <th class="text-start">Date</th>
                                                             <th>Reason</th>
                                                             @if (isAdmin) {
                                                                 <th></th>
@@ -467,7 +461,7 @@
                                                 <caption style="caption-side: top; text-align: center; font-weight: bold;">Demerits</caption>
                                                 <thead>
                                                     <tr>
-                                                        <th class="text-left">Date</th>
+                                                        <th class="text-start">Date</th>
                                                         <th>Reason</th>
                                                         @if (isAdmin) {
                                                             <th></th>
@@ -597,10 +591,14 @@
                 const hash = url.split("#");
                 var backupNum = hash[1].slice(-1);
                 if (backupNum != "0") {
-                    $('a[href="#user' + backupNum + '"]').tab("show");
+                    // BS5 dropped the jQuery .tab() plugin; use bootstrap.Tab directly
+                    const accountTab = document.querySelector('a[href="#user' + backupNum + '"]');
+                    if (accountTab) bootstrap.Tab.getOrCreateInstance(accountTab).show();
                 }
 
-                $('a[href="#' + hash[1] + '"]').tab("show");
+                // Show the specific inner tab from the URL hash
+                const innerTab = document.querySelector('a[href="#' + hash[1] + '"]');
+                if (innerTab) bootstrap.Tab.getOrCreateInstance(innerTab).show();
                 url = location.href.replace(/\/#/, "#");
                 history.replaceState(null, null, url);
                 setTimeout(() => {
@@ -609,7 +607,7 @@
 
             }
 
-            $('a[data-toggle="tab"]').on("click", function () {
+            $('a[data-bs-toggle="tab"]').on("click", function () {
                 let newUrl;
                 const hash = $(this).attr("href");
 

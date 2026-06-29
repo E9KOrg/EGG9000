@@ -1,27 +1,30 @@
-﻿<div ng-controller="AdminPage">
-<textarea ng-model="json"></textarea>
-    <button ng-click="Save()">Save</button>
+<div x-data="saveFaqPage()">
+<textarea x-model="json"></textarea>
+    <button @@click="save()">Save</button>
 </div>
 
 @section Scripts {
     <script>
-        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
-            .controller('AdminPage', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q',
-            function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-                                            // Action functions
-                                $scope.Save = function Save() {
-                                    $http({ method: 'POST', url: '/admin/savefaqtopic/', data: $scope.json, headers: { 'Content-Type': 'application/json' } })
-                                        .then(function successCallback(response) {
-                                            if (response.data.Error) {
-                                                alert(response.data.Error);
-                                                return;
-                                            }
-                                            $uibModalInstance.close();
-                                            location.reload();
-                                        }, function errorCallback(response) {
-                                            alert('Error Saving');
-                                        });
-                                };
-                            }]);
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('saveFaqPage', () => ({
+                json: '',
+
+                async save() {
+                    try {
+                        const r = await fetch('/admin/savefaqtopic/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: this.json
+                        });
+                        const data = await r.json();
+                        if (data.Error) { alert(data.Error); return; }
+                        location.reload();
+                    } catch (e) {
+                        alert('Error Saving');
+                        console.error(e);
+                    }
+                }
+            }));
+        });
     </script>
 }

@@ -1,4 +1,4 @@
-﻿@using EGG9000.Common.JsonData
+@using EGG9000.Common.JsonData
 @using EGG9000.Common.JsonData.EIEpicResearch;
 @model (List<EpicResearchItem> epicResearchConfig, CustomBackup backup, EggIncAccount account);
 @{
@@ -16,10 +16,10 @@
 	var bankScalar = !Model.account.HasActiveSubscription() ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40);
 	var totalBankGE = (ulong)(Model.backup.TotalGEInPiggyBank * bankScalar);
 }
-<div class="card" style="margin-top:15px" ng-controller="EpicResearch@(Model.backup.EggIncId)">
+<div class="card" style="margin-top:15px" x-data="epicResearchPage()">
 	<h4 class="card-header mb-3 d-flex justify-content-between align-items-center">
 		<span>Epic Research GE Calculator</span>
-		<select id="discount-select" class="form-select form-select-sm" ng-model="Discount">
+		<select id="discount-select" class="form-select form-select-sm" x-model.number="Discount">
 			<option id="discount-0" value="0" selected>Select Discount</option>
 			<option id="discount-25" value="25">25%</option>
 			<option id="discount-30" value="30">30%</option>
@@ -42,31 +42,40 @@
 				</tr>
 			</thead>
 			<tbody>
-				<tr ng-repeat="epicResearch in EpicResearchConfig" ng-class="{ 'collapsible-er-row': epicResearch.mappedBackupResearch.level == epicResearch.costs.length }">
-					<td>
-						{{epicResearch.title}}
-						<span class="d-md-none">
-							<span class="badge"
-								  ng-class="{ 'badge-danger': epicResearch.mappedBackupResearch.level == 0, 'badge-warning': epicResearch.mappedBackupResearch.level < epicResearch.costs.length, 'badge-success': epicResearch.mappedBackupResearch.level == epicResearch.costs.length }">
-								{{epicResearch.mappedBackupResearch.level}}/{{epicResearch.costs.length}}
+				<template x-for="er in EpicResearchConfig" :key="er.id">
+					<tr :class="{ 'collapsible-er-row': er.mappedBackupResearch.level === er.costs.length }">
+						<td>
+							<span x-text="er.title"></span>
+							<span class="d-md-none">
+								<span class="badge"
+									  :class="{
+										'text-bg-danger': er.mappedBackupResearch.level === 0,
+										'text-bg-warning': er.mappedBackupResearch.level > 0 && er.mappedBackupResearch.level < er.costs.length,
+										'text-bg-success': er.mappedBackupResearch.level === er.costs.length
+									  }">
+									<span x-text="er.mappedBackupResearch.level + '/' + er.costs.length"></span>
+								</span>
 							</span>
-						</span>
-					</td>
-					<td class="d-none d-md-table-cell">{{epicResearch.description}}</td>
-					<td class="d-none d-md-table-cell">
-						<span class="badge"
-							  ng-class="{ 'badge-danger': epicResearch.mappedBackupResearch.level == 0, 'badge-warning': epicResearch.mappedBackupResearch.level < epicResearch.costs.length, 'badge-success': epicResearch.mappedBackupResearch.level == epicResearch.costs.length }">
-							{{epicResearch.mappedBackupResearch.level}}/{{epicResearch.costs.length}}
-						</span>
-					</td>
-
-					<td ng-if="epicResearch.mappedBackupResearch.level == epicResearch.costs.length" colspan="3">&nbsp;</td>
-					<td ng-if-start="epicResearch.mappedBackupResearch.level < epicResearch.costs.length" class="text-right">{{GetCostForLevels(epicResearch, true) | number:0}}</td>
-					<td>
-						<input type="number" ng-model="epicResearch.levelsToBuy" min="0" max="{{epicResearch.costs.length - epicResearch.mappedBackupResearch.level}}" step="1" style="width: 3em;" />
-					</td>
-					<td ng-if-end class="text-right">{{GetCostForLevels(epicResearch) | number:0}}</td>
-				</tr>
+						</td>
+						<td class="d-none d-md-table-cell" x-text="er.description"></td>
+						<td class="d-none d-md-table-cell">
+							<span class="badge"
+								  :class="{
+									'text-bg-danger': er.mappedBackupResearch.level === 0,
+									'text-bg-warning': er.mappedBackupResearch.level > 0 && er.mappedBackupResearch.level < er.costs.length,
+									'text-bg-success': er.mappedBackupResearch.level === er.costs.length
+								  }">
+								<span x-text="er.mappedBackupResearch.level + '/' + er.costs.length"></span>
+							</span>
+						</td>
+						<td x-show="er.mappedBackupResearch.level === er.costs.length" colspan="3">&nbsp;</td>
+						<td x-show="er.mappedBackupResearch.level < er.costs.length" class="text-end" x-text="Math.round(getCostForLevels(er, true)).toLocaleString()"></td>
+						<td x-show="er.mappedBackupResearch.level < er.costs.length">
+							<input type="number" x-model.number="er.levelsToBuy" :min="0" :max="er.costs.length - er.mappedBackupResearch.level" step="1" style="width: 3em;" />
+						</td>
+						<td x-show="er.mappedBackupResearch.level < er.costs.length" class="text-end" x-text="Math.round(getCostForLevels(er)).toLocaleString()"></td>
+					</tr>
+				</template>
 				@if (Model.epicResearchConfig.Count(er => er.MappedBackupResearch.Level == er.Costs.Count) > 0){
 					<tr class="collapsible-er-row toggleHide">
 						<td colspan="6" style="text-align: center; color:coral">
@@ -76,64 +85,52 @@
 				}
 				<tr>
 					<td colspan="2" class="d-none d-md-table-cell"></td>
-					<td colspan="3" class="text-right">
+					<td colspan="3" class="text-end">
 						<b>
-							@{
-								GEEmoji();
-							} Required
+							@{ GEEmoji(); } Required
 						</b>
 					</td>
-					<td class="text-right"><b>{{TotalGECost() | number:0}}</b></td>
+					<td class="text-end"><b x-text="Math.round(totalGECost()).toLocaleString()"></b></td>
 				</tr>
 				<tr>
 					<td colspan="2" class="d-none d-md-table-cell"></td>
-					<td colspan="3" class="text-right">
-						@{
-							GEEmoji();
-						} Current
+					<td colspan="3" class="text-end">
+						@{ GEEmoji(); } Current
 					</td>
-					<td class="text-right">{{CurrentGE | number:0}}</td>
+					<td class="text-end" x-text="Math.round(currentGE).toLocaleString()"></td>
 				</tr>
-				<tr ng-if-start="TotalGECost() > CurrentGE">
+				<tr x-show="totalGECost() > currentGE">
 					<td colspan="2" class="d-none d-md-table-cell"></td>
-					<td colspan="3" class="text-right">
-						@{
-							GEEmoji();
-						} Needed from Bank
+					<td colspan="3" class="text-end">
+						@{ GEEmoji(); } Needed from Bank
 					</td>
-					<td class="text-right">{{TotalGECost()  - CurrentGE | number:0}}</td>
+					<td class="text-end" x-text="Math.round(totalGECost() - currentGE).toLocaleString()"></td>
 				</tr>
-				<tr ng-if-end>
+				<tr x-show="totalGECost() > currentGE">
 					<td colspan="2" class="d-none d-md-table-cell"></td>
-					<td colspan="3" class="text-right">
-						@{
-							GEEmoji();
-						} In Bank
+					<td colspan="3" class="text-end">
+						@{ GEEmoji(); } In Bank
 						@if(totalBankGE != rawBankGE){
 							<br /><img src="https://cdn.discordapp.com/emojis/1131045418319495369.webp" style="max-height: 15px;" /> @(("ULTRA Bonus"))
 							<br /><hr />
 							GEEmoji(); @((" Total in Bank"))
 						}
 					</td>
-					<td class="text-right">
-						{{RawGEInPiggyBank | number:0}}
-						<span ng-if="@totalBankGE != @rawBankGE">
-							<br />+{{@(totalBankGE - rawBankGE) | number:0}}
+					<td class="text-end">
+						<span x-text="Math.round(rawGEInPiggyBank).toLocaleString()"></span>
+						<span x-show="totalBankGE !== rawBankGE">
+							<br />+<span x-text="Math.round(totalBankGE - rawBankGE).toLocaleString()"></span>
 							<br /><hr />
-							{{@totalBankGE | number:0}}
+							<span x-text="Math.round(totalBankGE).toLocaleString()"></span>
 						</span>
 					</td>
 				</tr>
 				<tr>
 					<td colspan="2" class="d-none d-md-table-cell"></td>
-					<td colspan="3" class="text-right">
-						<b>
-							Total @{
-								GEEmoji();
-							} required
-						</b>
+					<td colspan="3" class="text-end">
+						<b>Total @{ GEEmoji(); } required</b>
 					</td>
-					<td class="text-right"><b>{{Math.max(0, TotalGECost() - CurrentGE - @totalBankGE) | number:0}}</b></td>
+					<td class="text-end"><b x-text="Math.max(0, Math.round(totalGECost() - currentGE - totalBankGE)).toLocaleString()"></b></td>
 				</tr>
 			</tbody>
 		</table>
@@ -147,49 +144,40 @@
 }
 
 <script type="text/javascript">
+	document.addEventListener('alpine:init', () => {
+		Alpine.data('epicResearchPage', () => ({
+			EpicResearchConfig: [],
+			currentGE: 0,
+			rawGEInPiggyBank: 0,
+			totalBankGE: 0,
+			rawBankGE: 0,
+			Discount: 0,
 
-	function scriptToExecute() {
-		window.egg9000module = window.egg9000module || angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages']);
+			init() {
+				const _rawConfig = @Html.Raw(Json.Serialize(Model.epicResearchConfig));
+				this.EpicResearchConfig = _rawConfig;
+				this.EpicResearchConfig.forEach(er => {
+					er.levelsToBuy = er.costs.length - er.mappedBackupResearch.level;
+				});
+				this.currentGE = @(Model.backup.GoldenEggsEarned - Model.backup.GoldenEggsSpent);
+				this.rawGEInPiggyBank = @Model.backup.TotalGEInPiggyBank;
+				this.totalBankGE = @totalBankGE;
+				this.rawBankGE = @rawBankGE;
+			},
 
-		window.egg9000module.controller('EpicResearch@(Model.backup.EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-			$scope.Discount = 0;
-			$scope.EpicResearchConfig = @Html.Raw(Json.Serialize(Model.epicResearchConfig));
-			$scope.CurrentGE = @(Model.backup.GoldenEggsEarned - Model.backup.GoldenEggsSpent);
-			var BankMultiplier = @(!Model.account.HasActiveSubscription() ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40));
-			$scope.RawGEInPiggyBank = @Model.backup.TotalGEInPiggyBank;
-			$scope.TotalGEInPiggyBank = @Model.backup.TotalGEInPiggyBank * BankMultiplier;
-			$scope.Math = window.Math;
-			$scope.Discount = "0";
-			angular.forEach($scope.EpicResearchConfig, function(epicResearch) { epicResearch.levelsToBuy = epicResearch.costs.length - epicResearch.mappedBackupResearch.level; });
-
-			$scope.GetCostForLevels = function(epicResearch, single = false) {
-				var cost = 0;
-				for (var i = 0; i < epicResearch.levelsToBuy; i++) {
-					if (i >= epicResearch.costs.length || (i > 0 && single)) {
-						break;
-					}
+			getCostForLevels(epicResearch, single = false) {
+				let cost = 0;
+				for (let i = 0; i < epicResearch.levelsToBuy; i++) {
+					if (i >= epicResearch.costs.length || (i > 0 && single)) break;
 					cost += epicResearch.costs[epicResearch.mappedBackupResearch.level + i];
 				}
-                if (epicResearch.order > 90)
-						return cost;
-				return cost * (1 - ($scope.Discount / 100));
+				if (epicResearch.order > 90) return cost;
+				return cost * (1 - (this.Discount / 100));
+			},
+
+			totalGECost() {
+				return this.EpicResearchConfig.reduce((sum, er) => sum + this.getCostForLevels(er), 0);
 			}
-
-			$scope.TotalGECost = function() {
-				var cost = 0;
-				angular.forEach($scope.EpicResearchConfig, function(epicResearch) { cost += $scope.GetCostForLevels(epicResearch); });
-				return cost;
-			}
-
-			$(document).ready(function () {
-				if ($('.bootstrap-dark').length > 0) {
-					$('select[id*="discount"], option[id*="discount"]').css('color', '#c3c3c3');
-				}
-			});
-		}]);
-	}
-
-
-	window.ScriptsToExecute = window.ScriptsToExecute || [];
-	window.ScriptsToExecute.push(scriptToExecute);
+		}));
+	});
 </script>

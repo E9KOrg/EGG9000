@@ -46,8 +46,8 @@
     });
 }
 
-<div ng-controller="Page">
-    {{  TotalDiscount }} 
+<div x-data="researchTest()">
+    <span x-text="TotalDiscount"></span>
     <table class="table">
         <thead>
             <tr>
@@ -57,33 +57,56 @@
                 <th>Next Cost</th>
             </tr>
         </thead>
-        <tr ng-repeat="research in allResearch" ng-if="research.CurrentLevel < research.Levels && research.Tier > 0">
-            <td>{{research.Tier}}</td>
-            <td>{{ research.Name }}</td>
+        <template x-for="(research, i) in allResearch" :key="research.ID">
+        <tr x-show="research.CurrentLevel < research.Levels && research.Tier > 0">
+            <td x-text="research.Tier"></td>
+            <td x-text="research.Name"></td>
             <td>
-                <button ng-disabled="research.CurrentLevel == 0" ng-click="research.CurrentLevel = research.CurrentLevel - 1">-</button>
-                <button ng-disabled="research.CurrentLevel == research.Levels" ng-click="research.CurrentLevel = research.CurrentLevel + 1">+</button>
+                <button :disabled="research.CurrentLevel == 0" @@click="research.CurrentLevel--">-</button>
+                <button :disabled="research.CurrentLevel == research.Levels" @@click="research.CurrentLevel++">+</button>
 
-                {{ research.CurrentLevel }}/{{research.Levels}}</td>
-            <td ng-if="research.EoVCosts[research.CurrentLevel] &gt; 0">{{ numberToString( research.EoVCosts[research.CurrentLevel] * TotalDiscount) }}</td>
-            <td ng-if="research.EoVCosts[research.CurrentLevel] &lt;= 0">-</td>
-            <td ng-if="research.EoVCosts[research.CurrentLevel] == null">Completed</td>
-            <td><input ng-model="research.V" />{{numberToString(numberFromString(research.V) / (TotalDiscount + 0.5))}}</td>
-            <td><button ng-click="Submit(research)">Submit</button></td>
+                <span x-text="research.CurrentLevel"></span>/<span x-text="research.Levels"></span></td>
+            <td x-show="research.EoVCosts[research.CurrentLevel] > 0" x-text="numberToString(research.EoVCosts[research.CurrentLevel] * TotalDiscount)"></td>
+            <td x-show="research.EoVCosts[research.CurrentLevel] <= 0">-</td>
+            <td x-show="research.EoVCosts[research.CurrentLevel] == null">Completed</td>
+            <td><input x-model="research.V" /><span x-text="numberToString(numberFromString(research.V) / (TotalDiscount + 0.5))"></span></td>
+            <td><button @@click="Submit(research)">Submit</button></td>
 
 </tr>
+        </template>
     </table>
 </div>
 
 @section Scripts {
     <script>
-        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
-            .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-                $scope.allResearch = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(allResearch));
-                console.log($scope.allResearch);
-                $scope.TotalDiscount = @Html.Raw(researchDiscount * researchCostDisicountColleggtible * artifactDiscount);
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('researchTest', () => ({
+                allResearch: [],
+                TotalDiscount: @Html.Raw(researchDiscount * researchCostDisicountColleggtible * artifactDiscount),
 
-                const bignums = [
+                init() {
+                    this.allResearch = @Html.Raw(Newtonsoft.Json.JsonConvert.SerializeObject(allResearch));
+                },
+
+                Submit(research) {
+                    const value = this.numberFromString(research.V) / (this.TotalDiscount);
+                    research.EoVCosts[research.CurrentLevel] = value;
+                    if (value > 0) {
+                        fetch('/MyFarms/SubmitResearchCost', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: research.ID,
+                                cost: value,
+                                level: research.CurrentLevel + 1
+                            })
+                        }).then(r => r.ok ? alert('Submitted') : r.text().then(t => alert('Error: ' + t)));
+                    } else {
+                        alert('Invalid Value');
+                    }
+                },
+
+                bignums: [
                     [0, ""],
                     [3, "K"],
                     [6, "M"],
@@ -111,26 +134,10 @@
                     [72, "tV"],
                     [75, "qV"],
                     [78, "QV"],
-                ];
-                $scope.Submit = function(research) {
-                    const value = $scope.numberFromString(research.V) / ($scope.TotalDiscount);
-                    research.EoVCosts[research.CurrentLevel] = value;
-                     if (value > 0) {
-                        $http.post('/MyFarms/SubmitResearchCost', {
-                            id: research.ID,
-                            cost: value,
-                            level: research.CurrentLevel + 1
-                        }).then(function(result) {
-                            alert('Submitted');
-                        }, function(err) {
-                            alert('Error: ' + err.data);
-                        });
-                    } else {
-                        alert('Invalid Value');
-                    }
-                }
+                ],
 
-                $scope.numberToString = function(number, showDecimalPlaces = true, numberOfDecimalPlaces = 3) {
+                numberToString(number, showDecimalPlaces = true, numberOfDecimalPlaces = 3) {
+                    const bignums = this.bignums;
                     const negative = number < 0;
                     if (negative) number = -number;
 
@@ -151,9 +158,10 @@
                     outString += suffixEntry[1];
 
                     return outString;
-                }
+                },
 
-                $scope.numberFromString = function(arg) {
+                numberFromString(arg) {
+                    const bignums = this.bignums;
                     const regex = /([\d\.]+)(\w*)/;
                     const match = regex.exec(arg);
                     if (match) {
@@ -168,6 +176,7 @@
                         }
                     }
                 }
-            }]);
+            }));
+        });
     </script>
 }

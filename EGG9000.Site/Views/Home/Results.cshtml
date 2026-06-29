@@ -19,7 +19,9 @@
             EarningsBonusPercent = (x.Backup.EarningsBonus - snapshot.EarningsBonus) / snapshot.EarningsBonus,
             x.DiscordUser
         };
-    }).Where(x => x != null);
+    // This page groups by the live Discord "farmer" role, which only exists on a cached SocketGuildUser.
+    // The board now includes DB-only rows with no cached user; they can't be role-grouped, so drop them here.
+    }).Where(x => x != null && x.DiscordUser != null);
 }
 
 <style>
