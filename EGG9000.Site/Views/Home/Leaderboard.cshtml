@@ -6,7 +6,7 @@
 	var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
 	var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
 
-	var myAccounts = Model.Where(x => x.DiscordUser.Id.ToString() == discordId);
+	var myAccounts = Model.Where(x => x.DisplayDiscordId.ToString() == discordId);
 	// Read/staff tier - gates only the clickable player-name link to MyFarms on this read-only page.
 	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
 }
@@ -45,7 +45,7 @@
 		background-color: #adffaa !important;
 	}
 
-	.bootstrap-dark .Me td {
+	[data-bs-theme="dark"] .Me td {
 		background-color: #2c462b !important;
 	}
 
@@ -149,7 +149,7 @@ Sort By:
 		}
 	}
 	void RowTemplate(LeaderboardUser account, int i) {
-		var isMe = account.DiscordUser.Id.ToString() == discordId;
+		var isMe = account.DisplayDiscordId.ToString() == discordId;
 		<tr id="@account.User.DiscordId" class="@(isMe ? "Me" : "")">
 
 			<td align="right"> @i </td>
@@ -160,14 +160,14 @@ Sort By:
 				}
 				@if (isAdmin) {
 					<a href="/Home/ViewUser/@(account.User.Id)">
-						@account.DiscordUser.GetCleanName()
+						@account.DisplayName
 					</a>
 				} else if (isMe) {
 					<a href="/MyFarms">
-						@account.DiscordUser.GetCleanName()
+						@account.DisplayName
 					</a>
 				} else {
-					@account.DiscordUser.GetCleanName()
+					@account.DisplayName
 				}
 			</td>
 			@if (ViewBag.SortBy == "mer") {
