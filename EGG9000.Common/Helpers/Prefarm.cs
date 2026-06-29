@@ -42,6 +42,12 @@ namespace EGG9000.Common.Helpers {
             public bool Last4 { get; set; }
             public bool Last5 { get; set; }
             public SocketGuildUser DiscordUser { get; set; }
+            // The board is sourced from DB GuildId, not the live Discord cache, so a row can exist
+            // without a cached SocketGuildUser. These give views a name/id without dereferencing it.
+            public ulong DisplayDiscordId => DiscordUser?.Id ?? User.DiscordId;
+            public string DisplayName => DiscordUser is not null
+                ? DiscordUser.GetCleanName()
+                : System.Text.RegularExpressions.Regex.Replace(User.DiscordUsername ?? "", @"\(.+?\)", "").Trim();
             public bool Elite { get { return Backup.EarningsBonus > 10000000000000; } }
             public DateTimeOffset Started { get; set; }
             public List<SimpleXref> RecentXrefs { get; set; }

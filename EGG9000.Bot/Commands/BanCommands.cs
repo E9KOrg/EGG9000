@@ -22,6 +22,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     [Group("b", "Ban management commands")]
     [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
+    [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
     public class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
@@ -98,6 +99,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("kick", "Kick user(s) with DM")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task Kick(
             [Summary("users", "Mention one or more users (e.g. @a @b @c) or paste IDs")] string usersInput,
             [Summary("reason", "reason")] string reason,

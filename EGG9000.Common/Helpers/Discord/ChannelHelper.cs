@@ -68,10 +68,10 @@ namespace EGG9000.Bot.Common.Helpers {
         }
 
         public static async Task<IUserMessage> DetermineAndSend(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
-            return await SendCustomMessage(_client, DetermineChannelType(dbGuild, _client.GetGuild(dbGuild.Id), channelType), message, logger);
+            return await SendCustomMessage(DetermineChannelType(dbGuild, _client.GetGuild(dbGuild.Id), channelType), message, logger);
         }
 
-        public static async Task<IUserMessage> SendCustomMessage(DiscordSocketClient _client, object target, CustomDiscordMessage message, ILogger logger = null) {
+        public static async Task<IUserMessage> SendCustomMessage(object target, CustomDiscordMessage message, ILogger logger = null) {
             if(target is null) return null;
             if(target.GetType() == typeof(SocketThreadChannel)) {
                 var threadChannel = (SocketThreadChannel)target;

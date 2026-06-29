@@ -88,11 +88,11 @@
         color: gray;
     }
 
-    .bootstrap .tooltip-text {
+    .tooltip-text {
         color: black;
     }
 
-    .bootstrap-dark .tooltip-text {
+    [data-bs-theme="dark"] .tooltip-text {
         color: #ccc;
     }
 
@@ -117,7 +117,7 @@
             vertical-align: middle; /* Align the image vertically with the text */
         }
 
-    .bootstrap-dark .tooltip-custom img {
+    [data-bs-theme="dark"] .tooltip-custom img {
         filter: invert(1) !important;
     }
 
@@ -129,22 +129,15 @@
         white-space: nowrap;
         text-align: center; /* Center the text within the tooltip */
         position: absolute;
-    }
-
-    .bootstrap-dark .tooltiptext-custom {
-        background-color: rgba(33, 37, 41, 0.95);
-    }
-
-    .bootstrap .tooltiptext-custom {
         background-color: rgba(235, 239, 242, 0.95);
     }
 
-    .bootstrap-dark .speech-bubble {
+    [data-bs-theme="dark"] .tooltiptext-custom {
         background-color: rgba(33, 37, 41, 0.95);
     }
 
-    .bootstrap .speech-bubble {
-        background-color: rgba(235, 239, 242, 0.95);
+    [data-bs-theme="dark"] .speech-bubble {
+        background-color: rgba(33, 37, 41, 0.95);
     }
 
     .speech-bubble {
@@ -152,6 +145,7 @@
         padding: 10px;
         margin: 10px auto; /* Center the bubble horizontally */
         border-radius: 5px; /* Rounded corners for the bubble */
+        background-color: rgba(235, 239, 242, 0.95);
     }
 
         /* Create the triangle */
@@ -166,11 +160,11 @@
             border-color: #ccc transparent transparent transparent;
         }
 
-    .gray-text-half-margin .bootstrap-dark, .gray-text .bootstrap-dark {
+    [data-bs-theme="dark"] .gray-text-half-margin, [data-bs-theme="dark"] .gray-text {
         color: lightgray;
     }
 
-    .gray-text-half-margin .bootstrap, .gray-text .bootstrap {
+    .gray-text-half-margin, .gray-text {
         color: darkgray;
     }
 
@@ -333,11 +327,11 @@
         font-weight: bold;
     }
 
-    .bootstrap .ship-toggle-button {
+    .ship-toggle-button {
         color: #333333;
     }
 
-    .bootstrap-dark .ship-toggle-button {
+    [data-bs-theme="dark"] .ship-toggle-button {
         color: #d3d3d3;
     }
 
@@ -351,8 +345,8 @@
         border: 1px solid #ccc;
     }
 
-    .bootstrap-dark select, 
-    .bootstrap-dark option {
+    [data-bs-theme="dark"] select,
+    [data-bs-theme="dark"] option {
         border: 1px solid #222;
         background-color: #333;
     }
@@ -364,7 +358,7 @@
         border-radius: 4px;
     }
 
-    .bootstrap-dark .alert-danger {
+    [data-bs-theme="dark"] .alert-danger {
         color: rgb(225, 134, 143) !important;
         background-color: rgb(67, 12, 17) !important;
         border-color: rgb(104, 18, 27) !important;

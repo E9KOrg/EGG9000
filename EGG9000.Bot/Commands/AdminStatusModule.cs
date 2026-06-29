@@ -252,6 +252,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("sysload", "System load: runtime, Discord, DB, process (health-colored)")]
+        [StaffOnly(StaffTier.Admin)]
         public async Task SysLoad(
             [Summary("refreshseconds", "Auto-refresh every N seconds (1-30, stops after 30s total)")] int refreshseconds = 0,
             [Summary("showinchannel", "Post visibly in the channel instead of only to you")] bool showinchannel = false) {

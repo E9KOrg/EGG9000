@@ -74,6 +74,14 @@ namespace EGG9000.Bot.Automated {
                     var dbGuild = dbguilds.FirstOrDefault(x => x.Id == user.GuildId);
                     if(dbGuild is null) continue;
 
+                    // GuildId can be stale when a user leaves Discord without being unassigned; skip the
+                    // ping when the roster is complete and the user is no longer a member.
+                    var clientGuild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                    if(clientGuild is not null) {
+                        await clientGuild.DownloadUsersAsync();
+                        if(clientGuild.HasAllMembers && clientGuild.GetUser(user.DiscordId) is null) continue;
+                    }
+
                     var identifier = string.IsNullOrEmpty(outlier.Backup?.UserName) ? (string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name) : outlier.Backup.UserName;
 #if DEV9002
                     var message = $"User `<@{user.DiscordId}>` may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
@@ -136,6 +144,11 @@ namespace EGG9000.Bot.Automated {
 
                     var clientGuild = _client.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
                     if(clientGuild is null) continue;
+
+                    // GuildId can be stale when a user leaves Discord without being unassigned; skip the
+                    // ping when the roster is complete and the user is no longer a member.
+                    await clientGuild.DownloadUsersAsync();
+                    if(clientGuild.HasAllMembers && clientGuild.GetUser(user.DiscordId) is null) continue;
 
                     var dbGuild = dbguilds.FirstOrDefault(x => x.Id == clientGuild.Id);
                     if(dbGuild is null) continue;

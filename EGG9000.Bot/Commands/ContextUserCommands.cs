@@ -11,23 +11,27 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public class ContextUserModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class ContextUserModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<ContextUserModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
+        private readonly ILogger<ContextUserModule> _logger = logger;
 
         [UserCommand("Userstatus")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task Userstatus(SocketGuildUser target) {
-            await UserStatusCommands._userstatus(Context.Interaction, Db, _client, target, true, false);
+            await UserStatusCommands._userstatus(Context.Interaction, Db, _client, _logger, target, true, false);
         }
 
         [UserCommand("Contract Settings")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task ContractSettings(SocketGuildUser target) {
             await ContractSettingsCommands.OpenContractSettings(Context.Interaction, Db, target);
         }
 
         [UserCommand("Rockets Tracker")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task RocketsTrackerLinks(SocketGuildUser target) {
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == target.Id);
             if(dbUser == null) {

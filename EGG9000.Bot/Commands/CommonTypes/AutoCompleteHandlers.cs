@@ -39,19 +39,25 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly DatabaseCache _cache = cache;
 
             private async Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var guild = guilds.FirstOrDefault(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
+                // GuildId is null in DMs; bail rather than dereferencing it.
+                if(arg.GuildId is not ulong guildId) return new List<AutocompleteResult>();
+                var guildIdStr = guildId.ToString();
+                var guild = guilds.FirstOrDefault(x => x.Id == guildId || (x.OverflowServersJson?.Contains(guildIdStr) ?? false));
                 if(guild is null) return new List<AutocompleteResult>();
                 var allusers = _cache.GetCachedUsers();
+                if(allusers is null) return new List<AutocompleteResult>();
+                // Current.Value is null on the first focus before any text is typed.
+                var query = arg.Data.Current.Value?.ToString() ?? string.Empty;
                 var users = allusers
                     .Where(
                         x => x.GuildId == guild.Id && (
-                            (x.DiscordUsername?.Contains(arg.Data.Current.Value.ToString(), StringComparison.OrdinalIgnoreCase) ?? false) ||  //Match discord username
-                            (x.Usernames?.Contains((string)arg.Data.Current.Value) ?? false) //Or match egg inc username
+                            (x.DiscordUsername?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||  //Match discord username
+                            (x.Usernames?.Contains(query) ?? false) //Or match egg inc username
                         )
                     )
                     .Take(10);
 
-                var accounts = users.SelectMany(x => x.EggIncAccounts.Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
+                var accounts = users.SelectMany(x => (x.EggIncAccounts ?? []).Select(y => new { User = x, Account = y })).OrderBy(x => x.Account.Backup?.EarningsBonus);
 
                 var results = new List<AutocompleteResult>();
                 foreach(var account in accounts.DistinctBy(x => x.Account.Id)) {
@@ -274,16 +280,21 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
             private readonly DatabaseCache _dbCache = dbCache;
 
             private Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                var guild = guilds.First(x => x.Id == arg.GuildId || x.OverflowServersJson.Contains(arg.GuildId.ToString()));
-                List<CoopMin> coops = null;
-                if(string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    coops = _dbCache.ActiveCoopsWithFiveMinuteDelay()
+                if(arg.GuildId is not ulong guildId) return Task.FromResult(new List<AutocompleteResult>());
+                var guild = guilds.FirstOrDefault(x => x.Id == guildId || x.OverflowServers.Contains(guildId));
+                if(guild is null) return Task.FromResult(new List<AutocompleteResult>());
+
+                var activeCoops = _dbCache.ActiveCoopsWithFiveMinuteDelay() ?? [];
+                var filter = (string)arg.Data.Current.Value;
+                List<CoopMin> coops;
+                if(string.IsNullOrWhiteSpace(filter)) {
+                    coops = activeCoops
+                        .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League }).ToList();
+                } else {
+                    coops = activeCoops
+                        .Where(x => x.Name?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true && !x.ThreadArchived && x.GuildId == guild.Id && !x.DeletedChannel)
                         .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League }).ToList();
                 }
-
-                coops ??= _dbCache.ActiveCoopsWithFiveMinuteDelay()
-                    .Where(x => x.Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase) && !x.ThreadArchived && x.GuildId == guild.Id && !x.DeletedChannel)
-                    .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League }).ToList();
 
                 return Task.FromResult(coops.DistinctBy(x => x.Id).ToList().Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToList());
             }

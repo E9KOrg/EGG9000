@@ -123,7 +123,15 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static BigInteger GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {
-            return (ArtifactHall is null || ArtifactHall.Count == 0) ? 0 : (BigInteger)ArtifactHall.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
+            if(ArtifactHall is null || ArtifactHall.Count == 0) return 0;
+            // Collapse duplicate rows for the same artifact instance before scoring. A real hall has one
+            // row per distinct artifact; stray duplicates (from a corrupted/legacy backup) would otherwise
+            // be summed separately and massively inflate the score, producing false cheater flags.
+            var collapsed = ArtifactHall
+                .Where(a => a.Artifact is not null)
+                .GroupBy(a => a.Artifact)
+                .Select(g => (Artifact: g.Key, Count: g.Sum(x => x.Count)));
+            return (BigInteger)collapsed.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
         }
 
         public static int GetAFOrder(string AF) {
@@ -354,10 +362,42 @@ namespace EGG9000.Common.Helpers {
             return (rows, columns);
         }
 
+        // Builds a valid sample artifact set from a backup: at most four artifacts, one per family (the
+        // game never equips two of the same family), optionally including/excluding a deflector
+        // (CoopMembersEggLayingRates). `familyOffset` rotates the family pick order so different sample
+        // sets look distinct. Used to synthesise display sets (e.g. the DEV combos preview) without the
+        // page hand-rolling family-uniqueness rules.
+        public static List<EggIncArtifactInstance> BuildSampleSet(CustomBackup backup, bool withDeflector, int familyOffset = 0) {
+            if(backup?.ArtifactHall is null) return new List<EggIncArtifactInstance>();
+
+            var byFamily = backup.ArtifactHall
+                .Where(a => a.Count > 0 && a.Artifact is not null && !a.Artifact.Artifact.Contains("Stone", StringComparison.OrdinalIgnoreCase))
+                .Select(a => a.Artifact)
+                .GroupBy(a => a.Artifact) // artifact name resolves 1:1 to family
+                .Select(g => g.OrderByDescending(a => a.Rarity).ThenByDescending(a => a.Tier).First())
+                .ToList();
+
+            var deflectors = byFamily.Where(a => a.Boost == EGG9000.Common.JsonData.EiStatics.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+            var others = byFamily.Where(a => a.Boost != EGG9000.Common.JsonData.EiStatics.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+
+            var set = new List<EggIncArtifactInstance>();
+            if(withDeflector && deflectors.Count > 0) set.Add(deflectors[0]);
+
+            var slotsLeft = 4 - set.Count;
+            for(var i = 0; i < slotsLeft && others.Count > 0; i++) {
+                set.Add(others[(familyOffset + i) % others.Count]);
+            }
+            // Drop any accidental family duplicates from the offset wrap, then cap at four.
+            return set.GroupBy(a => a.Artifact).Select(g => g.First()).Take(4).ToList();
+        }
+
         public static List<ArtifactCount> GetOrderedInventory(EggIncAccount account) {
             if(account is null || account.Backup is null || account.Backup.ArtifactHall is null) return null;
-            var orderedList = account.Backup.ArtifactHall.Where(a => a.Count > 0).ToList().OrderByDescending(i => i.Artifact.Rarity).ToList().Select(a => new InventoryArtifactCount() {
-                AF = a, Skip = false
+            // Copy each ArtifactCount so collapsing duplicates never mutates the live backup. The same
+            // ArtifactHall objects feed the fairness-score / cheater checks and get reused across renders;
+            // writing Count back into them inflated stacks and produced false cheater pings.
+            var orderedList = account.Backup.ArtifactHall.Where(a => a.Count > 0).OrderByDescending(i => i.Artifact.Rarity).Select(a => new InventoryArtifactCount() {
+                AF = new ArtifactCount { Count = a.Count, Artifact = a.Artifact, NumberCrafted = a.NumberCrafted }, Skip = false
             }).ToList();
             var rarityGroupedAfs = orderedList.GroupBy(a => a.AF.Artifact.Rarity).ToList();
             orderedList = new List<InventoryArtifactCount>();
@@ -367,7 +407,7 @@ namespace EGG9000.Common.Helpers {
             foreach(var acount in orderedList.Where(a => !a.Skip && a.AF.Artifact.Stones?.Count == 0)) {
                 var others = orderedList.Where(a => acount.AF.Artifact.Equals(a.AF.Artifact) && orderedList.IndexOf(a) != orderedList.IndexOf(acount)).ToList();
                 foreach(var other in others) other.Skip = true;
-                acount.AF.Count += others.Count;
+                acount.AF.Count += others.Sum(o => o.AF.Count);
             }
             return orderedList.Where(a => !a.Skip).Select(a => a.AF).ToList();
         }

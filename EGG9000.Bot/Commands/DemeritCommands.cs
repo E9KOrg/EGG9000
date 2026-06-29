@@ -45,6 +45,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("adddemerit", "Add demerit to user")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task AddDemerit([Summary("user")] SocketGuildUser user, [Summary("reason")] string reason, [Summary("hidden")] bool hidden = false) {
             await Context.Interaction.DeferAsync(ephemeral: hidden);
             try {
@@ -78,6 +79,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("removedemerit", "Remove latest demerit from user")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task RemoveDemerit([Summary("user")] SocketGuildUser user) {
             await Context.Interaction.DeferAsync();
             try {
@@ -136,6 +138,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("demeritsforuser", "List demerits for user")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task DemeritsForUser([Summary("user")] SocketGuildUser user, [Summary("hidden")] bool hidden = false) {
             await Context.Interaction.DeferAsync(ephemeral: hidden);
             try {
@@ -151,6 +154,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("nodemerit", "Stops user from getting demerit in co-op")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task NoDemerit([Summary("user")] SocketGuildUser user) {
             await Context.Interaction.DeferAsync();
             List<UserCoopXref> xref;

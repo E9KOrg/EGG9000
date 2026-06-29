@@ -210,6 +210,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = coop.UserCoopsXrefs.FirstOrDefault(x => x.User.DiscordId == Context.User.Id)?.User;
             if(dbuser is null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to locate user in co-op."); });
+                return;
             }
 
             await ContractCommandsSlash._fixFullCoopError(Context.Interaction, Db, _client, _coopStatusUpdaterThreads, _logger, dbuser, coop);
@@ -217,6 +218,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("makepublic", "Makes a co-op public")]
         [DefaultMemberPermissions(GuildPermission.ManageChannels)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
         public async Task MakePublic() {
             await Context.Interaction.DeferAsync();
             var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
@@ -396,6 +398,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("makeprivate", "Makes this co-op private")]
         [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task MakePrivate() {
             await Context.Interaction.DeferAsync();
             var name = new Regex(@"\w+").Match(Context.Channel.Name.ToLower()).Value;
@@ -617,6 +620,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("deletecontract", "Delete a contract channel (Please use this instead of deleting the channel in discord)")]
         [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task DeleteContract() {
             var guildContract = Db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == Context.Channel.Id);
             if(guildContract == null) {

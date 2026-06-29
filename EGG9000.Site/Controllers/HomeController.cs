@@ -213,6 +213,12 @@ namespace EGG9000.Site.Controllers {
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
+            var guild = _discord.Guilds.First(g => g.Id == guildid);
+            // Membership is the DB GuildId, not the live Discord cache. The site runs its own bare
+            // socket client whose member cache can read "complete" while actually partial, and gating
+            // on it dropped real members from the board (the recurring CSLeaderboard "few users" bug).
+            // ManageOverflow owns reconciling GuildId against true Discord membership; the board just
+            // trusts it. DiscordUser is still resolved below for the display name only.
             var allUsers = await _databaseCache.GetDbUsers();
             var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
@@ -228,13 +234,13 @@ namespace EGG9000.Site.Controllers {
             var accounts = rawusers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new LeaderboardUser {
                 User = x.DBUser,
                 Backup = y.Backup,
-                DiscordUser = _discord.Guilds.First(g => g.Id == x.GuildId).Users.FirstOrDefault(du => du.Id == x.DiscordId),
+                DiscordUser = guild.Users.FirstOrDefault(du => du.Id == x.DiscordId),
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0,
                 TotalCraftingXP = y.Backup?.CraftingXP ?? 0,
                 CraftingLevel = y.Backup?.GetCraftingLevel() ?? 1,
-            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            })).Where(x => x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
         }
@@ -543,7 +549,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> LeaderboardXML(ulong guildid) {
             var users = await _getLeaderboard(guildid);
             var leaderboard = users.Select(x => new LeaderboardItem {
-                Name = x.DiscordUser.GetCleanName(),
+                Name = x.DisplayName,
                 EggIncName = x.Backup.UserName,
                 SoulEggs = x.Backup.SoulEggs,
                 EggsOfProphecy = x.Backup.EggsOfProphecy,
@@ -587,7 +593,7 @@ namespace EGG9000.Site.Controllers {
                         u.Backup.EarningsBonus,
                         SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 
@@ -627,7 +633,7 @@ namespace EGG9000.Site.Controllers {
                         (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
                         u?.Backup?.TotalCS ?? 0
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 
@@ -668,7 +674,7 @@ namespace EGG9000.Site.Controllers {
                         (int)u?.Account?.Backup.GetCraftingLevel(),
                         (double)(u?.Account?.Backup?.CraftingXP)
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 

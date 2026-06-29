@@ -16,6 +16,7 @@ namespace EGG9000.Bot.Commands {
     // CreatePrivateThreads)
     [Group("a", "Admin commands")]
     [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+    [StaffOnly(StaffTier.FarmHand)]
     public partial class AdminModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<AdminModule> logger, DiscordHostedService client, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, Bugsnag.IClient bugsnag, JobService jobService, IServiceProvider serviceProvider) : E9KModuleBase(dbFactory) {
         private readonly ILogger<AdminModule> _logger = logger;
     }

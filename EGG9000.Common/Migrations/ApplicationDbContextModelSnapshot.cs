@@ -847,6 +847,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("StaffCoopsMessageDetails")
                         .HasColumnType("text");
 
+                    b.Property<bool>("TachyonSuggestionsEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("_channelDetailsJson")
                         .HasColumnType("text");
 
@@ -1269,6 +1272,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<string>("Status")
                         .HasColumnType("text");
+
+                    b.Property<bool>("TachyonDeflectorNotified")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("TimeCheatReported")
                         .HasColumnType("boolean");

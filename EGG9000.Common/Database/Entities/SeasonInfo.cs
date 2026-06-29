@@ -55,6 +55,14 @@ namespace EGG9000.Common.Database.Entities {
             return gradeGoals.Sum(g => g.PeAmount);
         }
 
+        // CS (season Cxp) at which the grade earns all of its PE - the highest PE-goal Cxp. 0 when the
+        // grade has no PE goals.
+        public double GetMaxPeCxp(Ei.Contract.Types.PlayerGrade grade) {
+            if (!Goals.TryGetValue((int)grade, out var gradeGoals) || gradeGoals.Count == 0)
+                return 0;
+            return gradeGoals.Max(g => g.Cxp);
+        }
+
         public IEnumerable<SeasonPeGoal> GetUnearnedGoals(Ei.Contract.Types.PlayerGrade grade, double totalCxp) =>
             Goals.TryGetValue((int)grade, out var gradeGoals)
                 ? gradeGoals.Where(g => totalCxp < g.Cxp)

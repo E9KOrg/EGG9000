@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 
 using System;
@@ -169,7 +170,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static Modal GetModal(string title, string modalid, string inputDescrption, string inputValue, string inputName) {
-            return new ModalBuilder().WithTitle(title).WithCustomId(modalid).AddTextInput(label: inputDescrption, value: inputValue, customId: inputName, required: true).Build();
+            return new ModalBuilder().WithTitleSafe(title).WithCustomId(modalid).AddTextInputSafe(label: inputDescrption, value: inputValue, customId: inputName, required: true).Build();
         }
     }
 }

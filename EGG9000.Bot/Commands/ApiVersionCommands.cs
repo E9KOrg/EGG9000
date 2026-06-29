@@ -19,7 +19,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     [Group("a", "Admin commands")]
-    [DefaultMemberPermissions(GuildPermission.Administrator)]
+    [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
     public class ApiVersionModule(IDbContextFactory<ApplicationDbContext> dbFactory, IServiceProvider provider) : E9KModuleBase(dbFactory) {
         private readonly IServiceProvider _provider = provider;
 

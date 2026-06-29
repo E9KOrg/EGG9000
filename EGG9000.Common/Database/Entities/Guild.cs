@@ -15,6 +15,12 @@ namespace EGG9000.Common.Database.Entities {
         public string InactiveStandards { get; set; }
 
         public ulong DiscordSeverId { get; set; }
+
+        // Assignment rules this guild forbids users from applying. Engine consults this in its guild
+        // overlay step. Empty by default = no overrides. Persistence lands with the future guild-UI spec.
+        [NotMapped]
+        public IReadOnlySet<Contracts.Assignment.AssignmentRuleId> RuleOverrides { get; set; } = new HashSet<Contracts.Assignment.AssignmentRuleId>();
+
         public string OverflowServersJson { get; set; }
         [NotMapped]
         public ReadOnlyCollection<ulong> OverflowServers {
@@ -77,6 +83,9 @@ namespace EGG9000.Common.Database.Entities {
         public bool FAQTopicsEnabled { get; set; }
         [GuildConfig("FAQ Topic Cooldown (min)", "Numbers", GuildConfigKind.Int, Description = "Minutes between FAQ posts in a channel")]
         public int FAQTopicCooldownMinutes { get; set; }
+
+        [GuildConfig("Tachyon Suggestions Enabled", "Toggles", GuildConfigKind.Bool, Description = "Suggest a deflector artifact set to low contributors in co-ops (capped at 10-person co-ops)")]
+        public bool TachyonSuggestionsEnabled { get; set; } = false;
 
         [GuildConfig("Rank-up Messages Enabled", "Toggles", GuildConfigKind.Bool, Description = "Master toggle for rank-up announcements")]
         public bool RankupMessagesEnabled { get; set; } = true;
@@ -281,5 +290,7 @@ namespace EGG9000.Common.Database.Entities {
         BotLog = 47,
         [Description("/TC/Optional: Where server-wide co-op stats will be posted and kept updated")]
         CoopStatsChannel = 48,
+        [Description("/TC/Optional: Where E9K will log issues that occur with users trying to /register")]
+        RegisterIssues = 49,
     }
 }

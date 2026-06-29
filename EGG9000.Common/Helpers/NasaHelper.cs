@@ -196,7 +196,7 @@ public static partial class NasaHelper {
         var customInteractionBasedMessage = new CustomInteractionBasedDiscordMessage(customMessage) {
             Ephemeral = true,
         };
-        var sentMessage = await SendCustomMessage(client.Gateway, command, customInteractionBasedMessage, logger);
+        var sentMessage = await SendCustomMessage(command, customInteractionBasedMessage, logger);
         return sentMessage != null;
     }
 

@@ -47,17 +47,31 @@ namespace EGG9000.Bot.Services {
             var ctx = new SocketInteractionContext(_discord.Gateway, (SocketInteraction)interaction);
             _ = Task.Run(async () => {
                 var acquired = await _semaphore.WaitAsync(TimeSpan.FromSeconds(2.5));
-                if(!acquired) { _logger.LogWarning("Interaction semaphore limit hit"); return; }
+                if(!acquired) {
+                    _logger.LogWarning("Interaction semaphore limit hit");
+                    Failures.Inc();
+                    try {
+                        var dropEmbed = EmbedError("The bot is currently overloaded. Please try again in a moment.");
+                        if(interaction.HasResponded) await interaction.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = dropEmbed; });
+                        else await interaction.RespondAsync(text: "", embed: dropEmbed, ephemeral: true);
+                    } catch(Exception) { }
+                    return;
+                }
                 Total.Inc();
+                // Skip autocomplete from the command counter to match the legacy CommandService behavior
+                // (autocomplete fires many times per typed character; counting it skews per-minute rates).
                 if(interaction is SocketAutocompleteInteraction)
                     _logger.LogDebug("Autocomplete for {command} by {username}", CommandName(interaction), interaction.User?.Username);
-                else
+                else {
+                    EGG9000.Common.Services.RuntimeMetrics.AddCommands();
                     _logger.LogInformation("Running command {command} for user: {username}", CommandName(interaction), interaction.User?.Username);
+                }
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 try {
                     await _interactions.ExecuteCommandAsync(ctx, _provider);
                 } catch(Exception e) {
                     Failures.Inc();
+                    EGG9000.Common.Services.RuntimeMetrics.AddCommandFailures();
                     _logger.LogError(e, "Interaction {command} threw", CommandName(interaction));
                     _bugsnag.Notify(e);
                 } finally {
@@ -72,6 +86,7 @@ namespace EGG9000.Bot.Services {
         private async Task OnExecuted(ICommandInfo info, IInteractionContext ctx, IResult result) {
             if(result.IsSuccess) return;
             Failures.Inc();
+            EGG9000.Common.Services.RuntimeMetrics.AddCommandFailures();
             var interaction = ctx.Interaction;
             Embed embed;
             if(result is ExecuteResult er && er.Exception is not null) {

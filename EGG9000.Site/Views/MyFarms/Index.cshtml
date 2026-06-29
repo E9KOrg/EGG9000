@@ -1,5 +1,6 @@
 ﻿@model MyFarmsModel
 @using Discord.WebSocket
+@using EGG9000.Common.Contracts.Assignment
 @using EGG9000.Common.Helpers
 @using EGG9000.Common.JsonData
 @using Microsoft.AspNetCore.Html
@@ -66,6 +67,61 @@
         padding: 0px;
     }
 
+    /* Dependent contract-setting fields: indented under the control they depend on. */
+    .cs-dependent {
+        margin-top: 8px;
+        margin-left: 16px;
+        padding-left: 12px;
+        border-left: 2px solid #444;
+    }
+
+    /* A touch more breathing room above each settings checkbox. */
+    .contract-settings .form-check.cs-check {
+        margin-top: 10px;
+    }
+
+    /* Don't let selects stretch the full card width; scale to their content where supported. */
+    .contract-settings select.cs-input {
+        width: auto;
+        field-sizing: content;
+        min-width: 160px;
+        max-width: 100%;
+    }
+
+    /* Humanized CS number inputs: stepper buttons either side, width scales to content. */
+    .contract-settings .cs-num-group {
+        display: inline-flex;
+        align-items: stretch;
+        max-width: 100%;
+    }
+
+    .contract-settings .cs-num {
+        width: auto;
+        field-sizing: content;
+        min-width: 90px;
+        max-width: 220px;
+        text-align: right;
+        border-radius: 0;
+    }
+
+    .contract-settings .cs-num-step {
+        flex: 0 0 auto;
+        width: 38px;
+        padding: 0;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .contract-settings .cs-num-group .cs-num-step:first-child {
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .contract-settings .cs-num-group .cs-num-step:last-child {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+
     .Expired td {
         opacity: 60%;
     }
@@ -92,22 +148,15 @@
         white-space: nowrap;
         text-align: center; /* Center the text within the tooltip */
         position: absolute;
+        background-color: rgba(130, 135, 140, 0.95);
     }
 
-        .tooltiptext-custom .bootstrap-dark {
+        [data-bs-theme="dark"] .tooltiptext-custom {
             background-color: rgba(33, 37, 41, 0.95);
         }
 
-        .tooltiptext-custom .bootstrap {
-            background-color: rgba(130, 135, 140, 0.95);
-        }
-
-    .bootstrap-dark .speech-bubble {
+    [data-bs-theme="dark"] .speech-bubble {
         background-color: rgba(33, 37, 41, 0.95);
-    }
-
-    .bootstrap .speech-bubble {
-        background-color: rgba(130, 135, 140, 0.95);
     }
 
     .speech-bubble {
@@ -115,6 +164,7 @@
         padding: 10px;
         margin: 10px auto; /* Center the bubble horizontally */
         border-radius: 5px; /* Rounded corners for the bubble */
+        background-color: rgba(130, 135, 140, 0.95);
     }
 
         /* Create the triangle */
@@ -257,7 +307,7 @@
         @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
             var account = Model.User.EggIncAccounts[index];
             <li class="nav-item">
-                <a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
+                <a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-bs-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
                     @account.Backup.UserName
                     <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;" />
                     @if (account.Backup.PermitLevel == 0) {
@@ -320,27 +370,38 @@
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
                     <span style="margin-right:10px;" title="Date/Time displayed in local time"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToLocalTime().ToString("yyyy-MM-dd h:mm:ss tt")</span>
                 }
-                @if ((account.AutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.AutoRegisterRewards)</span>
+                @if ((account.Assignment.RewardFilter?.Count ?? 0) > 0) {
+                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.Assignment.RewardFilter)</span>
                 } else {
                     <span style="margin-right:10px;"><b><u>Filter</u></b>: All</span>
                 }
-                @if ((account.LeggacyAutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span style="margin-right:10px;"><b><u>Leggacy Filter</u></b>: @string.Join(",", account.LeggacyAutoRegisterRewards)</span>
-                }
                 <span style="margin-right:10px;">
                     <b><u>Redo Leggacies</u></b>:
-                    @if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) {
+                    @if (account.Assignment.Redo.Mode == RedoLeggacyOption.YesAll) {
                         @string.Join("", "Yes (All)")
-                    } else if(account.RedoLeggacySelection == RedoLeggacyOption.YesNoUltra) {
+                    } else if(account.Assignment.Redo.Mode == RedoLeggacyOption.YesNoUltra) {
                         @string.Join("", "Yes (No ultra-redos)")
-                    } 
-                    else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
-                        @string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS)")
-                    } else if(account.RedoLeggacySelection == RedoLeggacyOption.YesOtherAccountMatch) {
+                    }
+                    else if (account.Assignment.Redo.Mode == RedoLeggacyOption.YesThreshold) {
+                        @string.Join("", $"Yes (Under {account.Assignment.Redo.ScoreThreshold} CS)")
+                    } else if(account.Assignment.Redo.Mode == RedoLeggacyOption.YesOtherAccountMatch) {
                         @string.Join("", "Yes (If other account matches)")
                     } else {
                         @string.Join("", "No")
+                    }
+                </span>
+                <span style="margin-right:10px;">
+                    <b><u>Skip Seasonal Replays</u></b>: @(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")
+                </span>
+                <span style="margin-right:10px;">
+                    <b><u>Seasonal</u></b>:
+                    @{ var seasonalRule = account.Assignment.Seasonal; }
+                    @if (seasonalRule.Mode == SeasonalMode.AlwaysAssign) {
+                        @:Always assign
+                    } else if (seasonalRule.Mode == SeasonalMode.UntilPeEarned) {
+                        @:Assign until PE earned
+                    } else {
+                        @:Assign until CS goal (@(seasonalRule.CsGoal.ToString("N0")))
                     }
                 </span>
                 @if(account?.LatestRunningScore != 0){
@@ -350,40 +411,43 @@
 
             <ul class="nav nav-tabs" role="tablist">
                 <li class="nav-item">
-                    <a class="nav-link active" data-toggle="tab" href="#contracthistory@(index)" role="tab" aria-selected="true">Contract History</a>
+                    <a class="nav-link active" data-bs-toggle="tab" href="#contracthistory@(index)" role="tab" aria-selected="true">Contract History</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#shipsfarms@(index)" role="tab" aria-selected="false">Ships & Farms</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#shipsfarms@(index)" role="tab" aria-selected="false">Ships & Farms</a>
                 </li>
 
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#epicresearch@(index)" role="tab" aria-selected="false">Epic Research</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#epicresearch@(index)" role="tab" aria-selected="false">Epic Research</a>
                 </li>
                 @if (inDB) {
                     var tabName = isAdmin ? $"Merits ({Model.Merits.Count}) & Demerits ({Model.Demerits.Count})" : $"Merits & Demerits";
                     <li class="nav-item">
-                        <a class="nav-link" data-toggle="tab" href="#merits@(index)" role="tab" aria-selected="false">@tabName</a>
+                        <a class="nav-link" data-bs-toggle="tab" href="#merits@(index)" role="tab" aria-selected="false">@tabName</a>
                     </li>
                     @if (snapshots != null) {
                         <li class="nav-item">
-                            <a class="nav-link" data-toggle="tab" href="#ebhistory@(index)" role="tab" aria-selected="false">EB Stats</a>
+                            <a class="nav-link" data-bs-toggle="tab" href="#ebhistory@(index)" role="tab" aria-selected="false">EB Stats</a>
                         </li>
                     }
                 }
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#artifactcombos@(index)" role="tab" aria-selected="false">Artifact Combos</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#artifactcombos@(index)" role="tab" aria-selected="false">Artifact Combos</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#externaltools@(index)" role="tab" aria-selected="false">External Tools</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#externaltools@(index)" role="tab" aria-selected="false">External Tools</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calc</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#earningsboostcalc@(index)" role="tab" aria-selected="false">Earnings Boost Calc</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#colleggtibles@(index)" role="tab" aria-selected="false">Colleggtibles</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#colleggtibles@(index)" role="tab" aria-selected="false">Colleggtibles</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" data-toggle="tab" href="#inventory@(index)" role="tab" aria-selected="false">Inventory</a>
+                    <a class="nav-link" data-bs-toggle="tab" href="#contractsettings@(index)" role="tab" aria-selected="false">Contract Settings</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#inventory@(index)" role="tab" aria-selected="false">Inventory</a>
                 </li>
             </ul>
 
@@ -417,7 +481,7 @@
                                                 @if (Model.Merits.Count > 0) {
                                                     <tbody>
                                                         <tr>
-                                                            <th class="text-left">Date</th>
+                                                            <th class="text-start">Date</th>
                                                             <th>Reason</th>
                                                             @if (isAdmin) {
                                                                 <th></th>
@@ -452,7 +516,7 @@
                                                 <caption style="caption-side: top; text-align: center; font-weight: bold;">Demerits</caption>
                                                 <thead>
                                                     <tr>
-                                                        <th class="text-left">Date</th>
+                                                        <th class="text-start">Date</th>
                                                         <th>Reason</th>
                                                         @if (isAdmin) {
                                                             <th></th>
@@ -517,9 +581,19 @@
                         await Html.RenderPartialAsync("-Colleggtibles", (backup, Model.CustomEggs));
                     }
                 </div>
+                <div class="tab-pane" id="contractsettings@(index)" role="tabpanel">
+                    @{
+                        await Html.RenderPartialAsync("_ContractSettings", (account, index, isSelf));
+                    }
+                    <hr style="border-color:#444; margin:24px 0;" />
+                    @{
+                        await Html.RenderPartialAsync("_TestAssignment", (account, index, contracts));
+                    }
+                </div>
                 <div class="tab-pane" id="inventory@(index)" role="tabpanel">
                     @{
                         await Html.RenderPartialAsync("-ArtifactInventory", account.Id);
+
                     }
                 </div>
             </div>
@@ -572,10 +646,14 @@
                 const hash = url.split("#");
                 var backupNum = hash[1].slice(-1);
                 if (backupNum != "0") {
-                    $('a[href="#user' + backupNum + '"]').tab("show");
+                    // BS5 dropped the jQuery .tab() plugin; use bootstrap.Tab directly
+                    const accountTab = document.querySelector('a[href="#user' + backupNum + '"]');
+                    if (accountTab) bootstrap.Tab.getOrCreateInstance(accountTab).show();
                 }
 
-                $('a[href="#' + hash[1] + '"]').tab("show");
+                // Show the specific inner tab from the URL hash
+                const innerTab = document.querySelector('a[href="#' + hash[1] + '"]');
+                if (innerTab) bootstrap.Tab.getOrCreateInstance(innerTab).show();
                 url = location.href.replace(/\/#/, "#");
                 history.replaceState(null, null, url);
                 setTimeout(() => {
@@ -584,7 +662,7 @@
 
             }
 
-            $('a[data-toggle="tab"]').on("click", function () {
+            $('a[data-bs-toggle="tab"]').on("click", function () {
                 let newUrl;
                 const hash = $(this).attr("href");
 
@@ -619,6 +697,286 @@
             });
 
             setInterval(updateLastBackupTime, 1000);
+
+            wireContractSettings();
+            wireTestAssignment();
         });
+
+        function rewardGroupValue(group) {
+            return Array.from(group.querySelectorAll('.cs-reward'))
+                .filter(cb => cb.checked)
+                .map(cb => cb.value)
+                .join(',');
+        }
+
+        function controlValue(el) {
+            if (el.type === 'checkbox') return el.checked ? 'true' : 'false';
+            return el.value;
+        }
+
+        // Humanized number inputs (CS goal / CS threshold). Accept "200k", "1.5m", "200,000",
+        // "200.000" etc; store the plain integer in data-value; display localized grouping.
+        const csNumFmt = new Intl.NumberFormat();
+        const csNumSep = (() => {
+            const parts = csNumFmt.formatToParts(11111);
+            const g = parts.find(p => p.type === 'group');
+            const d = parts.find(p => p.type === 'decimal');
+            return { group: g ? g.value : ',', decimal: d ? d.value : '.' };
+        })();
+
+        function csParseHuman(str) {
+            if (str == null) return NaN;
+            let t = String(str).trim().toLowerCase().replace(/[\s_]/g, '');
+            if (!t) return NaN;
+            let mult = 1;
+            if (t.endsWith('m')) { mult = 1e6; t = t.slice(0, -1); }
+            else if (t.endsWith('k')) { mult = 1e3; t = t.slice(0, -1); }
+            // Drop the locale group separator, then normalize the locale decimal separator to '.'.
+            const grp = csNumSep.group.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            t = t.replace(new RegExp(grp, 'g'), '');
+            if (csNumSep.decimal !== '.') t = t.split(csNumSep.decimal).join('.');
+            // Remaining stray ',' (e.g. a US user on a non-US locale) treated as group separator.
+            t = t.replace(/,/g, '');
+            const n = parseFloat(t);
+            if (!isFinite(n)) return NaN;
+            return Math.round(n * mult);
+        }
+
+        function csClamp(el, n) {
+            const min = el.dataset.min != null ? parseFloat(el.dataset.min) : -Infinity;
+            const max = el.dataset.max != null ? parseFloat(el.dataset.max) : Infinity;
+            return Math.min(Math.max(n, min), max);
+        }
+
+        function csNumDisplay(el) {
+            const v = parseFloat(el.dataset.value);
+            el.value = isFinite(v) ? csNumFmt.format(v) : '';
+        }
+
+        // Set the stored value, refresh the display, return the integer (or null if unchanged).
+        function csNumSet(el, n) {
+            const clamped = Math.round(csClamp(el, n));
+            const changed = String(clamped) !== el.dataset.value;
+            el.dataset.value = String(clamped);
+            csNumDisplay(el);
+            return changed ? clamped : null;
+        }
+
+        function showCsStatus(container, text, ok) {
+            let toast = document.getElementById('cs-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'cs-toast';
+                toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:1080;padding:8px 16px;border-radius:6px;color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.45);opacity:0;transition:opacity .2s;pointer-events:none;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = text;
+            toast.style.background = ok ? '#2e7d32' : '#c62828';
+            toast.style.opacity = '1';
+            clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
+        }
+
+        function saveContractSetting(container, accountIndex, field, value, revert) {
+            fetch('/MyFarms/SaveContractSetting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountIndex: accountIndex, field: field, value: value })
+            }).then(res => {
+                if (res.ok) {
+                    res.json().then(body => {
+                        // Server enforces the grade floor; reflect any clamp back into the input.
+                        if (body && body.effectiveCsGoal != null) {
+                            const input = container.querySelector('#cs-seasonalgoal-' + accountIndex);
+                            const eff = String(Math.round(body.effectiveCsGoal));
+                            if (input && eff !== input.dataset.value) {
+                                input.dataset.value = eff;
+                                csNumDisplay(input);
+                                showCsStatus(container, 'Adjusted to grade minimum', true);
+                                return;
+                            }
+                        }
+                        showCsStatus(container, 'Saved', true);
+                    }).catch(() => showCsStatus(container, 'Saved', true));
+                } else {
+                    if (revert) revert();
+                    showCsStatus(container, 'Save failed', false);
+                }
+            }).catch(() => {
+                if (revert) revert();
+                showCsStatus(container, 'Save failed', false);
+            });
+        }
+
+        function wireContractSettings() {
+            // Format every humanized number for display, even read-only (other users') panels.
+            document.querySelectorAll('.contract-settings .cs-num').forEach(csNumDisplay);
+
+            document.querySelectorAll('.contract-settings').forEach(container => {
+                if (container.dataset.isself !== '1') return;
+                const accountIndex = parseInt(container.dataset.accountIndex);
+
+                container.querySelectorAll('.cs-input').forEach(el => {
+                    let prior = controlValue(el);
+                    el.addEventListener('change', () => {
+                        const field = el.dataset.field;
+                        const value = controlValue(el);
+                        const before = prior;
+                        if (field === 'seasonalMode') {
+                            const goalWrap = container.querySelector('.cs-seasonalgoal-wrap-' + accountIndex);
+                            if (goalWrap) goalWrap.style.display = (value === '2') ? '' : 'none';
+                            const afterWrap = container.querySelector('.cs-seasonalafter-wrap-' + accountIndex);
+                            if (afterWrap) afterWrap.style.display = (value === '1' || value === '2') ? '' : 'none';
+                        }
+                        if (field === 'redoMode') {
+                            const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);
+                            if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
+                        }
+                        saveContractSetting(container, accountIndex, field, value, () => {
+                            if (el.type === 'checkbox') el.checked = (before === 'true');
+                            else el.value = before;
+                        });
+                        prior = value;
+                    });
+                });
+
+                container.querySelectorAll('.cs-num').forEach(el => {
+                    csNumDisplay(el);
+                    const field = el.dataset.field;
+
+                    const commit = (raw) => {
+                        const before = el.dataset.value;
+                        const parsed = csParseHuman(raw);
+                        if (!isFinite(parsed)) { csNumDisplay(el); return; } // bad input -> restore
+                        const changed = csNumSet(el, parsed);
+                        if (changed == null) return; // no net change
+                        saveContractSetting(container, accountIndex, field, el.dataset.value, () => {
+                            el.dataset.value = before;
+                            csNumDisplay(el);
+                        });
+                    };
+
+                    el.addEventListener('change', () => commit(el.value));
+                    el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(el.value); el.blur(); } });
+
+                    const group = el.closest('.cs-num-group');
+                    if (group) {
+                        group.querySelectorAll('.cs-num-step').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                if (el.disabled) return;
+                                const cur = parseFloat(el.dataset.value) || 0;
+                                const before = el.dataset.value;
+                                const changed = csNumSet(el, cur + parseFloat(btn.dataset.step));
+                                if (changed == null) return;
+                                saveContractSetting(container, accountIndex, field, el.dataset.value, () => {
+                                    el.dataset.value = before;
+                                    csNumDisplay(el);
+                                });
+                            });
+                        });
+                    }
+                });
+
+                container.querySelectorAll('.cs-reward-group').forEach(group => {
+                    const field = group.dataset.field;
+                    group.querySelectorAll('.cs-reward').forEach(cb => {
+                        let priorChecked = cb.checked;
+                        cb.addEventListener('change', () => {
+                            const before = priorChecked;
+                            const value = rewardGroupValue(group);
+                            saveContractSetting(container, accountIndex, field, value, () => {
+                                cb.checked = before;
+                            });
+                            priorChecked = cb.checked;
+                        });
+                    });
+                });
+            });
+        }
+
+        function wireTestAssignment() {
+            document.querySelectorAll('.ta-test-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const index = parseInt(btn.dataset.index);
+                    const select = document.getElementById('ta-contract-' + index);
+                    const result = document.getElementById('ta-result-' + index);
+                    if (!select || !result) return;
+                    // The picker value is "Name (contractId)"; pull the id from the trailing parens.
+                    // Fall back to the raw text so a directly-typed id still works.
+                    const raw = (select.value || '').trim();
+                    const m = raw.match(/\(([^()]+)\)\s*$/);
+                    const contractId = m ? m[1] : raw;
+                    if (!contractId) return;
+                    result.innerHTML = '<span style="color:grey;">Testing...</span>';
+
+                    fetch('/MyFarms/TestAssignment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ accountIndex: index, contractId: contractId })
+                    }).then(res => {
+                        if (!res.ok) {
+                            result.innerHTML = '<span style="color:red;">Test failed (' + res.status + ').</span>';
+                            return null;
+                        }
+                        return res.json();
+                    }).then(data => {
+                        if (!data) return;
+                        renderTestResult(result, data);
+                    }).catch(() => {
+                        result.innerHTML = '<span style="color:red;">Test failed.</span>';
+                    });
+                });
+            });
+        }
+
+        function renderTestResult(result, data) {
+            const verdict = '<div style="display:inline-block; padding:6px 14px; border-radius:6px; font-weight:700; font-size:1.05em; color:#fff; background:'
+                + (data.assigned ? '#2e7d32' : '#c62828') + ';">'
+                + (data.assigned ? 'Assigned' : 'Not assigned') + '</div>';
+
+            const d = data.diagnostics || {};
+            const yn = v => v ? 'Yes' : 'No';
+            const diagParts = [
+                'Seasonal contract: ' + yn(d.isSeasonal),
+                'Missing seasonal PE: ' + yn(d.missingSeasonalPe),
+                'Colleggtible contract: ' + yn(d.isColleggtible),
+                'Missing colleggtible: ' + yn(d.missingColleggtible),
+                'Previously completed: ' + yn(d.previouslyCompleted)
+            ];
+            if (d.previousScore != null) diagParts.push('Prev score: ' + Math.round(d.previousScore).toLocaleString());
+            if (d.filtersDisabled) diagParts.push('Filters OFF (server uses roles)');
+            const diag = '<div style="margin:8px 0; font-size:.85em; color:#9aa0a6; line-height:1.6;">' + escapeHtml(diagParts.join('  ·  ')) + '</div>';
+
+            const outMeta = {
+                'Pass': { c: '#66bb6a', t: 'Pass' },
+                'Exclude': { c: '#ef5350', t: 'Excluded' },
+                'ForceInclude': { c: '#66bb6a', t: 'Force assigned' },
+                'NotApplicable': { c: '#888', t: 'N/A' }
+            };
+            const tierColor = { 'Gate': '#5c6bc0', 'Force': '#26a69a', 'Include': '#8e7cc3' };
+
+            let decisiveDone = false;
+            const rows = (data.results || []).map(r => {
+                const m = outMeta[r.outcome] || { c: '#aaa', t: r.outcome };
+                const decisive = !decisiveDone && (r.outcome === 'Exclude' || r.outcome === 'ForceInclude');
+                if (decisive) decisiveDone = true;
+                const rowBg = decisive ? (r.outcome === 'Exclude' ? 'rgba(239,83,80,.16)' : 'rgba(102,187,106,.16)') : 'transparent';
+                const tc = tierColor[r.tier] || '#888';
+                const dim = r.outcome === 'NotApplicable' ? '#888' : '#dadce0';
+                return '<div style="display:flex; align-items:center; gap:10px; padding:4px 8px; border-radius:4px; background:' + rowBg + ';">'
+                    + '<span style="min-width:62px; font-size:.72em; font-weight:600; color:#fff; background:' + tc + '; padding:2px 6px; border-radius:10px; text-align:center;">' + escapeHtml(r.tier) + '</span>'
+                    + '<span style="flex:1; color:' + dim + ';">' + escapeHtml(r.reason) + '</span>'
+                    + '<span style="font-weight:600; color:' + m.c + '; white-space:nowrap;">' + escapeHtml(m.t) + '</span>'
+                    + '</div>';
+            }).join('');
+
+            result.innerHTML = verdict + diag + '<div style="display:flex; flex-direction:column; gap:2px; margin-top:6px;">' + rows + '</div>';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 }

@@ -11,6 +11,8 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData.EiStatics;
+using EGG9000.Common.Coops;
+using EGG9000.Common.Helpers.AfxSets;
 using EGG9000.Common.Services;
 
 using Ei;
@@ -32,6 +34,7 @@ using Polly;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
@@ -800,23 +803,52 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(farm == null)
                         continue;
                     u.Xref.EquipedTachyonDeflector = u.Xref.EquipedTachyonDeflector || farm.Artifacts.Any(a => a.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
+                    if(farm.Artifacts.Any(a => a.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates))
+                        u.Xref.TachyonDeflectorNotified = false;
                 }
 
                 var usersToCheckDeflector = usersWithStatus.Where(x => x.Status is not null && !x.Status.BuffHistory.Any(y => y.EggLayingRate > 0) && x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Where(y => y.Status is not null).Max(y => y.Status.Projected) / 2);
-                var usersNeedToAddDeflector = new List<UserWithStatus>();
-                if(!coop.FinishedOrFailed() && coop.CoopEnds > DateTimeOffset.UtcNow) {
+                var usersNeedToAddDeflector = new List<(UserWithStatus User, List<EggIncArtifactInstance> RecommendedSet)>();
+                // Opt-in per guild, and capped at 10-person coops: the best-set search runs per user
+                // and the renders fan out per suggestion, so larger coops would blow up the cycle.
+                if(dbGuild.TachyonSuggestionsEnabled && coop.MaxUsers <= 10 && !coop.FinishedOrFailed() && coop.CoopEnds > DateTimeOffset.UtcNow) {
                     foreach(var user in usersToCheckDeflector) {
+                        if(user.Xref?.TachyonDeflectorNotified == true) continue;
                         var farm = user.Backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);
-                        if(farm is not null && !farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && user.Backup.GetAvailableArtifacts().Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) {
-                            usersNeedToAddDeflector.Add(user);
+                        if(farm is null) continue;
+                        if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) continue;
+                        if(!user.Backup.GetAvailableArtifacts().Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)) continue;
+
+                        var withTachyonResult = ArtifactCombos.FindBestComboSet(user.Backup, farm, coop, withTachyon: true, allowChangingStones: false, customEggs, _logger);
+                        var withoutTachyonResult = ArtifactCombos.FindBestComboSet(user.Backup, farm, coop, withTachyon: false, allowChangingStones: false, customEggs, _logger);
+
+                        if(withTachyonResult is not null && withTachyonResult.Value.Rate > (withoutTachyonResult?.Rate ?? 0)) {
+                            usersNeedToAddDeflector.Add((user, withTachyonResult.Value.Artifacts));
                         }
                     }
                 }
 
 
 
-                if(usersNeedToAddDeflector.Any()) {
-                    lastMessage += $"\n\n**The following users have a Tachyon Deflector they should equip:** {string.Join(", ", usersNeedToAddDeflector.Select(y => y.DiscordUser?.Mention ?? $"<@{y.User?.DiscordId}>"))}";
+                foreach(var (deflectorUser, recommendedSet) in usersNeedToAddDeflector) {
+                    var mention = deflectorUser.DiscordUser?.Mention ?? $"<@{deflectorUser.User?.DiscordId}>";
+                    var (b64, renderError) = await AfxSetsRender.RenderSingleSetB64(recommendedSet);
+                    if(b64 is not null) {
+                        // Mark notified on the loop thread so the batch SaveChanges below persists it.
+                        // Setting it inside the queued lambda races SaveChanges and touches the
+                        // DbContext off-thread, which re-sent the suggestion every cycle.
+                        if(deflectorUser.Xref is not null) deflectorUser.Xref.TachyonDeflectorNotified = true;
+                        var capturedMention = mention;
+                        var capturedB64 = b64;
+                        _queue.EnqueueLow(async () => {
+                            using var file = new FileAttachment(new MemoryStream(Convert.FromBase64String(capturedB64)), "TachyonSuggestion.jpeg", "Recommended Artifact Set");
+                            await coopThread.SendFilesAsync([file], text: $"{capturedMention} should equip their **Tachyon Deflector**. Recommended set:");
+                        });
+                    } else {
+                        _logger.LogWarning("Tachyon image render failed for {user}: {error}", deflectorUser.User?.DiscordId, renderError);
+                        lastMessage += $"\n\n{mention} should equip their **Tachyon Deflector**.";
+                        if(deflectorUser.Xref is not null) deflectorUser.Xref.TachyonDeflectorNotified = true;
+                    }
                 }
 
 
@@ -1507,9 +1539,12 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         public static async Task HandlePingOnFull(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, IThreadChannel coopChannel, IDiscordQueue queue) {
+            var notifiedDiscordIds = new HashSet<ulong>();
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFull ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFull = false;
                 userStatus.Xref.UpdateCoopSetting();
+
+                if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"All users have joined the co-op {coopChannel.Mention}", db);
                 if(dmResult != DMResult.Success) {
@@ -1519,9 +1554,12 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
         public static async Task HandlePingOnCheckedIn(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, IThreadChannel coopChannel, IDiscordQueue queue) {
+            var notifiedDiscordIds = new HashSet<ulong>();
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnEveryoneCheckedIn ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnEveryoneCheckedIn = false;
                 userStatus.Xref.UpdateCoopSetting();
+
+                if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"The co-op {coopChannel.Mention} has finished and you are able to exit the co-op.", db);
                 if(dmResult != DMResult.Success) {
@@ -1532,10 +1570,11 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         public static async Task HandleFinished(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, IThreadChannel coopChannel, IDiscordQueue queue) {
+            var notifiedDiscordIds = new HashSet<ulong>();
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFinished ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFinished = false;
                 userStatus.Xref.UpdateCoopSetting();
-                if(userStatus.DiscordUser is null) continue;
+                if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"The co-op {coopChannel.Mention} has finished.", db);
                 if(dmResult != DMResult.Success) {
@@ -1605,11 +1644,13 @@ namespace EGG9000.Bot.Automated.Coops {
             if(usersWithStatus.Any(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
                 var highestEB2 = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                 if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup?.EggIncId)) {
+                    var notifiedDiscordIds = new HashSet<ulong>();
                     foreach(var user in usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
                         if(highestEB2.DBUser != null && user.User?.DiscordId == highestEB2.DBUser.DiscordId) continue; //Don't ping them if they are the highest EB
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                        if(user.DiscordUser is null || !notifiedDiscordIds.Add(user.DiscordUser.Id)) continue;
                         await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Highest EB ({highestEB2.DiscordUser?.GetCleanName()} at {highestEB2.Backup.EarningsBonus.ToEggString()}) has joined", coop);
                     }
                 }
@@ -1620,10 +1661,12 @@ namespace EGG9000.Bot.Automated.Coops {
             var anybodyWithPingSetting = usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnCompleteOnCheckIn ?? false);
 
             if(anybodyWithPingSetting.Any()) {
+                var notifiedDiscordIds = new HashSet<ulong>();
                 foreach(var user in anybodyWithPingSetting) {
                     user.Xref.CoopSetting.PingOnCompleteOnCheckIn = false;
                     user.Xref.UpdateCoopSetting();
                     await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                    if(user.DiscordUser is null || !notifiedDiscordIds.Add(user.DiscordUser.Id)) continue;
                     await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Your co-op will complete once everyone checks in.", coop);
                 }
             }

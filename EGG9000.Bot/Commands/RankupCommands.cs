@@ -20,7 +20,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     [Group("a", "Admin commands")]
-    [DefaultMemberPermissions(GuildPermission.Administrator)]
+    [StaffOnly(StaffTier.CluckingCoordinator)]
     public class RankupModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
         private static string Trunc(string s, int n) => string.IsNullOrEmpty(s) ? s : s.Length <= n ? s : s[..(n - 1)] + "…";
 
@@ -182,8 +182,8 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("RuAdd:*")]
         public async Task RuAdd(string data) {
-            var modal = new ModalBuilder().WithTitle("New rank-up message").WithCustomId($"RuMsgModal:new:{data}")
-                .AddTextInput("Message", customId: "text", TextInputStyle.Paragraph, placeholder: "Use {{user}} {{rank}} {{eb}} {{oom}} {{emoji:name}}", required: true, maxLength: 1500)
+            var modal = new ModalBuilder().WithTitleSafe("New rank-up message").WithCustomId($"RuMsgModal:new:{data}")
+                .AddTextInputSafe("Message", customId: "text", TextInputStyle.Paragraph, placeholder: "Use {{user}} {{rank}} {{eb}} {{oom}} {{emoji:name}}", required: true, maxLength: 1500)
                 .Build();
             await Context.Interaction.RespondWithModalAsync(modal);
         }
@@ -192,8 +192,8 @@ namespace EGG9000.Bot.Commands {
         public async Task RuEditBtn(string data) {
             var msg = await Db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data);
             if(msg is null) { await Context.Interaction.DeferAsync(); return; }
-            var modal = new ModalBuilder().WithTitle("Edit rank-up message").WithCustomId($"RuMsgModal:edit:{data}")
-                .AddTextInput("Message", customId: "text", TextInputStyle.Paragraph, value: Trunc(msg.Text, 1500), required: true, maxLength: 1500)
+            var modal = new ModalBuilder().WithTitleSafe("Edit rank-up message").WithCustomId($"RuMsgModal:edit:{data}")
+                .AddTextInputSafe("Message", customId: "text", TextInputStyle.Paragraph, value: Trunc(msg.Text, 1500), required: true, maxLength: 1500)
                 .Build();
             await Context.Interaction.RespondWithModalAsync(modal);
         }

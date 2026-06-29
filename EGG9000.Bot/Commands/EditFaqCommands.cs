@@ -21,7 +21,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     [Group("a", "Admin commands")]
-    [DefaultMemberPermissions(GuildPermission.Administrator)]
+    [StaffOnly(StaffTier.Admin)]
     public class EditFaqModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
@@ -88,12 +88,12 @@ namespace EGG9000.Bot.Commands {
         }
 
         private static ModalBuilder TopicModal(string customId, FAQTopic existing) =>
-            new ModalBuilder().WithTitle("FAQ Topic").WithCustomId(customId)
-                .AddTextInput("Name", customId: "name", value: existing?.Name, required: true, maxLength: 100)
-                .AddTextInput("Keywords (comma-separated)", customId: "keywords", value: existing is null ? null : string.Join(", ", KeywordsOf(existing)), required: false, maxLength: 300)
-                .AddTextInput("Explanation", customId: "explanation", TextInputStyle.Paragraph, value: existing?.Explanation, required: true, maxLength: 1024)
-                .AddTextInput("Embed color (6-hex, optional)", customId: "color", value: existing?.EmbedColorHex, required: false, maxLength: 7)
-                .AddTextInput("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
+            new ModalBuilder().WithTitleSafe("FAQ Topic").WithCustomId(customId)
+                .AddTextInputSafe("Name", customId: "name", value: existing?.Name, required: true, maxLength: 100)
+                .AddTextInputSafe("Keywords (comma-separated)", customId: "keywords", value: existing is null ? null : string.Join(", ", KeywordsOf(existing)), required: false, maxLength: 300)
+                .AddTextInputSafe("Explanation", customId: "explanation", TextInputStyle.Paragraph, value: existing?.Explanation, required: true, maxLength: 1024)
+                .AddTextInputSafe("Embed color (6-hex, optional)", customId: "color", value: existing?.EmbedColorHex, required: false, maxLength: 7)
+                .AddTextInputSafe("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
 
         [SlashCommand("editfaq", "Edit this server's FAQ topics")]
         public async Task EditFaq() {

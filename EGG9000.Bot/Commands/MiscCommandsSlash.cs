@@ -179,6 +179,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("renamecoop", "Rename a co-op channel to mistype")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task RenameCoop([Summary("correctcoopname")] string correctcoopname) {
             await Context.Interaction.DeferAsync();
             var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
@@ -195,6 +196,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
         [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
         public async Task UpdateChannel() {
             var command = Context.Interaction;
             await command.DeferAsync(ephemeral: true);
@@ -226,6 +228,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("temprole", "Adds a temporary role for users that last a specific amount of time")]
         [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
         public async Task TempRole(
             [Summary("role")] SocketRole role,
             [Summary("timespan")] string timespan,
@@ -344,6 +347,7 @@ namespace EGG9000.Bot.Commands {
 
     public partial class AdminModule {
         [Discord.Interactions.SlashCommand("tempcustomcoopname", "Adds a temporary name to be used for co-op naming")]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
         public async Task TempCustomCoopName([Discord.Interactions.Summary("customname")] string customName, [Discord.Interactions.Summary("timespan")] string timespan, [Discord.Interactions.Summary("user")] SocketGuildUser user) {
             DateTimeOffset expireTime;
             try {

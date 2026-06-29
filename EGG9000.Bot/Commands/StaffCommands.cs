@@ -73,6 +73,7 @@ namespace EGG9000.Bot.Commands {
         private readonly DiscordSocketClient _client = client;
 
         [SlashCommand("clearcustomeggs", "Clear ALL custom eggs from the DB, and remove Emoji.")]
+        [StaffOnly(StaffTier.Admin)]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
         public async Task ClearCustomEggs() {
             await Context.Interaction.DeferAsync();
@@ -101,6 +102,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("as", "Log a Message")]
+        [StaffOnly(StaffTier.Admin)]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
         public async Task AS([Summary("message")] string message, [Summary("channel")] SocketChannel channel = null, [Summary("replyto", "Message ID to reply to")] string replyto = null) {
             try {
@@ -160,6 +162,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("temporaryprefix", "Add a temporary prefex for a users co-op (PrefixWord11)")]
+        [StaffOnly(StaffTier.CluckingCoordinator)]
         [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
         public async Task TemporaryPrefix([Summary("user")] SocketGuildUser user, [Summary("prefix")] string prefix, [Summary("timespan")] string timespan) {
             DateTimeOffset expireTime;
@@ -257,6 +260,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("enable", "Re-enable user")]
+        [StaffOnly(StaffTier.Admin)]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
         public async Task Enable([Summary("user")] SocketUser user) {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
