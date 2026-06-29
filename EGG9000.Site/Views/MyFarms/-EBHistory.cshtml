@@ -167,9 +167,9 @@
         <div class="col-sm">
             <!-- CHART CARD (narrow, default visible) -->
             <div class="card" style="margin-top:15px;" id="ebStatsNarrowCard-@(ebStatsSuffix)">
-                <h4 class="card-header d-flex justify-content-between align-items-center flex-nowrap">
+                <h4 class="card-header d-flex justify-content-between align-items-center flex-wrap gap-1">
                     <span style="white-space: nowrap; margin-right: 8px;">Progress Graph</span>
-                    <div style="white-space: nowrap; flex-shrink: 0;">
+                    <div class="d-flex flex-wrap gap-1">
                         <button class="btn btn-sm btn-primary me-1"           id="ebStatsBtn-eb-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('eb')">EB</button>
                         <button class="btn btn-sm btn-outline-secondary me-1" id="ebStatsBtn-se-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('se')">SE</button>
                         <button class="btn btn-sm btn-outline-secondary me-1" id="ebStatsBtn-pe-@(ebStatsSuffix)"  onclick="ebStatsToggle_@(ebStatsSuffix)('pe')">PE</button>
