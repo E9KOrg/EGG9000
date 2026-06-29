@@ -214,37 +214,46 @@
                     }
                 },
 
+                async startCoopsRequest(grade, body, signal) {
+                    return fetch(`/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=${grade.Grade}&bg=${this.bg.BoardingGroup.Value}&count=${grade.CoopCount}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                        signal
+                    });
+                },
+
                 async startAll(grade) {
                     grade.Disable = true;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 120000);
                     try {
-                        const r = await fetch(`/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=${grade.Grade}&bg=${this.bg.BoardingGroup.Value}&count=${grade.CoopCount}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(grade.Coops)
-                        });
+                        const r = await this.startCoopsRequest(grade, grade.Coops, controller.signal);
                         grade.Coops = await r.json();
                     } catch (e) {
-                        alert('Error');
+                        alert(e.name === 'AbortError' ? 'Request timed out - check whether the co-ops started before retrying.' : 'Error');
                         console.error(e);
+                    } finally {
+                        clearTimeout(timeout);
+                        grade.Disable = false;
                     }
-                    grade.Disable = false;
                 },
 
                 async start(coop, coops, grade) {
                     if (!confirm('Are you sure you want to start this co-op?')) return;
                     coop.Disable = true;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 120000);
                     try {
-                        const r = await fetch(`/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=${grade.Grade}&bg=${this.bg.BoardingGroup.Value}&count=${grade.CoopCount}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify([coop])
-                        });
+                        const r = await this.startCoopsRequest(grade, [coop], controller.signal);
                         grade.Coops = await r.json();
                     } catch (e) {
-                        alert('Error');
+                        alert(e.name === 'AbortError' ? 'Request timed out - check whether the co-op started before retrying.' : 'Error');
                         console.error(e);
+                    } finally {
+                        clearTimeout(timeout);
+                        coop.Disable = false;
                     }
-                    grade.Disable = false;
                 }
             }));
         });
