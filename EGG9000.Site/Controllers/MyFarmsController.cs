@@ -112,6 +112,14 @@ namespace EGG9000.Site.Controllers {
             var seasonInfos = (await _db.SeasonInfos.ToListAsync())
                 .Where(x => x.StartTime <= DateTimeOffset.UtcNow)
                 .ToList();
+
+            // Latest started season's PE-CS goal per grade, shown as an example in the seasonal CS-goal
+            // setting (the real floor is applied per-account at assignment; this is illustrative only).
+            var latestSeason = seasonInfos.OrderByDescending(x => x.StartTime).FirstOrDefault();
+            ViewBag.LatestSeasonPeCxpByGrade = latestSeason is null
+                ? new Dictionary<Ei.Contract.Types.PlayerGrade, double>()
+                : System.Enum.GetValues<Ei.Contract.Types.PlayerGrade>()
+                    .ToDictionary(g => g, g => latestSeason.GetMaxPeCxp(g));
             var seasonPEByEggIncId = new Dictionary<string, (int Earned, int Max)>();
             var missingSeasonalPEByEggIncId = new Dictionary<string, List<MissingSeasonalPe>>();
             foreach(var account in user.EggIncAccounts.DistinctBy(a => a.Id)) {

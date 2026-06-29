@@ -79,12 +79,22 @@
                         <input class="form-control cs-input" type="number" min="0" step="1" data-field="seasonalCsGoal"
                                id="cs-seasonalgoal-@index" value="@seasonalCsGoal.ToString("0")" @dis />
                     </div>
+                    @{
+                        var peByGrade = ViewBag.LatestSeasonPeCxpByGrade as IDictionary<Ei.Contract.Types.PlayerGrade, double>;
+                        double peExample = 0;
+                        peByGrade?.TryGetValue(account.GetGrade(), out peExample);
+                        var gradeLabel = account.GetGrade().ToString().Replace("Grade", "");
+                    }
                     <p class="cs-warn" style="font-size:0.82em; color:#e0a52b; margin:0;">
-                        If this is below the season's PE goal, it will not be used - you stay assigned until you earn the season PE (the PE goal varies per season).
+                        If this is below the season's PE goal, it will not be used.<br />
+                        You stay assigned until you earn the season PE (the PE goal varies per season).
+                        @if (peExample > 0) {
+                            <br /><span>Latest season's PE goal for grade @gradeLabel: <b>@peExample.ToString("N0")</b> CS (example).</span>
+                        }
                     </p>
                 </div>
 
-                <div class="cs-dependent form-check cs-check cs-seasonalafter-wrap-@index" style="@(seasonalMode == 1 || seasonalMode == 2 ? "" : "display:none;")">
+                <div class="form-check cs-check cs-seasonalafter-wrap-@index" style="margin-top:14px; @(seasonalMode == 1 || seasonalMode == 2 ? "" : "display:none;")">
                     <input class="form-check-input cs-input" type="checkbox" data-field="seasonalRewardFilterAfter"
                            id="cs-seasonalafter-@index" @(seasonalRewardFilterAfter ? "checked" : "") @dis />
                     <label class="form-check-label" for="cs-seasonalafter-@index">Assign by reward filter after</label>
