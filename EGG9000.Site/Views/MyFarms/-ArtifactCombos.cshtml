@@ -5,72 +5,38 @@
 @using EGG9000.Site.Controllers;
 @using System.Globalization;
 @using EGG9000.Common.Coops;
+@using EGG9000.Common.Helpers.ArtifactImaging;
 @inject DiscordSocketClient DiscordClient
+@inject EGG9000.Site.Services.ArtifactImageRenderer ArtifactRenderer
 @model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
 
 @{
-    void artifactCell(EggIncArtifactInstance artifact, EggIncArtifactInstance current = null) {
-        var changed = current != null && !artifact.Equals(current);
-        <td style="padding-left: 5px;" class="@(changed ? "different" : "")">
-            @{
-                artifactBackground(artifact, false);
-            }
-            <div class="Stones">
-                @for (var s = 0; s < 4; s++) {
-                    if (artifact?.Stones.Count > s) {
-                        artifactBackground(artifact.Stones[s], true);
+    void rateRow(string label, double perSecond, string eggImg) {
+        <div class="combo-rate">
+            <span class="combo-rate-label">@label</span>
+            <span class="combo-rate-primary">@((perSecond * 3600).ToEggString(true))<img class="combo-rate-egg" src="@eggImg" alt="egg" /><span class="combo-rate-per">per hour</span></span>
+            <span class="combo-rate-alt">@((perSecond * 60).ToEggString(true))<img class="combo-rate-egg" src="@eggImg" alt="egg" /><span class="combo-rate-per">per min</span></span>
+        </div>
+    }
+
+    async Task comboTile(string label, List<EggIncArtifactInstance> artifacts, double mineRate, double? coopRate, string eggImg, bool highlightBest, bool showOptimal = false) {
+        <div class="combo-tile @(highlightBest ? "best" : "")">
+            <div class="combo-tile-label">@Html.Raw(label)</div>
+            <div class="combo-tile-body">
+                <div class="combo-tile-set">
+                    @{ await Html.RenderPartialAsync("-ArtifactSetImage", ArtifactRenderer.RenderSet(artifacts, highlightBest)); }
+                </div>
+                <div class="combo-tile-rates">
+                    @{ rateRow("Mine", mineRate, eggImg); }
+                    @if (coopRate is double cr) {
+                        rateRow("Coop", cr, eggImg);
                     }
+                </div>
+                @if (showOptimal) {
+                    <div class="combo-optimal">Artifacts are already optimal</div>
                 }
             </div>
-        </td>
-    }
-    string artifactTemplate(EggIncArtifactInstance artifact) {
-        if (artifact == null) {
-            return "";
-        } else if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-            return $"{Math.Round((artifact.Value) * 100)}%";
-        } else if (artifact.Additive) {
-            return $"+{artifact.Value}";
-        } else if (+artifact.Value < 2) {
-            return $"+{Math.Round((artifact.Value - 1) * 100)}%";
-        } else {
-            return $"{artifact.Value}x";
-        }
-    }
-
-    string artifactImage(EggIncArtifactInstance artifact, bool stone) {
-        if (artifact == null) {
-            return "";
-        } else {
-            var properName = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
-            return "/images/artifacts/" + properName + "/" + properName + "_" + (artifact.Tier + (stone ? 1 : 0)) + ".png";
-        }
-    }
-
-    void artifactBackground(EggIncArtifactInstance artifact, bool stone) {
-        if (artifact == null) {
-            <div></div>
-        } else {
-            var subClass = "afx-img";
-            var bgClass = artifact.Rarity switch {
-                1 => "bg-common afx-bg", //Common
-                2 => "bg-rare afx-bg", //Rare
-                3 => "bg-epic afx-bg", //Epic
-                4 => "bg-legendary afx-bg", //Legendary
-                _ => "bg-common afx-bg" //Default to gray
-            };
-            if (stone) {
-                bgClass = "afx-stone";
-                subClass = "afx-stone";
-            }
-            var image = artifactImage(artifact, stone);
-            var size = stone ? 15 : 70;
-            var textInfo = new CultureInfo("en-US", false).TextInfo;
-            var name = textInfo.ToTitleCase(EggIncArtifacts.GetProperNameFromJson(artifact)) + " " + artifactTemplate(artifact);
-            <div class="rounded-full @(bgClass)">
-                <img class="position-absolute @subClass" src="@image" title="@name" />
-            </div>
-        }
+        </div>
     }
 
     List<EggIncArtifactInstance> Sort(List<EggIncArtifactInstance> current, List<EggIncArtifactInstance> toSort) {
@@ -119,6 +85,76 @@
 }
 @{
     var farms = Model.Backup.Farms.Where(x => x.FarmType == Ei.FarmType.Contract && x.CoopSimulationEndTime == 0).ToList();
+#if DEV9002
+    // DEV9002 has no live coops, so the combos tab renders nothing (every farm hits coop is null and
+    // continues). Whenever no farm maps to a real coop, render a fake card from whatever artifacts the
+    // backup has so the new set-image layout is testable locally.
+    var anyRenderable = farms.Any(f => Model.Coops.Any(c => c.Name.Equals(f.CoopId, StringComparison.OrdinalIgnoreCase)));
+    if (!anyRenderable) {
+        // Build a pool of real artifacts from the backup so each fake combo can be a genuine 4-slot set.
+        <div class="card" style="margin-top:15px">
+            <h4 class="card-header">Artifact Combos <span style="font-weight:normal;opacity:0.7;">(DEV9002 fake data)</span></h4>
+            <div class="card-body">
+                <ul>
+                    <li>These are the best artifact combos for each farm with the current chicken population</li>
+                    <li>Won't change your Gusset</li>
+                    <li>Doesn't verify other co-op members have the shipping capacity yet</li>
+                </ul>
+            </div>
+        </div>
+        <div class="flex afx-card-container">
+            @for (var fake = 0; fake < 2; fake++) {
+                <div class="card">
+                    <h4 class="card-header"><img class="ei-egg" src="/images/Egg_1.png" alt="Egg" /> The Big One (Fake @(fake + 1))</h4>
+                    @{
+                        // Candidate 0 = current. Fake 1: current is beaten by a suggestion (distinct sets).
+                        // Fake 2: current is the best, so the winning suggestion recommends the current set
+                        // itself (same artifacts, same rate) and Current reads "already optimal".
+                        var fakeCurrentCoop = fake == 0 ? 540e12 / 60 : 800e12 / 60;
+                        // Per-variant coop rates: current, woStones (No/With Deflector), wStones (No/With).
+                        var rNoDefl = 633e12 / 60;
+                        var rWithDefl = fake == 0 ? 703e12 / 60 : fakeCurrentCoop; // Fake 2 winner == current rate
+                        var rNoDeflS = 650e12 / 60;
+                        var rWithDeflS = 690e12 / 60;
+                        var fakeCoop = new List<double> { fakeCurrentCoop, rNoDefl, rWithDefl, rNoDeflS, rWithDeflS };
+                        var fakeBest = EGG9000.Site.Services.ArtifactImageRenderer.BestSetIndex(fakeCoop);
+                        var fakeOptimal = fakeBest == 0;
+                        // All sets come from the module helper, which enforces one-artifact-per-family. The
+                        // offset just makes the variants look distinct. Current is a deflector build; Fake 2's
+                        // winning "With Deflector" suggestion equals it.
+                        var bs = EGG9000.Common.Helpers.ArtifactHelpers.BuildSampleSet;
+                        var setCurrent = bs(Model.Backup, true, 0);
+                        var setNoDefl = bs(Model.Backup, false, 0);
+                        var setWithDefl = fakeOptimal ? setCurrent : bs(Model.Backup, true, 1);
+                        var setNoDeflS = bs(Model.Backup, false, 1);
+                        var setWithDeflS = bs(Model.Backup, true, 2);
+                    }
+                    <div class="card-body combo-body">
+                        @{
+                            var fakeEgg = "/images/Egg_1.png";
+                            await comboTile("Current", setCurrent, 216e12 / 60, fakeCurrentCoop, fakeEgg, fakeOptimal, fakeOptimal);
+                        }
+                        <div class="combo-section">Without changing stones</div>
+                        <div class="combo-grid">
+                            @{
+                                await comboTile("No Deflector", setNoDefl, 228e12 / 60, rNoDefl, fakeEgg, fakeBest == 1);
+                                await comboTile("With Deflector", setWithDefl, 216e12 / 60, rWithDefl, fakeEgg, fakeBest == 2);
+                            }
+                        </div>
+                        <div class="combo-section">If you change stones</div>
+                        <div class="combo-grid">
+                            @{
+                                await comboTile("No Deflector", setNoDeflS, 228e12 / 60, rNoDeflS, fakeEgg, fakeBest == 3);
+                                await comboTile("With Deflector", setWithDeflS, 216e12 / 60, rWithDeflS, fakeEgg, fakeBest == 4);
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        return;
+    }
+#endif
     if (farms.Count == 0) {
         <div class="card" style="margin-top:15px">
             <h4 class="card-header">ℹNo Active Contracts</h4>
@@ -163,89 +199,60 @@
 
                 <div class="card">
                     @if (isHome) {
-                        <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
+                        <h4 class="card-header"><img class="ei-egg" src="/images/Egg_@((int)farm.EggType).png" alt="Egg" /> Home Farm</h4>
                     } else {
-                        <h4 class="card-header"><img class="ei-egg" src="@(EggIncStatics.GetEggByContract(contract, Model.CustomEggs).image)" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
+                        <h4 class="card-header"><img class="ei-egg" src="@(EggIncStatics.GetEggByContract(contract, Model.CustomEggs).image)" alt="Egg" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
                     }
 
-                    <table class="table table-sm" style="margin-bottom: 0;">
-                        <tr>
-                            <th>Current</th>
-                            @for (var i = 0; i < 4; i++) {
-                                artifactCell(farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
-                            }
-                            <td>
-                                <b>Mine</b><br />@((farmStats.CurrentShippingRate * 60).ToEggString(true))/m
-                                @if (!isHome) {
-                                    <div><b>Coop</b><br />@((currentCoopRate * 60).ToEggString(true))/m</div>
-                                }
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="99">Without changing stones:</td>
-                        </tr>
-                        <tr>
-                            @{
-                                @if (isHome) {
-                                    <th>Suggested</th>
-                                } else {
-                                    <th>No<br />Deflector</th>
-                                }
-                                @for (var i = 0; i < 4; i++) {
-                                    artifactCell(bestWithoutTachyon.Count > i ? bestWithoutTachyon[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
-                                }
-                                <td>
-                                    <b>Mine</b><br />@((withoutTachyon.myRate * 60).ToEggString(true))/m<br />
-                                    @if (!isHome) {
-                                        <div class="@(withoutTachyon.coopRate > withTachyon.coopRate ? "better" : "")"><b>Coop</b><br />@((withoutTachyon.coopRate * 60).ToEggString(true))/m</div>
-                                    }
-                                </td>
-                            }
-                        </tr>
-                        @if (!isHome) {
-                            <tr>
-                                <th>With<br />Deflector</th>
-                                @for (var i = 0; i < 4; i++) {
-                                    artifactCell(bestWithTachyon.Count > i ? bestWithTachyon[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
-                                }
-                                <td>
-                                    <b>Mine</b><br />@((withTachyon.myRate * 60).ToEggString(true))/m<br />
-                                    <div class="@(withoutTachyon.coopRate < withTachyon.coopRate ? "better" : "")"><b>Coop</b><br />@((withTachyon.coopRate * 60).ToEggString(true))/m</div>
-                                </td>
-                            </tr>
+                    @{
+                        var eggImg = isHome ? $"/images/Egg_{(int)farm.EggType}.png" : EggIncStatics.GetEggByContract(contract, Model.CustomEggs).image;
+                        // Candidate 0 is the CURRENT set; suggestions follow. Ask the renderer which wins
+                        // (ties favour index 0). If current wins, it is already optimal and no suggestion
+                        // is highlighted. Compared on coop rate, or mine rate for the home farm.
+                        var currentRate = isHome ? farmStats.CurrentShippingRate : currentCoopRate;
+                        var candidateRates = isHome
+                            ? new List<double> { currentRate, withoutTachyon.myRate, withoutTachyonS.myRate }
+                            : new List<double> { currentRate, withoutTachyon.coopRate, withTachyon.coopRate, withoutTachyonS.coopRate, withTachyonS.coopRate };
+                        var bestIndex = EGG9000.Site.Services.ArtifactImageRenderer.BestSetIndex(candidateRates);
+                        var currentOptimal = bestIndex == 0;
+                    }
+                    <div class="card-body combo-body">
+                        @{
+                            await comboTile("Current", farm.Artifacts,
+                                farmStats.CurrentShippingRate,
+                                isHome ? (double?)null : currentCoopRate, eggImg, currentOptimal, currentOptimal);
                         }
-                        <td colspan="99">If you change stones:</td>
-                        <tr>
+                        <div class="combo-section">Without changing stones</div>
+                        <div class="combo-grid">
                             @{
-                                @if (isHome) {
-                                    <th>Suggested</th>
-                                } else {
-                                    <th>No<br />Deflector<br />Stones<br />Changed</th>
+                                await comboTile(isHome ? "Suggested" : "No Deflector", bestWithoutTachyon,
+                                    withoutTachyon.myRate,
+                                    isHome ? (double?)null : withoutTachyon.coopRate,
+                                    eggImg, bestIndex == 1);
+                                if (!isHome) {
+                                    await comboTile("With Deflector", bestWithTachyon,
+                                        withTachyon.myRate,
+                                        withTachyon.coopRate,
+                                        eggImg, bestIndex == 2);
                                 }
-                                @for (var i = 0; i < 4; i++) {
-                                    artifactCell(bestWithoutTachyonS.Count > i ? bestWithoutTachyonS[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
-                                }
-                                <td>
-                                    <b>Mine</b><br />@((withoutTachyonS.myRate * 60).ToEggString(true))/m<br />
-                                    @if (!isHome) {
-                                        <div class="@(withoutTachyonS.coopRate > withTachyonS.coopRate ? "better" : "")"><b>Coop</b><br />@((withoutTachyonS.coopRate * 60).ToEggString(true))/m</div>
-                                    }
-                                </td>
                             }
-                        </tr>
-                        @if (!isHome) {
-                            <tr>
-                                <th>With<br />Deflector<br />Stones<br />Changed</th>
-                                @for (var i = 0; i < 4; i++) {
-                                    artifactCell(bestWithTachyonS.Count > i ? bestWithTachyonS[i] : null, farm.Artifacts.Count > i ? farm.Artifacts[i] : null);
+                        </div>
+                        <div class="combo-section">If you change stones</div>
+                        <div class="combo-grid">
+                            @{
+                                await comboTile(isHome ? "Suggested" : "No Deflector", bestWithoutTachyonS,
+                                    withoutTachyonS.myRate,
+                                    isHome ? (double?)null : withoutTachyonS.coopRate,
+                                    eggImg, isHome ? bestIndex == 2 : bestIndex == 3);
+                                if (!isHome) {
+                                    await comboTile("With Deflector", bestWithTachyonS,
+                                        withTachyonS.myRate,
+                                        withTachyonS.coopRate,
+                                        eggImg, bestIndex == 4);
                                 }
-                                <td>
-                                    <b>Mine</b><br />@((withTachyonS.myRate * 60).ToEggString(true))/m<br />
-                                    <div class="@(withoutTachyon.coopRate < withTachyonS.coopRate ? "better" : "")"><b>Coop</b><br />@((withTachyonS.coopRate * 60).ToEggString(true))/m</div>
-                                </td>
-                            </tr>
-                        }
-                    </table>
+                            }
+                        </div>
+                    </div>
 
                 </div>
 
@@ -256,44 +263,11 @@
 }
 
 <style>
-    .different {
-        background-color: #fcffde;
-    }
-
-    .bootstrap-dark .different {
-        background-color: #2f301e;
-    }
-
-    .better {
-        background-color: #deffe0;
-    }
-
-    .bootstrap-dark .better {
-        background-color: #274629;
-    }
-
-    .Stones {
-        padding-left: 12px;
-        margin-top: -3px;
-    }
-
-        .Stones > div {
-            display: inline-block;
-        }
-
     .card {
         margin-bottom: 15px;
     }
 
-    .table td, .table th {
-        padding-left: 0.5rem !important;
-        padding-right: 0.5rem !important;
-    }
-
-    .table thead th {
-        text-align: center;
-    }
-
+    /* Farm cards flow two-up when there's room. */
     .flex {
         display: flex;
         flex-wrap: wrap;
@@ -301,13 +275,9 @@
         gap: 15px;
     }
 
-
         .flex > div {
-            flex: 1;
+            flex: 1 1 calc(50% - 15px);
+            min-width: 340px;
         }
 
-    tr th:first-child {
-        vertical-align: middle;
-        text-align: center;
-    }
 </style>

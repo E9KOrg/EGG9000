@@ -5,7 +5,7 @@
 	var EggIncId = Model.Item1.EggIncId;
 }
 
-<div  ng-controller="ExternalTools@(EggIncId)">
+<div x-data="externalToolsPage()">
 <div class="card externaltools" style="margin-top:15px">
 	<h4 class="card-header">External Tools</h4>
 	<table class="table table-striped">
@@ -71,8 +71,8 @@
 <div class="card" style="margin-top:15px">
 	<h4 class="card-header">Debug Tools</h4>
 	<div class="card-body">
-		<button class="btn btn-primary" ng-click="SendTestDM('dm')">Test notification in DM</button>
-		<button class="btn btn-primary" ng-click="SendTestDM('talktoegg9000')">Test notification in server channel</button>
+		<button class="btn btn-primary" @@click="sendTestDM('dm')">Test notification in DM</button>
+		<button class="btn btn-primary" @@click="sendTestDM('talktoegg9000')">Test notification in server channel</button>
 	</div>
 </div>
 </div>
@@ -84,23 +84,17 @@
 
 
 <script type="text/javascript">
-
-	function scriptToExecute() {
-		window.egg9000module = window.egg9000module || angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages']);
-
-		window.egg9000module.controller('ExternalTools@(EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-            $scope.SendTestDM = function(target) {
-                $http.post("/myfarms/sendtestdm?target=" + target + "&discorduserid=@(Model.Item2.DiscordId)", {}).then(function Success(response) {
-                    alert("Sent");
-                }, function Error(response) {
-                    alert("Error");
-                    console.log(response);
-                });
-            };
-		}]);
-	}
-
-
-	window.ScriptsToExecute = window.ScriptsToExecute || [];
-	window.ScriptsToExecute.push(scriptToExecute);
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('externalToolsPage', () => ({
+            async sendTestDM(target) {
+                try {
+                    await fetch('/myfarms/sendtestdm?target=' + target, { method: 'POST' });
+                    alert('Sent');
+                } catch (e) {
+                    alert('Error');
+                    console.error(e);
+                }
+            }
+        }));
+    });
 </script>

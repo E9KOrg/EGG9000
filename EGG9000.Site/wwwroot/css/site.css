@@ -2,9 +2,35 @@
 for details on configuring this project to bundle and minify static web assets. */
 
 a.navbar-brand {
-  white-space: normal;
-  text-align: center;
-  word-break: break-all;
+  white-space: nowrap;
+}
+
+/* Alert close button: remove focus ring */
+.alert .btn-close:focus { outline: none; }
+/* BS5 dark mode inverts .btn-close to white; override back to default dark icon
+   since alert backgrounds are kept at light-mode colors (see overrides below) */
+[data-bs-theme="dark"] .alert .btn-close { filter: none; }
+
+/* Keep alert colors consistent regardless of dark mode */
+[data-bs-theme="dark"] .alert-success {
+    --bs-alert-color: #0f5132;
+    --bs-alert-bg: #d1e7dd;
+    --bs-alert-border-color: #badbcc;
+}
+[data-bs-theme="dark"] .alert-danger {
+    --bs-alert-color: #842029;
+    --bs-alert-bg: #f8d7da;
+    --bs-alert-border-color: #f5c2c7;
+}
+[data-bs-theme="dark"] .alert-warning {
+    --bs-alert-color: #664d03;
+    --bs-alert-bg: #fff3cd;
+    --bs-alert-border-color: #ffecb5;
+}
+[data-bs-theme="dark"] .alert-info {
+    --bs-alert-color: #055160;
+    --bs-alert-bg: #cff4fc;
+    --bs-alert-border-color: #b6effb;
 }
 
 /* Provide sufficient contrast against white background */
@@ -123,6 +149,260 @@ body {
     .afx-card-container {
         flex-direction: column; /* Change to a vertical layout */
     }
+}
+
+/* Rich hover tooltip shared by the combos tiles and the inventory overlay hotspots. The markup lives
+   in a hidden .afx-tip-content child of each .has-tip element; artifact-overlay.js lifts it into a
+   single floating .afx-tooltip that follows the cursor.
+------------------------------------------- */
+
+.has-tip {
+    position: relative;
+}
+
+.afx-tip-content {
+    display: none;
+}
+
+.afx-tooltip {
+    position: fixed;
+    top: 0;
+    left: 0;
+    will-change: transform;
+    z-index: 1080;
+    pointer-events: none;
+    max-width: 520px;
+    background: rgba(18, 18, 20, 0.97);
+    color: #e9e9e9;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+
+/* Name, tier and rarity always share the first line; the tooltip widens to fit rather than wrapping the
+   rarity down. Mobile is the only place we let it wrap (see media query below). */
+.afx-tip-title {
+    font-weight: 600;
+    margin-bottom: 2px;
+    white-space: nowrap;
+}
+
+.afx-tip-tier {
+    color: #9a9a9a;
+    font-weight: 400;
+}
+
+.afx-tip-count {
+    color: #9a9a9a;
+}
+
+.afx-tip-effect {
+    color: #d8d8d8;
+}
+
+.afx-tip-stone {
+    color: #c8c8c8;
+    padding-left: 10px;
+}
+
+.afx-tip-icon {
+    width: 1.15em;
+    height: 1.15em;
+    vertical-align: -0.22em;
+    margin-right: 1px;
+}
+
+/* The value (e.g. +20%, Guaranteed) is highlighted green, matching the in-game artifact card. */
+.afx-tip-value {
+    color: #4ade80;
+    font-style: normal;
+}
+
+/* Rarity word colours, matching the artifact thumbnail backgrounds. */
+.afx-rarity-1 { color: #b9b9b9; }
+.afx-rarity-2 { color: #6ab6ff; }
+.afx-rarity-3 { color: #c03fe2; }
+.afx-rarity-4 { color: #eeab42; }
+
+/* On phones a long name genuinely can't fit beside the rarity, so let the title wrap there. */
+@media (max-width: 768px) {
+    .afx-tooltip {
+        max-width: 90vw;
+    }
+
+    .afx-tip-title {
+        white-space: normal;
+    }
+}
+
+/* Inventory image with its grid of invisible hover targets
+------------------------------------------- */
+
+/* fit-content + max-width:100% lets the box shrink to the image yet never overflow the column.
+   inline-block here would trigger the classic max-width image-overflow bug, so use block. */
+.afx-overlay-wrap {
+    position: relative;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    line-height: 0;
+}
+
+/* width:100% makes the image fill the (already column-capped) wrap, so the percentage hotspots stay
+   aligned to the artwork at any size. */
+.afx-overlay-img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 16px;
+}
+
+.afx-hotspot {
+    position: absolute;
+    cursor: help;
+    border-radius: 6px;
+}
+
+.afx-hotspot:hover {
+    outline: 2px solid rgba(255, 255, 255, 0.65);
+}
+
+/* The Ships & Farms active-artifact set image sits under its "Artifacts" heading. Cap to ~75% of the
+   native 500px set render so the cards stay compact. */
+.afx-set-wrap {
+    margin-top: 4px;
+    max-width: 375px;
+}
+
+.afx-hotspot-stone:hover {
+    outline-color: rgba(255, 255, 255, 0.85);
+}
+
+/* Artifact Combos tab: Current tile on top, four suggestion tiles in a 2x2 grid. */
+.combo-body {
+    padding-top: 8px;
+}
+
+.combo-section {
+    font-size: 0.85rem;
+    opacity: 0.7;
+    margin: 10px 0 4px;
+}
+
+.combo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.combo-tile {
+    border: 1px solid rgba(128, 128, 128, 0.25);
+    border-radius: 6px;
+    padding: 6px 8px;
+    min-width: 0;
+    /* Shrink the tile to its content (image + rates) so there is no empty space on the right. */
+    width: fit-content;
+    max-width: 100%;
+    justify-self: start;
+}
+
+/* The best (highest-rate) set: green border + tint to match the green-backgrounded set image the
+   renderer produces for the winning combo. */
+.combo-tile.best {
+    border-color: #3a7d44;
+    background: rgba(39, 70, 41, 0.35);
+}
+
+.combo-tile-label {
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.combo-tile-body {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* The set keeps its natural (capped) size; the TILE shrinks to image + rates so there is no dead space
+   to the right. The image never grows. */
+.combo-tile-set {
+    flex: 0 0 auto;
+    min-width: 0;
+}
+
+.combo-tile-set .afx-set-wrap {
+    width: auto;
+    max-width: 320px;
+}
+
+/* Rates hug the right edge of the image, vertically centered. */
+.combo-tile-rates {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+    padding-left: 10px;
+}
+
+.combo-rate {
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.combo-rate-primary + .combo-rate-alt {
+    margin-top: 3px;
+}
+
+/* Shown beside a green Current tile when no suggestion beats the current set. */
+.combo-optimal {
+    flex: 0 0 auto;
+    align-self: center;
+    font-weight: bold;
+    color: #6fce7e;
+    padding-left: 14px;
+}
+
+.combo-rate-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.6;
+}
+
+/* q/h is the headline rate; T/m is the dimmed secondary line below it. */
+.combo-rate-primary {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 1rem;
+    font-weight: normal;
+}
+
+.combo-rate-alt {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.75rem;
+    opacity: 0.55;
+}
+
+.combo-rate-egg {
+    height: 1em;
+    width: auto;
+    vertical-align: middle;
+}
+
+.combo-rate-per {
+    opacity: 0.7;
+    font-weight: normal;
 }
 
 .copy-notification {

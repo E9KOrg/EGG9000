@@ -75,15 +75,6 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsNoTracking().ToListAsync(CancellationToken.None);
 
 #if DEBUG
-            //coops = [.. coops.Where(x => x.Id == Guid.Parse("eb1353a9-32ae-4c03-e379-08de4a63aaaf"))];
-            //coops = coops.Where(x => x.Created > DateTimeOffset.UtcNow.AddDays(-1) && x.GuildId == 656455567858073601 && x.OverflowGuildId == 1147264073659064420).ToList();
-            //coops = coops.Where(x => x.GuildId == 1094314306767695984).ToList();
-            //coops = coops.Where(x => x.Id == Guid.Parse("867c05a4-c7cd-420d-17c5-08dd4d5c76be")).ToList();
-            //coops = coops.Take(20).ToList();
-            //coops = [.. coops.Where(x => x.Name == "unitedsmalls1")];
-            //coops = [.. coops.Where(x => x.Name.EndsWith("fix") && x.League == 4)];
-            //coops = [.. coops.Where(x => !x.SuccessfullyStarted)];
-            //coops = [.. coops.Where(x => x.OverflowGuildId == 798897541717688390)];
             coops = [.. coops.Where(x => x.LastUpdateToChannel is null)];
 #endif
 
@@ -349,12 +340,20 @@ namespace EGG9000.Bot.Automated.Coops {
                     _db.Add(xref);
                     participant.AddXref(xref);
                 }
-                foreach(var participant in participantsInCoopButWithoutXref) {
-                    if(coop.UserCoopsXrefs.Any(x => x.UserId == participant.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
-                        _queue.EnqueueLow(() => coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account."));
-                        await BoolSendDm(participant.DiscordUser, $"It looks like you might have joined the coop with the wrong account in {coopThread.Mention}.", _db);
-                    } else {
-                        _queue.EnqueueLow(() => coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}> has joined the co-op"));
+                var (xrefsSaved, _) = await _db.SaveChangesAsyncRetry(retryCount: 3, cancellationToken: CancellationToken.None, logger: _logger);
+                // Guard before the loop: xrefsSaved is the same for all participants in this batch,
+                // so log once here rather than once per participant inside the loop.
+                // Skipping pings on failure prevents repeat pings if the xref never persisted.
+                if(!xrefsSaved) {
+                    _logger.LogError("ProcessCoop {coop}: failed to save xrefs — skipping 'has joined' pings to prevent repeats", coop.Name);
+                } else {
+                    foreach(var participant in participantsInCoopButWithoutXref) {
+                        if(coop.UserCoopsXrefs.Any(x => x.UserId == participant.DBUser.Id && x.WasAssigned && !x.JoinedCoop)) {
+                            _queue.EnqueueLow(() => coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}>, it looks like you might have joined the coop with the wrong account."));
+                            await BoolSendDm(participant.DiscordUser, $"It looks like you might have joined the coop with the wrong account in {coopThread.Mention}.", _db);
+                        } else {
+                            _queue.EnqueueLow(() => coopThread.SendMessageAsync($"<@{participant.DBUser.DiscordId}> has joined the co-op"));
+                        }
                     }
                 }
 
@@ -519,7 +518,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         userStatus.Xref.JoinedCoop = true;
                         // Joined - drop from the "find my coop" lookup (they're in the thread now).
                         _provider.GetService<CoopAssignmentLookup>()?.Remove(userStatus.Xref.UserId, coop.ContractID);
-                        var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == 796512753241161748);
+                        var unjoinedRole = guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Unjoined);
                         if(unjoinedRole != null) {
                             await userStatus.DiscordUser.RemoveRoleAsync(unjoinedRole);
                         }
@@ -1508,9 +1507,12 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         public static async Task HandlePingOnFull(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, IThreadChannel coopChannel, IDiscordQueue queue) {
+            var notifiedDiscordIds = new HashSet<ulong>();
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFull ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFull = false;
                 userStatus.Xref.UpdateCoopSetting();
+
+                if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"All users have joined the co-op {coopChannel.Mention}", db);
                 if(dmResult != DMResult.Success) {
@@ -1520,9 +1522,12 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
         public static async Task HandlePingOnCheckedIn(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, IThreadChannel coopChannel, IDiscordQueue queue) {
+            var notifiedDiscordIds = new HashSet<ulong>();
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnEveryoneCheckedIn ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnEveryoneCheckedIn = false;
                 userStatus.Xref.UpdateCoopSetting();
+
+                if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"The co-op {coopChannel.Mention} has finished and you are able to exit the co-op.", db);
                 if(dmResult != DMResult.Success) {
@@ -1533,10 +1538,11 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         public static async Task HandleFinished(ApplicationDbContext db, List<UserFarmDetails> userFarmDetails, IThreadChannel coopChannel, IDiscordQueue queue) {
+            var notifiedDiscordIds = new HashSet<ulong>();
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFinished ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFinished = false;
                 userStatus.Xref.UpdateCoopSetting();
-                if(userStatus.DiscordUser is null) continue;
+                if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"The co-op {coopChannel.Mention} has finished.", db);
                 if(dmResult != DMResult.Success) {
@@ -1606,11 +1612,13 @@ namespace EGG9000.Bot.Automated.Coops {
             if(usersWithStatus.Any(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
                 var highestEB2 = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                 if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup?.EggIncId)) {
+                    var notifiedDiscordIds = new HashSet<ulong>();
                     foreach(var user in usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
                         if(highestEB2.DBUser != null && user.User?.DiscordId == highestEB2.DBUser.DiscordId) continue; //Don't ping them if they are the highest EB
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                        if(user.DiscordUser is null || !notifiedDiscordIds.Add(user.DiscordUser.Id)) continue;
                         await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Highest EB ({highestEB2.DiscordUser?.GetCleanName()} at {highestEB2.Backup.EarningsBonus.ToEggString()}) has joined", coop);
                     }
                 }
@@ -1621,10 +1629,12 @@ namespace EGG9000.Bot.Automated.Coops {
             var anybodyWithPingSetting = usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnCompleteOnCheckIn ?? false);
 
             if(anybodyWithPingSetting.Any()) {
+                var notifiedDiscordIds = new HashSet<ulong>();
                 foreach(var user in anybodyWithPingSetting) {
                     user.Xref.CoopSetting.PingOnCompleteOnCheckIn = false;
                     user.Xref.UpdateCoopSetting();
                     await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                    if(user.DiscordUser is null || !notifiedDiscordIds.Add(user.DiscordUser.Id)) continue;
                     await SendDMWarning(_db, user.DiscordUser, coopChannel, $"Your co-op will complete once everyone checks in.", coop);
                 }
             }

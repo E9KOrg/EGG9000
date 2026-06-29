@@ -234,6 +234,11 @@ namespace EGG9000.Common.Database {
 
         public CustomBackup() { }
 
+        // CS is sourced out-of-band (get_contract_player_info), so the protobuf rebuild has no fresh
+        // value. Keep the prior value unless a positive fresh one is supplied. -1 is the legacy
+        // "unknown" sentinel and counts as no value.
+        public static double CarryForwardCs(double fresh, double last) => fresh > 0 ? fresh : last;
+
         public CustomBackup(Ei.Backup backup, FrozenSet<Ei.Contract> contracts, CustomBackup lastBackup = null) {
             if(backup?.Game == null) {
                 EmptyBackup = true;
@@ -263,9 +268,11 @@ namespace EGG9000.Common.Database {
             //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
-            TotalCS = backup.Contracts.LastCpi?.TotalCxp ?? -1;
-            SeasonCS = backup.Contracts.LastCpi?.SeasonCxp ?? -1;
-
+            // CS is written out-of-band by AccountRefresh.ApplyExtrasAsync (from get_contract_player_info),
+            // not derived from this protobuf backup. Carry the last known value forward so a mass-backup
+            // rebuild doesn't reset it to 0 and drop the user from CSLeaderboard's "TotalCS > 0" filter.
+            TotalCS = CarryForwardCs(0, lastBackup?.TotalCS ?? 0);
+            SeasonCS = CarryForwardCs(0, lastBackup?.SeasonCS ?? 0);
 
             VirtueEggsDelivered = backup.Virtue?.EggsDelivered.ToArray() ?? Array.Empty<double>();
             Resets = backup.Virtue?.Resets ?? 0;
@@ -521,14 +528,22 @@ namespace EGG9000.Common.Database {
 
         public uint GetColleggtibleLevel(string identifier) {
             CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize);
-            return farmSize switch {
-                > 10000000000UL => 4,
-                > 1000000000UL => 3,
-                > 100000000UL => 2,
-                > 10000000UL => 1,
-                _ => 0
-            };
+            return LevelForFarmSize(farmSize);
         }
+
+        // Level plus the raw max habitat population reached, in one lookup.
+        public (uint Level, ulong FarmSize) GetColleggtibleProgress(string identifier) {
+            CustomEggMaxFarmSizeReached.TryGetValue(identifier.ToLower(), out var farmSize);
+            return (LevelForFarmSize(farmSize), farmSize);
+        }
+
+        private static uint LevelForFarmSize(ulong farmSize) => farmSize switch {
+            > 10000000000UL => 4,
+            > 1000000000UL => 3,
+            > 100000000UL => 2,
+            > 10000000UL => 1,
+            _ => 0
+        };
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {
             foreach(var localContract in contracts) {

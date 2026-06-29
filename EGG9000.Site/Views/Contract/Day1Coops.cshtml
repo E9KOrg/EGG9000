@@ -1,11 +1,12 @@
-﻿@using Discord.WebSocket
+@using Discord.WebSocket
 @model (List<PotentialCoopGroup> coopGroups, List<(String reason, UserByAccount account)> excluded)
 @inject DiscordSocketClient discordClient
 @{
     Guild dbguild = ViewBag.DBGuild;
     SocketGuild guild = ViewBag.Guild;
     var contract = (ViewBag.Contract as Contract).Details;
-    var isLesserAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+    // isLesserAdmin = read/staff tier (read-only data exposure); isAdmin = write tier (start/reload buttons).
+    var isLesserAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
     var boardingGroups = Model.coopGroups.GroupBy(x => x.BoardingGroup).Select(x => new
     {
@@ -58,7 +59,7 @@
         overflow: scroll !important;
     }
 </style>
-<div ng-controller="Page">
+<div x-data="day1CoopsPage()">
 
 <div>
     User Counts:
@@ -66,92 +67,108 @@
     @foreach (var grade in grades) {
         <span><img src="@PlayerGradeDetails.GetImage(grade.Key)" style="height: 1em;" /> @grade.Sum(x => x.PotentialCoops?.Sum(y => y.Users.Count) ?? 0) &nbsp;&nbsp;</span>
     }
-    
+
     @foreach(var group in Model.excluded.GroupBy(x => x.reason)) {
         <span>@group.Key: @group.Count() &nbsp;&nbsp;</span>
-    } <button ng-click="ViewExcluded()" class="btn btn-primary">View</button>
+    } <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#excludedModal">View</button>
 </div>
     @if (dbguild.DisableBG) {
         @: Group
     } else {
         @: Boarding Group
     }
-    <select ng-model="bg" ng-options="item as item.BoardingGroup.Name for item in boardingGroups track by item.BoardingGroup.Value"></select>
+    <select x-model="bgIndex" @@change="bg = boardingGroups[parseInt($event.target.value)]">
+        <template x-for="(item, idx) in boardingGroups" :key="item.BoardingGroup.Value">
+            <option :value="idx" x-text="item.BoardingGroup.Name"></option>
+        </template>
+    </select>
 
     <div class="row scrollable">
-        <div class="col-sm" ng-repeat="group in bg.Grades">
-            <h2>
-                <img ng-src="{{group.GradeImage}}" style="height: 1em;" />
-                @if (isAdmin) {
-                    <input ng-model="group.CoopCount" style="width: 60px;" />
-                    <button class="btn btn-primary" ng-click="ReloadGrade(group)">Update Count</button>
-                    <button class="btn btn-primary" ng-click="StartAll(group)" ng-disabled="group.Disable">Start All</button>
-                    <span>
-                        Assigned Users: {{Total(group)}}
-                    </span>
-                    <span>
-                        | Free Spaces: {{FreeSpaces(group)}}
-                    </span>
-                    @if(dbguild.DisableBG) {
-                        <span ng-repeat="item in getExcluded(this)">
-                            | {{item.Reason}}: {{item.Count}}
-                        </span>
-                        
-                    }
-                } else {
-                    @: ({{group.Coops.length}})
-                }
-            </h2>
-
-            <div class="card" ng-repeat="coop in group.Coops">
-                <h5 class="card-header">Coop ({{coop.Users.length}}/@contract.MaxCoopSize)</h5>
-                <table class="table table-striped">
-                    <tbody>
-                        <tr ng-repeat="user in coop.Users">
-                            <td>{{user.Name}} <span ng-if="user.MultipleAccounts">({{user.AccountName}})</span> <span ng-if="user.FromGroup > 0" style="display: inline-block;background-color: mediumvioletred">BG{{user.FromGroup}}</span> <span ng-if="user.Guild.length > 0">[{{user.Guild}}]</span> </td>
-                            <td>{{user.EBString}}</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="card-footer">
-                    Total EB {{coop.TotalEB}}
+        <template x-for="group in (bg ? bg.Grades : [])" :key="group.Grade">
+            <div class="col-sm">
+                <h2>
+                    <img :src="group.GradeImage" style="height: 1em;" />
                     @if (isAdmin) {
-                        <button ng-click="Start(coop, group.Coops, group.Grade)" ng-disabled="coop.Disable || group.Disable">Start</button>
+                        <input x-model.number="group.CoopCount" style="width: 60px;" />
+                        <button class="btn btn-primary" @@click="reloadGrade(group)">Update Count</button>
+                        <button class="btn btn-primary" @@click="startAll(group)" :disabled="group.Disable">Start All</button>
+                        <span>Assigned Users: <span x-text="total(group)"></span></span>
+                        <span>| Free Spaces: <span x-text="freeSpaces(group)"></span></span>
+                        @if(dbguild.DisableBG) {
+                            <template x-for="item in getExcluded(group)" :key="item.Reason">
+                                <span>| <span x-text="item.Reason"></span>: <span x-text="item.Count"></span></span>
+                            </template>
+                        }
+                    } else {
+                        <span>(<span x-text="group.Coops.length"></span>)</span>
                     }
-                </div>
+                </h2>
+
+                <template x-for="(coop, coopIdx) in group.Coops" :key="coopIdx">
+                    <div class="card">
+                        <h5 class="card-header">Coop (<span x-text="coop.Users.length"></span>/@contract.MaxCoopSize)</h5>
+                        <table class="table table-striped">
+                            <tbody>
+                                <template x-for="user in coop.Users" :key="user.EggIncId || user.Name">
+                                    <tr>
+                                        <td>
+                                            <span x-text="user.Name"></span>
+                                            <span x-show="user.MultipleAccounts"> (<span x-text="user.AccountName"></span>)</span>
+                                            <span x-show="user.FromGroup > 0" style="display:inline-block;background-color:mediumvioletred">BG<span x-text="user.FromGroup"></span></span>
+                                            <span x-show="user.Guild && user.Guild.length > 0">[<span x-text="user.Guild"></span>]</span>
+                                        </td>
+                                        <td x-text="user.EBString"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <div class="card-footer">
+                            Total EB <span x-text="coop.TotalEB"></span>
+                            @if (isAdmin) {
+                                <button @@click="start(coop, group.Coops, group)" :disabled="coop.Disable || group.Disable">Start</button>
+                            }
+                        </div>
+                    </div>
+                </template>
             </div>
-        </div>
+        </template>
     </div>
 </div>
 
-
-<script type="text/ng-template" id="Excluded">
-    <div class="modal-header">Excluded</div>
-    <table class="modal-body table table-sm table-striped">
-        <thead>
-            <tr>
-                <th>Discord Name</th>
-                <th>Reason</th>
-                @if(dbguild.DisableBG) {
-                    <th>Group</th>
-                }
-            </tr>
-        </thead>
-        <tbody>
-            @foreach(var group in Model.excluded.GroupBy(x => x.reason)) {
-                @foreach(var user in group.OrderBy(x => x.account.RoleId).ThenBy(x => x.account.User.DiscordUsername)) {
+<div class="modal fade" id="excludedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Excluded</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <table class="modal-body table table-sm table-striped">
+                <thead>
                     <tr>
-                        <td>@user.account.User.DiscordUsername</td>
-                        <td>@user.reason</td>
+                        <th>Discord Name</th>
+                        <th>Reason</th>
                         @if(dbguild.DisableBG) {
-                            <td>@guild.GetRole(user.account.RoleId)</td>
+                            <th>Group</th>
                         }
                     </tr>
-                }
-            }
-        </tbody>
-    </table>
-</script>
+                </thead>
+                <tbody>
+                    @foreach(var group in Model.excluded.GroupBy(x => x.reason)) {
+                        @foreach(var user in group.OrderBy(x => x.account.RoleId).ThenBy(x => x.account.User.DiscordUsername)) {
+                            <tr>
+                                <td>@user.account.User.DiscordUsername</td>
+                                <td>@user.reason</td>
+                                @if(dbguild.DisableBG) {
+                                    <td>@guild.GetRole(user.account.RoleId)</td>
+                                }
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 @{
     var excluded = Model.excluded.GroupBy(x => new { x.reason, x.account.RoleId, Grade =  x.account.Account.GetGrade() }).Select(x => new { Grade = x.Key.Grade, Reason = x.Key.reason, Count = x.Count(), RoleId = x.Key.RoleId });
@@ -159,90 +176,77 @@
 
 @section Scripts {
     <script>
-        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
-            .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-                $scope.boardingGroups = @Html.Raw(JsonConvert.SerializeObject(boardingGroups));
-                $scope.bg = $scope.boardingGroups[0];
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('day1CoopsPage', () => ({
+                boardingGroups: [],
+                bgIndex: 0,
+                bg: null,
+                excluded: [],
 
-                $scope.excluded = @Html.Raw(JsonConvert.SerializeObject(excluded));
+                init() {
+                    const _bgRaw = @Html.Raw(JsonConvert.SerializeObject(boardingGroups));
+                    this.boardingGroups = _bgRaw;
+                    this.bg = this.boardingGroups[0] || null;
 
-                $scope.getExcluded = function(scope) {
-                    var item = _.filter($scope.excluded, function (value, key) {
-                        return value.Grade == scope.group.GradeNum && value.RoleId == $scope.bg.BoardingGroup.RoleId;
-                    });
-                    return item;
-                }
-                console.log($scope.excluded);
+                    const _exRaw = @Html.Raw(JsonConvert.SerializeObject(excluded));
+                    this.excluded = _exRaw;
+                },
 
-                $scope.FreeSpaces = function (grade) {
-                    var freeSpaces = 0;
-                    angular.forEach(grade.Coops, (coop) => {
-                        console.log(coop);
-                        console.log(coop.Users.length);
-                        freeSpaces += @contract.MaxCoopSize - coop.Users.length;
-                    });
-                    return freeSpaces;
-                }
-                $scope.Total = function (grade) {
-                    var total = 0;
-                    angular.forEach(grade.Coops, (coop) => {
-                        total += coop.Users.length;
-                    });
-                    return total;
-                }
+                freeSpaces(grade) {
+                    return grade.Coops.reduce((sum, coop) => sum + (@contract.MaxCoopSize - coop.Users.length), 0);
+                },
 
-                $scope.ReloadGrade = function (grade) {
-                    $http.post("/contract/reloadgrade?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=" + grade.Grade + "&bg=" + $scope.bg.BoardingGroup.Value + "&count=" + grade.CoopCount).then(function Success(response) {
-                        console.log(grade.Coops);
-                        console.log(response.data);
-                        grade.Coops = response.data;
-                    }, function Error(response) {
-                        alert("Error");
-                        console.log(response);
-                    });
-                };
+                total(grade) {
+                    return grade.Coops.reduce((sum, coop) => sum + coop.Users.length, 0);
+                },
 
-                $scope.StartAll = function (grade) {
-                    grade.Disable = true;
-                    $http.post("/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=" + grade.Grade + "&bg=" + $scope.bg.BoardingGroup.Value + "&count=" + grade.CoopCount, grade.Coops).then(function Success(response) {
-                        console.log(grade.Coops);
-                        console.log(response.data);
-                        grade.Coops = response.data;
-                        grade.Disable = false;
-                    }, function Error(response) {
-                        alert("Error");
-                        console.log(response);
-                    });
-                };
+                getExcluded(grade) {
+                    return this.excluded.filter(e => e.Grade === grade.GradeNum && e.RoleId == (this.bg?.BoardingGroup?.RoleId ?? 0));
+                },
 
-                $scope.Start = function (coop, coops, grade) {
-                    if (confirm("Are you sure you want to start this co-op?")) {
-                        coop.Disable = true;
-
-                        var newGrade = {
-                            Grade: grade.Grade,
-                            Coops: [coop]
-                        };
-
-                        $http.post("/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=" + grade.Grade + "&bg=" + $scope.bg.BoardingGroup.Value + "&count=" + grade.CoopCount, [coop]).then(function Success(response) {
-                            console.log(grade.Coops);
-                            console.log(response.data);
-                            grade.Coops = response.data;
-                            grade.Disable = false;
-                        }, function Error(response) {
-                            alert("Error");
-                            console.log(response);
-                        });
+                async reloadGrade(grade) {
+                    try {
+                        const r = await fetch(`/contract/reloadgrade?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=${grade.Grade}&bg=${this.bg.BoardingGroup.Value}&count=${grade.CoopCount}`, { method: 'POST' });
+                        grade.Coops = await r.json();
+                    } catch (e) {
+                        alert('Error');
+                        console.error(e);
                     }
-                };
+                },
 
-                $scope.ViewExcluded = function() {
-                    console.log(1);
-                    $uibModal.open({
-                        templateUrl: 'Excluded',
-                        animation: false,
-                    });
-                };
-            }]);
+                async startAll(grade) {
+                    grade.Disable = true;
+                    try {
+                        const r = await fetch(`/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=${grade.Grade}&bg=${this.bg.BoardingGroup.Value}&count=${grade.CoopCount}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(grade.Coops)
+                        });
+                        grade.Coops = await r.json();
+                    } catch (e) {
+                        alert('Error');
+                        console.error(e);
+                    }
+                    grade.Disable = false;
+                },
+
+                async start(coop, coops, grade) {
+                    if (!confirm('Are you sure you want to start this co-op?')) return;
+                    coop.Disable = true;
+                    try {
+                        const r = await fetch(`/contract/startcoops?GuildId=@ViewBag.GuildId&ContractID=@ViewBag.Contract.ID&Grade=${grade.Grade}&bg=${this.bg.BoardingGroup.Value}&count=${grade.CoopCount}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify([coop])
+                        });
+                        grade.Coops = await r.json();
+                    } catch (e) {
+                        alert('Error');
+                        console.error(e);
+                    }
+                    grade.Disable = false;
+                }
+            }));
+        });
     </script>
 }

@@ -42,6 +42,12 @@ namespace EGG9000.Common.Helpers {
             public bool Last4 { get; set; }
             public bool Last5 { get; set; }
             public SocketGuildUser DiscordUser { get; set; }
+            // The board is sourced from DB GuildId, not the live Discord cache, so a row can exist
+            // without a cached SocketGuildUser. These give views a name/id without dereferencing it.
+            public ulong DisplayDiscordId => DiscordUser?.Id ?? User.DiscordId;
+            public string DisplayName => DiscordUser is not null
+                ? DiscordUser.GetCleanName()
+                : System.Text.RegularExpressions.Regex.Replace(User.DiscordUsername ?? "", @"\(.+?\)", "").Trim();
             public bool Elite { get { return Backup.EarningsBonus > 10000000000000; } }
             public DateTimeOffset Started { get; set; }
             public List<SimpleXref> RecentXrefs { get; set; }
@@ -313,29 +319,6 @@ namespace EGG9000.Common.Helpers {
             coopsBreakdown.PotentialCoops = [.. coopsBreakdown.PotentialCoops.OrderByDescending(x => x.PercentProjected)];
             return coopsBreakdown;
         }
-
-        //public static async Task<List<UserPreFarm>> GetBackupsForAliens(List<Coop> coops, List<UserPreFarm> allPrefarms, List<DBCustomEgg> customEggs, Contract contract) {
-        //    var tasks = new List<Task<CustomBackup>>();
-        //    foreach(var coop in coops) {
-        //        if(coop.LastStatusUpdate != null) {
-        //            foreach(var c in coop.LastStatusUpdate.Contributors) {
-        //                var prefarm = allPrefarms.FirstOrDefault(x => x.EggIncId == c.UserId);
-        //                if(prefarm == null) {
-        //                    tasks.Add(EggIncApi.GetBackupAsync(c.UserId, await db.CachedEiContractsAsync()));
-        //                }
-        //            }
-        //        }
-        //    }
-        //    await Task.WhenAll(tasks);
-        //    var alienPrefarms = new List<UserPreFarm>();
-        //    foreach(var task in tasks) {
-        //        var lUser = new LeaderboardUser { Backup = task.Result };
-        //        if(lUser.Backup != null) {
-        //            alienPrefarms.Add(BackupToPreFarm(lUser, contract, customEggs));
-        //        }
-        //    }
-        //    return alienPrefarms;
-        //}
 
         public static List<UserPreFarm> GetPrefarmsForCoop(Coop coop, List<UserPreFarm> allPrefarms, List<UserPreFarm> alienPrefarms) {
             var prefarms = new List<UserPreFarm>();

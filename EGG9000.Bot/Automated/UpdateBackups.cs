@@ -69,7 +69,7 @@ namespace EGG9000.Bot.Automated {
             if(registered > 0)
                 _logger.LogInformation("Self-healed {count} contract(s) missing from the DB from player backups", registered);
 
-            await ShipReturnDM.UpdateNextShipDM(usersToCheck, _db);
+            await ShipReturnDM.UpdateNextShipDM(usersToCheck, _db, _logger);
             var finished = times.Finished();
             _logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
         }
@@ -116,13 +116,18 @@ namespace EGG9000.Bot.Automated {
         public async Task UpdateUser(DBUser user, List<Guild> guilds, FrozenSet<Ei.Contract> cachedContracts, HashSet<string> knownContractIds, System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract> discoveredContractDefs) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
-                var firstContact = await EggIncApi.FirstContact(account.Id);
+                var firstContact = await EggIncApi.FirstContact(account.Id, _logger);
                 var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
 
                 if(dbGuild is null)
                     continue;
 
-                await DiscoverUnknownContracts(account.Id, firstContact?.Backup, knownContractIds, discoveredContractDefs);
+                if(firstContact?.Backup is null) {
+                    _logger.LogWarning($"No backup from API for {user.DiscordUsername} {account.Name ?? account.Id}: Success={firstContact?.Success}, Error={firstContact?.Error}");
+                    continue;
+                }
+
+                await DiscoverUnknownContracts(account.Id, firstContact.Backup, knownContractIds, discoveredContractDefs);
 
                 var oldLevel = account.SubscriptionLevel;
                 var backup = new CustomBackup(firstContact.Backup, cachedContracts, account.Backup);
@@ -134,7 +139,7 @@ namespace EGG9000.Bot.Automated {
                     account.Backup = backup;
 
                     if(firstContact.Backup.SubInfo is null) {
-                        _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API");
+                        _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API. Last backup: {account.Backup?.GetLastBackupDateTime()}");
                         var (subscription, subError) = await EggIncApi.GetUserSubscription(backup.EggIncId);
                         if(subscription is null) {
                             _logger.LogWarning($"Failed to fetch subscription for {user.DiscordUsername} {account.Id}: {subError}");

@@ -147,7 +147,7 @@ namespace EGG9000.Site.Controllers {
                     try {
                         var pinned = await channel.GetMessagesAsync(1000).FlattenAsync();
                         Console.WriteLine(pinned.Count(x => x.IsPinned));
-                        foreach(var msg in pinned.Where(x => x.Author.Id == 514257192803893272)) {
+                        foreach(var msg in pinned.Where(x => x.Author.Id == KnownUsers.Bot)) {
                             if(msg.IsPinned || msg.Embeds.Count > 0) {
                                 if(!UpdateMessageIDs.Contains(msg.Id)) {
                                     await msg.DeleteAsync();
@@ -191,7 +191,11 @@ namespace EGG9000.Site.Controllers {
                 if(user.GuildId == 0 && guilds.Count() == 1) {
                     user.GuildId = guilds.First().Id;
                 } else if(user.GuildId > 0 && guilds.Count() == 0) {
-                    user.GuildId = 0;
+                    var assigned = _discord.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+                    if(assigned is not null && assigned.HasAllMembers) {
+                        user.LastGuild = user.GuildId;
+                        user.GuildId = 0;
+                    }
                 }
             }
             await _db.SaveChangesAsync();
@@ -209,6 +213,12 @@ namespace EGG9000.Site.Controllers {
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
+            var guild = _discord.Guilds.First(g => g.Id == guildid);
+            // Membership is the DB GuildId, not the live Discord cache. The site runs its own bare
+            // socket client whose member cache can read "complete" while actually partial, and gating
+            // on it dropped real members from the board (the recurring CSLeaderboard "few users" bug).
+            // ManageOverflow owns reconciling GuildId against true Discord membership; the board just
+            // trusts it. DiscordUser is still resolved below for the display name only.
             var allUsers = await _databaseCache.GetDbUsers();
             var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
@@ -224,13 +234,13 @@ namespace EGG9000.Site.Controllers {
             var accounts = rawusers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new LeaderboardUser {
                 User = x.DBUser,
                 Backup = y.Backup,
-                DiscordUser = _discord.Guilds.First(g => g.Id == x.GuildId).Users.FirstOrDefault(du => du.Id == x.DiscordId),
+                DiscordUser = guild.Users.FirstOrDefault(du => du.Id == x.DiscordId),
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0,
                 TotalCraftingXP = y.Backup?.CraftingXP ?? 0,
                 CraftingLevel = y.Backup?.GetCraftingLevel() ?? 1,
-            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            })).Where(x => x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
         }
@@ -487,8 +497,8 @@ namespace EGG9000.Site.Controllers {
             public ulong PrestigeCount { get; set; }
         }
 
-        public async Task<IActionResult> Results([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
-            if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || true) {
+        public async Task<IActionResult> Results([FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
+            if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
 
 
                 var snapshots = (await _db.UserSnapShots.AsQueryable().Where(x => x.Date < new DateTime(2021, 07, 14)).OrderByDescending(x => x.Date).ToListAsync()).GroupBy(x => x.EggIncID).Select(x => x.First()).ToList();
@@ -533,20 +543,13 @@ namespace EGG9000.Site.Controllers {
             return View((leaderboard, customEggs));
         }
 
-        public async Task<IActionResult> EnlightenmentTest() {
-            var guild = await _db.Guilds.AsQueryable().FirstAsync();
-            var leaderboard = await _getLeaderboard(guild.Id);
-            var customEggs = await _db.GetCustomEggsAsync();
-
-            return View("Enlightenment", (leaderboard, customEggs));
-        }
 
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
         public async Task<IActionResult> LeaderboardXML(ulong guildid) {
             var users = await _getLeaderboard(guildid);
             var leaderboard = users.Select(x => new LeaderboardItem {
-                Name = x.DiscordUser.GetCleanName(),
+                Name = x.DisplayName,
                 EggIncName = x.Backup.UserName,
                 SoulEggs = x.Backup.SoulEggs,
                 EggsOfProphecy = x.Backup.EggsOfProphecy,
@@ -590,7 +593,7 @@ namespace EGG9000.Site.Controllers {
                         u.Backup.EarningsBonus,
                         SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 
@@ -630,7 +633,7 @@ namespace EGG9000.Site.Controllers {
                         (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
                         u?.Backup?.TotalCS ?? 0
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 
@@ -671,7 +674,7 @@ namespace EGG9000.Site.Controllers {
                         (int)u?.Account?.Backup.GetCraftingLevel(),
                         (double)(u?.Account?.Backup?.CraftingXP)
                     ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser.Username);
+                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
 
@@ -683,7 +686,8 @@ namespace EGG9000.Site.Controllers {
             return View();
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
+        // Read tier: leaderboard name-links land here and redirect to MyFarms.ViewUser (also read tier).
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> ViewUser(Guid id) {
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.Id == id);
             return RedirectToAction("ViewUser", "MyFarms", new { discordId = user.DiscordId });
@@ -878,12 +882,6 @@ namespace EGG9000.Site.Controllers {
         public IActionResult Boosts() {
             return View();
         }
-
-        public async Task<IActionResult> Test1() {
-            var userStatuses = await _db.UserCoopStatuses.AsQueryable().Where(x => x.CoopId == Guid.Parse("9C515840-2651-4FB2-CAB5-08D7FD8FF968")).OrderByDescending(x => x.CreatedOn).ToListAsync();
-            return Json(userStatuses);
-        }
-
 
         [AllowAnonymous]
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]

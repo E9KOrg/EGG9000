@@ -31,8 +31,8 @@ namespace EGG9000.Bot.Automated {
                 var members = users.Where(x => x.GuildId == guild.Id).ToList();
                 var missingFromServer = members.Where(x => mainServer.GetUser(x.DiscordId) is null).Select(x => x.Id).ToList();
 
-                if(mainServer.Users.Count == 0 || DepartureSpikeTooLarge(members.Count, missingFromServer.Count)) {
-                    _logger.LogWarning("Skipping departure handling for {name}: {missing}/{members} members flagged missing, likely an incomplete member download", guild.Name, missingFromServer.Count, members.Count);
+                if(!mainServer.HasAllMembers || mainServer.Users.Count == 0 || DepartureSpikeTooLarge(members.Count, missingFromServer.Count)) {
+                    _logger.LogWarning("Skipping departure handling for {name}: {missing}/{members} members flagged missing, HasAllMembers={hasAll}, likely an incomplete member download", guild.Name, missingFromServer.Count, members.Count, mainServer.HasAllMembers);
                 } else {
                     var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(CancellationToken.None);
                     membersMissing.ForEach(x => {
@@ -44,11 +44,15 @@ namespace EGG9000.Bot.Automated {
                     await PurgePendingAssignments(_db, missingFromServer, guild.Id);
                 }
 
-                var returned = users.Where(x => x.GuildId == 0 && x.LastGuild == guild.Id && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
+                // Re-associate any registered user who is present in this server but whose GuildId is unset.
+                // Presence is reliable even on a partial cache (only absence is not), so this is safe to run
+                // unconditionally. Covers both LastGuild-trail returns and the no-trail users that earlier
+                // zeroing left with GuildId = 0 and no record of their original guild.
+                var returned = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
                 var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync(CancellationToken.None);
                 membersReturn.ForEach(x => {
                     x.GuildId = guild.Id;
-                    _logger.LogInformation("Return member to the guild {name}", x.DiscordUsername);
+                    _logger.LogInformation("Re-associating member {name} to guild {guild} (present in server, GuildId was unset)", x.DiscordUsername, guild.Name);
                     StillAlive();
                 });
 
@@ -223,10 +227,13 @@ namespace EGG9000.Bot.Automated {
             foreach(var overflowServer in overflowServers) {
                 var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == originalRole.Name);
                 if(overflowRole != null) {
+                    var syncColors = overflowServer.Features.HasEnhancedRoleColors
+                        ? updatedRole.Colors
+                        : RoleColors.Solid(updatedRole.Colors.PrimaryColor);
                     try {
                         await overflowRole.ModifyAsync(x => {
                             x.Name = updatedRole.Name;
-                            x.Colors = updatedRole.Colors;
+                            x.Colors = syncColors;
                             x.Permissions = updatedRole.Permissions;
 
                             /**
@@ -256,14 +263,19 @@ namespace EGG9000.Bot.Automated {
                     if(cancellationToken.IsCancellationRequested) break;
 
                     IRole overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
+                    // Overflow servers usually aren't boosted high enough for EnhancedRoleColors;
+                    // a gradient/holographic RoleColors throws there, so downgrade to a solid color.
+                    var syncColors = overflowServer.Features.HasEnhancedRoleColors
+                        ? role.Colors
+                        : RoleColors.Solid(role.Colors.PrimaryColor);
                     if(overflowRole is null) {
-                        overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: role.Colors);
+                        overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: syncColors);
                     }/* else if(overflowRole.Icon is null && role.Icon is not null) {
                     }*/
                     else if(!role.Permissions.Equals(overflowRole.Permissions)) {
                         await overflowRole.ModifyAsync(x => {
                             x.Name = role.Name;
-                            x.Colors = role.Colors;
+                            x.Colors = syncColors;
                             x.Permissions = role.Permissions;
                         });
                     }

@@ -35,7 +35,7 @@ namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         RoleManager<IdentityRole> roleManager, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache,
-        IServiceScopeFactory scopeFactory) : Controller {
+        IServiceScopeFactory scopeFactory, EGG9000.Site.Services.ArtifactImageRenderer artifactRenderer) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -46,6 +46,7 @@ namespace EGG9000.Site.Controllers {
         private readonly IMemoryCache _cache = cache;
         private readonly DatabaseCache _databaseCache = databaseCache;
         private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
+        private readonly EGG9000.Site.Services.ArtifactImageRenderer _artifactRenderer = artifactRenderer;
 
         public async Task<IActionResult> Index() {
             var sw = new Stopwatch();
@@ -67,7 +68,7 @@ namespace EGG9000.Site.Controllers {
             return await ViewUser(ulong.Parse(logins.First().ProviderKey));
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
 
 
@@ -105,24 +106,30 @@ namespace EGG9000.Site.Controllers {
             var seasonProgresses = await _db.UserSeasonProgresses
                 .Where(x => eggIncIds.Contains(x.EggIncId))
                 .ToListAsync();
-            var seasonIds = seasonProgresses.Select(x => x.SeasonId).Distinct().ToList();
-            var seasonInfos = await _db.SeasonInfos
-                .Where(x => seasonIds.Contains(x.Id))
-                .ToListAsync();
-            var seasonInfoMap = seasonInfos.ToDictionary(si => si.Id);
+            // Every started season that awards PE, not only the ones the player already has progress in.
+            // A season the player never touched has no UserSeasonProgress row, but they can still be
+            // missing all of its PE - default that case to 0 CXP at the account's current grade.
+            var seasonInfos = (await _db.SeasonInfos.ToListAsync())
+                .Where(x => x.StartTime <= DateTimeOffset.UtcNow)
+                .ToList();
             var seasonPEByEggIncId = new Dictionary<string, (int Earned, int Max)>();
             var missingSeasonalPEByEggIncId = new Dictionary<string, List<MissingSeasonalPe>>();
-            foreach(var id in eggIncIds) {
+            foreach(var account in user.EggIncAccounts.DistinctBy(a => a.Id)) {
+                var id = account.Id;
                 var earned = 0;
                 var max = 0;
                 var missing = new List<MissingSeasonalPe>();
-                foreach(var sp in seasonProgresses.Where(sp => sp.EggIncId == id)) {
-                    if(!seasonInfoMap.TryGetValue(sp.SeasonId, out var info)) continue;
-                    var grade = (Ei.Contract.Types.PlayerGrade)sp.StartingGrade;
-                    earned += info.GetPeEarned(grade, sp.TotalCxp);
+                foreach(var info in seasonInfos) {
+                    var sp = seasonProgresses.FirstOrDefault(x => x.EggIncId == id && x.SeasonId == info.Id);
+                    var totalCxp = sp?.TotalCxp ?? 0;
+                    var grade = sp is not null
+                        ? (Ei.Contract.Types.PlayerGrade)sp.StartingGrade
+                        : account.GetGrade();
+                    if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset) continue;
+                    earned += info.GetPeEarned(grade, totalCxp);
                     max += info.GetMaxPe(grade);
-                    foreach(var goal in info.GetUnearnedGoals(grade, sp.TotalCxp))
-                        missing.Add(new MissingSeasonalPe(info.Name, sp.TotalCxp, goal.Cxp, goal.PeAmount, info.StartTime));
+                    foreach(var goal in info.GetUnearnedGoals(grade, totalCxp))
+                        missing.Add(new MissingSeasonalPe(info.Name, totalCxp, goal.Cxp, goal.PeAmount, info.StartTime));
                 }
                 seasonPEByEggIncId[id] = (Earned: earned, Max: max);
                 missingSeasonalPEByEggIncId[id] = missing.OrderBy(m => m.StartTime).ToList();
@@ -140,7 +147,7 @@ namespace EGG9000.Site.Controllers {
             // (the view dereferences account.Backup directly). Fresh backups are refreshed out of band below.
             var accountsNeedingBackup = user.EggIncAccounts.Where(a => a.Backup is null).ToList();
             if(accountsNeedingBackup.Count > 0) {
-                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(a => AccountRefresh.RefreshBackupAsync(a, cachedContracts)));
+                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(a => AccountRefresh.RefreshBackupAsync(a, cachedContracts, _logger)));
                 if(fetched.Any(b => b is not null)) {
                     user.UpdateAccounts();
                     await _db.SaveChangesAsync();
@@ -155,6 +162,33 @@ namespace EGG9000.Site.Controllers {
 
             Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
             return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId));
+        }
+
+        // Lazily renders the artifact-inventory image plus its hover-target manifest for one account. The
+        // MyFarms inventory tab fetches this the first time it's opened, so the main page load never pays
+        // for the image generation. Access is restricted to the account's owner or a staff member, matching
+        // who is allowed to view the farms in the first place.
+        [HttpGet]
+        public async Task<IActionResult> InventoryOverlay(string eid) {
+            if(string.IsNullOrWhiteSpace(eid)) return BadRequest(new { error = "Missing account id." });
+
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+
+            var owner = await _db.DBUsers.FirstOrDefaultAsync(x => x.EIDs.Contains(eid));
+            if(owner is null) return NotFound(new { error = "Account not found." });
+
+            var isStaff = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+            if(owner.DiscordId != loginUserId && !isStaff) return Forbid();
+
+            var account = owner.EggIncAccounts.FirstOrDefault(a => a.Id == eid);
+            if(account is null) return NotFound(new { error = "Account not found." });
+
+            var render = _artifactRenderer.RenderInventory(account);
+            if(!render.Ok) return Json(new { error = render.Error });
+
+            return Json(new { imageB64 = Convert.ToBase64String(render.Jpeg), manifest = render.Manifest });
         }
 
         private async Task GetScores(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
@@ -181,7 +215,7 @@ namespace EGG9000.Site.Controllers {
                     if(user is null) return;
                     var cachedContracts = await db.CachedEiContractsAsync();
                     // Backups are network-only + per-account in memory, so fetch them concurrently.
-                    await Task.WhenAll(user.EggIncAccounts.Select(account => AccountRefresh.RefreshBackupAsync(account, cachedContracts)));
+                    await Task.WhenAll(user.EggIncAccounts.Select(account => AccountRefresh.RefreshBackupAsync(account, cachedContracts, _logger)));
                     // Extras stage DB writes, so run them sequentially against the single context.
                     foreach(var account in user.EggIncAccounts)
                         await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger);
@@ -332,7 +366,13 @@ namespace EGG9000.Site.Controllers {
             return Redirect("~/");
         }
 
-        public async Task<IActionResult> SendTestDM([FromQuery] string target, [FromQuery] ulong discorduserid) {
+        public async Task<IActionResult> SendTestDM([FromQuery] string target) {
+            // Target is always the authenticated user - never trust a caller-supplied id, or anyone
+            // could spam an arbitrary Discord user / channel-ping through the bot.
+            var loginUser = await _userManager.GetUserAsync(User);
+            var logins = loginUser is null ? null : await _userManager.GetLoginsAsync(loginUser);
+            if(!ulong.TryParse(logins?.FirstOrDefault()?.ProviderKey, out var discorduserid))
+                return BadRequest();
             switch(target) {
                 case "dm":
                     var discordUser = await _discord.GetUserAsync(discorduserid);

@@ -5,7 +5,9 @@
 @{
 	var backup = Model.backup;
 	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
-	var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin");
+	// Read/staff tier - gates display-only extra columns (cheat metrics). Includes the read-only
+	// GuildReadOnlyAdmin (CT) tier; no write controls are gated on this flag.
+	var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
 	var contracts = Model.contracts;
 
 	var farms = backup.Farms;
@@ -19,11 +21,11 @@
 }
 
 <style>
-	.bootstrap .tooltip-text {
+	.tooltip-text {
 		color: black;
 	}
 
-	.bootstrap-dark .tooltip-text {
+	[data-bs-theme="dark"] .tooltip-text {
 		color: #ccc;
 	}
 
@@ -48,7 +50,7 @@
 			vertical-align: middle; /* Align the image vertically with the text */
 		}
 
-	.bootstrap-dark .tooltip-custom img {
+	[data-bs-theme="dark"] .tooltip-custom img {
 		filter: invert(1) !important;
 	}
 
@@ -60,22 +62,15 @@
 		white-space: nowrap;
 		text-align: center; /* Center the text within the tooltip */
 		position: absolute;
-	}
-
-	.bootstrap-dark .tooltiptext-custom {
-		background-color: rgba(33, 37, 41, 0.95);
-	}
-
-	.bootstrap .tooltiptext-custom {
 		background-color: rgba(235, 239, 242, 0.95);
 	}
 
-	.bootstrap-dark .speech-bubble {
+	[data-bs-theme="dark"] .tooltiptext-custom {
 		background-color: rgba(33, 37, 41, 0.95);
 	}
 
-	.bootstrap .speech-bubble {
-		background-color: rgba(235, 239, 242, 0.95);
+	[data-bs-theme="dark"] .speech-bubble {
+		background-color: rgba(33, 37, 41, 0.95);
 	}
 
 	.speech-bubble {
@@ -83,6 +78,7 @@
 		padding: 10px;
 		margin: 10px auto; /* Center the bubble horizontally */
 		border-radius: 5px; /* Rounded corners for the bubble */
+		background-color: rgba(235, 239, 242, 0.95);
 	}
 
 		/* Create the triangle */
@@ -110,17 +106,17 @@
 					<th>Contract</th>
 					<th>Coop</th>
 					<th>Started</th>
-					<th data-toggle="tooltip" title="# of Chickens" class="text-right">🐔</th>
-					<th data-toggle="tooltip" title="# of Eggs" class="text-right">🥚</th>
-					<th class="text-right">%</th>
+					<th data-bs-toggle="tooltip" title="# of Chickens" class="text-end">🐔</th>
+					<th data-bs-toggle="tooltip" title="# of Eggs" class="text-end">🥚</th>
+					<th class="text-end">%</th>
 					@if (isLesserAdmin) {
-						<th data-toggle="tooltip" title="Time Cheat" class="text-right">🕵</th>
-						<th data-toggle="tooltip" title="Cheat Time Debt" class="text-right">⏲️</th>
+						<th data-bs-toggle="tooltip" title="Time Cheat" class="text-end">🕵</th>
+						<th data-bs-toggle="tooltip" title="Cheat Time Debt" class="text-end">⏲️</th>
 						fullColSpan += 2;
 					}
-					<th data-toggle="tooltip" title="Tokens Received" class="text-right tight-emojis">🟡 📥</th>
-					<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡 💲</th>
-					<th data-toggle="tooltip" title="Tokens Given" class="text-right tight-emojis">🟡 📤</th>
+					<th data-bs-toggle="tooltip" title="Tokens Received" class="text-end tight-emojis">🟡 📥</th>
+					<th data-bs-toggle="tooltip" title="Tokens Spent" class="text-end tight-emojis">🟡 💲</th>
+					<th data-bs-toggle="tooltip" title="Tokens Given" class="text-end tight-emojis">🟡 📤</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -152,9 +148,9 @@
 									}
 								</td>
 								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
-								<td class="text-right">@farm.NumChickens.ToEggString()</td>
-								<td class="text-right">@farm.EggsPaidFor.ToEggString()</td>
-								<td class="text-right">
+								<td class="text-end">@farm.NumChickens.ToEggString()</td>
+								<td class="text-end">@farm.EggsPaidFor.ToEggString()</td>
+								<td class="text-end">
 									@if (lastUpdate != null)
 									{
 										var percent = lastUpdate.ContributionAmount / xref.Coop.LastStatusUpdate.TotalAmount;
@@ -163,12 +159,12 @@
 								</td>
 								@if (isLesserAdmin)
 								{
-									<td class="text-right">@farm.TimeCheatsDetected</td>
-									<td class="text-right">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
+									<td class="text-end">@farm.TimeCheatsDetected</td>
+									<td class="text-end">@TimeSpan.FromSeconds(farm.TimeCheatDebt).Humanize().ShortenTime()</td>
 								}
-								<td class="text-right">@farm.BoostTokensReceived</td>
-								<td class="text-right">@farm.BoostTokensSpent</td>
-								<td class="text-right">@farm.BoostTokensGiven</td>
+								<td class="text-end">@farm.BoostTokensReceived</td>
+								<td class="text-end">@farm.BoostTokensSpent</td>
+								<td class="text-end">@farm.BoostTokensGiven</td>
 							</tr>
 						}
 					}
@@ -189,12 +185,12 @@
 					<th>Coop</th>
 					<th>Started</th>
 					<th>🏁</th>
-					<th class="text-right">Score</th>
-					<th class="text-right">Running Score</th>
-					<th data-toggle="tooltip" title="# of Eggs" class="text-right">🥚</th>
-					<th class="text-right">%</th>
-					<th data-toggle="tooltip" title="Suspected Time Cheat" class="text-right">🕵</th>
-					<th data-toggle="tooltip" title="Tokens Spent" class="text-right tight-emojis">🟡💲</th>
+					<th class="text-end">Score</th>
+					<th class="text-end">Running Score</th>
+					<th data-bs-toggle="tooltip" title="# of Eggs" class="text-end">🥚</th>
+					<th class="text-end">%</th>
+					<th data-bs-toggle="tooltip" title="Suspected Time Cheat" class="text-end">🕵</th>
+					<th data-bs-toggle="tooltip" title="Tokens Spent" class="text-end tight-emojis">🟡💲</th>
 				</tr>
 			</thead>
 			<tbody id="@("ArchivedFarmsTBody" + Model.index)">
@@ -232,7 +228,7 @@
 								<td>@farm.Started.ToString("yyyy-MM-dd")</td>
 								<td>@(farm.Completed ? "✔️" : "")</td>
 								@if (pastXrefWithScore != null) {
-									<td class="text-right font-italic">
+									<td class="text-end font-italic">
 										@pastXrefWithScore?.Score?.ToString("G2")
 										<span class="tooltip-custom">
 											<img src="/images/help_icon.png"/>
@@ -244,18 +240,18 @@
 											</span>
 										</span>
 									</td>
-									<td class="text-right font-italic">--</td>
+									<td class="text-end font-italic">--</td>
 								} else {
-									<td class="text-right"></td>
-									<td class="text-right"></td>
+									<td class="text-end"></td>
+									<td class="text-end"></td>
 								}
 
 								@if (userFarmDetails != null && xref != null) {
 									var percent = userFarmDetails.EggsShipped / (xref.Coop.LastStatusUpdate?.TotalAmount ?? 0);
-									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
-									<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-									<td class="text-right">@(userFarmDetails.CoopStatus?.TimeCheatDetected ?? false ? "Yes" : "No")</td>
-									<td class="text-right">@userFarmDetails.CoopStatus?.BoostTokensSpent</td>
+									<td class="text-end">@userFarmDetails.EggsShipped.ToEggString()</td>
+									<td class="text-end">@percent.ToString("P0").Replace(" ", "")</td>
+									<td class="text-end">@(userFarmDetails.CoopStatus?.TimeCheatDetected ?? false ? "Yes" : "No")</td>
+									<td class="text-end">@userFarmDetails.CoopStatus?.BoostTokensSpent</td>
 								} else {
 									<td colspan="99"></td>
 								}
@@ -290,10 +286,10 @@
 								<td>@(farm.Completed ? "✔️" : "")</td>
 
 								@if (xrefWithScore != null) {
-									<td class="text-right">@xrefWithScore?.Score?.ToString("G2")</td>
-									<td class="text-right">@xrefWithScore?.RunningScore?.ToString("G2")</td>
+									<td class="text-end">@xrefWithScore?.Score?.ToString("G2")</td>
+									<td class="text-end">@xrefWithScore?.RunningScore?.ToString("G2")</td>
 								} else if (pastXrefWithScore != null) {
-									<td class="text-right font-italic">
+									<td class="text-end font-italic">
 										@pastXrefWithScore?.Score?.ToString("G2")
 										<span class="tooltip-custom">
 											<img src="/images/help_icon.png" />
@@ -307,18 +303,18 @@
 											</span>
 										</span>
 									</td>
-									<td class="text-right font-italic">--</td>
+									<td class="text-end font-italic">--</td>
 								} else {
-									<td class="text-right"></td>
-									<td class="text-right"></td>
+									<td class="text-end"></td>
+									<td class="text-end"></td>
 								}
 
 								@if (userFarmDetails?.CoopStatus != null) {
 									var percent = userFarmDetails.EggsShipped / xref.Coop.LastStatusUpdate.TotalAmount;
-									<td class="text-right">@userFarmDetails.EggsShipped.ToEggString()</td>
-									<td class="text-right">@percent.ToString("P0").Replace(" ", "")</td>
-									<td class="text-right">@(userFarmDetails.CoopStatus.TimeCheatDetected ? "Yes" : "No")</td>
-									<td class="text-right">@userFarmDetails.CoopStatus.BoostTokensSpent</td>
+									<td class="text-end">@userFarmDetails.EggsShipped.ToEggString()</td>
+									<td class="text-end">@percent.ToString("P0").Replace(" ", "")</td>
+									<td class="text-end">@(userFarmDetails.CoopStatus.TimeCheatDetected ? "Yes" : "No")</td>
+									<td class="text-end">@userFarmDetails.CoopStatus.BoostTokensSpent</td>
 								} else {
 									<td colspan="99"></td>
 								}

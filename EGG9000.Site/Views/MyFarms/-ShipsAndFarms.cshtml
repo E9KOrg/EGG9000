@@ -8,75 +8,13 @@
 @using static Ei.MissionInfo.Types;
 @using static EGG9000.Common.Helpers.MissionHelpers;
 @inject DiscordSocketClient DiscordClient
+@inject EGG9000.Site.Services.ArtifactImageRenderer ArtifactRenderer
 @model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts, List<DBCustomEgg> CustomEggs)
 
 @{
     string properCaseAndSuffix(string inputString, int number){
         var suffix = (number == 0 || number > 1) ? "s" : "";
         return inputString.FirstCharToUpper() + suffix;
-    }
-
-    string properSpacing(string input) {
-        StringBuilder result = new StringBuilder(input.Length * 2);
-        result.Append(input[0]); // Add the first character as is
-        for (int i = 1; i < input.Length; i++) {
-            if (char.IsUpper(input[i])) result.Append(' ');
-            result.Append(input[i]);
-        }
-        return result.ToString();
-    }
-
-    void artifactBackground(EggIncArtifactInstance artifact, bool stone) {
-        if (artifact == null) {
-            <div></div>
-        } else {
-            var subClass = "afx-img";
-            var bgClass = artifact.Rarity switch {
-                1 => "bg-common afx-bg", //Common
-                2 => "bg-rare afx-bg", //Rare
-                3 => "bg-epic afx-bg", //Epic
-                4 => "bg-legendary afx-bg", //Legendary
-                _ => "bg-common afx-bg" //Default to gray
-            };
-            if (stone) {
-                bgClass = "afx-stone";
-                subClass = "afx-stone";
-            }
-            var image = artifactImage(artifact, stone);
-            var size = stone ? 15 : 70;
-            var textInfo = new CultureInfo("en-US", false).TextInfo;
-            <div class="rounded-full @(bgClass)">
-                <img class="position-absolute @subClass" src="@image" />
-            </div>
-        }
-    }
-
-    string artifactImage(EggIncArtifactInstance artifact, bool stone) {
-        if (artifact == null) {
-            return "";
-        } else {
-            var properName = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
-            return "/images/artifacts/" + properName + "/" + properName + "_" + (artifact.Tier + (stone ? 1 : 0)) + ".png";
-        }
-    }
-
-    void artifactTemplate(EggIncArtifactInstance artifact, bool stone) {
-        <tr>
-            <td>@{artifactBackground(artifact, stone);}</td>
-            <td>@artifact.Artifact</td>
-                @if (artifact.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-                    <td>@Math.Round((artifact.Value) * 100)%</td>
-                } else if(artifact.Boost == EggIncBoostTypeEnum.ResearchCost) {
-                            <td>-@((artifact.Value - 1).ToString("P0"))</td>
-                } else if (artifact.Additive) {
-                            <td>+@artifact.Value</td>
-                } else if (+artifact.Value < 2) {
-                            <td>+@Math.Round((artifact.Value - 1) * 100)%</td>
-                } else {
-                            <td>@(artifact.Value)x</td>
-                }
-            <td>@properSpacing(artifact.Boost.ToString().Replace("Members", ""))</td>
-        </tr>
     }
 
     int index = Model.Index;
@@ -150,11 +88,11 @@
         color: gray;
     }
 
-    .bootstrap .tooltip-text {
+    .tooltip-text {
         color: black;
     }
 
-    .bootstrap-dark .tooltip-text {
+    [data-bs-theme="dark"] .tooltip-text {
         color: #ccc;
     }
 
@@ -179,7 +117,7 @@
             vertical-align: middle; /* Align the image vertically with the text */
         }
 
-    .bootstrap-dark .tooltip-custom img {
+    [data-bs-theme="dark"] .tooltip-custom img {
         filter: invert(1) !important;
     }
 
@@ -191,22 +129,15 @@
         white-space: nowrap;
         text-align: center; /* Center the text within the tooltip */
         position: absolute;
-    }
-
-    .bootstrap-dark .tooltiptext-custom {
-        background-color: rgba(33, 37, 41, 0.95);
-    }
-
-    .bootstrap .tooltiptext-custom {
         background-color: rgba(235, 239, 242, 0.95);
     }
 
-    .bootstrap-dark .speech-bubble {
+    [data-bs-theme="dark"] .tooltiptext-custom {
         background-color: rgba(33, 37, 41, 0.95);
     }
 
-    .bootstrap .speech-bubble {
-        background-color: rgba(235, 239, 242, 0.95);
+    [data-bs-theme="dark"] .speech-bubble {
+        background-color: rgba(33, 37, 41, 0.95);
     }
 
     .speech-bubble {
@@ -214,6 +145,7 @@
         padding: 10px;
         margin: 10px auto; /* Center the bubble horizontally */
         border-radius: 5px; /* Rounded corners for the bubble */
+        background-color: rgba(235, 239, 242, 0.95);
     }
 
         /* Create the triangle */
@@ -228,11 +160,11 @@
             border-color: #ccc transparent transparent transparent;
         }
 
-    .gray-text-half-margin .bootstrap-dark, .gray-text .bootstrap-dark {
+    [data-bs-theme="dark"] .gray-text-half-margin, [data-bs-theme="dark"] .gray-text {
         color: lightgray;
     }
 
-    .gray-text-half-margin .bootstrap, .gray-text .bootstrap {
+    .gray-text-half-margin, .gray-text {
         color: darkgray;
     }
 
@@ -395,11 +327,11 @@
         font-weight: bold;
     }
 
-    .bootstrap .ship-toggle-button {
+    .ship-toggle-button {
         color: #333333;
     }
 
-    .bootstrap-dark .ship-toggle-button {
+    [data-bs-theme="dark"] .ship-toggle-button {
         color: #d3d3d3;
     }
 
@@ -413,8 +345,8 @@
         border: 1px solid #ccc;
     }
 
-    .bootstrap-dark select, 
-    .bootstrap-dark option {
+    [data-bs-theme="dark"] select,
+    [data-bs-theme="dark"] option {
         border: 1px solid #222;
         background-color: #333;
     }
@@ -426,7 +358,7 @@
         border-radius: 4px;
     }
 
-    .bootstrap-dark .alert-danger {
+    [data-bs-theme="dark"] .alert-danger {
         color: rgb(225, 134, 143) !important;
         background-color: rgb(67, 12, 17) !important;
         border-color: rgb(104, 18, 27) !important;
@@ -690,28 +622,14 @@
                     </div>
                 }
             </div>
-            <div class="card-body" style="padding-bottom: 0;">
+            <div class="card-body" style="padding-bottom: 12px;">
                 <h6>Artifacts</h6>
-            </div>
-            <table class="table table-sm" style="margin-bottom: 0;">
                 @if (farm.Artifacts.Count == 0) {
-                    <tr><td><i>No Artifacts</i></td></tr>
+                    <i>No Artifacts</i>
+                } else {
+                    await Html.RenderPartialAsync("-ArtifactSetImage", ArtifactRenderer.RenderSet(farm.Artifacts));
                 }
-                @foreach (var artifact in farm.Artifacts) {
-                    artifactTemplate(artifact, false);
-                    @if (artifact.Stones != null && artifact.Stones.Count > 0) {
-                        <tr>
-                            <td colspan="99" style="padding-left: 10px; padding-top: 0; ">
-                                <table>
-                                    @foreach (var stone in artifact.Stones) {
-                                        artifactTemplate(stone, true);
-                                    }
-                                </table>
-                            </td>
-                        </tr>
-                    }
-                }
-            </table>
+            </div>
         </div>
     }
 }

@@ -246,7 +246,7 @@ namespace EGG9000.Common.EggIncAPI {
                 if(descriptor.AuthenticatedResponse || authenticated) {
                     return GetFromAuthenticatedMessage<TResponse>(responseBytes);
                 }
-                return new MessageParser<TResponse>(() => new TResponse()).ParseFrom(responseBytes);
+                return ParseTolerant<TResponse>(responseBytes);
             } catch(Exception) {
                 return default;
             }
@@ -267,9 +267,29 @@ namespace EGG9000.Common.EggIncAPI {
                 }
                 return (descriptor.AuthenticatedResponse || authenticated)
                     ? GetFromAuthenticatedMessage<TResponse>(responseBytes)
-                    : new MessageParser<TResponse>(() => new TResponse()).ParseFrom(responseBytes);
+                    : ParseTolerant<TResponse>(responseBytes);
             } catch(Exception e) {
                 return ApiResult<TResponse>.Fail("Bot Exception: " + e.Message);
+            }
+        }
+
+        // Parse response bytes, retrying once through the UTF-8 sanitizer when the payload carries
+        // invalid UTF-8 in a string field (some backups do). The sanitized retry recovers the backup
+        // with the offending bytes replaced by '?' instead of losing the whole response.
+        public static TResponse ParseTolerant<TResponse>(byte[] responseBytes) where TResponse : IMessage<TResponse>, new() {
+            var parser = new MessageParser<TResponse>(() => new TResponse());
+            try {
+                return parser.ParseFrom(responseBytes);
+            } catch(Exception e) when(ProtobufUtf8Sanitizer.IsInvalidUtf8(e)) {
+                return parser.ParseFrom(ProtobufUtf8Sanitizer.Sanitize(responseBytes));
+            }
+        }
+
+        private static void MergeTolerant<T>(T message, byte[] bytes) where T : IMessage {
+            try {
+                message.MergeFrom(bytes);
+            } catch(Exception e) when(ProtobufUtf8Sanitizer.IsInvalidUtf8(e)) {
+                message.MergeFrom(ProtobufUtf8Sanitizer.Sanitize(bytes));
             }
         }
 
@@ -282,11 +302,9 @@ namespace EGG9000.Common.EggIncAPI {
                 using Stream inMemoryStream = new MemoryStream([.. authMessageDecoded.Message]);
                 using var zlib = new ZLibStream(inMemoryStream, CompressionMode.Decompress);
                 zlib.CopyTo(outMemoryStream);
-                var arr = outMemoryStream.ToArray();
-                var base64 = Encoding.UTF8.GetString(arr);
-                message.MergeFrom(outMemoryStream.ToArray());
+                MergeTolerant(message, outMemoryStream.ToArray());
             } else {
-                message.MergeFrom(authMessageDecoded.Message);
+                MergeTolerant(message, authMessageDecoded.Message.ToByteArray());
             }
             return message;
         }

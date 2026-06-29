@@ -37,10 +37,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "5013"
       ConnectionStrings__RabbitMQServer: rabbitmq|e9k|devpassword
-      Docker__Host: npipe://./pipe/docker_engine
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
-      - //./pipe/docker_engine://./pipe/docker_engine
     ports:
       - "5013:5013"
     networks:
