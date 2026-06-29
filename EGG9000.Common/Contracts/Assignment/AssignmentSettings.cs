@@ -54,5 +54,23 @@ namespace EGG9000.Common.Contracts.Assignment {
         [Key(0)] public SeasonalMode Mode { get; set; } = SeasonalMode.UntilPeEarned;
         [Key(1)] public double CsGoal { get; set; }
         [Key(2)] public bool RewardFilterAfter { get; set; }
+
+        // Grade-based minimum CS goal for the UntilCsGoal seasonal mode. Anti-dodge: a too-low (or 0)
+        // goal would clear the seasonal force on the first run, letting players skip the Monday
+        // seasonals. The floor is enforced both at input (modal) and at evaluation (EffectiveCsGoal),
+        // so blobs stored before this floor existed cannot dodge either. Applies ONLY to this seasonal
+        // CS input, not to any other CS threshold in the system.
+        public static double CsGoalFloor(Ei.Contract.Types.PlayerGrade grade) => grade switch {
+            Ei.Contract.Types.PlayerGrade.GradeAaa => 200_000,
+            Ei.Contract.Types.PlayerGrade.GradeAa => 100_000,
+            Ei.Contract.Types.PlayerGrade.GradeA => 50_000,
+            Ei.Contract.Types.PlayerGrade.GradeB => 10_000,
+            Ei.Contract.Types.PlayerGrade.GradeC => 5_000,
+            _ => 5_000
+        };
+
+        // The CS goal actually applied for this grade: never below the grade floor.
+        public double EffectiveCsGoal(Ei.Contract.Types.PlayerGrade grade) =>
+            System.Math.Max(CsGoal, CsGoalFloor(grade));
     }
 }

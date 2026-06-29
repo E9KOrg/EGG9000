@@ -395,22 +395,44 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
+            var peExample = await LatestSeasonPeExample(db, account);
+            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account, peExample).Build(); });
         }
 
         public static string SeasonalSummary(EggIncAccount account) {
             var seasonal = account.Assignment.Seasonal ?? new SeasonalRule();
             var after = seasonal.RewardFilterAfter ? ", then reward filter" : "";
+            // Show the grade-floored goal so a stored 0 / below-floor value isn't displayed as the
+            // effective setting. The season PE-CS floor is applied at assignment but not shown here
+            // (it needs season data not loaded in the settings menu).
+            var effective = seasonal.EffectiveCsGoal(account.GetGrade());
             return seasonal.Mode switch {
                 SeasonalMode.UntilPeEarned => $"Until PE earned{after}",
-                SeasonalMode.UntilCsGoal => $"Until CS {seasonal.CsGoal:N0}{after}",
+                SeasonalMode.UntilCsGoal => $"Until CS {effective:N0} (min){after}",
                 _ => "Always assign"
             };
         }
 
-        private static EmbedBuilder SeasonalEmbed(DBUser dbuser, EggIncAccount account) {
+        private static EmbedBuilder SeasonalEmbed(DBUser dbuser, EggIncAccount account, double? latestSeasonPeExample = null) {
             var content = "Seasonal Contracts are always assigned to you. Choose how long you should keep being assigned to them.";
-            return MenuEmbedTemplate("Seasonal Contracts Menu", content, account, dbuser).AddField("Current Setting", SeasonalSummary(account));
+            var builder = MenuEmbedTemplate("Seasonal Contracts Menu", content, account, dbuser).AddField("Current Setting", SeasonalSummary(account));
+
+            // A CS goal below the season's PE-CS goal is ignored at assignment (you keep being assigned
+            // until the PE is earned). The PE-CS goal varies per season, so it can't be a hard input
+            // limit - show the latest season's value for this grade as an example only.
+            var note = "If your CS goal is below the season's PE goal, it will not be used - you stay assigned until you earn the season PE.";
+            if(latestSeasonPeExample is > 0)
+                note += $"\n\nLatest season's PE goal for grade {account.GetGrade().ToString().Replace("Grade", "")}: `{latestSeasonPeExample.Value:N0}` CS (example - varies per season).";
+            builder.AddField("Seasonal PE goal", note);
+
+            return builder;
+        }
+
+        // PE-CS goal (CS at which all season PE is earned) for the account's grade in the most recent
+        // season, shown as an example in the seasonal settings menu. 0 when no season / no PE goal.
+        private static async Task<double> LatestSeasonPeExample(ApplicationDbContext db, EggIncAccount account) {
+            var latest = await db.SeasonInfos.OrderByDescending(s => s.StartTime).FirstOrDefaultAsync();
+            return latest?.GetMaxPeCxp(account.GetGrade()) ?? 0;
         }
 
         private static MessageComponent GetSeasonalComponents(int index, EggIncAccount account, DBUser dbuser) {
@@ -444,7 +466,8 @@ namespace EGG9000.Bot.Commands {
             account.Assignment.Seasonal.Mode = (SeasonalMode)int.Parse(component.Data.Values.First());
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
+            var peExample = await LatestSeasonPeExample(db, account);
+            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account, peExample).Build(); });
         }
 
         [ComponentCommand]
@@ -457,7 +480,8 @@ namespace EGG9000.Bot.Commands {
             account.Assignment.Seasonal.RewardFilterAfter = !account.Assignment.Seasonal.RewardFilterAfter;
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
+            var peExample = await LatestSeasonPeExample(db, account);
+            await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account, peExample).Build(); });
         }
 
         [ComponentCommand]
@@ -472,7 +496,7 @@ namespace EGG9000.Bot.Commands {
                 .WithCustomId($"SeasonalPeThreshUpdate:{index},{dbuser.DiscordId}")
                 .AddTextInputSafe(
                     label: "Assign until contract score reaches",
-                    value: (account.Assignment.Seasonal?.CsGoal ?? 0).ToString("N0"),
+                    value: (account.Assignment.Seasonal ?? new SeasonalRule()).EffectiveCsGoal(account.GetGrade()).ToString("N0"),
                     customId: "num",
                     required: true)
                 .Build();
@@ -493,20 +517,29 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
+            var floor = SeasonalRule.CsGoalFloor(account.GetGrade());
+            var peExample = await LatestSeasonPeExample(db, account);
+
             if (!isNum || num < 0) {
-                var errMsg = $"⚠️ `{numText}` not accepted - enter a number 0 or greater (e.g. `5000` or `5k`)";
-                var embed = SeasonalEmbed(dbuser, account).AddField("ERROR", errMsg).WithColor(Color.Red).Build();
+                var errMsg = $"⚠️ `{numText}` not accepted - enter a number (e.g. `{floor:N0}` or `{(floor / 1000):N0}k`)";
+                var embed = SeasonalEmbed(dbuser, account, peExample).AddField("ERROR", errMsg).WithColor(Color.Red).Build();
                 var components = new ComponentBuilder()
                     .WithButton("Re-enter", $"SeasonalPeThreshModal:{index},{dbuser.DiscordId}")
                     .WithButton("Cancel", $"MCSSeasonalPe:{index},{dbuser.DiscordId}")
                     .Build();
                 await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embed; });
             } else {
+                // Anti-dodge: the seasonal CS goal cannot go below the grade floor, else the seasonal
+                // force would clear on the first run and let players skip the Monday seasonals.
+                var clamped = System.Math.Max(num, floor);
                 account.Assignment.Seasonal ??= new SeasonalRule();
-                account.Assignment.Seasonal.CsGoal = num;
+                account.Assignment.Seasonal.CsGoal = clamped;
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
-                await modal.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
+                var embed = SeasonalEmbed(dbuser, account, peExample);
+                if (clamped > num)
+                    embed.AddField("Adjusted", $"Minimum CS goal for grade {account.GetGrade().ToString().Replace("Grade", "")} is `{floor:N0}`. Set to `{clamped:N0}`.");
+                await modal.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = embed.Build(); });
             }
         }
 

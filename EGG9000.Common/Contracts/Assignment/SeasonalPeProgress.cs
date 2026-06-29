@@ -24,5 +24,21 @@ namespace EGG9000.Common.Contracts.Assignment {
             if(maxPe == 0) return true;
             return season.GetPeEarned(seasonGrade, progress?.TotalCxp ?? 0) < maxPe;
         }
+
+        // CS (season Cxp) at which this account earns all its season PE, resolved against the season-start
+        // grade (same rule as IsMissing). 0 when there is no season or no PE goals for that grade.
+        public static double CsGoalForPe(
+            string accountId,
+            Ei.Contract.Types.PlayerGrade liveGrade,
+            SeasonInfo season,
+            IEnumerable<UserSeasonProgress> progresses) {
+
+            if(season is null) return 0;
+
+            var progress = (progresses ?? Enumerable.Empty<UserSeasonProgress>())
+                .FirstOrDefault(p => p.EggIncId == accountId && p.SeasonId == season.Id);
+            var seasonGrade = progress != null ? (Ei.Contract.Types.PlayerGrade)progress.StartingGrade : liveGrade;
+            return season.GetMaxPeCxp(seasonGrade);
+        }
     }
 }

@@ -15,7 +15,10 @@ namespace EGG9000.Common.Contracts.Assignment {
                     if(f.MissingSeasonalPe) return RuleOutcome.ForceInclude;
                     return r.RewardFilterAfter ? RuleOutcome.NotApplicable : RuleOutcome.Exclude;
                 case SeasonalMode.UntilCsGoal:
-                    if((f.PreviousScoreOnThisContract ?? 0) < r.CsGoal) return RuleOutcome.ForceInclude;
+                    // Force-assign until the user's CS goal, never below the grade floor, and never below
+                    // the season's PE-CS goal (so a goal under the PE threshold cannot skip earning the PE).
+                    var goal = System.Math.Max(r.EffectiveCsGoal(f.Grade), f.SeasonalPeCsGoal);
+                    if((f.PreviousScoreOnThisContract ?? 0) < goal) return RuleOutcome.ForceInclude;
                     return r.RewardFilterAfter ? RuleOutcome.NotApplicable : RuleOutcome.Exclude;
                 default:
                     return RuleOutcome.NotApplicable;

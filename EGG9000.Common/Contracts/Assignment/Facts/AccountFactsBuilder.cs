@@ -49,6 +49,7 @@ namespace EGG9000.Common.Contracts.Assignment {
                 CompletedExactlyTwoGoals = completedTwo,
                 MissingColleggtible = missingColleggtible,
                 MissingSeasonalPe = SeasonalPeProgress.IsMissing(account.Id, grade, season, seasonProgresses),
+                SeasonalPeCsGoal = SeasonalPeProgress.CsGoalForPe(account.Id, grade, season, seasonProgresses),
                 PreviousScoreOnThisContract = latestHistory?.Cxp
             };
         }
