@@ -4,6 +4,7 @@ using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
 using EGG9000.Common.Commands;
+using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -14,7 +15,9 @@ using Microsoft.Extensions.Hosting;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
@@ -189,6 +192,7 @@ namespace EGG9000.Bot.Commands {
 
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Assigned you to fake coop `{coop.Name}` for **{contract.Name}**. 'Find my Coop' in the contract channel should now return it. Clean up with `/test clearseed`."); });
         }
+
     }
 }
 #endif

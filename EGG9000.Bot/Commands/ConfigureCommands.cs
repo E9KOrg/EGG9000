@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
@@ -380,8 +381,8 @@ namespace EGG9000.Bot.Commands {
                 GuildConfigKind.Float => $"{f.Description} (number, 0 or more)",
                 _ => f.Description,
             };
-            var modal = new ModalBuilder().WithTitle(Trunc(f.Label, 45)).WithCustomId($"CfgEditModal:{f.PropName}")
-                .AddTextInput(Trunc(f.Label, 45), customId: "val", placeholder: Trunc(hint, 100), value: cur, required: false,
+            var modal = new ModalBuilder().WithTitleSafe(f.Label).WithCustomId($"CfgEditModal:{f.PropName}")
+                .AddTextInputSafe(f.Label, customId: "val", placeholder: hint, value: cur, required: false,
                     maxLength: f.Kind == GuildConfigKind.String ? 100 : 20)
                 .Build();
             await component.RespondWithModalAsync(modal);
