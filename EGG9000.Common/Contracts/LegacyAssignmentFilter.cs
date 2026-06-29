@@ -74,7 +74,9 @@ namespace EGG9000.Common.Contracts {
             }, "Rewards not selected");
 
             // Seasonal PE filter, only runs when contract has a season and the guild uses BGs
-            if(contractSeason != null && !dbGuild.DisableBG) {
+            // dbGuild can be null when the guild is missing from cache; treat that as "BGs enabled"
+            // (consistent with the DisableBG checks above) rather than dereferencing and crashing.
+            if(contractSeason != null && !(dbGuild is not null && dbGuild.DisableBG)) {
                 FilterAccounts(accounts, excluded, x => ShouldIncludeForSeasonalPe(
                     x.Account,
                     x.Account.GetGrade(),

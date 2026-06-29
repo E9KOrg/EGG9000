@@ -28,12 +28,17 @@ namespace EGG9000.Common.Contracts.Assignment.Diagnostics {
             var filtersDisabled = dbGuild?.DisableBG ?? false;
             var forbidden = dbGuild?.RuleOverrides;
 
+            // Latest CS-history entry per account, built once (avoids an O(n^2) Where().MaxBy() per account).
+            var latestHistoryByAccount = csHistoryEntries
+                .GroupBy(x => x.EggIncId)
+                .ToDictionary(g => g.Key, g => g.MaxBy(x => x.Created));
+
             var newResults = new Dictionary<string, (bool assigned, string reason, ulong discordId, EggIncAccount account)>();
             foreach(var user in users) {
                 var inputs = new List<(AccountFacts facts, AssignmentSettings settings)>();
                 var byFacts = new Dictionary<AccountFacts, EggIncAccount>();
                 foreach(var account in user.EggIncAccounts) {
-                    var latestHistory = csHistoryEntries.Where(x => x.EggIncId == account.Id).MaxBy(x => x.Created);
+                    latestHistoryByAccount.TryGetValue(account.Id, out var latestHistory);
                     var facts = AccountFactsBuilder.Build(user, account, contract, coops, latestHistory, contractSeason, progresses);
                     inputs.Add((facts, account.Assignment ?? new AssignmentSettings()));
                     byFacts[facts] = account;

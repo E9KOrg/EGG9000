@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -54,7 +55,7 @@ namespace EGG9000.Common.Contracts.Assignment.Diagnostics {
                 db.ShadowAssignmentDiffs.AddRange(rows);
                 await db.SaveChangesAsync(cancellationToken);
 
-                var unexpected = rows.FindAll(r => !r.ExpectedSeasonalDeviation).Count;
+                var unexpected = rows.Count(r => !r.ExpectedSeasonalDeviation);
                 logger?.LogInformation("Shadow assignment for {contract}: {total} mismatches ({unexpected} unexpected, {expected} seasonal-deviation)",
                     contract.ID, rows.Count, unexpected, rows.Count - unexpected);
             } catch(Exception ex) {
