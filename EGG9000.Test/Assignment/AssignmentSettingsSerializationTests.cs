@@ -27,7 +27,7 @@ namespace EGG9000.Test.Assignment {
             Assert.AreEqual(12000d, back.Seasonal.CsGoal);
             Assert.IsTrue(back.Seasonal.RewardFilterAfter);
             CollectionAssert.AreEqual(s.RewardFilter, back.RewardFilter);
-            Assert.AreEqual(SeasonalMode.UntilPeEarned, new AssignmentSettings().Seasonal.Mode);
+            Assert.AreEqual(SeasonalMode.AlwaysAssign, new AssignmentSettings().Seasonal.Mode);
         }
 
         [TestMethod]

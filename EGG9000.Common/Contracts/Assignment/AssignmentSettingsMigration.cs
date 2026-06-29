@@ -34,13 +34,14 @@ namespace EGG9000.Common.Contracts.Assignment {
                 .ToList();
         }
 
-        // Seasonal is mandatory in v2. The old "skip"/not-set states all migrate to assign-until-PE.
+        // Seasonal is mandatory in v2. Only the explicit CS-threshold option carries a mode across;
+        // every other legacy state defaults to always-assign.
         private static SeasonalRule SeasonalFromOption(EggIncAccount a) {
             if(a.SeasonalPeOption == SeasonalPeOption.AssignIfBelowThreshold)
                 return new SeasonalRule { Mode = SeasonalMode.UntilCsGoal, CsGoal = a.SeasonalPeThreshold, RewardFilterAfter = false };
 
-            // NotSet, AlwaysAssignIfMissing, and DontAssign (skip removed) all become assign-until-PE.
-            return new SeasonalRule { Mode = SeasonalMode.UntilPeEarned, RewardFilterAfter = false };
+            // NotSet, AlwaysAssignIfMissing, and DontAssign (skip removed) all become always-assign.
+            return new SeasonalRule { Mode = SeasonalMode.AlwaysAssign, RewardFilterAfter = false };
         }
     }
 }
