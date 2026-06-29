@@ -114,7 +114,13 @@ namespace EGG9000.Bot.Automated {
                     }
 
 
-                    var users = lUsers.Where(x => x.User.GuildId == guild.Id).ToList();
+                    // GuildId can be stale when a user leaves Discord without being unassigned, which
+                    // makes warning loops (MER cheater, break-coop, promotions) ping ex-members. When the
+                    // roster is complete (DownloadUsersAsync above), drop users no longer in guild.Users.
+                    var memberIds = guild.HasAllMembers ? guild.Users.Select(u => u.Id).ToHashSet() : null;
+                    var users = lUsers
+                        .Where(x => x.User.GuildId == guild.Id && (memberIds is null || memberIds.Contains(x.User.DiscordId)))
+                        .ToList();
                     var guildContracts = await _db.GuildContracts.Where(gc => gc.GuildID == dbguild.Id).ToListAsync(CancellationToken.None);
 
                     //Handle users who are on break, and doing coops
