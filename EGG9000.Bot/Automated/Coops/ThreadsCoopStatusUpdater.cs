@@ -809,7 +809,9 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var usersToCheckDeflector = usersWithStatus.Where(x => x.Status is not null && !x.Status.BuffHistory.Any(y => y.EggLayingRate > 0) && x.Backup is not null && x.Backup.ArtifactHall is not null && x.Status.Projected < usersWithStatus.Where(y => y.Status is not null).Max(y => y.Status.Projected) / 2);
                 var usersNeedToAddDeflector = new List<(UserWithStatus User, List<EggIncArtifactInstance> RecommendedSet)>();
-                if(!coop.FinishedOrFailed() && coop.CoopEnds > DateTimeOffset.UtcNow) {
+                // Opt-in per guild, and capped at 10-person coops: the best-set search runs per user
+                // and the renders fan out per suggestion, so larger coops would blow up the cycle.
+                if(dbGuild.TachyonSuggestionsEnabled && coop.MaxUsers <= 10 && !coop.FinishedOrFailed() && coop.CoopEnds > DateTimeOffset.UtcNow) {
                     foreach(var user in usersToCheckDeflector) {
                         if(user.Xref?.TachyonDeflectorNotified == true) continue;
                         var farm = user.Backup.Farms.FirstOrDefault(x => x.ContractId == coop.ContractID);

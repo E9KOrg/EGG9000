@@ -84,6 +84,9 @@ namespace EGG9000.Common.Database.Entities {
         [GuildConfig("FAQ Topic Cooldown (min)", "Numbers", GuildConfigKind.Int, Description = "Minutes between FAQ posts in a channel")]
         public int FAQTopicCooldownMinutes { get; set; }
 
+        [GuildConfig("Tachyon Suggestions Enabled", "Toggles", GuildConfigKind.Bool, Description = "Suggest a deflector artifact set to low contributors in co-ops (capped at 10-person co-ops)")]
+        public bool TachyonSuggestionsEnabled { get; set; } = false;
+
         [GuildConfig("Rank-up Messages Enabled", "Toggles", GuildConfigKind.Bool, Description = "Master toggle for rank-up announcements")]
         public bool RankupMessagesEnabled { get; set; } = true;
         [GuildConfig("Rank-up Exclusive Group Pool", "Toggles", GuildConfigKind.Bool, Description = "When a group has its own rank-up messages, do not mix in the global pool")]
