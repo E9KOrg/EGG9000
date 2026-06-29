@@ -310,6 +310,43 @@
 
 
 
+        @if(isAdmin) {
+        <div class="col-sm" x-show="ShowPotential">
+            <h2>@(isSolo ? "Solo" : "Potential Co-ops")</h2>
+            <template x-for="(coop, coopIndex) in PotentialCoops" :key="coopIndex">
+                <div class="card" :class="{ CurrentCoop: coop.CurrentCoop }">
+                    <h5 class="card-header">
+                        <div x-show="!@(isSolo.ToString().ToLower())">Co-op <span x-text="coop.Count"></span></div>
+                    </h5>
+                    <div class="card-body">
+                        <table class="table table-striped">
+                            <tbody class="sortablers">
+                                <template x-for="(user, userIndex) in coop.Users" :key="userIndex">
+                                    <tr :class="{ notsortable: user.Locked }" :data-egg-inc-id="user.EggIncId">
+                                        <td x-text="user.Name"></td>
+                                        <td align="right" x-text="user.NumChickens"></td>
+                                        <td align="right" x-text="user.Rate"></td>
+                                        <td align="right" x-text="user.EB"></td>
+                                        <td x-text="user.Status"></td>
+                                        <td x-text="user.Sleep"></td>
+                                    </tr>
+                                </template>
+                                <tr class="dndPlaceholder"><td colspan="99"></td></tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td><span x-text="coop.Users.length"></span>/<span x-text="coop.MaxSize"></span></td>
+                                    <td></td>
+                                    <td align="right" x-text="coop.Rate"></td>
+                                    <td colspan="3"></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </template>
+        </div>
+        }
         @{
         //                                                            <div class="col-sm">
         //                                                                @if(!isSolo) {
@@ -514,6 +551,7 @@
                 },
 
                 initSortable() {
+                    if (!this.IsAdmin) return;
                     document.querySelectorAll('.sortablers').forEach(el => {
                         if (el._sortable) el._sortable.destroy();
                         el._sortable = Sortable.create(el, {

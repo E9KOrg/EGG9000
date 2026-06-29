@@ -232,27 +232,27 @@ function initEbStatsChart(suffix, snapData) {
             renderChart(activeContainerId());
         }
 
-        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(function(tab) {
-            tab.addEventListener('shown.bs.tab', function(e) {
-                if (state.chart) return;
-                var href = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
-                if (!href) return;
-                var shownEl = document.querySelector(href);
-                if (shownEl && (shownEl === pane || shownEl.contains(pane)) && pane.classList.contains('active')) {
-                    renderChart(activeContainerId());
-                }
-            });
+        // One delegated listener per chart on document, scoped by this chart's pane.
+        // Attaching per-tab would stack N listener pairs on every tab when N charts init.
+        document.addEventListener('shown.bs.tab', function(e) {
+            if (state.chart) return;
+            var href = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+            if (!href) return;
+            var shownEl = document.querySelector(href);
+            if (shownEl && (shownEl === pane || shownEl.contains(pane)) && pane.classList.contains('active')) {
+                renderChart(activeContainerId());
+            }
+        });
 
-            tab.addEventListener('hidden.bs.tab', function(e) {
-                if (!state.chart) return;
-                var href = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
-                if (!href) return;
-                var hiddenEl = document.querySelector(href);
-                if (hiddenEl && (hiddenEl === pane || hiddenEl.contains(pane))) {
-                    state.chart.destroy();
-                    state.chart = null;
-                }
-            });
+        document.addEventListener('hidden.bs.tab', function(e) {
+            if (!state.chart) return;
+            var href = e.target.getAttribute('data-bs-target') || e.target.getAttribute('href');
+            if (!href) return;
+            var hiddenEl = document.querySelector(href);
+            if (hiddenEl && (hiddenEl === pane || hiddenEl.contains(pane))) {
+                state.chart.destroy();
+                state.chart = null;
+            }
         });
     });
 
