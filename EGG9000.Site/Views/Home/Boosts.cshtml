@@ -1,15 +1,15 @@
-﻿@{
+@{
     ViewData["Title"] = "Home Page";
 }
 
-<div ng-controller="Page">
-    <div class="form-inline">
+<div x-data="boostsPage()">
+    <div class="d-flex align-items-center gap-2 flex-wrap mb-2">
         <label>Max Tokens</label>
-        <input type="number" ng-model="maxTokens" class="form-control mb-2" />
+        <input type="number" x-model.number="maxTokens" class="form-control mb-2" @@input="startCalculate()" />
         <label>Earning Per Second</label>
-        <input type="number" ng-model="earningsPerSecond" class="form-control md-2" />
+        <input type="number" x-model.number="earningsPerSecond" class="form-control mb-2" @@input="startCalculate()" />
         <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" ng-model="hide8Hour">
+            <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" x-model="hide8Hour" @@change="startCalculate()">
             <label class="form-check-label" for="defaultCheck1">
                 Hide 8h boosts
             </label>
@@ -31,140 +31,109 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="combo in combos track by $index">
-                <td ng-repeat="boost in combo.boosts track by $index">
-                    <div ng-if="boost.A">
-                        {{boost.A}}x for {{boost.T}}m E
-                    </div>
-                    <div ng-if="boost.B">
-                        {{boost.B}}x for {{boost.T}}m B
-                    </div>
-                </td>
-                <td>
-                    {{combo.cost}}
-                </td>
-                <td>
-                    {{combo.multiplier}}
-                </td>
-                <td>
-                    {{combo.pertoken}}
-                </td>
-                <td>
-                    {{combo.time}}
-                </td>
-                <td>
-                    {{combo.total | number}}
-                </td>
-            </tr>
+            <template x-for="(combo, $index) in combos" :key="$index">
+                <tr>
+                    <template x-for="(boost, $bi) in combo.boosts" :key="$bi">
+                        <td>
+                            <div x-show="boost.A" x-text="boost.A + 'x for ' + boost.T + 'm E'"></div>
+                            <div x-show="boost.B" x-text="boost.B + 'x for ' + boost.T + 'm B'"></div>
+                        </td>
+                    </template>
+                    <td x-text="combo.cost"></td>
+                    <td x-text="combo.multiplier"></td>
+                    <td x-text="combo.pertoken"></td>
+                    <td x-text="combo.time"></td>
+                    <td x-text="combo.total.toLocaleString()"></td>
+                </tr>
+            </template>
         </tbody>
     </table>
-    <div class="alert alert-info" role="alert" ng-if="calculating">
+    <div class="alert alert-info" role="alert" x-show="calculating">
         Calculating...
     </div>
 </div>
 
 
 @section Scripts {
-
-
     <script>
-        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
-            .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('boostsPage', () => ({
+                maxTokens: 75,
+                earningsPerSecond: 1,
+                hide8Hour: false,
+                combos: [],
+                calculating: false,
 
-                var allBoosts = [
-                    { A: 2, T: 60, C: 1 },
-                    { A: 2, T: 60 * 8, C: 1 },
-                    { A: 10, T: 30, C: 2 },
-                    { A: 10, T: 120, C: 3 },
-                    { A: 50, T: 10, C: 3 }, { A: 50, T: 60, C: 5 },
-                    { B: 2, T: 30, C: 5 },
-                    { B: 10, T: 10, C: 10 },
-                    { B: 5, T: 60, C: 15 },
-                    { B: 50, T: 10, C: 50 },
-                    { C: 0, T: 0 }
-                ];
+                startCalculate() {
+                    this.calculating = true;
+                    this.combos = [];
+                    setTimeout(() => this.calculateAll(), 1);
+                },
 
+                calculateAll() {
+                    const allBoosts = [
+                        { A: 2, T: 60, C: 1 },
+                        { A: 2, T: 60 * 8, C: 1 },
+                        { A: 10, T: 30, C: 2 },
+                        { A: 10, T: 120, C: 3 },
+                        { A: 50, T: 10, C: 3 }, { A: 50, T: 60, C: 5 },
+                        { B: 2, T: 30, C: 5 },
+                        { B: 10, T: 10, C: 10 },
+                        { B: 5, T: 60, C: 15 },
+                        { B: 50, T: 10, C: 50 },
+                        { C: 0, T: 0 }
+                    ];
+                    const maxTime = 40099;
+                    const boosts = _.filter(allBoosts, item => !this.hide8Hour || item.T < 480);
 
-                var maxTime = 40099;
-
-                $scope.maxTokens = 75;
-                $scope.earningsPerSecond = 1;
-                $scope.hide8Hour = false;
-                //StartCalculate();
-
-                $scope.$watchGroup(['maxTokens','earningsPerSecond','hide8Hour'], StartCalculate)
-                //$scope.$watch('earningsPerSecond', StartCalculate)
-                //$scope.$watch('hide8Hour', StartCalculate)
-
-                function StartCalculate() {
-                    $scope.calculating = true;
-                    $scope.combos = [];
-                    $timeout(CalculateAll, 1);
-                }
-
-                function CalculateAll() {
-                    console.log("Calculating");
-
-                    var boosts = _.filter(allBoosts, function (item) {
-                        console.log(!$scope.hide8Hour || item.T < 480, !$scope.hide8Hour, item.T < 480, item.T);
-                        return !$scope.hide8Hour || item.T < 480
-                    });
-
-                    //var amount = $scope.earningsPerSecond * 60;
-                    for (var a1 = 0; a1 < boosts.length; a1++) {
-                        for (var a2 = a1; a2 < boosts.length; a2++) {
-                            for (var a3 = a2; a3 < boosts.length; a3++) {
-                                for (var a4 = a3; a4 < boosts.length; a4++) {
-                                    for (var a5 = a4; a5 < boosts.length; a5++) {
-                                        var combo = [boosts[a1], boosts[a2], boosts[a3], boosts[a4], boosts[a5]];
-                                        var cost = _.sumBy(combo, "C");
-                                        var aSum = _.sumBy(combo, "A");
-                                        var time = _.max(combo, "T").T;
-                                        if (cost < $scope.maxTokens && aSum > 0 && time < maxTime) {
-                                            var item = {
-                                                cost: cost,
-                                                boosts: combo,
-                                                time: time
-                                            };
-                                            CalculateM(item);
-                                            $scope.combos.push(item);
-                                        }
-                                    }
-                                }
-                            }
+                    const combos = [];
+                    for (let a1 = 0; a1 < boosts.length; a1++)
+                    for (let a2 = a1; a2 < boosts.length; a2++)
+                    for (let a3 = a2; a3 < boosts.length; a3++)
+                    for (let a4 = a3; a4 < boosts.length; a4++)
+                    for (let a5 = a4; a5 < boosts.length; a5++) {
+                        const combo = [boosts[a1], boosts[a2], boosts[a3], boosts[a4], boosts[a5]];
+                        const cost = _.sumBy(combo, 'C');
+                        const aSum = _.sumBy(combo, 'A');
+                        const time = _.maxBy(combo, 'T').T;
+                        if (cost <= this.maxTokens && aSum > 0 && time < maxTime) {
+                            const item = { cost, boosts: combo, time };
+                            this.calculateM(item);
+                            combos.push(item);
                         }
                     }
 
-                    $scope.combos = _.orderBy($scope.combos, ['total'], ['desc']);
-
-
-                    for (var i = 0; i < $scope.combos.length - 1; i++) {
-                        var c1 = $scope.combos[i];
-                        for (var j = i + 1; j < $scope.combos.length; j++) {
-                            var c2 = $scope.combos[j];
-                            if (c2.cost > c1.cost || (c2.cost == c1.cost && c2.total <= c1.total && c2.time >= c1.time)) {
+                    let sorted = _.orderBy(combos, ['total'], ['desc']);
+                    for (let i = 0; i < sorted.length - 1; i++) {
+                        const c1 = sorted[i];
+                        for (let j = i + 1; j < sorted.length; j++) {
+                            const c2 = sorted[j];
+                            if (c2.cost > c1.cost || (c2.cost === c1.cost && c2.total <= c1.total && c2.time >= c1.time)) {
                                 c2.delete = true;
                             }
-
                         }
                     }
+                    this.combos = _.filter(sorted, item => !item.delete);
+                    this.calculating = false;
+                },
 
-                    $scope.combos = _.filter($scope.combos, function (item) { return !item.delete; });
-                    $scope.calculating = false;
-                }
-
-                function CalculateM(combo) {
-                    var multiplier = 0;
-                    for (var m = 0; m < _.max(combo.boosts, "T").T; m++) {
-                        var earnings = _.filter(combo.boosts, function (item) { return item.A > 0 && item.T > m; });
-                        var boost = _.filter(combo.boosts, function (item) { return item.B > 0 && item.T > m; });
-                        multiplier += _.sumBy(earnings, "A") * Math.max(_.sumBy(boost, "B"), 1);
-                        //console.log(combo, earnings, Math.max(_.sumBy(boost, "B"), 1));
+                calculateM(combo) {
+                    const maxT = _.maxBy(combo.boosts, 'T').T;
+                    let multiplier = 0;
+                    for (let m = 0; m < maxT; m++) {
+                        const earnings = _.filter(combo.boosts, b => b.A > 0 && b.T > m);
+                        const boost = _.filter(combo.boosts, b => b.B > 0 && b.T > m);
+                        multiplier += _.sumBy(earnings, 'A') * Math.max(_.sumBy(boost, 'B'), 1);
                     }
                     combo.multiplier = multiplier;
                     combo.pertoken = Math.round(multiplier / combo.cost);
-                    combo.total = Math.round(multiplier * $scope.earningsPerSecond * 60);
+                    combo.total = Math.round(multiplier * this.earningsPerSecond * 60);
+                },
+
+                init() {
+                    this.startCalculate();
                 }
-            }]);
+            }));
+        });
     </script>
 }
