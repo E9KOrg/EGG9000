@@ -157,6 +157,30 @@ body {
     .afx-card-container {
         flex-direction: column; /* Change to a vertical layout */
     }
+
+    /* Combos: the two-up suggestion grid and the side-by-side image/rates tile both overflow a phone
+       column. Collapse the grid to one tile per row and stack each tile's rates under its image. */
+    .combo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .combo-tile,
+    .combo-tile-set .afx-set-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .combo-tile-body {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .combo-tile-rates {
+        padding-left: 0;
+        flex-direction: row;
+        gap: 24px;
+    }
 }
 
 /* Rich hover tooltip shared by the combos tiles and the inventory overlay hotspots. The markup lives
