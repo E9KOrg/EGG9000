@@ -76,8 +76,13 @@
                 <div class="cs-dependent cs-seasonalgoal-wrap-@index" style="@(seasonalMode == 2 ? "" : "display:none;")">
                     <div class="form-group" style="margin-bottom:6px;">
                         <label for="cs-seasonalgoal-@index">CS goal</label>
-                        <input class="form-control cs-input" type="number" min="0" step="1" data-field="seasonalCsGoal"
-                               id="cs-seasonalgoal-@index" value="@seasonalCsGoal.ToString("0")" @dis />
+                        <div class="cs-num-group">
+                            <button type="button" class="btn btn-secondary cs-num-step" data-step="-1000" tabindex="-1" @dis>-</button>
+                            <input class="form-control cs-num" type="text" inputmode="numeric" data-field="seasonalCsGoal"
+                                   data-min="0" data-value="@seasonalCsGoal.ToString("0")"
+                                   id="cs-seasonalgoal-@index" @dis />
+                            <button type="button" class="btn btn-secondary cs-num-step" data-step="1000" tabindex="-1" @dis>+</button>
+                        </div>
                     </div>
                     @{
                         var peByGrade = ViewBag.LatestSeasonPeCxpByGrade as IDictionary<Ei.Contract.Types.PlayerGrade, double>;
@@ -119,8 +124,13 @@
 
                 <div class="cs-dependent form-group cs-redothreshold-wrap-@index" style="margin-bottom:0; @(redoMode == (int)RedoLeggacyOption.YesThreshold ? "" : "display:none;")">
                     <label for="cs-redothreshold-@index">CS threshold</label>
-                    <input class="form-control cs-input" type="number" min="0" max="90000" step="1" data-field="redoThreshold"
-                           id="cs-redothreshold-@index" value="@redoThreshold" @dis />
+                    <div class="cs-num-group">
+                        <button type="button" class="btn btn-secondary cs-num-step" data-step="-1000" tabindex="-1" @dis>-</button>
+                        <input class="form-control cs-num" type="text" inputmode="numeric" data-field="redoThreshold"
+                               data-min="0" data-max="90000" data-value="@redoThreshold"
+                               id="cs-redothreshold-@index" @dis />
+                        <button type="button" class="btn btn-secondary cs-num-step" data-step="1000" tabindex="-1" @dis>+</button>
+                    </div>
                 </div>
             </div>
 
@@ -138,7 +148,7 @@
                        id="cs-twotothree-@index" @(s.TwoToThree ? "checked" : "") @dis />
                 <label class="form-check-label" for="cs-twotothree-@index">Bump 2-goal completions to 3</label>
                 <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
-                    Some old contracts are re-released with a 3rd reward. They look "already-completed" to the Bot, so by default, you aren't reassigned.
+                    Some old contracts are re-released with a 3rd reward. They look "already-completed" to the Bot, so by default, you aren't reassigned.<br />
                     Enable to be assigned for the new reward (subject to your reward filter passing the 3rd reward).
                 </p>
             </div>
