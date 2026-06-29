@@ -77,7 +77,7 @@
     } else {
         @: Boarding Group
     }
-    <select x-model="bgIndex" @@change="bg = boardingGroups[parseInt($event.target.value)]">
+    <select @@change="bgIndex = parseInt($event.target.value); bg = boardingGroups[bgIndex]">
         <template x-for="(item, idx) in boardingGroups" :key="item.BoardingGroup.Value">
             <option :value="idx" x-text="item.BoardingGroup.Name"></option>
         </template>
