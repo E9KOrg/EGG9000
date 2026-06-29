@@ -98,6 +98,9 @@
                     <input class="form-check-input cs-input" type="checkbox" data-field="seasonalRewardFilterAfter"
                            id="cs-seasonalafter-@index" @(seasonalRewardFilterAfter ? "checked" : "") @dis />
                     <label class="form-check-label" for="cs-seasonalafter-@index">Assign by reward filter after</label>
+                    <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
+                        Once the goal above is met, keep assigning seasonals that match your reward filter (instead of stopping for the season).
+                    </p>
                 </div>
             </div>
 
@@ -125,12 +128,19 @@
                 <input class="form-check-input cs-input" type="checkbox" data-field="excludeSeasonal"
                        id="cs-excludeseasonal-@index" @(s.Redo.ExcludeSeasonal ? "checked" : "") @dis />
                 <label class="form-check-label" for="cs-excludeseasonal-@index">Skip seasonal replays</label>
+                <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
+                    Skip assignment of seasonal contracts if you already have a score from a previous co-op.
+                </p>
             </div>
 
             <div class="form-check cs-check" style="margin-top:10px;">
                 <input class="form-check-input cs-input" type="checkbox" data-field="twoToThree"
                        id="cs-twotothree-@index" @(s.TwoToThree ? "checked" : "") @dis />
                 <label class="form-check-label" for="cs-twotothree-@index">Bump 2-goal completions to 3</label>
+                <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
+                    Some old contracts are re-released with a 3rd reward. They look "already-completed" to the Bot, so by default, you aren't reassigned.
+                    Enable to be assigned for the new reward (subject to your reward filter passing the 3rd reward).
+                </p>
             </div>
         </div>
     </div>
