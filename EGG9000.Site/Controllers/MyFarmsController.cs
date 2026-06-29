@@ -341,7 +341,6 @@ namespace EGG9000.Site.Controllers {
             if(result.Status != Common.Contracts.Assignment.ContractSettingApplyStatus.Ok) return BadRequest(result.Status.ToString());
 
             // Dual-write: keep the old scalar keys in sync so the live old logic honors this edit.
-            account.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await _db.SaveChangesAsync();
             return Ok();

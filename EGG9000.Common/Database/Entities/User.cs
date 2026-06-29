@@ -480,38 +480,5 @@ namespace EGG9000.Common.Database.Entities {
 
             return false;
         }
-
-        // Dual-write: pushes the consolidated Assignment blob back onto the old scalar keys so the live
-        // old filter logic honors edits made through the new (blob-writing) settings UI. Call before
-        // UpdateAccounts in any settings write path. The new Redo.ExcludeSeasonal has no old-key
-        // equivalent and is intentionally not synced (it only affects the shadow engine until cutover).
-        public void SyncLegacyKeysFromAssignment() {
-            var a = Assignment;
-            if(a is null) return;
-
-            // Single v2 reward filter maps onto both old lists so the old logic uses it everywhere.
-            var filter = a.RewardFilter is null ? new List<Ei.RewardType>() : new List<Ei.RewardType>(a.RewardFilter);
-            AutoRegisterRewards = new List<Ei.RewardType>(filter);
-            LeggacyAutoRegisterRewards = new List<Ei.RewardType>(filter);
-
-            RedoLeggacySelection = a.Redo?.Mode ?? RedoLeggacyOption.NotSet;
-            RedoScoreThreshold = a.Redo?.ScoreThreshold ?? 20000;
-            DoTwoToThreeContracts = a.TwoToThree;
-            DoUnfinishedCollegtibles = a.Get(Contracts.Assignment.PermanentRewardKind.Colleggtible).Mode == Contracts.Assignment.ForceMode.AssignIfMissing;
-
-            // Lossy: the richer v2 Seasonal model is approximated onto the old SeasonalPeOption. The
-            // RewardFilterAfter toggle and AlwaysAssign-after-PE have no old equivalent (surfaces as a
-            // shadow diff, which is expected during the shadow period).
-            var seasonal = a.Seasonal ?? new Contracts.Assignment.SeasonalRule();
-            switch(seasonal.Mode) {
-                case Contracts.Assignment.SeasonalMode.UntilCsGoal:
-                    SeasonalPeOption = SeasonalPeOption.AssignIfBelowThreshold;
-                    SeasonalPeThreshold = seasonal.CsGoal;
-                    break;
-                default:
-                    SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing;
-                    break;
-            }
-        }
     }
 }

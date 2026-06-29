@@ -5,11 +5,9 @@ using System.Collections.Generic;
 using System.Linq;
 
 namespace EGG9000.Common.Contracts {
-    // LIVE assignment via the new rule engine (Assignment/). Drop-in replacement for
-    // LegacyAssignmentFilter.ApplyFilters: same signature, same in-place contract (filters `accounts`
-    // to the keep-set and records each removed account's reason into `excluded`). The two engines were
-    // validated to parity by AssignmentParityChecker before this became the live path; the only intended
-    // differences are the v2 seasonal redesign and reward-filter collapse.
+    // Assignment via the rule engine (Assignment/). Filters `accounts` in place to the keep-set and
+    // records each removed account's exclusion reason into `excluded`. Per-user grouping drives the
+    // two-pass YesOtherAccountMatch resolution in AssignmentEvaluator.EvaluateUser.
     public static class AssignmentEngineFilter {
         public static void ApplyFilters(
             List<UserByAccount> accounts,

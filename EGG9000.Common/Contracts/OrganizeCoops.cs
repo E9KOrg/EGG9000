@@ -33,9 +33,7 @@ namespace EGG9000.Common.Contracts {
                 RoleId = dbGuild is not null && dbGuild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbGuild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
             })).ToList();
 
-            // LIVE assignment uses the new rule engine (Assignment/), validated to parity against the old
-            // LegacyAssignmentFilter via AssignmentParityChecker before cutover. The old filter is retained
-            // for the parity/shadow comparison only (LegacyAssignmentDecision); do not call it here.
+            // Assignment via the rule engine (Assignment/). Filters `accounts` in place to the keep-set.
             AssignmentEngineFilter.ApplyFilters(accounts, excluded, contract, existingCoops, dbGuild, contractSeason, seasonProgresses);
 
 

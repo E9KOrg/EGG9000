@@ -305,11 +305,6 @@ namespace EGG9000.Bot.Automated {
 
             var (coopGroups, excluded) = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild, contractSeason, seasonProgresses);
 
-            // Shadow: evaluate the new engine against this live (old) decision and log divergences.
-            // Fully isolated - never affects the assignment above.
-            await EGG9000.Common.Contracts.Assignment.Diagnostics.AssignmentShadowRecorder.RecordAsync(
-                _db, users, contract, coops, dbguild, contractSeason, seasonProgresses, userCsHistoryEntries, _logger);
-
             var bgGroups = coopGroups.Where(x => x.bg == (skipbg + 1).ToString());
 
             foreach(var group in bgGroups) {

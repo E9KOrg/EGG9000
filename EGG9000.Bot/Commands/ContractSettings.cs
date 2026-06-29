@@ -352,7 +352,6 @@ namespace EGG9000.Bot.Commands {
             } else {
                 var account = dbuser.EggIncAccounts[index];
                 account.Assignment.Redo.ScoreThreshold = (int)num;
-                account.SyncLegacyKeysFromAssignment();
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
 
@@ -368,7 +367,6 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             account.Assignment.Redo.Mode = (RedoLeggacyOption)Enum.Parse(typeof(RedoLeggacyOption), component.Data.Values.First());
-            account.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
@@ -383,7 +381,6 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             account.Assignment.Redo.ExcludeSeasonal = !account.Assignment.Redo.ExcludeSeasonal;
-            account.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             await component.UpdateAsync(x => { x.Components = GetRlButtons(index, account, dbuser); x.Embed = RedoLeggaciesEmbedBuilder(dbuser, account).Build(); });
@@ -445,7 +442,6 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
             account.Assignment.Seasonal ??= new SeasonalRule();
             account.Assignment.Seasonal.Mode = (SeasonalMode)int.Parse(component.Data.Values.First());
-            account.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
@@ -459,7 +455,6 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
             account.Assignment.Seasonal ??= new SeasonalRule();
             account.Assignment.Seasonal.RewardFilterAfter = !account.Assignment.Seasonal.RewardFilterAfter;
-            account.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             await component.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
@@ -509,7 +504,6 @@ namespace EGG9000.Bot.Commands {
             } else {
                 account.Assignment.Seasonal ??= new SeasonalRule();
                 account.Assignment.Seasonal.CsGoal = num;
-                account.SyncLegacyKeysFromAssignment();
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
                 await modal.UpdateAsync(x => { x.Components = GetSeasonalComponents(index, account, dbuser); x.Embed = SeasonalEmbed(dbuser, account).Build(); });
@@ -538,7 +532,6 @@ namespace EGG9000.Bot.Commands {
             var toggleState = data.Split(",")[2] == "t";
 
             account.Assignment.TwoToThree = toggleState;
-            account.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
 
@@ -586,7 +579,6 @@ namespace EGG9000.Bot.Commands {
             var toggleState = data.Split(",")[2] == "t";
 
             account.Assignment.SetForce(PermanentRewardKind.Colleggtible, toggleState ? ForceMode.AssignIfMissing : ForceMode.NotSet);
-            account.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
 
@@ -836,7 +828,6 @@ namespace EGG9000.Bot.Commands {
                 reg.Assignment.RewardFilter = [];
             }
             logger.LogInformation("{user}'s rewards updated to {list}", dbuser.DiscordUsername, string.Join(",", reg.Assignment.RewardFilter.Select(r => r.ToString())));
-            reg.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
@@ -849,7 +840,6 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
             reg.Assignment.RewardFilter = [];
-            reg.SyncLegacyKeysFromAssignment();
             dbuser.UpdateAccounts();
             await db.SaveChangesAsync();
             var props = MainMenu(dbuser, dbuser.EggIncAccounts[index], index, db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));

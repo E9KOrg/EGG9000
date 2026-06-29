@@ -5,7 +5,6 @@ using Discord.WebSocket;
 using EGG9000.Bot.Automated;
 using EGG9000.Common.Commands;
 using EGG9000.Common.Contracts;
-using EGG9000.Common.Contracts.Assignment.Diagnostics;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
