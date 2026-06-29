@@ -33,9 +33,10 @@ namespace EGG9000.Common.Contracts {
                 RoleId = dbGuild is not null && dbGuild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbGuild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
             })).ToList();
 
-            // LIVE assignment uses the proven old filter logic. The new engine (Assignment/) runs only in
-            // shadow, compared against this in AssignmentShadowRecorder. Do not call the engine here.
-            LegacyAssignmentFilter.ApplyFilters(accounts, excluded, contract, existingCoops, dbGuild, contractSeason, seasonProgresses);
+            // LIVE assignment uses the new rule engine (Assignment/), validated to parity against the old
+            // LegacyAssignmentFilter via AssignmentParityChecker before cutover. The old filter is retained
+            // for the parity/shadow comparison only (LegacyAssignmentDecision); do not call it here.
+            AssignmentEngineFilter.ApplyFilters(accounts, excluded, contract, existingCoops, dbGuild, contractSeason, seasonProgresses);
 
 
             foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
