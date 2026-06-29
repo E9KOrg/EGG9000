@@ -1,6 +1,7 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -86,7 +87,7 @@ namespace EGG9000.Bot.Common.Helpers {
                 } else {
                     return await socketTextChannel.SendMessageAsync(message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
                 }
-            } else if (target is FauxCommand command) {
+            } else if (target is SocketInteraction command) {
                 var ephemeral = (message as CustomInteractionBasedDiscordMessage)?.Ephemeral ?? false;
                 var pollProperties = (message as CustomInteractionBasedDiscordMessage)?.PollProperties ?? null;
                 if (command.HasResponded) {

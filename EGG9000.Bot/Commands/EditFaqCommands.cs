@@ -1,7 +1,8 @@
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -19,13 +20,11 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    /// <summary>
-    /// `/a editfaq` - in-Discord FAQ topic editing (the website's FAQ Customization page).
-    /// Lists/adds/edits/deletes the guild's <see cref="FAQTopic"/> rows with the same
-    /// component+modal UX as <see cref="RankupCommands"/>; writes the same table and invalidates
-    /// the same cache. Explanation/preview run through <see cref="MessageFormatter"/>.
-    /// </summary>
-    public static class EditFaqCommands {
+    [Group("a", "Admin commands")]
+    [StaffOnly(StaffTier.Admin)]
+    public class EditFaqModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
+
         private static string Trunc(string s, int n) => string.IsNullOrEmpty(s) ? s : s.Length <= n ? s : s[..(n - 1)] + "…";
 
         private static bool IsPalaceGuild(Guild g) {
@@ -96,102 +95,100 @@ namespace EGG9000.Bot.Commands {
                 .AddTextInputSafe("Embed color (6-hex, optional)", customId: "color", value: existing?.EmbedColorHex, required: false, maxLength: 7)
                 .AddTextInputSafe("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
 
-        [SlashCommand(Description = "Edit this server's FAQ topics", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
-        public static async Task EditFaq(FauxCommand command, ApplicationDbContext db, DiscordHostedService client) {
-            await command.DeferAsync(ephemeral: true);
-            var g = await LoadGuild(db, command.GuildId);
+        [SlashCommand("editfaq", "Edit this server's FAQ topics")]
+        public async Task EditFaq() {
+            await Context.Interaction.DeferAsync(ephemeral: true);
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(g is null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find this server's config record."); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find this server's config record."); });
                 return;
             }
-            var (embed, components) = await BuildViewAsync(db, client, "list", g);
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
+            var (embed, components) = await BuildViewAsync(Db, _client, "list", g);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FeBack(SocketMessageComponent component, ApplicationDbContext db, DiscordHostedService client) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = await BuildViewAsync(db, client, "list", g);
-            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("FeBack")]
+        public async Task FeBack() {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = await BuildViewAsync(Db, _client, "list", g);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FePick(SocketMessageComponent component, ApplicationDbContext db, DiscordHostedService client) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = await BuildViewAsync(db, client, "detail", g, component.Data.Values.FirstOrDefault());
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("FePick")]
+        public async Task FePick(string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = await BuildViewAsync(Db, _client, "detail", g, values.FirstOrDefault());
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FeAdd(SocketMessageComponent component) {
-            await component.RespondWithModalAsync(TopicModal("FeModal:new", null).Build());
+        [ComponentInteraction("FeAdd")]
+        public async Task FeAdd() {
+            await Context.Interaction.RespondWithModalAsync(TopicModal("FeModal:new", null).Build());
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FeEditText(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var t = await db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data);
-            if(t is null) { await component.DeferAsync(); return; }
-            await component.RespondWithModalAsync(TopicModal($"FeModal:edit:{data}", t).Build());
+        [ComponentInteraction("FeEditText:*")]
+        public async Task FeEditText(string data) {
+            var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data);
+            if(t is null) { await Context.Interaction.DeferAsync(); return; }
+            await Context.Interaction.RespondWithModalAsync(TopicModal($"FeModal:edit:{data}", t).Build());
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FeStaff(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var t = await db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
-            if(t is not null) { t.StaffOnly = !t.StaffOnly; await db.SaveChangesAsync(); db.InvalidateFAQTopics(g); }
-            var (embed, components) = await BuildViewAsync(db, client, "detail", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("FeStaff:*")]
+        public async Task FeStaff(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
+            if(t is not null) { t.StaffOnly = !t.StaffOnly; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
+            var (embed, components) = await BuildViewAsync(Db, _client, "detail", g, data);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FePalace(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var t = await db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
-            if(t is not null && IsPalaceGuild(g)) { t.PalaceOnly = !t.PalaceOnly; await db.SaveChangesAsync(); db.InvalidateFAQTopics(g); }
-            var (embed, components) = await BuildViewAsync(db, client, "detail", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("FePalace:*")]
+        public async Task FePalace(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
+            if(t is not null && IsPalaceGuild(g)) { t.PalaceOnly = !t.PalaceOnly; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
+            var (embed, components) = await BuildViewAsync(Db, _client, "detail", g, data);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FeWUp(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) =>
-            await AdjustWeight(component, data, db, client, +1);
+        [ComponentInteraction("FeWUp:*")]
+        public async Task FeWUp(string data) => await AdjustWeight(data, +1);
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FeWDn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) =>
-            await AdjustWeight(component, data, db, client, -1);
+        [ComponentInteraction("FeWDn:*")]
+        public async Task FeWDn(string data) => await AdjustWeight(data, -1);
 
-        private static async Task AdjustWeight(SocketMessageComponent component, string data, ApplicationDbContext db, DiscordHostedService client, int delta) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var t = await db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
-            if(t is not null) { t.Weight += delta; await db.SaveChangesAsync(); db.InvalidateFAQTopics(g); }
-            var (embed, components) = await BuildViewAsync(db, client, "detail", g, data);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        private async Task AdjustWeight(string data, int delta) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
+            if(t is not null) { t.Weight += delta; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
+            var (embed, components) = await BuildViewAsync(Db, _client, "detail", g, data);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FeDel(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var t = await db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
-            if(t is not null) { db.FAQTopics.Remove(t); await db.SaveChangesAsync(); db.InvalidateFAQTopics(g); }
-            var (embed, components) = await BuildViewAsync(db, client, "list", g);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("FeDel:*")]
+        public async Task FeDel(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
+            if(t is not null) { Db.FAQTopics.Remove(t); await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
+            var (embed, components) = await BuildViewAsync(Db, _client, "list", g);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [Modal(AdminOnly = StaffOnlyLevel.Admin)]
-        public static async Task FeModal(SocketModal modal, [ComponentData] string data, ApplicationDbContext db, DiscordHostedService client) {
-            var g = await LoadGuild(db, modal.GuildId);
+        [ModalInteraction("FeModal:*")]
+        public async Task FeModal(string data, FaqTopicModal form) {
+            var modal = (SocketModal)Context.Interaction;
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             var (op, id) = SplitFirst(data);
 
-            string Field(string cid) => modal.Data.Components.FirstOrDefault(c => c.CustomId == cid)?.Value?.Trim() ?? "";
-            var keywords = EditFaqValidation.ParseKeywords(Field("keywords"));
+            var keywords = EditFaqValidation.ParseKeywords(form.Keywords);
             var kwError = EditFaqValidation.ValidateKeywords(keywords);
-            var (color, colorError) = EditFaqValidation.NormalizeColor(Field("color"));
+            var (color, colorError) = EditFaqValidation.NormalizeColor(form.Color);
             var error = kwError ?? colorError;
 
             string section = "list";
@@ -200,25 +197,25 @@ namespace EGG9000.Bot.Commands {
             if(error is null) {
                 FAQTopic t;
                 if(op == "edit") {
-                    t = await db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == id && x.GuildId == g.Id);
+                    t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == id && x.GuildId == g.Id);
                 } else {
-                    t = new FAQTopic { InternalId = Guid.NewGuid().ToString("N"), GuildId = g.Id, GuildName = g.Name, CreatedById = modal.User.Id, CreatedBy = modal.User.Username, Weight = 0 };
-                    db.FAQTopics.Add(t);
+                    t = new FAQTopic { InternalId = Guid.NewGuid().ToString("N"), GuildId = g.Id, GuildName = g.Name, CreatedById = Context.User.Id, CreatedBy = Context.User.Username, Weight = 0 };
+                    Db.FAQTopics.Add(t);
                 }
                 if(t is not null) {
-                    t.Name = Field("name");
+                    t.Name = form.Name;
                     t._keywords = JsonConvert.SerializeObject(keywords);
-                    t.Explanation = Field("explanation");
+                    t.Explanation = form.Explanation;
                     t.EmbedColorHex = color;
-                    t.ImageUrl = Field("image");
-                    await db.SaveChangesAsync();
-                    db.InvalidateFAQTopics(g);
+                    t.ImageUrl = form.Image;
+                    await Db.SaveChangesAsync();
+                    Db.InvalidateFAQTopics(g);
                     section = "detail";
                     detailId = t.InternalId;
                 }
             }
 
-            var (embed, components) = await BuildViewAsync(db, client, section, g, detailId);
+            var (embed, components) = await BuildViewAsync(Db, _client, section, g, detailId);
             await modal.UpdateAsync(x => { x.Content = error is null ? "" : $"⚠️ {error}"; x.Embed = embed; x.Components = components; });
         }
 
@@ -226,5 +223,32 @@ namespace EGG9000.Bot.Commands {
             var i = s.IndexOf(':');
             return i < 0 ? (s, null) : (s[..i], s[(i + 1)..]);
         }
+    }
+
+    public class FaqTopicModal : IModal {
+        public string Title => "FAQ Topic";
+
+        [InputLabel("Name")]
+        [ModalTextInput("name", maxLength: 100)]
+        public string Name { get; set; }
+
+        [InputLabel("Keywords (comma-separated)")]
+        [ModalTextInput("keywords", maxLength: 300)]
+        [RequiredInput(false)]
+        public string Keywords { get; set; }
+
+        [InputLabel("Explanation")]
+        [ModalTextInput("explanation", TextInputStyle.Paragraph, maxLength: 1024)]
+        public string Explanation { get; set; }
+
+        [InputLabel("Embed color (6-hex, optional)")]
+        [ModalTextInput("color", maxLength: 7)]
+        [RequiredInput(false)]
+        public string Color { get; set; }
+
+        [InputLabel("Image URL (optional)")]
+        [ModalTextInput("image", maxLength: 400)]
+        [RequiredInput(false)]
+        public string Image { get; set; }
     }
 }

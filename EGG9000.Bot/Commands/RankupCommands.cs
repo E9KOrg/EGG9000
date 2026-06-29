@@ -1,8 +1,9 @@
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -18,14 +19,9 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    /// <summary>
-    /// `/a rankup` - per-guild rank-up announcement customization: master + exclusive-pool
-    /// toggles, the per-group notify filter, and the message pools (Global + one per rank
-    /// group). Messages are <see cref="RankupMessage"/> rows scoped by GroupBaseOom and
-    /// support {{user}} {{rank}} {{eb}} {{oom}} {{emoji:x}} {{command:x}} tokens. Mirrors the
-    /// ConfigureCommands component/modal pattern.
-    /// </summary>
-    public static class RankupCommands {
+    [Group("a", "Admin commands")]
+    [StaffOnly(StaffTier.CluckingCoordinator)]
+    public class RankupModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
         private static string Trunc(string s, int n) => string.IsNullOrEmpty(s) ? s : s.Length <= n ? s : s[..(n - 1)] + "…";
 
         private static string ScopeName(int oom) =>
@@ -117,140 +113,140 @@ namespace EGG9000.Bot.Commands {
             return (eb.Build(), cb.Build());
         }
 
-        [SlashCommand(Description = "Customize this server's rank-up announcements", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
-        public static async Task Rankup(FauxCommand command, ApplicationDbContext db) {
-            await command.DeferAsync(ephemeral: true);
-            var g = await LoadGuild(db, command.GuildId);
+        [SlashCommand("rankup", "Customize this server's rank-up announcements")]
+        public async Task Rankup() {
+            await Context.Interaction.DeferAsync(ephemeral: true);
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(g is null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find this server's config record."); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find this server's config record."); });
                 return;
             }
-            var (embed, components) = await BuildViewAsync(db, "overview", g);
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
+            var (embed, components) = await BuildViewAsync(Db, "overview", g);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuNav(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = await BuildViewAsync(db, component.Data.Values.FirstOrDefault() ?? "overview", g);
-            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("RuNav")]
+        public async Task RuNav(string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = await BuildViewAsync(Db, values.FirstOrDefault() ?? "overview", g);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuBack(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var data = Tail(component.Data.CustomId);
+        [ComponentInteraction("RuBack:*", ignoreGroupNames: true)]
+        public async Task RuBack(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             var (section, payload) = SplitFirst(string.IsNullOrEmpty(data) ? "overview" : data);
-            var (embed, components) = await BuildViewAsync(db, section, g, payload);
-            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
+            var (embed, components) = await BuildViewAsync(Db, section, g, payload);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuToggle(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
+        [ComponentInteraction("RuToggle:*")]
+        public async Task RuToggle(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
             if(data == nameof(Guild.RankupMessagesEnabled)) g.RankupMessagesEnabled = !g.RankupMessagesEnabled;
             else if(data == nameof(Guild.RankupExclusivePool)) g.RankupExclusivePool = !g.RankupExclusivePool;
-            await db.SaveChangesAsync();
-            var (embed, components) = await BuildViewAsync(db, "toggles", g);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Db.SaveChangesAsync();
+            var (embed, components) = await BuildViewAsync(Db, "toggles", g);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuFilter(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var enabled = component.Data.Values.Select(int.Parse).ToHashSet();
+        [ComponentInteraction("RuFilter")]
+        public async Task RuFilter(string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var enabled = values.Select(int.Parse).ToHashSet();
             g.RankupDisabledGroups = [.. RankRegistry.GroupLeads.Select(l => l.GroupBase).Where(b => !enabled.Contains(b))];
-            await db.SaveChangesAsync();
-            var (embed, components) = await BuildViewAsync(db, "filter", g);
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            await Db.SaveChangesAsync();
+            var (embed, components) = await BuildViewAsync(Db, "filter", g);
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuPickGroup(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = await BuildViewAsync(db, "pool", g, component.Data.Values.FirstOrDefault());
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("RuPickGroup")]
+        public async Task RuPickGroup(string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = await BuildViewAsync(Db, "pool", g, values.FirstOrDefault());
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuPickMsg(SocketMessageComponent component, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var (embed, components) = await BuildViewAsync(db, "detail", g, component.Data.Values.FirstOrDefault());
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+        [ComponentInteraction("RuPickMsg")]
+        public async Task RuPickMsg(string[] values) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (embed, components) = await BuildViewAsync(Db, "detail", g, values.FirstOrDefault());
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuAdd(SocketMessageComponent component, [ComponentData] string data) {
+        [ComponentInteraction("RuAdd:*")]
+        public async Task RuAdd(string data) {
             var modal = new ModalBuilder().WithTitleSafe("New rank-up message").WithCustomId($"RuMsgModal:new:{data}")
                 .AddTextInputSafe("Message", customId: "text", TextInputStyle.Paragraph, placeholder: "Use {{user}} {{rank}} {{eb}} {{oom}} {{emoji:name}}", required: true, maxLength: 1500)
                 .Build();
-            await component.RespondWithModalAsync(modal);
+            await Context.Interaction.RespondWithModalAsync(modal);
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuEditBtn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            var msg = await db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data);
-            if(msg is null) { await component.DeferAsync(); return; }
+        [ComponentInteraction("RuEditBtn:*")]
+        public async Task RuEditBtn(string data) {
+            var msg = await Db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data);
+            if(msg is null) { await Context.Interaction.DeferAsync(); return; }
             var modal = new ModalBuilder().WithTitleSafe("Edit rank-up message").WithCustomId($"RuMsgModal:edit:{data}")
                 .AddTextInputSafe("Message", customId: "text", TextInputStyle.Paragraph, value: Trunc(msg.Text, 1500), required: true, maxLength: 1500)
                 .Build();
-            await component.RespondWithModalAsync(modal);
+            await Context.Interaction.RespondWithModalAsync(modal);
         }
 
-        [ComponentCommand(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuDelBtn(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
-            await component.DeferAsync();
-            var g = await LoadGuild(db, component.GuildId);
-            var msg = await db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data && m.GuildId == g.Id);
+        [ComponentInteraction("RuDelBtn:*")]
+        public async Task RuDelBtn(string data) {
+            await Context.Interaction.DeferAsync();
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var msg = await Db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data && m.GuildId == g.Id);
             var scope = msg?.GroupBaseOom ?? RankupMessage.GlobalPool;
             if(msg is not null) {
-                db.RankupMessages.Remove(msg);
-                await db.SaveChangesAsync();
-                db.InvalidateRankupMessages(g);
+                Db.RankupMessages.Remove(msg);
+                await Db.SaveChangesAsync();
+                Db.InvalidateRankupMessages(g);
             }
-            var (embed, components) = await BuildViewAsync(db, "pool", g, scope.ToString());
-            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
+            var (embed, components) = await BuildViewAsync(Db, "pool", g, scope.ToString());
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [Modal(AdminOnly = StaffOnlyLevel.CluckingCoordinator)]
-        public static async Task RuMsgModal(SocketModal modal, ApplicationDbContext db) {
-            var g = await LoadGuild(db, modal.GuildId);
-            var (op, arg) = SplitFirst(Tail(modal.Data.CustomId));
-            var text = modal.Data.Components.FirstOrDefault(c => c.CustomId == "text")?.Value?.Trim() ?? "";
+        [ModalInteraction("RuMsgModal:*", ignoreGroupNames: true)]
+        public async Task RuMsgModal(string data, RankupMessageModal form) {
+            var modal = (SocketModal)Context.Interaction;
+            var g = await LoadGuild(Db, Context.Guild?.Id);
+            var (op, arg) = SplitFirst(data);
+            var text = form.Text?.Trim() ?? "";
             string section = "pool";
             int scope = RankupMessage.GlobalPool;
             if(op == "edit") {
-                var msg = await db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == arg && m.GuildId == g.Id);
+                var msg = await Db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == arg && m.GuildId == g.Id);
                 if(msg is null) {
                     section = "groups";
                 } else {
                     msg.Text = text;
                     scope = msg.GroupBaseOom;
-                    await db.SaveChangesAsync();
-                    db.InvalidateRankupMessages(g);
+                    await Db.SaveChangesAsync();
+                    Db.InvalidateRankupMessages(g);
                 }
             } else {
                 scope = int.Parse(arg);
-                db.RankupMessages.Add(new RankupMessage {
+                Db.RankupMessages.Add(new RankupMessage {
                     InternalId = Guid.NewGuid().ToString("N"),
                     GuildId = g.Id,
                     GuildName = g.Name,
                     GroupBaseOom = scope,
                     Text = text,
                     Weight = 1,
-                    CreatedById = modal.User.Id,
-                    CreatedBy = modal.User.Username
+                    CreatedById = Context.User.Id,
+                    CreatedBy = Context.User.Username
                 });
-                await db.SaveChangesAsync();
-                db.InvalidateRankupMessages(g);
+                await Db.SaveChangesAsync();
+                Db.InvalidateRankupMessages(g);
             }
-            var (embed, components) = await BuildViewAsync(db, section, g, section == "pool" ? scope.ToString() : null);
+            var (embed, components) = await BuildViewAsync(Db, section, g, section == "pool" ? scope.ToString() : null);
             await modal.UpdateAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
@@ -258,12 +254,13 @@ namespace EGG9000.Bot.Commands {
             var i = s.IndexOf(':');
             return i < 0 ? (s, null) : (s[..i], s[(i + 1)..]);
         }
+    }
 
-        // Everything after the command name. [ComponentData] only yields the first
-        // segment, so multi-segment payloads (e.g. RuBack:pool:5) must read the raw id.
-        private static string Tail(string customId) {
-            var i = customId.IndexOf(':');
-            return i < 0 ? "" : customId[(i + 1)..];
-        }
+    public class RankupMessageModal : IModal {
+        public string Title => "Rank-up message";
+
+        [InputLabel("Message")]
+        [ModalTextInput("text", TextInputStyle.Paragraph, maxLength: 1500)]
+        public string Text { get; set; }
     }
 }
