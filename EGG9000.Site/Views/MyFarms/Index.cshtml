@@ -1,5 +1,6 @@
 ﻿@model MyFarmsModel
 @using Discord.WebSocket
+@using EGG9000.Common.Contracts.Assignment
 @using EGG9000.Common.Helpers
 @using EGG9000.Common.JsonData
 @using Microsoft.AspNetCore.Html
@@ -314,27 +315,38 @@
                 @if (account.OnBreakUntil > DateTimeOffset.Now) {
                     <span style="margin-right:10px;" title="Date/Time displayed in local time"><b><u>On Break until</u></b>: @account.OnBreakUntil.ToLocalTime().ToString("yyyy-MM-dd h:mm:ss tt")</span>
                 }
-                @if ((account.AutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.AutoRegisterRewards)</span>
+                @if ((account.Assignment.RewardFilter?.Count ?? 0) > 0) {
+                    <span style="margin-right:10px;"><b><u>Filter</u></b>: @string.Join(",", account.Assignment.RewardFilter)</span>
                 } else {
                     <span style="margin-right:10px;"><b><u>Filter</u></b>: All</span>
                 }
-                @if ((account.LeggacyAutoRegisterRewards?.Count ?? 0) > 0) {
-                    <span style="margin-right:10px;"><b><u>Leggacy Filter</u></b>: @string.Join(",", account.LeggacyAutoRegisterRewards)</span>
-                }
                 <span style="margin-right:10px;">
                     <b><u>Redo Leggacies</u></b>:
-                    @if (account.RedoLeggacySelection == RedoLeggacyOption.YesAll) {
+                    @if (account.Assignment.Redo.Mode == RedoLeggacyOption.YesAll) {
                         @string.Join("", "Yes (All)")
-                    } else if(account.RedoLeggacySelection == RedoLeggacyOption.YesNoUltra) {
+                    } else if(account.Assignment.Redo.Mode == RedoLeggacyOption.YesNoUltra) {
                         @string.Join("", "Yes (No ultra-redos)")
-                    } 
-                    else if (account.RedoLeggacySelection == RedoLeggacyOption.YesThreshold) {
-                        @string.Join("", $"Yes (Under {account.RedoScoreThreshold} CS)")
-                    } else if(account.RedoLeggacySelection == RedoLeggacyOption.YesOtherAccountMatch) {
+                    }
+                    else if (account.Assignment.Redo.Mode == RedoLeggacyOption.YesThreshold) {
+                        @string.Join("", $"Yes (Under {account.Assignment.Redo.ScoreThreshold} CS)")
+                    } else if(account.Assignment.Redo.Mode == RedoLeggacyOption.YesOtherAccountMatch) {
                         @string.Join("", "Yes (If other account matches)")
                     } else {
                         @string.Join("", "No")
+                    }
+                </span>
+                <span style="margin-right:10px;">
+                    <b><u>Skip Seasonal Replays</u></b>: @(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")
+                </span>
+                <span style="margin-right:10px;">
+                    <b><u>Seasonal</u></b>:
+                    @{ var seasonalRule = account.Assignment.Seasonal; }
+                    @if (seasonalRule.Mode == SeasonalMode.AlwaysAssign) {
+                        @:Always assign
+                    } else if (seasonalRule.Mode == SeasonalMode.UntilPeEarned) {
+                        @:Assign until PE earned
+                    } else {
+                        @:Assign until CS goal (@(seasonalRule.CsGoal.ToString("N0")))
                     }
                 </span>
                 @if(account?.LatestRunningScore != 0){
@@ -375,6 +387,9 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-bs-toggle="tab" href="#colleggtibles@(index)" role="tab" aria-selected="false">Colleggtibles</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#contractsettings@(index)" role="tab" aria-selected="false">Contract Settings</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" data-bs-toggle="tab" href="#inventory@(index)" role="tab" aria-selected="false">Inventory</a>
@@ -511,9 +526,19 @@
                         await Html.RenderPartialAsync("-Colleggtibles", (backup, Model.CustomEggs));
                     }
                 </div>
+                <div class="tab-pane" id="contractsettings@(index)" role="tabpanel">
+                    @{
+                        await Html.RenderPartialAsync("_ContractSettings", (account, index, isSelf));
+                    }
+                    <hr style="border-color:#444; margin:24px 0;" />
+                    @{
+                        await Html.RenderPartialAsync("_TestAssignment", (account, index, contracts));
+                    }
+                </div>
                 <div class="tab-pane" id="inventory@(index)" role="tabpanel">
                     @{
                         await Html.RenderPartialAsync("-ArtifactInventory", account.Id);
+
                     }
                 </div>
             </div>
@@ -617,6 +642,181 @@
             });
 
             setInterval(updateLastBackupTime, 1000);
+
+            wireContractSettings();
+            wireTestAssignment();
         });
+
+        function rewardGroupValue(group) {
+            return Array.from(group.querySelectorAll('.cs-reward'))
+                .filter(cb => cb.checked)
+                .map(cb => cb.value)
+                .join(',');
+        }
+
+        function controlValue(el) {
+            if (el.type === 'checkbox') return el.checked ? 'true' : 'false';
+            return el.value;
+        }
+
+        function showCsStatus(container, text, ok) {
+            let toast = document.getElementById('cs-toast');
+            if (!toast) {
+                toast = document.createElement('div');
+                toast.id = 'cs-toast';
+                toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:1080;padding:8px 16px;border-radius:6px;color:#fff;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,.45);opacity:0;transition:opacity .2s;pointer-events:none;';
+                document.body.appendChild(toast);
+            }
+            toast.textContent = text;
+            toast.style.background = ok ? '#2e7d32' : '#c62828';
+            toast.style.opacity = '1';
+            clearTimeout(toast._hideTimer);
+            toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
+        }
+
+        function saveContractSetting(container, accountIndex, field, value, revert) {
+            fetch('/MyFarms/SaveContractSetting', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ accountIndex: accountIndex, field: field, value: value })
+            }).then(res => {
+                if (res.ok) {
+                    showCsStatus(container, 'Saved', true);
+                } else {
+                    if (revert) revert();
+                    showCsStatus(container, 'Save failed', false);
+                }
+            }).catch(() => {
+                if (revert) revert();
+                showCsStatus(container, 'Save failed', false);
+            });
+        }
+
+        function wireContractSettings() {
+            document.querySelectorAll('.contract-settings').forEach(container => {
+                if (container.dataset.isself !== '1') return;
+                const accountIndex = parseInt(container.dataset.accountIndex);
+
+                container.querySelectorAll('.cs-input').forEach(el => {
+                    let prior = controlValue(el);
+                    el.addEventListener('change', () => {
+                        const field = el.dataset.field;
+                        const value = controlValue(el);
+                        const before = prior;
+                        if (field === 'seasonalMode') {
+                            const goalWrap = container.querySelector('.cs-seasonalgoal-wrap-' + accountIndex);
+                            if (goalWrap) goalWrap.style.display = (value === '2') ? '' : 'none';
+                            const afterWrap = container.querySelector('.cs-seasonalafter-wrap-' + accountIndex);
+                            if (afterWrap) afterWrap.style.display = (value === '1' || value === '2') ? '' : 'none';
+                        }
+                        if (field === 'redoMode') {
+                            const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);
+                            if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
+                        }
+                        saveContractSetting(container, accountIndex, field, value, () => {
+                            if (el.type === 'checkbox') el.checked = (before === 'true');
+                            else el.value = before;
+                        });
+                        prior = value;
+                    });
+                });
+
+                container.querySelectorAll('.cs-reward-group').forEach(group => {
+                    const field = group.dataset.field;
+                    group.querySelectorAll('.cs-reward').forEach(cb => {
+                        let priorChecked = cb.checked;
+                        cb.addEventListener('change', () => {
+                            const before = priorChecked;
+                            const value = rewardGroupValue(group);
+                            saveContractSetting(container, accountIndex, field, value, () => {
+                                cb.checked = before;
+                            });
+                            priorChecked = cb.checked;
+                        });
+                    });
+                });
+            });
+        }
+
+        function wireTestAssignment() {
+            document.querySelectorAll('.ta-test-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const index = parseInt(btn.dataset.index);
+                    const select = document.getElementById('ta-contract-' + index);
+                    const result = document.getElementById('ta-result-' + index);
+                    if (!select || !result) return;
+                    const contractId = select.value;
+                    if (!contractId) return;
+                    result.innerHTML = '<span style="color:grey;">Testing...</span>';
+
+                    fetch('/MyFarms/TestAssignment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ accountIndex: index, contractId: contractId })
+                    }).then(res => {
+                        if (!res.ok) {
+                            result.innerHTML = '<span style="color:red;">Test failed (' + res.status + ').</span>';
+                            return null;
+                        }
+                        return res.json();
+                    }).then(data => {
+                        if (!data) return;
+                        renderTestResult(result, data);
+                    }).catch(() => {
+                        result.innerHTML = '<span style="color:red;">Test failed.</span>';
+                    });
+                });
+            });
+        }
+
+        function renderTestResult(result, data) {
+            const verdict = '<div style="display:inline-block; padding:6px 14px; border-radius:6px; font-weight:700; font-size:1.05em; color:#fff; background:'
+                + (data.assigned ? '#2e7d32' : '#c62828') + ';">'
+                + (data.assigned ? 'Assigned' : 'Not assigned') + '</div>';
+
+            const d = data.diagnostics || {};
+            const yn = v => v ? 'Yes' : 'No';
+            const diagParts = [
+                'Seasonal contract: ' + yn(d.isSeasonal),
+                'Missing seasonal PE: ' + yn(d.missingSeasonalPe),
+                'Colleggtible contract: ' + yn(d.isColleggtible),
+                'Missing colleggtible: ' + yn(d.missingColleggtible),
+                'Previously completed: ' + yn(d.previouslyCompleted)
+            ];
+            if (d.previousScore != null) diagParts.push('Prev score: ' + Math.round(d.previousScore).toLocaleString());
+            if (d.filtersDisabled) diagParts.push('Filters OFF (server uses roles)');
+            const diag = '<div style="margin:8px 0; font-size:.85em; color:#9aa0a6; line-height:1.6;">' + escapeHtml(diagParts.join('  ·  ')) + '</div>';
+
+            const outMeta = {
+                'Pass': { c: '#66bb6a', t: 'Pass' },
+                'Exclude': { c: '#ef5350', t: 'Excluded' },
+                'ForceInclude': { c: '#66bb6a', t: 'Force assigned' },
+                'NotApplicable': { c: '#888', t: 'N/A' }
+            };
+            const tierColor = { 'Gate': '#5c6bc0', 'Force': '#26a69a', 'Include': '#8e7cc3' };
+
+            let decisiveDone = false;
+            const rows = (data.results || []).map(r => {
+                const m = outMeta[r.outcome] || { c: '#aaa', t: r.outcome };
+                const decisive = !decisiveDone && (r.outcome === 'Exclude' || r.outcome === 'ForceInclude');
+                if (decisive) decisiveDone = true;
+                const rowBg = decisive ? (r.outcome === 'Exclude' ? 'rgba(239,83,80,.16)' : 'rgba(102,187,106,.16)') : 'transparent';
+                const tc = tierColor[r.tier] || '#888';
+                const dim = r.outcome === 'NotApplicable' ? '#888' : '#dadce0';
+                return '<div style="display:flex; align-items:center; gap:10px; padding:4px 8px; border-radius:4px; background:' + rowBg + ';">'
+                    + '<span style="min-width:62px; font-size:.72em; font-weight:600; color:#fff; background:' + tc + '; padding:2px 6px; border-radius:10px; text-align:center;">' + escapeHtml(r.tier) + '</span>'
+                    + '<span style="flex:1; color:' + dim + ';">' + escapeHtml(r.reason) + '</span>'
+                    + '<span style="font-weight:600; color:' + m.c + '; white-space:nowrap;">' + escapeHtml(m.t) + '</span>'
+                    + '</div>';
+            }).join('');
+
+            result.innerHTML = verdict + diag + '<div style="display:flex; flex-direction:column; gap:2px; margin-top:6px;">' + rows + '</div>';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
     </script>
 }

@@ -300,7 +300,15 @@ namespace EGG9000.Bot.Automated {
             var users = await _db.DBUsers.Where(x => x.GuildId == guild.Id && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.UtcNow.AddDays(-60)).ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
-            var (coopGroups, excluded) = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild);
+
+            var (contractSeason, seasonProgresses) = await OrganizeCoops.LoadContractSeasonData(_db, contract, users);
+
+            var (coopGroups, excluded) = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild, contractSeason, seasonProgresses);
+
+            // Shadow: evaluate the new engine against this live (old) decision and log divergences.
+            // Fully isolated - never affects the assignment above.
+            await EGG9000.Common.Contracts.Assignment.Diagnostics.AssignmentShadowRecorder.RecordAsync(
+                _db, users, contract, coops, dbguild, contractSeason, seasonProgresses, userCsHistoryEntries, _logger);
 
             var bgGroups = coopGroups.Where(x => x.bg == (skipbg + 1).ToString());
 
