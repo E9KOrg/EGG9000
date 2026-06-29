@@ -252,13 +252,13 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand(Description = "Register your EggInc account with the bot", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [SlashParam] SocketGuildUser user) {
-            return _Register(command, db, _client, bugsnag, eggincid, user, logger);
+            return _Register(command, db, _client, bugsnag, eggincid, user, logger, isStaff: true);
         }
         [SlashCommand(Description = "Register your EggInc account with the bot")]
         public static Task Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, ILogger logger, [SlashParam(Description = "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
             return _Register(command, db, _client, bugsnag, eggincid, command.User, logger);
         }
-        public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger) {
+        public static async Task _Register(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger, bool isStaff = false) {
             eggincid = eggincid.ToUpper();
 
             if(!Regex.IsMatch(eggincid, @"^EI\d{16}$")) {
@@ -266,7 +266,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            await command.DeferAsync();
+            await command.DeferAsync(ephemeral: !isStaff);
 
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
             var guildObj = db.Guilds.FirstOrDefault(x => x.Id == guild.Id || x.OverflowServersJson.Contains(guild.Id.ToString()));
@@ -295,10 +295,13 @@ namespace EGG9000.Bot.Commands {
             }
 
             var existingAccountColumns = await db.DBUsers
-                .Select(u => new { u._eggIncIds, u._contractRegistrationByte })
+                .Select(u => new { u.DiscordId, u._eggIncIds, u._contractRegistrationByte })
                 .ToListAsync();
-            if(existingAccountColumns.Any(u => DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte).EggIncAccounts.Any(a => a.Id.ToUpper() == eggincid))) {
-                await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
+            var existingOwner = existingAccountColumns.FirstOrDefault(u => DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte).EggIncAccounts.Any(a => a.Id.Equals(eggincid, StringComparison.CurrentCultureIgnoreCase)));
+            if(existingOwner is not null) {
+                var isSameUser = existingOwner.DiscordId == user.Id;
+                await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError(isSameUser ? $"You have already registered EggInc ID `{eggincid}` with the bot." : $"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
+                if (!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{command.Channel.Id}>, but it's already registered to {(isSameUser ? "the same user" : "another user")}.");
                 return;
             }
 
@@ -319,16 +322,17 @@ namespace EGG9000.Bot.Commands {
                     m.Content = "";
                     m.Embed = EmbedError($"Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by 16 numbers.");
                 });
+                if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{command.Channel.Id}>, but no valid backup was returned. Could be an invalid ID or API issue.");
                 return;
             }
 
-            var addedUser = false;
-            var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser == null) {
+            var newAccount = new EggIncAccount { Id = backup.EggIncId, Backup = backup, Group = 1 };
+            bool addedUser;
+            if(await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id) is var dbuser && dbuser is null) {
                 dbuser = new DBUser {
                     DiscordId = user.Id,
                     DiscordUsername = user.Username,
-                    EggIncAccounts = [new EggIncAccount { Id = backup.EggIncId, Backup = backup, Group = 1 }],
+                    EggIncAccounts = [newAccount],
                     CreateOn = DateTimeOffset.UtcNow,
                     GuildId = _client.Guilds.First(x => x.TextChannels.Any(y => y.Id == command.Channel.Id)).Id,
                     showEB = true
@@ -336,20 +340,14 @@ namespace EGG9000.Bot.Commands {
                 db.DBUsers.Add(dbuser);
                 addedUser = true;
             } else {
-                if(dbuser.EggIncAccounts.Any(y => y.Id == backup.EggIncId)) {
-                    await command.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = EmbedError($"You have already registered this EggInc ID with the bot."); });
-                    return;
-                }
-                if(dbuser.EggIncAccounts.Count == 0) {
-                    addedUser = true;
-                }
-                dbuser.EggIncAccounts.Add(new EggIncAccount { Id = backup.EggIncId, Backup = backup, Group = 1 });
+                addedUser = dbuser.EggIncAccounts.Count == 0;
+                dbuser.EggIncAccounts.Add(newAccount);
                 dbuser.UpdateAccounts();
             }
 
             await db.SaveChangesAsync();
 
-            IGuildUser socketGuildUser = user as SocketGuildUser
+            var socketGuildUser = user as SocketGuildUser
                 ?? guild.Users.FirstOrDefault(x => x.Id == user.Id)
                 ?? (IGuildUser)await _client.Rest.GetGuildUserAsync(guild.Id, user.Id);
 
@@ -427,6 +425,13 @@ namespace EGG9000.Bot.Commands {
             }
 
             await command.DeleteResponseFix();
+
+            async Task NotifyRegistrationIssueChannel(string description) {
+                if(guild is null || guildObj is null || !guildObj.HasChannel(GuildChannelType.RegisterIssues)) return;
+                var staffRole = guild.Roles.FirstOrDefault(x => x.Id == (guildObj.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole)?.Id ?? 0));
+                var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
+                await ChannelHelper.DetermineAndSend(_client.Gateway, guildObj, GuildChannelType.RegisterIssues, new() { Text = $"{staffTag}{description}" });
+            }
         }
 
         public static async Task CleanWelcomeChannel(SocketGuild guild, DiscordHostedService _client, IUser socketUser, int chain = 0, ulong excludeId = ulong.MaxValue) {

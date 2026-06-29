@@ -281,5 +281,7 @@ namespace EGG9000.Common.Database.Entities {
         BotLog = 47,
         [Description("/TC/Optional: Where server-wide co-op stats will be posted and kept updated")]
         CoopStatsChannel = 48,
+        [Description("/TC/Optional: Where E9K will log issues that occur with users trying to /register")]
+        RegisterIssues = 49,
     }
 }

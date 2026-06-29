@@ -234,6 +234,11 @@ namespace EGG9000.Common.Database {
 
         public CustomBackup() { }
 
+        // CS is sourced out-of-band (get_contract_player_info), so the protobuf rebuild has no fresh
+        // value. Keep the prior value unless a positive fresh one is supplied. -1 is the legacy
+        // "unknown" sentinel and counts as no value.
+        public static double CarryForwardCs(double fresh, double last) => fresh > 0 ? fresh : last;
+
         public CustomBackup(Ei.Backup backup, FrozenSet<Ei.Contract> contracts, CustomBackup lastBackup = null) {
             if(backup?.Game == null) {
                 EmptyBackup = true;
@@ -262,6 +267,12 @@ namespace EGG9000.Common.Database {
             TankLevel = activeTankArtifacts.TankLevel;
             //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
+
+            // CS is written out-of-band by AccountRefresh.ApplyExtrasAsync (from get_contract_player_info),
+            // not derived from this protobuf backup. Carry the last known value forward so a mass-backup
+            // rebuild doesn't reset it to 0 and drop the user from CSLeaderboard's "TotalCS > 0" filter.
+            TotalCS = CarryForwardCs(0, lastBackup?.TotalCS ?? 0);
+            SeasonCS = CarryForwardCs(0, lastBackup?.SeasonCS ?? 0);
 
             VirtueEggsDelivered = backup.Virtue?.EggsDelivered.ToArray() ?? Array.Empty<double>();
             Resets = backup.Virtue?.Resets ?? 0;
