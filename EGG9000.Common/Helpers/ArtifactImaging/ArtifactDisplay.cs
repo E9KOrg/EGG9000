@@ -17,15 +17,11 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
     public static class ArtifactDisplay {
         private static readonly TextInfo _titleCase = new CultureInfo("en-US", false).TextInfo;
 
-        // Sentinel the game uses for a "Guaranteed" effect; treat it as no multiplier so we show the
-        // data-backed "Guaranteed" label instead of "9999x".
-        private const double GuaranteedSentinel = 9999;
-
         // "{Value}x" for a multiplier artifact/stone (e.g. a 5x boost), or null when the instance isn't a
         // plain multiplier (additive, sub-2x percent, or the Guaranteed sentinel) and the caller should use
         // its data-backed Size string instead.
         private static string MultiplierLabel(EggIncArtifactInstance artifact) =>
-            !artifact.Additive && artifact.Value >= 2 && artifact.Value < GuaranteedSentinel
+            !artifact.Additive && artifact.Value >= 2 && artifact.Value < EggIncArtifacts.GuaranteedSentinel
                 ? $"{artifact.Value}x"
                 : null;
 
