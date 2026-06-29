@@ -340,10 +340,18 @@ namespace EGG9000.Site.Controllers {
             var result = Common.Contracts.Assignment.ContractSettingField.Apply(s, m.Field, m.Value);
             if(result.Status != Common.Contracts.Assignment.ContractSettingApplyStatus.Ok) return BadRequest(result.Status.ToString());
 
-            // Dual-write: keep the old scalar keys in sync so the live old logic honors this edit.
+            // Anti-dodge: the seasonal CS goal can never be below the grade floor (same as the Discord
+            // path). The per-season PE-CS floor is applied at assignment, not here. Echo the effective
+            // value back so the client can reflect any clamp.
+            double? effectiveCsGoal = null;
+            if(m.Field == "seasonalCsGoal") {
+                s.Seasonal.CsGoal = s.Seasonal.EffectiveCsGoal(account.GetGrade());
+                effectiveCsGoal = s.Seasonal.CsGoal;
+            }
+
             dbuser.UpdateAccounts();
             await _db.SaveChangesAsync();
-            return Ok();
+            return Ok(new { effectiveCsGoal });
         }
 
         public record TestAssignmentModel {

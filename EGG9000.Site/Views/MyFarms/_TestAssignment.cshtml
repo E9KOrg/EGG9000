@@ -6,15 +6,24 @@
 }
 
 <div class="test-assignment" data-account-index="@index" style="margin-top:20px;">
-    <div class="form-group" style="max-width:600px;">
-        <label for="ta-contract-@index">Contract</label>
-        <select class="form-control ta-contract" id="ta-contract-@index">
-            @foreach (var c in contracts) {
-                <option value="@c.ID">@c.Name (@c.ID)</option>
-            }
-        </select>
+    <div class="card">
+        <div class="card-header"><b>Assignment Testing</b></div>
+        <div class="card-body">
+            <div class="form-group" style="max-width:600px;">
+                <label for="ta-contract-@index">Contract</label>
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <input class="form-control ta-contract" id="ta-contract-@index" list="ta-contract-list-@index"
+                           placeholder="Search contracts..." autocomplete="off" style="flex:1 1 auto;" />
+                    <button type="button" class="btn btn-primary ta-test-btn" data-index="@index" style="flex:0 0 auto;">Test</button>
+                </div>
+                <datalist id="ta-contract-list-@index">
+                    @foreach (var c in contracts) {
+                        <option value="@c.Name (@c.ID)"></option>
+                    }
+                </datalist>
+            </div>
+            <p style="font-size:0.85em; color:grey; margin-top:8px;">Ignores current-round assignment (whether you are already in a co-op).</p>
+            <div class="ta-result" id="ta-result-@index" style="margin-top:12px;"></div>
+        </div>
     </div>
-    <button type="button" class="btn btn-primary ta-test-btn" data-index="@index">Test</button>
-    <p style="font-size:0.85em; color:grey; margin-top:8px;">Ignores current-round assignment (whether you are already in a co-op).</p>
-    <div class="ta-result" id="ta-result-@index" style="margin-top:12px;"></div>
 </div>

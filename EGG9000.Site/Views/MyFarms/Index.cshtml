@@ -67,6 +67,19 @@
         padding: 0px;
     }
 
+    /* Dependent contract-setting fields: indented under the control they depend on. */
+    .cs-dependent {
+        margin-top: 8px;
+        margin-left: 16px;
+        padding-left: 12px;
+        border-left: 2px solid #444;
+    }
+
+    /* A touch more breathing room above each settings checkbox. */
+    .contract-settings .form-check.cs-check {
+        margin-top: 10px;
+    }
+
     .Expired td {
         opacity: 60%;
     }
@@ -681,7 +694,18 @@
                 body: JSON.stringify({ accountIndex: accountIndex, field: field, value: value })
             }).then(res => {
                 if (res.ok) {
-                    showCsStatus(container, 'Saved', true);
+                    res.json().then(body => {
+                        // Server enforces the grade floor; reflect any clamp back into the input.
+                        if (body && body.effectiveCsGoal != null) {
+                            const input = container.querySelector('#cs-seasonalgoal-' + accountIndex);
+                            if (input && String(Math.round(body.effectiveCsGoal)) !== input.value) {
+                                input.value = Math.round(body.effectiveCsGoal);
+                                showCsStatus(container, 'Adjusted to grade minimum', true);
+                                return;
+                            }
+                        }
+                        showCsStatus(container, 'Saved', true);
+                    }).catch(() => showCsStatus(container, 'Saved', true));
                 } else {
                     if (revert) revert();
                     showCsStatus(container, 'Save failed', false);
@@ -745,7 +769,11 @@
                     const select = document.getElementById('ta-contract-' + index);
                     const result = document.getElementById('ta-result-' + index);
                     if (!select || !result) return;
-                    const contractId = select.value;
+                    // The picker value is "Name (contractId)"; pull the id from the trailing parens.
+                    // Fall back to the raw text so a directly-typed id still works.
+                    const raw = (select.value || '').trim();
+                    const m = raw.match(/\(([^()]+)\)\s*$/);
+                    const contractId = m ? m[1] : raw;
                     if (!contractId) return;
                     result.innerHTML = '<span style="color:grey;">Testing...</span>';
 
