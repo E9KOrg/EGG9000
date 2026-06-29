@@ -1382,9 +1382,57 @@ music
                 .ToList();
             var guild = _discord.Guilds.First(x => x.Id == guildId);
             await guild.DownloadUsersAsync();
-            var xrefs = await _db.UserCoopXrefs.FromSqlRaw("select UserCoopXrefs.* from UserCoopXrefs where UserCoopXrefs.CreatedOn = (select max(t2.CreatedOn) from UserCoopXrefs t2 where t2.UserId = UserCoopXrefs.UserId)").ToListAsync();
+            // Latest xref per user. Was raw SQL with unquoted PascalCase identifiers, which
+            // Postgres folds to lowercase (42P01 "usercoopxrefs does not exist"). Materialize
+            // once then group client-side; the view only needs the most recent xref per user.
+            var xrefs = (await _db.UserCoopXrefs.AsQueryable().ToListAsync())
+                .GroupBy(x => x.UserId)
+                .Select(g => g.OrderByDescending(x => x.CreatedOn).First())
+                .ToList();
 
             return View((users, guild.Users, xrefs));
+        }
+
+        public async Task<IActionResult> NonServerUsers() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guild = _discord.Guilds.First(x => x.Id == guildId);
+            await guild.DownloadUsersAsync();
+
+            // A partial roster cannot tell "left" from "not yet downloaded"; refuse to list
+            // so staff never unassign a real member during an incomplete cache.
+            if(!guild.HasAllMembers) {
+                return View((new List<DBUser>(), true));
+            }
+
+            var memberIds = guild.Users.Select(u => u.Id).ToHashSet();
+
+            var rows = (await _db.DBUsers
+                .Where(u => u.GuildId == guildId)
+                .Select(u => new { u.Id, u.DiscordId, u.DiscordUsername, u._eggIncIds, u._contractRegistrationByte })
+                .ToListAsync())
+                .Where(u => !memberIds.Contains(u.DiscordId))
+                .Select(u => {
+                    var row = DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte);
+                    row.Id = u.Id;
+                    row.DiscordId = u.DiscordId;
+                    row.DiscordUsername = u.DiscordUsername;
+                    return row;
+                })
+                .ToList();
+
+            return View((rows, false));
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
+        public async Task<IActionResult> RemoveServer([FromQuery] Guid UserId) {
+            var user = await _db.DBUsers.FirstAsync(x => x.Id == UserId);
+            if(!VerifyId(user.GuildId)) {
+                return NotFound();
+            }
+            user.LastGuild = user.GuildId;
+            user.GuildId = 0;
+            await _db.SaveChangesAsync();
+            return RedirectToAction("NonServerUsers");
         }
 
         public async Task<IActionResult> SaveNotes([FromQuery] Guid UserId, [FromQuery] string Notes) {

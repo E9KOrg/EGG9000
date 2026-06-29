@@ -213,6 +213,14 @@ namespace EGG9000.Site.Controllers {
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
+            var guild = _discord.Guilds.First(g => g.Id == guildid);
+            // When the roster is complete, absence from guild.Users is authoritative: the user
+            // left the server. A stale cached SocketGuildUser would otherwise keep them on the
+            // board. When the roster is incomplete, fall back to the weaker not-null check so a
+            // partial cache never hides a real member.
+            var rosterComplete = guild.HasAllMembers;
+            var memberIds = guild.Users.Select(u => u.Id).ToHashSet();
+
             var allUsers = await _databaseCache.GetDbUsers();
             var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
@@ -228,13 +236,13 @@ namespace EGG9000.Site.Controllers {
             var accounts = rawusers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new LeaderboardUser {
                 User = x.DBUser,
                 Backup = y.Backup,
-                DiscordUser = _discord.Guilds.First(g => g.Id == x.GuildId).Users.FirstOrDefault(du => du.Id == x.DiscordId),
+                DiscordUser = guild.Users.FirstOrDefault(du => du.Id == x.DiscordId),
                 TotalContracts = x.DBUser.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0,
                 TotalCraftingXP = y.Backup?.CraftingXP ?? 0,
                 CraftingLevel = y.Backup?.GetCraftingLevel() ?? 1,
-            })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            })).Where(x => (rosterComplete ? memberIds.Contains(x.User.DiscordId) : x.DiscordUser != null) && x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
         }
