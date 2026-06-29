@@ -5,8 +5,11 @@ using MessagePack;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using G = Ei.Contract.Types.PlayerGrade;
 
 namespace EGG9000.Test {
     // Guards the InactivePlayers / register projection change. Both call sites stopped loading the
@@ -68,6 +71,49 @@ namespace EGG9000.Test {
         public void NullColumnsYieldNoAccounts() {
             var projected = DBUser.FromAccountColumns(null, null);
             Assert.AreEqual(0, projected.EggIncAccounts.Count);
+        }
+
+        // The EggIncAccounts getter syncs LastGrade from the most-recent backup contract grade. That
+        // sync may only catch the grade up, never push it down. A lower-grade backup contract accepted
+        // after PromotionTime is a grade pull (ULTRA all-grade coop join), not a demotion - it must not
+        // overwrite a higher LastGrade. These build the user via the persisted columns so the getter's
+        // backup-hydration + grade-sync branch runs.
+        private static DBUser UserWithBackupGrade(G lastGrade, long promotionTimeUnix, G backupGrade, long backupAccepted) {
+            var source = new DBUser {
+                EggIncAccounts = new List<EggIncAccount> {
+                    new() {
+                        Id = "EI777",
+                        Name = "Z",
+                        LastGrade = lastGrade,
+                        PromotionTime = DateTimeOffset.FromUnixTimeSeconds(promotionTimeUnix)
+                    }
+                }
+            };
+            source._CustomBackups = MessagePackSerializer.Serialize(new List<CustomBackup> {
+                new() {
+                    EggIncId = "EI777",
+                    Farms = [new CustomFarm { Grade = backupGrade, TimeAccepted = backupAccepted }]
+                }
+            }, DBUser.lz4Options);
+            // Rehydrate from the persisted columns so the getter runs the backup-hydration + grade-sync
+            // branch (the in-memory _accounts cache on `source` would otherwise short-circuit it).
+            return new DBUser {
+                _eggIncIds = source._eggIncIds,
+                _contractRegistrationByte = source._contractRegistrationByte,
+                _CustomBackups = source._CustomBackups
+            };
+        }
+
+        [TestMethod]
+        public void LowerGradeBackupContractDoesNotDemoteLastGrade() {
+            var user = UserWithBackupGrade(G.GradeAaa, 1_000_000_000, G.GradeAa, 2_000_000_000);
+            Assert.AreEqual(G.GradeAaa, user.EggIncAccounts.Single().LastGrade);
+        }
+
+        [TestMethod]
+        public void HigherGradeBackupContractCatchesLastGradeUp() {
+            var user = UserWithBackupGrade(G.GradeAa, 1_000_000_000, G.GradeAaa, 2_000_000_000);
+            Assert.AreEqual(G.GradeAaa, user.EggIncAccounts.Single().LastGrade);
         }
     }
 }
