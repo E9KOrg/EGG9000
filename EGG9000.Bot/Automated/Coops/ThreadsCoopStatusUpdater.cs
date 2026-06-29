@@ -832,13 +832,15 @@ namespace EGG9000.Bot.Automated.Coops {
                     var mention = deflectorUser.DiscordUser?.Mention ?? $"<@{deflectorUser.User?.DiscordId}>";
                     var (b64, renderError) = await AfxSetsRender.RenderSingleSetB64(recommendedSet);
                     if(b64 is not null) {
+                        // Mark notified on the loop thread so the batch SaveChanges below persists it.
+                        // Setting it inside the queued lambda races SaveChanges and touches the
+                        // DbContext off-thread, which re-sent the suggestion every cycle.
+                        if(deflectorUser.Xref is not null) deflectorUser.Xref.TachyonDeflectorNotified = true;
                         var capturedMention = mention;
                         var capturedB64 = b64;
-                        var capturedXref = deflectorUser.Xref;
                         _queue.EnqueueLow(async () => {
                             using var file = new FileAttachment(new MemoryStream(Convert.FromBase64String(capturedB64)), "TachyonSuggestion.jpeg", "Recommended Artifact Set");
                             await coopThread.SendFilesAsync([file], text: $"{capturedMention} should equip their **Tachyon Deflector**. Recommended set:");
-                            if(capturedXref is not null) capturedXref.TachyonDeflectorNotified = true;
                         });
                     } else {
                         _logger.LogWarning("Tachyon image render failed for {user}: {error}", deflectorUser.User?.DiscordId, renderError);
