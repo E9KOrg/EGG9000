@@ -214,13 +214,11 @@ namespace EGG9000.Site.Controllers {
             var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
 
             var guild = _discord.Guilds.First(g => g.Id == guildid);
-            // When the roster is complete, absence from guild.Users is authoritative: the user
-            // left the server. A stale cached SocketGuildUser would otherwise keep them on the
-            // board. When the roster is incomplete, fall back to the weaker not-null check so a
-            // partial cache never hides a real member.
-            var rosterComplete = guild.HasAllMembers;
-            var memberIds = guild.Users.Select(u => u.Id).ToHashSet();
-
+            // Membership is the DB GuildId, not the live Discord cache. The site runs its own bare
+            // socket client whose member cache can read "complete" while actually partial, and gating
+            // on it dropped real members from the board (the recurring CSLeaderboard "few users" bug).
+            // ManageOverflow owns reconciling GuildId against true Discord membership; the board just
+            // trusts it. DiscordUser is still resolved below for the display name only.
             var allUsers = await _databaseCache.GetDbUsers();
             var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
                 x.DiscordId,
@@ -242,7 +240,7 @@ namespace EGG9000.Site.Controllers {
                 SeasonCS = y.Backup?.SeasonCS ?? 0,
                 TotalCraftingXP = y.Backup?.CraftingXP ?? 0,
                 CraftingLevel = y.Backup?.GetCraftingLevel() ?? 1,
-            })).Where(x => (rosterComplete ? memberIds.Contains(x.User.DiscordId) : x.DiscordUser != null) && x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            })).Where(x => x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
         }
