@@ -33,7 +33,7 @@ namespace EGG9000.Common.Contracts.Assignment.Diagnostics {
                 .GroupBy(x => x.EggIncId)
                 .ToDictionary(g => g.Key, g => g.MaxBy(x => x.Created));
 
-            var newResults = new Dictionary<string, (bool assigned, string reason, ulong discordId, EggIncAccount account)>();
+            var newResults = new Dictionary<string, (bool assigned, string reason, ulong discordId, bool seasonalDecisive)>();
             foreach(var user in users) {
                 var inputs = new List<(AccountFacts facts, AssignmentSettings settings)>();
                 var byFacts = new Dictionary<AccountFacts, EggIncAccount>();
@@ -47,7 +47,7 @@ namespace EGG9000.Common.Contracts.Assignment.Diagnostics {
                 var decisions = AssignmentEvaluator.EvaluateUser(inputs, contractFacts, forbidden, filtersDisabled);
                 foreach(var (facts, decision) in decisions) {
                     var account = byFacts[facts];
-                    newResults[account.Id] = (decision.Assigned, decision.ExclusionReason, user.DiscordId, account);
+                    newResults[account.Id] = (decision.Assigned, decision.ExclusionReason, user.DiscordId, IsSeasonalDecisive(decision));
                 }
             }
 
@@ -58,50 +58,28 @@ namespace EGG9000.Common.Contracts.Assignment.Diagnostics {
                 if(!legacyByAccount.TryGetValue(eggIncId, out var legacyResult)) continue;
                 if(legacyResult.Assigned == newResult.assigned) continue;
 
-                var expectedSeasonal = IsExpectedSeasonalDeviation(newResult.account, contractSeason, progresses);
                 mismatches.Add(new ParityMismatch(
                     eggIncId, newResult.discordId,
                     legacyResult.Assigned, newResult.assigned,
                     legacyResult.Reason, newResult.reason,
-                    expectedSeasonal));
+                    newResult.seasonalDecisive));
             }
 
             return new ParityReport(contract.ID, total, total - mismatches.Count, mismatches);
         }
 
-        // By-design seasonal deviations under v2 (mandatory Seasonal Contracts, migrated from the old
-        // option). True when a seen old-vs-new mismatch stems from the intended seasonal redesign, not a
-        // regression. The reward-filter collapse / PE-dropped diffs are intentionally NOT flagged here -
-        // those are rarer and left as "unexpected" for human review.
-        public static bool IsExpectedSeasonalDeviation(EggIncAccount account, SeasonInfo contractSeason, List<UserSeasonProgress> seasonProgresses) {
-            if(contractSeason is null) return false;
-
-            // New-only seasonal capabilities have no old-key equivalent, and the lossy dual-write cannot
-            // represent them, so any seasonal diff they cause is by-design (not a regression):
-            //   - AlwaysAssign keeps force-assigning even after PE (dual-writes to AlwaysAssignIfMissing,
-            //     which the old logic excludes once PE is earned).
-            //   - RewardFilterAfter changes the post-condition behavior the old option cannot express.
-            var seasonal = account.Assignment?.Seasonal;
-            if(seasonal != null && (seasonal.Mode == SeasonalMode.AlwaysAssign || seasonal.RewardFilterAfter))
-                return true;
-
-            return ClassifySeasonalDeviation(
-                account.SeasonalPeOption,
-                () => SeasonalPeProgress.IsMissing(account.Id, account.GetGrade(), contractSeason, seasonProgresses));
-        }
-
-        // Pure classifier, unit-testable without a DBUser/Backup graph. Migration maps the old option to
-        // a v2 SeasonalRule (DontAssign/AlwaysAssignIfMissing/NotSet -> UntilPeEarned after=false;
-        // AssignIfBelowThreshold -> UntilCsGoal). On a seasonal contract the intended divergences are:
-        //   - DontAssign: old always excluded; new force-assigns while PE is still missing.
-        //   - NotSet: old always assigned; new excludes once PE is earned (mandatory stop-after-PE).
-        // AlwaysAssignIfMissing and AssignIfBelowThreshold map 1:1 and produce no divergence.
-        public static bool ClassifySeasonalDeviation(SeasonalPeOption option, System.Func<bool> missingPe) {
-            return option switch {
-                SeasonalPeOption.DontAssign => missingPe(),
-                SeasonalPeOption.NotSet => !missingPe(),
-                _ => false
-            };
+        // A mismatch is a by-design seasonal deviation when the new engine's decision was DRIVEN by the
+        // SeasonalContractsRule - i.e. that rule short-circuited the evaluation with a decisive outcome:
+        //   - ForceInclude: mandatory seasonal assignment (until PE earned / CS goal) overriding the old
+        //     reward-filter or previously-completed exclusion. This is the v2 anti-dodge intent.
+        //   - Exclude: seasonal goal already met, so the new engine stops assigning (no old equivalent).
+        // The old logic had no mandatory-seasonal tier, so any time this rule is decisive the divergence
+        // is the intended redesign, not a regression. When the seasonal rule is NOT decisive, the diff
+        // stems from somewhere else and stays flagged as unexpected for human review.
+        public static bool IsSeasonalDecisive(AssignmentDecision decision) {
+            return decision.Results.Any(r =>
+                r.Rule == AssignmentRuleId.SeasonalContracts &&
+                (r.Outcome == RuleOutcome.ForceInclude || r.Outcome == RuleOutcome.Exclude));
         }
     }
 }

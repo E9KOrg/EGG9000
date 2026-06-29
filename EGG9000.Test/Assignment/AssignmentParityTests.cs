@@ -1,62 +1,57 @@
 using EGG9000.Common.Contracts.Assignment;
 using EGG9000.Common.Contracts.Assignment.Diagnostics;
-using EGG9000.Common.Helpers;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test.Assignment {
     [TestClass]
     public class AssignmentParityTests {
-        // v2 classifier: expected (by-design) seasonal divergences are DontAssign-while-missing (old
-        // excluded, new force-assigns) and NotSet-while-satisfied (old assigned, new stops after PE).
-        // AlwaysAssignIfMissing / AssignIfBelowThreshold map 1:1 -> never a divergence.
+        // v2 parity classifier: a mismatch is a by-design seasonal deviation when the new engine's
+        // decision was driven by the SeasonalContractsRule short-circuiting with ForceInclude (mandatory
+        // seasonal assignment) or Exclude (seasonal goal met). The old logic had no mandatory-seasonal
+        // tier, so a decisive seasonal rule means the divergence is the intended redesign, not a
+        // regression. Anything else stays flagged unexpected.
+
+        private static AssignmentDecision DecisionWith(bool assigned, params RuleResult[] results) =>
+            new() { Assigned = assigned, Results = results };
+
+        private static RuleResult Seasonal(RuleOutcome outcome) =>
+            new(AssignmentRuleId.SeasonalContracts, RuleTier.Force, outcome, "seasonal");
 
         [TestMethod]
         [TestCategory("Unit")]
-        public void DontAssign_ExpectedOnlyWhileMissing() {
-            Assert.IsTrue(AssignmentParityChecker.ClassifySeasonalDeviation(SeasonalPeOption.DontAssign, () => true));
-            Assert.IsFalse(AssignmentParityChecker.ClassifySeasonalDeviation(SeasonalPeOption.DontAssign, () => false));
+        public void SeasonalForceInclude_IsExpected() {
+            var decision = DecisionWith(true, Seasonal(RuleOutcome.ForceInclude));
+            Assert.IsTrue(AssignmentParityChecker.IsSeasonalDecisive(decision));
         }
 
         [TestMethod]
         [TestCategory("Unit")]
-        public void NotSet_ExpectedOnlyWhenSatisfied() {
-            Assert.IsTrue(AssignmentParityChecker.ClassifySeasonalDeviation(SeasonalPeOption.NotSet, () => false));
-            Assert.IsFalse(AssignmentParityChecker.ClassifySeasonalDeviation(SeasonalPeOption.NotSet, () => true));
+        public void SeasonalExclude_IsExpected() {
+            var decision = DecisionWith(false, Seasonal(RuleOutcome.Exclude));
+            Assert.IsTrue(AssignmentParityChecker.IsSeasonalDecisive(decision));
         }
 
         [TestMethod]
         [TestCategory("Unit")]
-        public void CleanlyMappedOptions_NeverDeviate() {
-            foreach(var missing in new[] { true, false }) {
-                Assert.IsFalse(AssignmentParityChecker.ClassifySeasonalDeviation(SeasonalPeOption.AlwaysAssignIfMissing, () => missing));
-                Assert.IsFalse(AssignmentParityChecker.ClassifySeasonalDeviation(SeasonalPeOption.AssignIfBelowThreshold, () => missing));
-            }
+        public void SeasonalNotApplicable_IsNotExpected() {
+            var decision = DecisionWith(true, Seasonal(RuleOutcome.NotApplicable));
+            Assert.IsFalse(AssignmentParityChecker.IsSeasonalDecisive(decision));
         }
 
-        // New-only seasonal capabilities (AlwaysAssign, RewardFilterAfter) have no old-key equivalent, so
-        // any diff they cause is by-design and must be flagged expected regardless of the migrated option.
         [TestMethod]
         [TestCategory("Unit")]
-        public void NewOnlySeasonalCapabilities_FlaggedExpected() {
-            var season = new EGG9000.Common.Database.Entities.SeasonInfo { Id = "s1" };
-            var progresses = new System.Collections.Generic.List<EGG9000.Common.Database.Entities.UserSeasonProgress>();
+        public void NonSeasonalDecision_IsNotExpected() {
+            var decision = DecisionWith(false,
+                new RuleResult(AssignmentRuleId.RewardFilter, RuleTier.Include, RuleOutcome.Exclude, "rewards"));
+            Assert.IsFalse(AssignmentParityChecker.IsSeasonalDecisive(decision));
+        }
 
-            var always = new EGG9000.Common.Database.Entities.EggIncAccount {
-                Id = "u", SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing,
-                Assignment = new EGG9000.Common.Contracts.Assignment.AssignmentSettings {
-                    Seasonal = new EGG9000.Common.Contracts.Assignment.SeasonalRule { Mode = SeasonalMode.AlwaysAssign }
-                }
-            };
-            Assert.IsTrue(AssignmentParityChecker.IsExpectedSeasonalDeviation(always, season, progresses));
-
-            var after = new EGG9000.Common.Database.Entities.EggIncAccount {
-                Id = "u2", SeasonalPeOption = SeasonalPeOption.AlwaysAssignIfMissing,
-                Assignment = new EGG9000.Common.Contracts.Assignment.AssignmentSettings {
-                    Seasonal = new EGG9000.Common.Contracts.Assignment.SeasonalRule { Mode = SeasonalMode.UntilPeEarned, RewardFilterAfter = true }
-                }
-            };
-            Assert.IsTrue(AssignmentParityChecker.IsExpectedSeasonalDeviation(after, season, progresses));
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void EmptyResults_IsNotExpected() {
+            var decision = DecisionWith(true);
+            Assert.IsFalse(AssignmentParityChecker.IsSeasonalDecisive(decision));
         }
     }
 }
