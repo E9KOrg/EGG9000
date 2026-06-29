@@ -51,7 +51,7 @@ namespace EGG9000.Common.Contracts.Assignment {
     // stops for the rest of the season (false).
     [MessagePackObject]
     public class SeasonalRule {
-        [Key(0)] public SeasonalMode Mode { get; set; } = SeasonalMode.UntilPeEarned;
+        [Key(0)] public SeasonalMode Mode { get; set; } = SeasonalMode.AlwaysAssign;
         [Key(1)] public double CsGoal { get; set; }
         [Key(2)] public bool RewardFilterAfter { get; set; }
 

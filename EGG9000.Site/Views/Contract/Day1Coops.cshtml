@@ -84,12 +84,12 @@
     </select>
 
     <div class="row scrollable">
-        <template x-for="group in (bg ? bg.Grades : [])" :key="group.Grade">
+        <template x-for="group in gradeList" :key="group.Grade">
             <div class="col-sm">
                 <h2>
                     <img :src="group.GradeImage" style="height: 1em;" />
                     @if (isAdmin) {
-                        <input x-model.number="group.CoopCount" style="width: 60px;" />
+                        <input type="number" :value="group.CoopCount" @@input="group.CoopCount = parseInt($event.target.value) || 0" style="width: 60px;" />
                         <button class="btn btn-primary" @@click="reloadGrade(group)">Update Count</button>
                         <button class="btn btn-primary" @@click="startAll(group)" :disabled="group.Disable">Start All</button>
                         <span>Assigned Users: <span x-text="total(group)"></span></span>
@@ -190,6 +190,10 @@
 
                     const _exRaw = @Html.Raw(JsonConvert.SerializeObject(excluded));
                     this.excluded = _exRaw;
+                },
+
+                get gradeList() {
+                    return this.bg ? this.bg.Grades : [];
                 },
 
                 freeSpaces(grade) {

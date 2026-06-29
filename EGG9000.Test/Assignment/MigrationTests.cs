@@ -39,9 +39,9 @@ namespace EGG9000.Test.Assignment {
             SeasonalRule M(SeasonalPeOption o, double thr = 0) =>
                 AssignmentSettingsMigration.FromLegacyKeys(new EggIncAccount { SeasonalPeOption = o, SeasonalPeThreshold = thr }).Seasonal;
 
-            Assert.AreEqual(SeasonalMode.UntilPeEarned, M(SeasonalPeOption.NotSet).Mode);
-            Assert.AreEqual(SeasonalMode.UntilPeEarned, M(SeasonalPeOption.AlwaysAssignIfMissing).Mode);
-            Assert.AreEqual(SeasonalMode.UntilPeEarned, M(SeasonalPeOption.DontAssign).Mode);
+            Assert.AreEqual(SeasonalMode.AlwaysAssign, M(SeasonalPeOption.NotSet).Mode);
+            Assert.AreEqual(SeasonalMode.AlwaysAssign, M(SeasonalPeOption.AlwaysAssignIfMissing).Mode);
+            Assert.AreEqual(SeasonalMode.AlwaysAssign, M(SeasonalPeOption.DontAssign).Mode);
 
             var thr = M(SeasonalPeOption.AssignIfBelowThreshold, 7000);
             Assert.AreEqual(SeasonalMode.UntilCsGoal, thr.Mode);
