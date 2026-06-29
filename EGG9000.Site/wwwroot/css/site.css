@@ -145,6 +145,14 @@ body {
 .card > table thead tr th {
     border-top: none !important;
 }
+
+/* Tables carry Bootstrap's default 1rem bottom margin. In a borderless card with no
+   card-body padding that margin renders as a bare striped band that looks like an empty
+   trailing row. Drop it for card-hosted tables (direct or .table-responsive wrapped). */
+.card > .table,
+.card > .table-responsive > .table {
+    margin-bottom: 0;
+}
 @media (max-width: 768px) {
     .afx-card-container {
         flex-direction: column; /* Change to a vertical layout */
