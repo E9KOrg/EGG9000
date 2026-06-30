@@ -20,7 +20,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     /// <summary>
-    /// `/a configure` - the site's Configure Server page, inside Discord. Built
+    /// `/admin configure` - the site's Configure Server page, inside Discord. Built
     /// dynamically: channels/roles from <see cref="GuildChannelType"/> + its Description
     /// prefixes (/TC/, /R/), coop toggles from <see cref="GuildCoopSetting"/>, and scalar
     /// settings from <c>[GuildConfig]</c>-annotated <see cref="Guild"/> properties. Adding
@@ -218,7 +218,7 @@ namespace EGG9000.Bot.Commands {
             return (eb.Build(), cb.Build());
         }
 
-        [SlashCommand(Description = "Configure this server (same as the website)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
+        [SlashCommand(Description = "Configure this server (same as the website)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task Configure(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync(ephemeral: true);
             var g = await LoadGuild(db, command.GuildId);

@@ -19,7 +19,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     /// <summary>
-    /// `/a rankup` - per-guild rank-up announcement customization: master + exclusive-pool
+    /// `/admin rankup` - per-guild rank-up announcement customization: master + exclusive-pool
     /// toggles, the per-group notify filter, and the message pools (Global + one per rank
     /// group). Messages are <see cref="RankupMessage"/> rows scoped by GroupBaseOom and
     /// support {{user}} {{rank}} {{eb}} {{oom}} {{emoji:x}} {{command:x}} tokens. Mirrors the
@@ -117,7 +117,7 @@ namespace EGG9000.Bot.Commands {
             return (eb.Build(), cb.Build());
         }
 
-        [SlashCommand(Description = "Customize this server's rank-up announcements", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "a")]
+        [SlashCommand(Description = "Customize this server's rank-up announcements", AdminOnly = StaffOnlyLevel.CluckingCoordinator, ParentCommand = "admin")]
         public static async Task Rankup(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync(ephemeral: true);
             var g = await LoadGuild(db, command.GuildId);
