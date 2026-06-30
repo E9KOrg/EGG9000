@@ -23,6 +23,12 @@
 		}
 	</div>
 }
+@if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
+	<div style="padding-bottom: 0.75%">
+		Integrations<br />
+		<a href="/admin/apikeys" class="btn btn-primary">API Keys</a>
+	</div>
+}
 <div style="padding-bottom: 0.75%">
 	Player Reports<br />
 	<a href="/admin/sleepers" class="btn btn-primary">Sleepers</a>

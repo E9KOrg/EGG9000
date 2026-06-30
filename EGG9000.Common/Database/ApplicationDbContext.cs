@@ -133,6 +133,7 @@ namespace EGG9000.Common.Database {
         public DbSet<NasaApod> NasaApods { get; set; }
         public DbSet<SeasonInfo> SeasonInfos { get; set; }
         public DbSet<UserSeasonProgress> UserSeasonProgresses { get; set; }
+        public DbSet<ApiKey> ApiKeys { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
