@@ -29,9 +29,11 @@ using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -1500,6 +1502,66 @@ music
             }
 
             return View(creators);
+        }
+
+        public class ApiKeysViewModel {
+            public List<ApiKey> Keys { get; set; }
+            // Non-null only immediately after creation — shown once to the admin, never stored.
+            public string NewRawKey { get; set; }
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        public async Task<IActionResult> ApiKeys() {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var keys = await _db.ApiKeys
+                .Where(k => k.GuildId == guildId)
+                .OrderByDescending(k => k.CreatedAt)
+                .ToListAsync();
+            var newKey = TempData["NewApiKey"] as string;
+            return View(new ApiKeysViewModel { Keys = keys, NewRawKey = newKey });
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> CreateApiKey([FromForm] string label, [FromForm] string expiresAt) {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+
+            // Generate a cryptographically random 32-byte key, prefix with "egg_".
+            var rawBytes = RandomNumberGenerator.GetBytes(32);
+            var rawKey = "egg_" + Convert.ToBase64String(rawBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            var hash = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();
+
+            DateTimeOffset? expires = null;
+            if(!string.IsNullOrWhiteSpace(expiresAt) && DateTimeOffset.TryParse(expiresAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsedExpiry))
+                expires = parsedExpiry;
+
+            _db.ApiKeys.Add(new ApiKey {
+                Id = Guid.NewGuid(),
+                KeyHash = hash,
+                Label = label?.Trim() ?? "Unnamed",
+                GuildId = guildId,
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = expires,
+                Revoked = false
+            });
+            await _db.SaveChangesAsync();
+
+            // Pass raw key via TempData so it is shown once without appearing in the URL.
+            TempData["NewApiKey"] = rawKey;
+            return RedirectToAction("ApiKeys");
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RevokeApiKey([FromQuery] Guid id) {
+            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var key = await _db.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.GuildId == guildId);
+            if(key == null) return NotFound();
+            key.Revoked = true;
+            await _db.SaveChangesAsync();
+            return RedirectToAction("ApiKeys");
         }
     }
 }
