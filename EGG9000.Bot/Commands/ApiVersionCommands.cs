@@ -15,7 +15,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class ApiVersionCommands {
 
-        [SlashCommand(Description = "Update the Egg Inc API version triple at runtime (validated against the live API first).", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
+        [SlashCommand(Description = "Update the Egg Inc API version triple at runtime (validated against the live API first).", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "bot")]
         public static async Task SetVersions(
             FauxCommand command,
             IServiceProvider provider,

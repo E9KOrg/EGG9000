@@ -12,7 +12,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsync("Pong!", ephemeral: false);
         }
 
-        [SlashCommand(Description = "Test to see if bot is alive/check version", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        [SlashCommand(Description = "Test to see if bot is alive/check version", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "bot")]
         public static async Task Ping(FauxCommand command, ILogger _logger, [SlashParam(Required = false)] bool showInChannel = false) {
 
             var gitVersion = string.Empty;

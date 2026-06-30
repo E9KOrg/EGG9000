@@ -20,7 +20,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     /// <summary>
-    /// `/a editfaq` - in-Discord FAQ topic editing (the website's FAQ Customization page).
+    /// `/admin editfaq` - in-Discord FAQ topic editing (the website's FAQ Customization page).
     /// Lists/adds/edits/deletes the guild's <see cref="FAQTopic"/> rows with the same
     /// component+modal UX as <see cref="RankupCommands"/>; writes the same table and invalidates
     /// the same cache. Explanation/preview run through <see cref="MessageFormatter"/>.
@@ -96,7 +96,7 @@ namespace EGG9000.Bot.Commands {
                 .AddTextInputSafe("Embed color (6-hex, optional)", customId: "color", value: existing?.EmbedColorHex, required: false, maxLength: 7)
                 .AddTextInputSafe("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
 
-        [SlashCommand(Description = "Edit this server's FAQ topics", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "b")]
+        [SlashCommand(Description = "Edit this server's FAQ topics", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task EditFaq(FauxCommand command, ApplicationDbContext db, DiscordHostedService client) {
             await command.DeferAsync(ephemeral: true);
             var g = await LoadGuild(db, command.GuildId);

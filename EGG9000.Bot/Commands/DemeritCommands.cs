@@ -22,7 +22,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
-        [SlashCommand(Description = "Add demerit to user", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Add demerit to user", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task AddDemerit(FauxCommand command, DiscordSocketClient _client, [SlashParam] SocketGuildUser user, [SlashParam] string reason, ApplicationDbContext db, DiscordHostedService discordClient, [SlashParam(Required = false)] bool hidden = false) {
             await command.DeferAsync(ephemeral: hidden);
             try {
@@ -54,7 +54,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Remove latest demerit from user", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Remove latest demerit from user", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task RemoveDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             await command.DeferAsync();
             try {
@@ -109,7 +109,7 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
             }
         }
-        [SlashCommand(Description = "List demerits for user", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "List demerits for user", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task DemeritsForUser(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db, [SlashParam(Required = false)] bool hidden = false) {
             await command.DeferAsync(ephemeral: hidden);
             try {
@@ -140,7 +140,7 @@ namespace EGG9000.Bot.Commands {
             return demeritDesc;
         }
 
-        [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Stops user from getting demerit in co-op", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task NoDemerit(FauxCommand command, [SlashParam] SocketGuildUser user, ApplicationDbContext db) {
             await command.DeferAsync();
             List<UserCoopXref> xref;

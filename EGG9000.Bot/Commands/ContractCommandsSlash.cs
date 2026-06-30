@@ -404,7 +404,7 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
         }
 
-        [SlashCommand(Description = "Makes this co-op private", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Makes this co-op private", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task MakePrivate(FauxCommand command, ApplicationDbContext db) {
             await command.DeferAsync();
             var name = new Regex(@"\w+").Match(command.Channel.Name.ToLower()).Value;
@@ -434,7 +434,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = StaffOnlyLevel.FarmHand)]
+        [SlashCommand(Description = "Adds an outside co-op so you can track it's progress", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task AddCoop(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client,
             [SlashParam(AutocompleteHandler = typeof(StaffContractAutoComplete))] string contract,
             [SlashParam] string coopname, [SlashParam(AutocompleteHandler = typeof(GradeAutoComplete))] uint grade,
@@ -631,7 +631,7 @@ namespace EGG9000.Bot.Commands {
 
         }
 
-        [SlashCommand(Description = "Delete a contract channel (Please use this instead of deleting the channel in discord)", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Delete a contract channel (Please use this instead of deleting the channel in discord)", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task DeleteContract(FauxCommand command, ApplicationDbContext db, DiscordSocketClient _client, ILogger _logger) {
             var guildContract = db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == command.Channel.Id);
             if(guildContract == null) {

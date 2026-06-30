@@ -88,7 +88,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = unbanEmbed; });
         }
 
-        [SlashCommand(Description = "Kick user with dm", AdminOnly = StaffOnlyLevel.Admin)]
+        [SlashCommand(Description = "Kick user with dm", AdminOnly = StaffOnlyLevel.Admin, ParentCommand = "admin")]
         public static async Task Kick(FauxCommand command, ApplicationDbContext db, DiscordHostedService _client, [SlashParam] SocketUser[] users, [SlashParam] string reason, [SlashParam(Required = false)] bool banaccount = false) {
             await command.DeferAsync();
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
