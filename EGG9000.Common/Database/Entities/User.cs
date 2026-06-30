@@ -180,8 +180,12 @@ namespace EGG9000.Common.Database.Entities {
                         _accounts.ForEach(account => {
                             if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
                                 account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
+                            // Catch LastGrade up from the most-recent backup contract, but only upward.
+                            // A lower-grade contract accepted after PromotionTime is a grade pull (ULTRA
+                            // all-grade coop join), not a demotion, so it must not push LastGrade down.
+                            // Real demotions arrive via the authoritative API grade (UserGrades).
                             var (backupGrade, backupGradeAccepted) = account.Backup?.GetMostRecentContractGrade() ?? (Ei.Contract.Types.PlayerGrade.GradeUnset, DateTimeOffset.MinValue);
-                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade != account.LastGrade && backupGradeAccepted > account.PromotionTime) {
+                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade > account.LastGrade && backupGradeAccepted > account.PromotionTime) {
                                 account.LastGrade = backupGrade;
                                 needsUpdate = true;
                             }
@@ -453,8 +457,13 @@ namespace EGG9000.Common.Database.Entities {
             // The backup's contract grade beats a possibly-stale LastGrade, but only when that
             // contract was accepted after the last known promotion. Otherwise the promotion is newer
             // than any contract has caught up to, so LastGrade is the truth.
+            // The backup contract grade is only a fallback signal: it may catch LastGrade up when the
+            // player has promoted, but it must never override LastGrade downward. ULTRA players can join
+            // a lower-grade all-grade coop (a grade pull), which leaves a newer lower-grade contract in
+            // the backup that is not a demotion. Real demotions come through the authoritative API grade
+            // (LastGrade, refreshed by UserGrades), not the backup.
             var (backupGrade, accepted) = Backup.GetMostRecentContractGrade();
-            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && accepted > PromotionTime)
+            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && accepted > PromotionTime && backupGrade > LastGrade)
                 return backupGrade;
 
             return LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset ? LastGrade : backupGrade;
