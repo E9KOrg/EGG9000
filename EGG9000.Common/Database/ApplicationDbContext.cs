@@ -292,6 +292,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<NasaApod>().HasKey(x => x.ID);
             builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD')");
 
+            builder.Entity<ApiKey>().HasIndex(x => x.KeyHash);
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
             builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
             builder.Entity<Guild>().HasIndex(x => x.DiscordSeverId);
