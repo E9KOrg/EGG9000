@@ -17,9 +17,9 @@
 	var totalBankGE = (ulong)(Model.backup.TotalGEInPiggyBank * bankScalar);
 }
 <div class="card" style="margin-top:15px" x-data="epicResearchPage()">
-	<h4 class="card-header mb-3 d-flex justify-content-between align-items-center">
-		<span>Epic Research GE Calculator</span>
-		<select id="discount-select" class="form-select form-select-sm" x-model.number="Discount">
+	<h4 class="card-header mb-3 d-flex justify-content-between align-items-center" style="gap:12px;">
+		<span style="flex:0 1 auto;">Epic Research GE Calculator</span>
+		<select id="discount-select" class="form-select form-select-sm" x-model.number="Discount" style="width:auto; flex:0 0 auto; min-width:160px;">
 			<option id="discount-0" value="0" selected>Select Discount</option>
 			<option id="discount-25" value="25">25%</option>
 			<option id="discount-30" value="30">30%</option>
