@@ -232,6 +232,10 @@ namespace EGG9000.Bot.Commands {
                 AutoRegisterRewards = existingAccount.AutoRegisterRewards,
                 PingForNCUltra = existingAccount.PingForNCUltra,
                 DoTwoToThreeContracts = existingAccount.DoTwoToThreeContracts,
+                // Must carry the consolidated settings blob across. Without it the next load re-runs
+                // FromLegacyKeys, which discards every post-V2 edit, and permanently loses PE, since
+                // the one-shot PE heal has already stripped PE from LeggacyAutoRegisterRewards.
+                Assignment = existingAccount.Assignment,
             };
 
             if(user.EggIncAccounts.Count > 1) user.EggIncAccounts[accountnumber - 1] = newAccount;

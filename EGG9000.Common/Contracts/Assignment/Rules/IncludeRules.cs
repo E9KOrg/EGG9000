@@ -1,7 +1,5 @@
 using EGG9000.Common.Helpers;
 
-using System.Linq;
-
 namespace EGG9000.Common.Contracts.Assignment {
     internal static class IncludeRuleHelpers {
         public static GradeRewardFacts GradeOrNull(ContractFacts c, Ei.Contract.Types.PlayerGrade grade) =>
@@ -10,10 +8,8 @@ namespace EGG9000.Common.Contracts.Assignment {
 
     // One reward filter for all contracts (the new/legacy split is gone). Empty filter = match all.
     // PE may be in the filter; in practice only leggacy contracts still carry a PE goal reward
-    // (modern contracts grant PE via season progress instead). Seasonal PE is governed by
-    // SeasonalContractsRule (Force tier); its RewardFilterAfter=true path falls through to this rule,
-    // so the PE entry is explicitly ignored for seasonal contracts. Stripping PE can leave the filter
-    // empty (PE-only filter) — empty means match all, consistent with the rule's contract.
+    // (modern contracts grant PE via season progress instead). PE handling for seasonal contracts is
+    // centralized in RewardMatch.EffectiveFilter.
     public sealed class RewardFilterRule : IAssignmentRule {
         public AssignmentRuleId Id => AssignmentRuleId.RewardFilter;
         public RuleTier Tier => RuleTier.Include;
@@ -21,10 +17,7 @@ namespace EGG9000.Common.Contracts.Assignment {
         public RuleOutcome Evaluate(AccountFacts f, ContractFacts c, AssignmentSettings s) {
             var grade = IncludeRuleHelpers.GradeOrNull(c, f.Grade);
             if(grade is null) return RuleOutcome.Exclude;
-            var filter = c.IsSeasonal && s.RewardFilter is not null
-                ? s.RewardFilter.Where(r => r != Ei.RewardType.EggsOfProphecy).ToList()
-                : s.RewardFilter;
-            return RewardMatch.Matches(grade, filter, f.CompletedGoalsOnThisContract)
+            return RewardMatch.Matches(grade, RewardMatch.EffectiveFilter(s.RewardFilter, c), f.CompletedGoalsOnThisContract)
                 ? RuleOutcome.Pass : RuleOutcome.Exclude;
         }
         public string Describe(RuleOutcome o) => "Rewards not selected";
@@ -53,8 +46,10 @@ namespace EGG9000.Common.Contracts.Assignment {
             var grade = IncludeRuleHelpers.GradeOrNull(c, f.Grade);
             if(c.HadTwoRewards && grade != null && grade.GoalRewards.Count == 3 && f.CompletedExactlyTwoGoals) {
                 if(!s.TwoToThree) return RuleOutcome.Exclude;
-                if(s.RewardFilter == null || s.RewardFilter.Count == 0) return RuleOutcome.Pass;
-                foreach(var r in s.RewardFilter)
+                // Same PE-on-seasonal handling as RewardFilterRule so PE is treated consistently.
+                var filter = RewardMatch.EffectiveFilter(s.RewardFilter, c);
+                if(filter == null || filter.Count == 0) return RuleOutcome.Pass;
+                foreach(var r in filter)
                     if(RewardMatch.MatchesLast(grade, r)) return RuleOutcome.Pass;
                 return RuleOutcome.Exclude;
             }

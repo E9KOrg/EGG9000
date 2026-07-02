@@ -203,19 +203,20 @@ namespace EGG9000.Common.Database.Entities {
                                 // so blobs persisted before then deserialize with these as null.
                                 if(account.Assignment.Seasonal is null) { account.Assignment.Seasonal = new(); needsUpdate = true; }
                                 if(account.Assignment.RewardFilter is null) { account.Assignment.RewardFilter = new(); needsUpdate = true; }
-                                // One-shot repair: the original V2 migration wrongly stripped PE when it
-                                // migrated LeggacyAutoRegisterRewards. Re-add PE only (a full FromLegacyKeys
-                                // rebuild would clobber edits made through the new UI since V2), then remove
-                                // PE from the legacy key so this can never fire again — nothing writes that
-                                // key anymore, so it would otherwise resurrect PE forever after the user
-                                // unticks it in the new UI.
-                                if(account.LeggacyAutoRegisterRewards is { Count: > 0 }
-                                    && account.LeggacyAutoRegisterRewards.Contains(Ei.RewardType.EggsOfProphecy)) {
-                                    if(!account.Assignment.RewardFilter.Contains(Ei.RewardType.EggsOfProphecy))
-                                        account.Assignment.RewardFilter.Add(Ei.RewardType.EggsOfProphecy);
-                                    account.LeggacyAutoRegisterRewards.Remove(Ei.RewardType.EggsOfProphecy);
-                                    needsUpdate = true;
-                                }
+                            }
+                            // One-shot repair (must run after BOTH branches above, or the fresh-migration
+                            // path leaves PE in the legacy key and this fires later, resurrecting PE after
+                            // the user unticked it): the original V2 migration wrongly stripped PE when it
+                            // migrated LeggacyAutoRegisterRewards. Re-add PE only (a full FromLegacyKeys
+                            // rebuild would clobber edits made through the new UI since V2), then remove
+                            // PE from the legacy key so this can never fire again, nothing writes that
+                            // key anymore.
+                            if(account.LeggacyAutoRegisterRewards is { Count: > 0 }
+                                && account.LeggacyAutoRegisterRewards.Contains(Ei.RewardType.EggsOfProphecy)) {
+                                if(!account.Assignment.RewardFilter.Contains(Ei.RewardType.EggsOfProphecy))
+                                    account.Assignment.RewardFilter.Add(Ei.RewardType.EggsOfProphecy);
+                                account.LeggacyAutoRegisterRewards.Remove(Ei.RewardType.EggsOfProphecy);
+                                needsUpdate = true;
                             }
                         });
                         if(needsUpdate) {

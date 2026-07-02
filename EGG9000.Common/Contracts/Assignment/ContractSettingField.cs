@@ -43,7 +43,7 @@ namespace EGG9000.Common.Contracts.Assignment {
                     return ParseBool(value, out var after) ? Set(() => s.Seasonal.RewardFilterAfter = after) : Bad();
                 case "rewardFilter":
                     return ParseRewards(value, out var rf)
-                        ? Set(() => s.RewardFilter = rf.Where(r => r != Ei.RewardType.UnknownReward).ToList())
+                        ? Set(() => s.RewardFilter = RewardMatch.Sanitize(rf))
                         : Bad();
                 default:
                     return new ContractSettingResult(ContractSettingApplyStatus.UnknownField);

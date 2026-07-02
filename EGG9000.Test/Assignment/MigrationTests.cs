@@ -94,6 +94,35 @@ namespace EGG9000.Test.Assignment {
 
         [TestMethod]
         [TestCategory("Unit")]
+        public void PeHeal_FreshMigrationBranch_AlsoStripsLegacyKey_NoLaterResurrection() {
+            // Account still on the V1 blob (Assignment == null): FromLegacyKeys keeps PE, and the
+            // one-shot strip must ALSO run on this branch — otherwise the legacy key keeps PE and the
+            // heal fires on a later load, resurrecting PE after the user unticks it.
+            var source = new DBUser {
+                EggIncAccounts = new List<EggIncAccount> {
+                    new() {
+                        Id = "EI1",
+                        LeggacyAutoRegisterRewards = new() { Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy },
+                        Assignment = null
+                    }
+                }
+            };
+            var migratedUser = Rehydrate(source);
+            var migrated = migratedUser.EggIncAccounts.Single();
+            CollectionAssert.AreEquivalent(
+                new List<Ei.RewardType> { Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy },
+                migrated.Assignment.RewardFilter);
+            CollectionAssert.DoesNotContain(migrated.LeggacyAutoRegisterRewards, Ei.RewardType.EggsOfProphecy);
+
+            // User unticks PE after the fresh migration; it must stay gone on the next load.
+            migrated.Assignment.RewardFilter.Remove(Ei.RewardType.EggsOfProphecy);
+            migratedUser.UpdateAccounts();
+            var reloaded = Rehydrate(migratedUser).EggIncAccounts.Single();
+            CollectionAssert.DoesNotContain(reloaded.Assignment.RewardFilter, Ei.RewardType.EggsOfProphecy);
+        }
+
+        [TestMethod]
+        [TestCategory("Unit")]
         public void PeHeal_DoesNotResurrectPeAfterUserRemovesIt() {
             var source = new DBUser {
                 EggIncAccounts = new List<EggIncAccount> {
