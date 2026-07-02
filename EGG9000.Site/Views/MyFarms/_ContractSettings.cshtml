@@ -22,8 +22,8 @@
     var redoMode = (int)s.Redo.Mode;
     var redoThreshold = s.Redo.ScoreThreshold;
 
-    // Reward types offered in the single filter. No Eggs Of Prophecy (PE is governed by the seasonal rule).
     var rewardLabels = new (Ei.RewardType Type, string Label)[] {
+        (Ei.RewardType.EggsOfProphecy, "Eggs of Prophecy"),
         (Ei.RewardType.Artifact, "Artifacts"),
         (Ei.RewardType.PiggyMultiplier, "Piggy Bank"),
         (Ei.RewardType.ShellScript, "Shell Tickets"),

@@ -106,12 +106,12 @@ namespace EGG9000.Test.Assignment {
 
         [TestMethod]
         [TestCategory("Unit")]
-        public void RewardFilter_CommaList_DropsPe() {
+        public void RewardFilter_CommaList_KeepsPe() {
             var s = new AssignmentSettings();
             var pe = (int)Ei.RewardType.EggsOfProphecy;
             var gold = (int)Ei.RewardType.Gold;
             Assert.AreEqual(ContractSettingApplyStatus.Ok, Apply(s, "rewardFilter", $"{pe},{gold}"));
-            CollectionAssert.DoesNotContain(s.RewardFilter, Ei.RewardType.EggsOfProphecy);
+            CollectionAssert.Contains(s.RewardFilter, Ei.RewardType.EggsOfProphecy);
             CollectionAssert.Contains(s.RewardFilter, Ei.RewardType.Gold);
         }
 
