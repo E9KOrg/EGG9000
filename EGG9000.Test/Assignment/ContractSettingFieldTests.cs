@@ -14,8 +14,10 @@ namespace EGG9000.Test.Assignment {
         public void Apply_HealsNullSeasonalAndRedo_FromPartialV1Blob() {
             var s = new AssignmentSettings { Seasonal = null, Redo = null };
             Assert.AreEqual(ContractSettingApplyStatus.Ok, Apply(s, "seasonalMode", "0"));
+            Assert.IsNotNull(s.Seasonal);
             Assert.AreEqual(SeasonalMode.AlwaysAssign, s.Seasonal.Mode);
             Assert.AreEqual(ContractSettingApplyStatus.Ok, Apply(s, "excludeSeasonal", "true"));
+            Assert.IsNotNull(s.Redo);
             Assert.IsTrue(s.Redo.ExcludeSeasonal);
         }
 
