@@ -31,7 +31,7 @@ namespace EGG9000.Test {
                 Revoked = revoked
             };
 
-        // Minimal stub — returns a default AuthenticationSchemeOptions for any scheme name.
+        // Minimal stub - returns a default AuthenticationSchemeOptions for any scheme name.
         private class StubOptionsMonitor : IOptionsMonitor<AuthenticationSchemeOptions> {
             public AuthenticationSchemeOptions CurrentValue => new();
             public AuthenticationSchemeOptions Get(string name) => new();

@@ -31,7 +31,8 @@ namespace EGG9000.Common.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ApiKeys_KeyHash",
                 table: "ApiKeys",
-                column: "KeyHash");
+                column: "KeyHash",
+                unique: true);
         }
 
         /// <inheritdoc />

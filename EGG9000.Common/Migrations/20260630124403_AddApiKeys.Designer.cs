@@ -55,6 +55,10 @@ namespace EGG9000.Common.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("KeyHash")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ApiKeys_KeyHash");
+
                     b.ToTable("ApiKeys");
                 });
 

@@ -1513,27 +1513,30 @@ music
         }
 
         public class ApiKeysViewModel {
+            public ulong GuildId { get; set; }
             public List<ApiKey> Keys { get; set; }
-            // Non-null only immediately after creation — shown once to the admin, never stored.
+            // Non-null only immediately after creation - shown once to the admin, never stored.
             public string NewRawKey { get; set; }
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> ApiKeys() {
-            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+        public async Task<IActionResult> ApiKeys(ulong? id) {
+            var guildId = id ?? GetGuildID();
+            if(!VerifyId(guildId)) return NotFound();
             var keys = await _db.ApiKeys
                 .Where(k => k.GuildId == guildId)
                 .OrderByDescending(k => k.CreatedAt)
                 .ToListAsync();
             var newKey = TempData["NewApiKey"] as string;
-            return View(new ApiKeysViewModel { Keys = keys, NewRawKey = newKey });
+            return View(new ApiKeysViewModel { GuildId = guildId, Keys = keys, NewRawKey = newKey });
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateApiKey([FromForm] string label, [FromForm] string expiresAt) {
-            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+        public async Task<IActionResult> CreateApiKey([FromForm] ulong? id, [FromForm] string label, [FromForm] string expiresAt) {
+            var guildId = id ?? GetGuildID();
+            if(!VerifyId(guildId)) return NotFound();
 
             // Generate a cryptographically random 32-byte key, prefix with "egg_".
             var rawBytes = RandomNumberGenerator.GetBytes(32);
@@ -1557,19 +1560,20 @@ music
 
             // Pass raw key via TempData so it is shown once without appearing in the URL.
             TempData["NewApiKey"] = rawKey;
-            return RedirectToAction("ApiKeys");
+            return RedirectToAction("ApiKeys", new { id = guildId });
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RevokeApiKey([FromQuery] Guid id) {
-            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var key = await _db.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.GuildId == guildId);
+        public async Task<IActionResult> RevokeApiKey([FromQuery] Guid id, [FromQuery] ulong? guildId) {
+            var resolvedGuildId = guildId ?? GetGuildID();
+            if(!VerifyId(resolvedGuildId)) return NotFound();
+            var key = await _db.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.GuildId == resolvedGuildId);
             if(key == null) return NotFound();
             key.Revoked = true;
             await _db.SaveChangesAsync();
-            return RedirectToAction("ApiKeys");
+            return RedirectToAction("ApiKeys", new { id = resolvedGuildId });
         }
     }
 }
