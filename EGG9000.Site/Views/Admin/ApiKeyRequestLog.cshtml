@@ -13,6 +13,7 @@
         <thead>
             <tr>
                 <th>Timestamp (UTC)</th>
+                <th>Endpoint</th>
                 <th>IP address</th>
                 <th>Result</th>
             </tr>
@@ -21,6 +22,7 @@
             @foreach (var entry in Model.Entries) {
                 <tr>
                     <td>@entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@entry.Endpoint</td>
                     <td>@entry.IpAddress</td>
                     <td>
                         @if (entry.Success) {

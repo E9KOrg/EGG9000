@@ -136,6 +136,8 @@ namespace EGG9000.Test {
 
             var context = new DefaultHttpContext();
             context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(remoteIp);
+            context.Request.Method = "GET";
+            context.Request.Path = "/LeaderboardJson";
             if (headerValue != null)
                 context.Request.Headers[ApiKeyAuthenticationHandler.HeaderName] = headerValue;
 
@@ -158,6 +160,7 @@ namespace EGG9000.Test {
             Assert.AreEqual(key.Id, logRow.ApiKeyId);
             Assert.AreEqual(12345UL, logRow.GuildId);
             Assert.AreEqual("203.0.113.5", logRow.IpAddress);
+            Assert.AreEqual("GET /LeaderboardJson", logRow.Endpoint);
             Assert.IsTrue(logRow.Success);
 
             var usageRow = await db.ApiKeyDailyUsages.SingleAsync();

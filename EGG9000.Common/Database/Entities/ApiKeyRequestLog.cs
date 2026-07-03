@@ -12,6 +12,9 @@ namespace EGG9000.Common.Database.Entities {
 
         public string IpAddress { get; set; }
 
+        // HTTP method + path, e.g. "GET /LeaderboardJson". Null for pre-existing rows before this column was added.
+        public string Endpoint { get; set; }
+
         public DateTimeOffset Timestamp { get; set; }
 
         public bool Success { get; set; }

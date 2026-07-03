@@ -29,6 +29,7 @@ namespace EGG9000.Site.Auth {
             var rawKey = rawKeyValues[0]!.Trim();
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();
             var ipAddress = Context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var endpoint = $"{Request.Method} {Request.Path}";
 
             await using var db = dbFactory.CreateDbContext();
             var key = await db.ApiKeys.FirstOrDefaultAsync(k => k.KeyHash == hash);
@@ -36,7 +37,7 @@ namespace EGG9000.Site.Auth {
             var valid = key != null && !key.Revoked && (key.ExpiresAt == null || key.ExpiresAt > DateTimeOffset.UtcNow);
 
             try {
-                await LogRequestAsync(db, key, ipAddress, valid);
+                await LogRequestAsync(db, key, ipAddress, endpoint, valid);
             } catch (Exception ex) {
                 Logger.LogError(ex, "Failed to write API key request log/usage for key {ApiKeyId}.", key?.Id);
             }
@@ -53,7 +54,7 @@ namespace EGG9000.Site.Auth {
             return AuthenticateResult.Success(ticket);
         }
 
-        private static async Task LogRequestAsync(ApplicationDbContext db, ApiKey key, string ipAddress, bool success) {
+        private static async Task LogRequestAsync(ApplicationDbContext db, ApiKey key, string ipAddress, string endpoint, bool success) {
             var now = DateTimeOffset.UtcNow;
 
             db.ApiKeyRequestLogs.Add(new ApiKeyRequestLog {
@@ -61,6 +62,7 @@ namespace EGG9000.Site.Auth {
                 ApiKeyId = key?.Id,
                 GuildId = key?.GuildId,
                 IpAddress = ipAddress,
+                Endpoint = endpoint,
                 Timestamp = now,
                 Success = success
             });
