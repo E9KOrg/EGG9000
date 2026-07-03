@@ -249,6 +249,7 @@ namespace EGG9000.Bot.Commands {
 
     public partial class AdminModule {
         [Discord.Interactions.SlashCommand("faq", "Lookup brief explanations of key topics/templates")]
+        [Discord.Interactions.EnabledInDm(true)]
         public Task FAQ([Discord.Interactions.Summary("query", "Topic or keyword")][Discord.Interactions.MaxLength(MAX_KEYWORD_LENGTH)] string query, [Discord.Interactions.Summary("respondto", "Which message to respond to")] string respondto = "") {
             return FAQCommandSlash._faq(Context.Interaction, Db, client, query, true, respondto, _logger);
         }

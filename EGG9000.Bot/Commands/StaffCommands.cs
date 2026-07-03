@@ -19,6 +19,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -120,6 +121,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("selectroleusers", "Select X random users with Y role")]
+        [StaffOnly(StaffTier.FarmHand)]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
         public async Task SelectRoleUsers([Summary("numberOfUsers")] int numberOfUsers,
             [Summary("role", "Role the user(s) should have")] SocketRole role, [Summary("role2", "Second role [...]")] SocketRole role2 = null, [Summary("role3", "Third role [...]")] SocketRole role3 = null,
@@ -188,6 +190,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("pingeveryoneincoop", "Ping everyone in a co-op with a message")]
+        [StaffOnly(StaffTier.FarmHand)]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
         public async Task PingEveryoneInCoop([Summary("message")] string message) {
             var coop = await Db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == Context.Interaction.ChannelId);
@@ -204,6 +207,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("fixjoinissue", "Fix where the server doesn't show them as joined")]
+        [StaffOnly(StaffTier.FarmHand)]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
         public async Task FixJoinIssue([Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Summary("useraccount")] string useraccount) {
             await Context.Interaction.DeferAsync(ephemeral: true);
@@ -245,6 +249,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("disable", "Disable user, user will not be assigned to co-ops until re-enabled")]
+        [StaffOnly(StaffTier.FarmHand)]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
         public async Task Disable([Summary("user")] SocketUser user) {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);

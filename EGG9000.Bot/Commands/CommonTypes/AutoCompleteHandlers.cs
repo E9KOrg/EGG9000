@@ -22,6 +22,17 @@ using static Ei.Contract.Types;
 namespace EGG9000.Bot.Commands.DiscordEnums {
     public class AutoCompleteHandlers {
 
+        // Discord.NET never runs a command's/module's PreconditionAttributes on the autocomplete
+        // path, so [StaffOnly] alone leaves admin-only params open if a guild ever grants the
+        // parent command to a non-staff role. Re-check it here as a backstop.
+        private static async Task<bool> PassesStaffGate(IInteractionContext context, IParameterInfo parameter, IServiceProvider services) {
+            var staffOnly = parameter.Command.Preconditions.OfType<EGG9000.Bot.Interactions.StaffOnlyAttribute>().FirstOrDefault()
+                ?? parameter.Command.Module.Preconditions.OfType<EGG9000.Bot.Interactions.StaffOnlyAttribute>().FirstOrDefault();
+            if(staffOnly is null) return true;
+            var result = await staffOnly.CheckRequirementsAsync(context, parameter.Command, services);
+            return result.IsSuccess;
+        }
+
         private static async Task<List<Guild>> ResolveGuilds(IServiceProvider services) {
             var cache = services.GetRequiredService<IMemoryCache>();
             if(!cache.TryGetValue("dbguilds", out List<Guild> dbguilds)) {
@@ -69,6 +80,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var guilds = await ResolveGuilds(services);
                 var results = await ComputeResults(arg, guilds);
                 return AutocompletionResult.FromSuccess(results.Take(25));
@@ -114,6 +126,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var results = await ComputeResults(arg, null);
                 return AutocompletionResult.FromSuccess(results.Take(25));
             }
@@ -152,6 +165,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var guilds = await ResolveGuilds(services);
                 var results = await ComputeResults(arg, guilds);
                 return AutocompletionResult.FromSuccess(results.Take(25));
@@ -176,6 +190,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var results = await ComputeResults(arg, null);
                 return AutocompletionResult.FromSuccess(results.Take(25));
             }
@@ -209,6 +224,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var results = await ComputeResults(arg, null);
                 return AutocompletionResult.FromSuccess(results.Take(25));
             }
@@ -237,6 +253,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var results = await ComputeResults(arg, null);
                 return AutocompletionResult.FromSuccess(results.Take(25));
             }
@@ -252,6 +269,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var results = await ComputeResults(arg, null);
                 return AutocompletionResult.FromSuccess(results.Take(25));
             }
@@ -271,6 +289,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var results = await ComputeResults(arg, null);
                 return AutocompletionResult.FromSuccess(results.Take(25));
             }
@@ -301,6 +320,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var guilds = await ResolveGuilds(services);
                 var results = await ComputeResults(arg, guilds);
                 return AutocompletionResult.FromSuccess(results.Take(25));
@@ -351,6 +371,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 var results = await ComputeResults(arg, null);
                 return AutocompletionResult.FromSuccess(results.Take(25));
             }
@@ -371,6 +392,7 @@ namespace EGG9000.Bot.Commands.DiscordEnums {
 
             public override async Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
+                if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess(System.Array.Empty<AutocompleteResult>());
                 try {
                     var results = await ComputeResults(arg, null);
                     return AutocompletionResult.FromSuccess(results.Take(25));

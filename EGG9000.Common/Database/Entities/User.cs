@@ -180,8 +180,12 @@ namespace EGG9000.Common.Database.Entities {
                         _accounts.ForEach(account => {
                             if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
                                 account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
+                            // Catch LastGrade up from the most-recent backup contract, but only upward.
+                            // A lower-grade contract accepted after PromotionTime is a grade pull (ULTRA
+                            // all-grade coop join), not a demotion, so it must not push LastGrade down.
+                            // Real demotions arrive via the authoritative API grade (UserGrades).
                             var (backupGrade, backupGradeAccepted) = account.Backup?.GetMostRecentContractGrade() ?? (Ei.Contract.Types.PlayerGrade.GradeUnset, DateTimeOffset.MinValue);
-                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade != account.LastGrade && backupGradeAccepted > account.PromotionTime) {
+                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade > account.LastGrade && backupGradeAccepted > account.PromotionTime) {
                                 account.LastGrade = backupGrade;
                                 needsUpdate = true;
                             }
@@ -199,6 +203,20 @@ namespace EGG9000.Common.Database.Entities {
                                 // so blobs persisted before then deserialize with these as null.
                                 if(account.Assignment.Seasonal is null) { account.Assignment.Seasonal = new(); needsUpdate = true; }
                                 if(account.Assignment.RewardFilter is null) { account.Assignment.RewardFilter = new(); needsUpdate = true; }
+                            }
+                            // One-shot repair (must run after BOTH branches above, or the fresh-migration
+                            // path leaves PE in the legacy key and this fires later, resurrecting PE after
+                            // the user unticked it): the original V2 migration wrongly stripped PE when it
+                            // migrated LeggacyAutoRegisterRewards. Re-add PE only (a full FromLegacyKeys
+                            // rebuild would clobber edits made through the new UI since V2), then remove
+                            // PE from the legacy key so this can never fire again, nothing writes that
+                            // key anymore.
+                            if(account.LeggacyAutoRegisterRewards is { Count: > 0 }
+                                && account.LeggacyAutoRegisterRewards.Contains(Ei.RewardType.EggsOfProphecy)) {
+                                if(!account.Assignment.RewardFilter.Contains(Ei.RewardType.EggsOfProphecy))
+                                    account.Assignment.RewardFilter.Add(Ei.RewardType.EggsOfProphecy);
+                                account.LeggacyAutoRegisterRewards.Remove(Ei.RewardType.EggsOfProphecy);
+                                needsUpdate = true;
                             }
                         });
                         if(needsUpdate) {
@@ -453,8 +471,13 @@ namespace EGG9000.Common.Database.Entities {
             // The backup's contract grade beats a possibly-stale LastGrade, but only when that
             // contract was accepted after the last known promotion. Otherwise the promotion is newer
             // than any contract has caught up to, so LastGrade is the truth.
+            // The backup contract grade is only a fallback signal: it may catch LastGrade up when the
+            // player has promoted, but it must never override LastGrade downward. ULTRA players can join
+            // a lower-grade all-grade coop (a grade pull), which leaves a newer lower-grade contract in
+            // the backup that is not a demotion. Real demotions come through the authoritative API grade
+            // (LastGrade, refreshed by UserGrades), not the backup.
             var (backupGrade, accepted) = Backup.GetMostRecentContractGrade();
-            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && accepted > PromotionTime)
+            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && accepted > PromotionTime && backupGrade > LastGrade)
                 return backupGrade;
 
             return LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset ? LastGrade : backupGrade;

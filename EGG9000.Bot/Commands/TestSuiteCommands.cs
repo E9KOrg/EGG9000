@@ -28,6 +28,7 @@ namespace EGG9000.Bot.Commands {
     // DEV-only test harness. Whole file is `#if !RELEASE` so these never register on prod.
     [Group("test", "DEV test harness")]
     [DefaultMemberPermissions(GuildPermission.Administrator)]
+    [StaffOnly(StaffTier.Admin)]
     public class TestModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client, CoopStatsCache stats, IServiceProvider serviceProvider) : E9KModuleBase(dbFactory) {
         public const string SeedPrefix = "TESTSEED-";
 

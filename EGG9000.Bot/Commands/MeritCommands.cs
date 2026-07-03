@@ -1,3 +1,4 @@
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Common.Helpers;
@@ -8,9 +9,11 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
@@ -53,6 +56,23 @@ namespace EGG9000.Bot.Commands {
 
     public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
+
+        // Long merit histories can exceed Discord's 2000-char message limit; fall back to a file
+        // attachment instead of letting RespondAsyncGettingMessage throw.
+        private async Task RespondWithMeritList(string mentionText, List<Merit> merits, bool ephemeral) {
+            var i = 1;
+            var meritDesc = string.Join("\n", merits.Select(x => $"{i++}: {x.Reason}"));
+            var header = $"Merit info for {mentionText}\n";
+
+            if((header.Length + meritDesc.Length) <= 1900) {
+                await Context.Interaction.RespondAsyncGettingMessage(header + meritDesc, ephemeral: ephemeral);
+            } else {
+                await Context.Interaction.RespondWithFilesAsyncGettingMessage(
+                    [new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(meritDesc)), "Merits.txt")],
+                    text: header + "_(List too large for Discord - see attached file)_",
+                    ephemeral: ephemeral);
+            }
+        }
 
         [SlashCommand("addmerit", "Add merit to user(s)")]
         [DefaultMemberPermissions(Discord.GuildPermission.ModerateMembers)]
@@ -121,12 +141,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                var i = 1;
-                var meritDesc = string.Join("\n", merits.Select(x => {
-                    return $"{i++}: {x.Reason}";
-                }));
-
-                await Context.Interaction.RespondAsyncGettingMessage($"Merit info for {targetUser.Mention}\n{meritDesc}");
+                await RespondWithMeritList(targetUser.Mention, merits, ephemeral: false);
             } catch(Exception e) {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedExceptionFrame(e));
             }
@@ -141,16 +156,11 @@ namespace EGG9000.Bot.Commands {
 
                 var merits = await Db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
                 if(merits.Count == 0) {
-                    await Context.Interaction.RespondAsyncGettingMessage($"There are no merits for {socketUser.Mention}");
+                    await Context.Interaction.RespondAsyncGettingMessage($"There are no merits for {socketUser.Mention}", ephemeral: true);
                     return;
                 }
 
-                var i = 1;
-                var meritDesc = string.Join("\n", merits.Select(x => {
-                    return $"{i++}: {x.Reason}";
-                }));
-
-                await Context.Interaction.RespondAsyncGettingMessage($"Merit info for {socketUser.Mention}\n{meritDesc}", ephemeral: true);
+                await RespondWithMeritList(socketUser.Mention, merits, ephemeral: true);
             } catch(Exception e) {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedExceptionFrame(e));
             }

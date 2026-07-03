@@ -154,12 +154,27 @@ namespace EGG9000.Bot.Commands {
                 AutoRegisterRewards = existingAccount.AutoRegisterRewards,
                 PingForNCUltra = existingAccount.PingForNCUltra,
                 DoTwoToThreeContracts = existingAccount.DoTwoToThreeContracts,
+                // Must carry the consolidated settings blob across. Without it the next load re-runs
+                // FromLegacyKeys, which discards every post-V2 edit, and permanently loses PE, since
+                // the one-shot PE heal has already stripped PE from LeggacyAutoRegisterRewards.
+                Assignment = existingAccount.Assignment,
             };
 
             if(user.EggIncAccounts.Count > 1) user.EggIncAccounts[accountnumber - 1] = newAccount;
             else user.EggIncAccounts = [newAccount];
 
             var cachedContracts = await db.CachedEiContractsAsync();
+
+            // UserCoopXref.EggIncId is a snapshot taken when the xref was created. Without this,
+            // every xref written under the old EID becomes permanently invisible to EggIncId-keyed
+            // lookups (MyFarms history, /coop history, duplicate-assignment checks) the moment the
+            // account's live EID changes.
+            if(newAccount.Id != existingAccount.Id) {
+                await db.UserCoopXrefs
+                    .Where(x => x.UserId == user.Id && x.EggIncId == existingAccount.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.EggIncId, newAccount.Id));
+            }
+
             foreach(var account in user.EggIncAccounts) {
                 var customBackup = new CustomBackup((await EggIncApi.FirstContact(account.Id))?.Backup, cachedContracts, account?.Backup ?? null);
                 if(customBackup?.Farms is not null) {
@@ -173,7 +188,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = updatedEmbeds; });
         }
 
-        public static async Task RegisterAccountAsync(IMessageChannel channel, System.Func<System.Action<MessageProperties>, Task> reply, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger, System.Func<Task> onComplete = null) {
+        public static async Task RegisterAccountAsync(IMessageChannel channel, System.Func<System.Action<MessageProperties>, Task> reply, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger, System.Func<Task> onComplete = null, bool isStaff = false) {
             eggincid = eggincid.ToUpper();
 
             if(!Regex.IsMatch(eggincid, @"^EI\d{16}$")) {
@@ -214,7 +229,7 @@ namespace EGG9000.Bot.Commands {
             if(existingOwner is not null) {
                 var isSameUser = existingOwner.DiscordId == user.Id;
                 await reply(m => { m.Content = ""; m.Embed = EmbedError(isSameUser ? $"You have already registered EggInc ID `{eggincid}` with the bot." : $"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
-                await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but it's already registered to {(isSameUser ? "the same user" : "another user")}.");
+                if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but it's already registered to {(isSameUser ? "the same user" : "another user")}.");
                 return;
             }
 
@@ -237,7 +252,7 @@ namespace EGG9000.Bot.Commands {
                     m.Content = "";
                     m.Embed = EmbedError($"Possibly wrong EggInc ID ({eggincid}), it should start with the capital letters EI followed by 16 numbers.");
                 });
-                await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but no valid backup was returned. Could be an invalid ID or API issue.");
+                if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but no valid backup was returned. Could be an invalid ID or API issue.");
                 return;
             }
 
@@ -318,7 +333,9 @@ namespace EGG9000.Bot.Commands {
                         await contractChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                     }
                 }
-            } catch(Exception) { }
+            } catch(Exception e) {
+                logger.LogWarning(e, "Failed to grant contract-channel permissions for {user}", user.Username);
+            }
 
             await CleanWelcomeChannel(guild, _client, user);
 
@@ -441,7 +458,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("register", "Register your EggInc account with the bot")]
         public async Task Register([Summary("eggincid", "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
-            await Context.Interaction.DeferAsync();
+            await Context.Interaction.DeferAsync(ephemeral: true);
             await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, _client, _bugsnag, eggincid, Context.User, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(System.Exception) { } });
         }
     }
@@ -465,7 +482,7 @@ namespace EGG9000.Bot.Commands {
         [Discord.Interactions.SlashCommand("register", "Register your EggInc account with the bot")]
         public async Task Register([Discord.Interactions.Summary("eggincid", "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [Discord.Interactions.Summary("user")] SocketGuildUser user) {
             await Context.Interaction.DeferAsync();
-            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, client, bugsnag, eggincid, user, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(System.Exception) { } });
+            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, client, bugsnag, eggincid, user, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(System.Exception) { } }, isStaff: true);
         }
 
         [Discord.Interactions.SlashCommand("clean", "Removes any unpinned messages from the channel")]

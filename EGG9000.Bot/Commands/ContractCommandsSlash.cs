@@ -249,6 +249,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("movegrade", "Move a user to a different grade of coop")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task MoveGrade([Summary("useraccount")][Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))] string useraccount,
             [Summary("newgrade")][Autocomplete(typeof(MoveGradeAutoComplete))] uint newgrade) {
             await Context.Interaction.DeferAsync();
@@ -354,6 +355,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("findcoopforuser", "Attempt to find a coop for a user, move user to said coop")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task FindCoopForUser([Summary("useraccount")][Autocomplete(typeof(UserAccountAutoComplete))] string useraccount,
             [Summary("contractid")][Autocomplete(typeof(StaffContractAutoComplete))] string contractid, [Summary("priority")] ContractCommandsSlash.FindCoopPrioritization priority = ContractCommandsSlash.FindCoopPrioritization.FinishTimeLow) {
             await Context.Interaction.DeferAsync();
@@ -430,6 +432,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("addcoop", "Adds an outside co-op so you can track it's progress")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task AddCoop([Summary("contract")][Autocomplete(typeof(StaffContractAutoComplete))] string contract,
             [Summary("coopname")] string coopname, [Summary("grade")][Autocomplete(typeof(GradeAutoComplete))] uint grade,
             [Summary("anygrade", "Is the coop any-grade?")] bool anygrade = false) {
@@ -479,6 +482,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("fixreference", "Silently moves to coop (if needed), followed by fixing reference")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task FixReference([Summary("useraccount")][Autocomplete(typeof(UserAccountAutoComplete))] string useraccount,
             [Summary("eggincname", "(Usually not required) Egg Inc Name, will match partial name")] string eggincname = "") {
             await Context.Interaction.DeferAsync();
@@ -549,6 +553,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("movetocoop", "Move a user to a co-op.")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task MoveToCoop([Summary("useraccount")][Autocomplete(typeof(UserAccountAutoComplete))] string useraccount,
             [Summary("coopid")][Autocomplete(typeof(MoveToCoopCoopNameAutoComplete))] string coopid, [Summary("silent", "If true, will not ping user in coop channel")] bool silent = false) {
             await Context.Interaction.DeferAsync();
@@ -594,6 +599,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("removefromcoop", "Remove user from co-op (only works if the bot doesn't see them as joined)")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task RemoveFromCoop([Summary("useraccount")][Autocomplete(typeof(RemoveFromCoopAutoComplete))] string useraccount) {
             await Context.Interaction.DeferAsync();
             var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
@@ -1008,6 +1014,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("leavecoop", "Used to remove a user from a co-op to fix a glitch.")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task LeaveCoop([Summary("useraccount")][Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))] string useraccount) {
             await Context.Interaction.DeferAsync();
             var coop = await Db.Coops.FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
