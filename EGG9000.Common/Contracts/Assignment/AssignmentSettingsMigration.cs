@@ -26,12 +26,13 @@ namespace EGG9000.Common.Contracts.Assignment {
             };
         }
 
-        // Legacy list wins if set, else the main list; PE and the "any reward" sentinel are stripped.
+        // Legacy list wins if set, else the main list. PE is kept when migrating from the legacy filter
+        // (V1 preserved it there); only the new-contract filter stripped PE (seasonal PE was handled
+        // separately). Stripping PE from the legacy source was the V2 regression.
         private static List<Ei.RewardType> SingleRewardFilter(EggIncAccount a) {
-            var source = a.LeggacyAutoRegisterRewards is { Count: > 0 } ? a.LeggacyAutoRegisterRewards : a.AutoRegisterRewards;
-            return (source ?? new List<Ei.RewardType>())
-                .Where(r => r != Ei.RewardType.EggsOfProphecy && r != Ei.RewardType.UnknownReward)
-                .ToList();
+            if(a.LeggacyAutoRegisterRewards is { Count: > 0 })
+                return RewardMatch.Sanitize(a.LeggacyAutoRegisterRewards);
+            return RewardMatch.Sanitize(a.AutoRegisterRewards, stripPe: true);
         }
 
         // Seasonal is mandatory in v2. Only the explicit CS-threshold option carries a mode across;

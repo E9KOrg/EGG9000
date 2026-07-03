@@ -14,8 +14,10 @@ namespace EGG9000.Test.Assignment {
         public void Apply_HealsNullSeasonalAndRedo_FromPartialV1Blob() {
             var s = new AssignmentSettings { Seasonal = null, Redo = null };
             Assert.AreEqual(ContractSettingApplyStatus.Ok, Apply(s, "seasonalMode", "0"));
+            Assert.IsNotNull(s.Seasonal);
             Assert.AreEqual(SeasonalMode.AlwaysAssign, s.Seasonal.Mode);
             Assert.AreEqual(ContractSettingApplyStatus.Ok, Apply(s, "excludeSeasonal", "true"));
+            Assert.IsNotNull(s.Redo);
             Assert.IsTrue(s.Redo.ExcludeSeasonal);
         }
 
@@ -106,12 +108,12 @@ namespace EGG9000.Test.Assignment {
 
         [TestMethod]
         [TestCategory("Unit")]
-        public void RewardFilter_CommaList_DropsPe() {
+        public void RewardFilter_CommaList_KeepsPe() {
             var s = new AssignmentSettings();
             var pe = (int)Ei.RewardType.EggsOfProphecy;
             var gold = (int)Ei.RewardType.Gold;
             Assert.AreEqual(ContractSettingApplyStatus.Ok, Apply(s, "rewardFilter", $"{pe},{gold}"));
-            CollectionAssert.DoesNotContain(s.RewardFilter, Ei.RewardType.EggsOfProphecy);
+            CollectionAssert.Contains(s.RewardFilter, Ei.RewardType.EggsOfProphecy);
             CollectionAssert.Contains(s.RewardFilter, Ei.RewardType.Gold);
         }
 

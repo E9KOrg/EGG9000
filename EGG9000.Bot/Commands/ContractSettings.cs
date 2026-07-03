@@ -162,17 +162,10 @@ namespace EGG9000.Bot.Commands {
             return props;
         }
 
-        public static Dictionary<Ei.RewardType, string> GetRewardDictionary() {
-            return new Dictionary<Ei.RewardType, string> {
-                { Ei.RewardType.Artifact, "Artifacts" },
-                { Ei.RewardType.PiggyMultiplier, "Piggy Bank" },
-                { Ei.RewardType.ShellScript, "Shell Tickets" },
-                { Ei.RewardType.Gold, "Golden Eggs" },
-                { Ei.RewardType.Boost, "Any Boost" },
-                { Ei.RewardType.EpicResearchItem, "Epic Research" },
-                { Ei.RewardType.UnknownReward, "** Any Reward **" },
-            };
-        }
+        // Single source of truth for reward labels; the shared dictionary includes EggsOfProphecy,
+        // which must be present here — accounts can legitimately carry PE in their RewardFilter and
+        // the main-menu render indexes this dictionary with every filter entry.
+        public static Dictionary<Ei.RewardType, string> GetRewardDictionary() => ContractSettingsHelpers.GetRewardDictionary();
 
         [ComponentCommand]
         public static async Task MCSMenu(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {

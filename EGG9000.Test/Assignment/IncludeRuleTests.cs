@@ -96,6 +96,28 @@ namespace EGG9000.Test.Assignment {
 
         [TestMethod]
         [TestCategory("Unit")]
+        public void RewardFilter_PeMatchesNonSeasonal_IgnoredOnSeasonal() {
+            var rule = new RewardFilterRule();
+            var facts = TestFactsBuilder.Account().Grade(G.GradeC).Build();
+            var peOnly = new AssignmentSettings { RewardFilter = new() { Ei.RewardType.EggsOfProphecy } };
+
+            // Leggacy (non-seasonal) contract with a PE goal: PE in the filter matches.
+            var leggacy = TestFactsBuilder.Contract().Seasonal(false).Grade(G.GradeC, Ei.RewardType.EggsOfProphecy).Build();
+            Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(facts, leggacy, peOnly));
+
+            // Seasonal contract: PE entry ignored even if a PE goal is present. PE-only filter
+            // strips to empty -> match all.
+            var seasonal = TestFactsBuilder.Contract().Seasonal(true).Grade(G.GradeC, Ei.RewardType.EggsOfProphecy).Build();
+            Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(facts, seasonal, peOnly));
+
+            // Mixed filter on a seasonal: PE ignored, remaining entries still filter.
+            var mixed = new AssignmentSettings { RewardFilter = new() { Ei.RewardType.EggsOfProphecy, Ei.RewardType.Artifact } };
+            var seasonalNoArtifact = TestFactsBuilder.Contract().Seasonal(true).Grade(G.GradeC, Ei.RewardType.EggsOfProphecy, Ei.RewardType.Gold).Build();
+            Assert.AreEqual(RuleOutcome.Exclude, rule.Evaluate(facts, seasonalNoArtifact, mixed));
+        }
+
+        [TestMethod]
+        [TestCategory("Unit")]
         public void RewardFilter_MissingGradeRewards_Excludes() {
             var rule = new RewardFilterRule();
             // Contract only defines GradeC; account is GradeA -> no matching grade rewards.
@@ -224,6 +246,28 @@ namespace EGG9000.Test.Assignment {
             var rule = new PreviouslyCompletedRule();
             var s = new AssignmentSettings { TwoToThree = true, RewardFilter = new() { Ei.RewardType.Cash } };
             Assert.AreEqual(RuleOutcome.Exclude, rule.Evaluate(TwoOfThree(), ThreeGoalContract(Ei.RewardType.Artifact), s));
+        }
+
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void TwoToThree_PeInFilter_IgnoredOnSeasonal_HonoredOtherwise() {
+            var rule = new PreviouslyCompletedRule();
+            var peOnly = new AssignmentSettings { TwoToThree = true, RewardFilter = new() { Ei.RewardType.EggsOfProphecy } };
+
+            // Non-seasonal 2->3 whose third reward is PE: PE in the filter matches the last goal.
+            var nonSeasonalPeLast = TestFactsBuilder.Contract().Seasonal(false).HadTwoRewards(true)
+                .Grade(G.GradeC, Ei.RewardType.Gold, Ei.RewardType.Cash, Ei.RewardType.EggsOfProphecy).Build();
+            Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(TwoOfThree(), nonSeasonalPeLast, peOnly));
+
+            // Seasonal 2->3: PE entry ignored (same EffectiveFilter as RewardFilterRule); PE-only
+            // filter strips to empty -> Pass even though the third reward isn't PE.
+            var seasonalGoldLast = TestFactsBuilder.Contract().Seasonal(true).HadTwoRewards(true)
+                .Grade(G.GradeC, Ei.RewardType.Gold, Ei.RewardType.Cash, Ei.RewardType.Gold).Build();
+            Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(TwoOfThree(), seasonalGoldLast, peOnly));
+
+            // Seasonal 2->3 with a mixed filter: PE ignored, remaining entries still checked.
+            var mixed = new AssignmentSettings { TwoToThree = true, RewardFilter = new() { Ei.RewardType.EggsOfProphecy, Ei.RewardType.Artifact } };
+            Assert.AreEqual(RuleOutcome.Exclude, rule.Evaluate(TwoOfThree(), seasonalGoldLast, mixed));
         }
     }
 }

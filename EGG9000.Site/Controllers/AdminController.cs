@@ -1408,19 +1408,27 @@ music
 
             var memberIds = guild.Users.Select(u => u.Id).ToHashSet();
 
-            var rows = (await _db.DBUsers
+            var candidates = await _db.DBUsers
                 .Where(u => u.GuildId == guildId)
                 .Select(u => new { u.Id, u.DiscordId, u.DiscordUsername, u._eggIncIds, u._contractRegistrationByte })
-                .ToListAsync())
-                .Where(u => !memberIds.Contains(u.DiscordId))
-                .Select(u => {
-                    var row = DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte);
-                    row.Id = u.Id;
-                    row.DiscordId = u.DiscordId;
-                    row.DiscordUsername = u.DiscordUsername;
-                    return row;
-                })
-                .ToList();
+                .ToListAsync();
+
+            var rows = new List<DBUser>();
+            foreach(var u in candidates) {
+                if(memberIds.Contains(u.DiscordId)) continue;
+
+                // Gateway member cache can lag or miss a departure (Site runs its own
+                // long-lived client independent of the bot). Confirm via REST, which
+                // bypasses the cache, before treating someone as gone.
+                var restUser = await _discord.Rest.GetGuildUserAsync(guildId, u.DiscordId);
+                if(restUser != null) continue;
+
+                var row = DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte);
+                row.Id = u.Id;
+                row.DiscordId = u.DiscordId;
+                row.DiscordUsername = u.DiscordUsername;
+                rows.Add(row);
+            }
 
             return View((rows, false));
         }
