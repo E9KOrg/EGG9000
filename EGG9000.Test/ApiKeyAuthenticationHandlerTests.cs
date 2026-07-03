@@ -11,6 +11,7 @@ using System;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Encodings.Web;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace EGG9000.Test {
@@ -193,6 +194,53 @@ namespace EGG9000.Test {
             var (_, db) = await RunHandlerWithDb(MakeKey("unused"), headerValue: null);
 
             Assert.AreEqual(0, await db.ApiKeyRequestLogs.CountAsync());
+        }
+
+        [TestMethod]
+        public async Task ValidKey_StillSucceeds_WhenLogWriteThrows() {
+            var key = MakeKey("resilientkey");
+            var dbName = Guid.NewGuid().ToString();
+
+            var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(dbName)
+                .Options;
+            var factory = new TestDbContextFactory(dbOptions);
+            using (var seed = factory.CreateDbContext()) {
+                seed.ApiKeys.Add(key);
+                await seed.SaveChangesAsync();
+            }
+
+            var brokenFactory = new ThrowingDbContextFactory(dbOptions);
+            var handler = new ApiKeyAuthenticationHandler(
+                new StubOptionsMonitor(),
+                NullLoggerFactory.Instance,
+                UrlEncoder.Default,
+                brokenFactory);
+
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse("203.0.113.5");
+            context.Request.Headers[ApiKeyAuthenticationHandler.HeaderName] = "resilientkey";
+
+            await handler.InitializeAsync(
+                new AuthenticationScheme(ApiKeyAuthenticationHandler.SchemeName, null, typeof(ApiKeyAuthenticationHandler)),
+                context);
+
+            var result = await handler.AuthenticateAsync();
+
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual("12345", result.Principal!.FindFirst("GuildId")!.Value);
+        }
+
+        // Wraps a real ApplicationDbContext but makes SaveChangesAsync throw on every call after the
+        // first, so the key lookup succeeds but the subsequent log write fails - proving auth doesn't
+        // depend on the log write succeeding.
+        private class ThrowingDbContextFactory(DbContextOptions<ApplicationDbContext> options) : IDbContextFactory<ApplicationDbContext> {
+            public ApplicationDbContext CreateDbContext() => new ThrowingSaveChangesDbContext(options);
+        }
+
+        private class ThrowingSaveChangesDbContext(DbContextOptions<ApplicationDbContext> options) : ApplicationDbContext(options) {
+            public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+                => throw new InvalidOperationException("Simulated DB failure during log write.");
         }
     }
 }
