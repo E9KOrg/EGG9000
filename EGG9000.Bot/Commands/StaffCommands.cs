@@ -910,6 +910,45 @@ namespace EGG9000.Bot.Commands {
         // had at that moment. /updateid changes EggIncAccount.Id going forward but historically left
         // old xrefs stamped with the stale EID, orphaning them from every EggIncId-keyed lookup
         // (MyFarms history, /coop history, duplicate-assignment checks). This repairs the backlog.
+        [SlashCommand(Description = "Report on UserCoopXref rows whose EggIncId doesn't match any of the owning user's current accounts", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task OrphanedXrefStats(FauxCommand command, ApplicationDbContext db) {
+            await command.DeferAsync();
+
+            var users = await db.DBUsers.ToListAsync();
+            var usersById = users.Where(x => x.EggIncAccounts.Count > 0).ToDictionary(x => x.Id);
+
+            var allXrefs = await db.UserCoopXrefs
+                .Where(x => usersById.Keys.Contains(x.UserId))
+                .ToListAsync();
+
+            var orphaned = allXrefs.Where(x => {
+                var user = usersById[x.UserId];
+                var currentIds = user.EggIncAccounts.Select(a => a.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                return !currentIds.Contains(x.EggIncId);
+            }).ToList();
+
+            var distinctUsers = orphaned.Select(x => x.UserId).Distinct().Count();
+            var distinctOldIdsPerUser = orphaned.GroupBy(x => x.UserId).Select(g => g.Select(x => x.EggIncId).Distinct().Count()).ToList();
+            var usersWithExactlyOneOldId = distinctOldIdsPerUser.Count(c => c == 1);
+            var usersWithMultipleOldIds = distinctOldIdsPerUser.Count(c => c > 1);
+            var googlePlayIdCount = orphaned.Count(x => x.EggIncId != null && x.EggIncId.StartsWith("G:"));
+            var oldest = orphaned.MinBy(x => x.CreatedOn)?.CreatedOn;
+            var newest = orphaned.MaxBy(x => x.CreatedOn)?.CreatedOn;
+            var singleAccountUserRows = orphaned.Count(x => usersById[x.UserId].EggIncAccounts.Count == 1);
+            var multiAccountUserRows = orphaned.Count - singleAccountUserRows;
+
+            var summary = $"Orphaned xref rows: **{orphaned.Count}**\n" +
+                $"Distinct users affected: **{distinctUsers}**\n" +
+                $"  - with exactly 1 distinct stale old EID (consistent with a single EID rename): **{usersWithExactlyOneOldId}**\n" +
+                $"  - with 2+ distinct stale old EIDs (something else going on): **{usersWithMultipleOldIds}**\n" +
+                $"Rows on single-account users: **{singleAccountUserRows}**\n" +
+                $"Rows on multi-account users: **{multiAccountUserRows}**\n" +
+                $"Rows with a `G:` (Google Play) old id, not an EID rename: **{googlePlayIdCount}**\n" +
+                $"CreatedOn range: **{oldest:yyyy-MM-dd}** to **{newest:yyyy-MM-dd}**";
+
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning(summary); });
+        }
+
         [SlashCommand(Description = "Repair UserCoopXref rows left with a stale EID from before an EID change", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
         public static async Task FixOrphanedXrefs(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Actually write the fixes; omit to preview only", Required = false)] bool apply = false) {
             await command.DeferAsync();
