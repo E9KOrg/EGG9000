@@ -22,15 +22,11 @@
     var redoMode = (int)s.Redo.Mode;
     var redoThreshold = s.Redo.ScoreThreshold;
 
-    // Reward types offered in the single filter. No Eggs Of Prophecy (PE is governed by the seasonal rule).
-    var rewardLabels = new (Ei.RewardType Type, string Label)[] {
-        (Ei.RewardType.Artifact, "Artifacts"),
-        (Ei.RewardType.PiggyMultiplier, "Piggy Bank"),
-        (Ei.RewardType.ShellScript, "Shell Tickets"),
-        (Ei.RewardType.Gold, "Golden Eggs"),
-        (Ei.RewardType.Boost, "Any Boost"),
-        (Ei.RewardType.EpicResearchItem, "Epic Research")
-    };
+    // Shared reward-label dictionary (same source as the bot menus). The "any reward" sentinel is a
+    // bot-menu concept; on the web, unchecking everything means "any".
+    var rewardLabels = ContractSettingsHelpers.GetRewardDictionary()
+        .Where(kv => kv.Key != Ei.RewardType.UnknownReward)
+        .Select(kv => (Type: kv.Key, Label: kv.Value));
 
     Func<int, int, string, IHtmlContent> opt = (val, current, label) =>
         new HtmlString($"<option value=\"{val}\"{(val == current ? " selected" : "")}>{System.Net.WebUtility.HtmlEncode(label)}</option>");
