@@ -35,8 +35,8 @@ namespace EGG9000.Test {
         // Minimal stub - returns a default AuthenticationSchemeOptions for any scheme name.
         private class StubOptionsMonitor : IOptionsMonitor<AuthenticationSchemeOptions> {
             public AuthenticationSchemeOptions CurrentValue => new();
-            public AuthenticationSchemeOptions Get(string name) => new();
-            public IDisposable OnChange(Action<AuthenticationSchemeOptions, string> listener) => null;
+            public AuthenticationSchemeOptions Get(string? name) => new();
+            public IDisposable? OnChange(Action<AuthenticationSchemeOptions, string> listener) => null;
         }
 
         // Minimal factory shim so we can inject a test DB without touching DI.
@@ -45,7 +45,7 @@ namespace EGG9000.Test {
             public ApplicationDbContext CreateDbContext() => new ApplicationDbContext(options);
         }
 
-        private static async Task<AuthenticateResult> RunHandler(ApiKey storedKey, string headerValue) {
+        private static async Task<AuthenticateResult> RunHandler(ApiKey storedKey, string? headerValue) {
             var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
@@ -117,7 +117,7 @@ namespace EGG9000.Test {
             Assert.IsTrue(result.Succeeded);
         }
 
-        private static async Task<(AuthenticateResult Result, ApplicationDbContext Db)> RunHandlerWithDb(ApiKey storedKey, string headerValue, string remoteIp = "203.0.113.5", string dbName = null) {
+        private static async Task<(AuthenticateResult Result, ApplicationDbContext Db)> RunHandlerWithDb(ApiKey? storedKey, string? headerValue, string remoteIp = "203.0.113.5", string? dbName = null) {
             var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
                 .UseInMemoryDatabase(dbName ?? Guid.NewGuid().ToString())
                 .Options;
