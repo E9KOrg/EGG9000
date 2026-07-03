@@ -1,0 +1,38 @@
+@model EGG9000.Site.Controllers.AdminController.ApiKeyRequestLogViewModel
+@{
+    ViewData["Title"] = "API Key Request Log";
+}
+
+<h2>Request log: @Model.KeyLabel</h2>
+<p>Last 7 days, most recent 500 requests.</p>
+
+@if (!Model.Entries.Any()) {
+    <p>No requests logged in this window.</p>
+} else {
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Timestamp (UTC)</th>
+                <th>IP address</th>
+                <th>Result</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var entry in Model.Entries) {
+                <tr>
+                    <td>@entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                    <td>@entry.IpAddress</td>
+                    <td>
+                        @if (entry.Success) {
+                            <span class="badge bg-success">Success</span>
+                        } else {
+                            <span class="badge bg-danger">Failed</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<a href="/Admin/ApiKeys" class="btn btn-secondary">Back to API Keys</a>

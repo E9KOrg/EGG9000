@@ -1512,23 +1512,79 @@ music
             return View(creators);
         }
 
+        public class ApiKeyUsageSummary {
+            public int RequestsToday { get; set; }
+            public int RequestsLast7Days { get; set; }
+            public int UniqueIps7Days { get; set; }
+            public bool IsSpike { get; set; }
+        }
+
         public class ApiKeysViewModel {
             public ulong GuildId { get; set; }
             public List<ApiKey> Keys { get; set; }
+            public Dictionary<Guid, ApiKeyUsageSummary> KeyUsage { get; set; }
             // Non-null only immediately after creation - shown once to the admin, never stored.
             public string NewRawKey { get; set; }
+            public int UnrecognizedAttempts7Days { get; set; }
+        }
+
+        // Baseline floor prevents a near-zero-traffic key from flagging as a spike off a tiny denominator
+        // (e.g. baseline 2 -> today 10 is technically 5x but not meaningfully abusive).
+        internal static bool ComputeIsSpike(int todayCount, double baselineAverage) {
+            var effectiveBaseline = Math.Max(baselineAverage, 50);
+            return todayCount > effectiveBaseline * 5;
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> ApiKeys(ulong? id) {
             var guildId = id ?? GetGuildID();
             if(!VerifyId(guildId)) return NotFound();
+
             var keys = await _db.ApiKeys
                 .Where(k => k.GuildId == guildId)
                 .OrderByDescending(k => k.CreatedAt)
                 .ToListAsync();
+
+            var keyIds = keys.Select(k => k.Id).ToList();
+            var sevenDaysAgo = DateTimeOffset.UtcNow.AddDays(-7);
+            var today = DateTime.UtcNow.Date;
+
+            var recentLogs = await _db.ApiKeyRequestLogs
+                .Where(l => l.ApiKeyId != null && keyIds.Contains(l.ApiKeyId.Value) && l.Timestamp >= sevenDaysAgo)
+                .ToListAsync();
+
+            var recentUsage = await _db.ApiKeyDailyUsages
+                .Where(u => keyIds.Contains(u.ApiKeyId) && u.Date >= today.AddDays(-7))
+                .ToListAsync();
+
+            var keyUsage = new Dictionary<Guid, ApiKeyUsageSummary>();
+            foreach(var key in keys) {
+                var keyLogs = recentLogs.Where(l => l.ApiKeyId == key.Id).ToList();
+                var keyUsageRows = recentUsage.Where(u => u.ApiKeyId == key.Id).ToList();
+                var todayCount = keyUsageRows.FirstOrDefault(u => u.Date == today)?.RequestCount ?? 0;
+                var baselineRows = keyUsageRows.Where(u => u.Date < today).ToList();
+                var baselineAverage = baselineRows.Count > 0 ? baselineRows.Average(u => u.RequestCount) : 0;
+
+                keyUsage[key.Id] = new ApiKeyUsageSummary {
+                    RequestsToday = todayCount,
+                    RequestsLast7Days = keyLogs.Count,
+                    UniqueIps7Days = keyLogs.Select(l => l.IpAddress).Distinct().Count(),
+                    IsSpike = ComputeIsSpike(todayCount, baselineAverage)
+                };
+            }
+
+            var unrecognizedAttempts = User.IsInRole("Admin")
+                ? await _db.ApiKeyRequestLogs.CountAsync(l => l.ApiKeyId == null && l.Timestamp >= sevenDaysAgo)
+                : 0;
+
             var newKey = TempData["NewApiKey"] as string;
-            return View(new ApiKeysViewModel { GuildId = guildId, Keys = keys, NewRawKey = newKey });
+            return View(new ApiKeysViewModel {
+                GuildId = guildId,
+                Keys = keys,
+                KeyUsage = keyUsage,
+                NewRawKey = newKey,
+                UnrecognizedAttempts7Days = unrecognizedAttempts
+            });
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
@@ -1574,6 +1630,29 @@ music
             key.Revoked = true;
             await _db.SaveChangesAsync();
             return RedirectToAction("ApiKeys", new { id = resolvedGuildId });
+        }
+
+        public class ApiKeyRequestLogViewModel {
+            public string KeyLabel { get; set; }
+            public List<ApiKeyRequestLog> Entries { get; set; }
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        public async Task<IActionResult> ApiKeyRequestLog(Guid apiKeyId, ulong? guildId) {
+            var resolvedGuildId = guildId ?? GetGuildID();
+            if(!VerifyId(resolvedGuildId)) return NotFound();
+
+            var key = await _db.ApiKeys.FirstOrDefaultAsync(k => k.Id == apiKeyId && k.GuildId == resolvedGuildId);
+            if(key == null) return NotFound();
+
+            var sevenDaysAgo = DateTimeOffset.UtcNow.AddDays(-7);
+            var entries = await _db.ApiKeyRequestLogs
+                .Where(l => l.ApiKeyId == apiKeyId && l.Timestamp >= sevenDaysAgo)
+                .OrderByDescending(l => l.Timestamp)
+                .Take(500)
+                .ToListAsync();
+
+            return View(new ApiKeyRequestLogViewModel { KeyLabel = key.Label, Entries = entries });
         }
     }
 }

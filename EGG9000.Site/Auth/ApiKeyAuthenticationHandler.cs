@@ -1,4 +1,5 @@
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -27,14 +28,16 @@ namespace EGG9000.Site.Auth {
 
             var rawKey = rawKeyValues[0]!.Trim();
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();
+            var ipAddress = Context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
             await using var db = dbFactory.CreateDbContext();
-            var key = await db.ApiKeys.FirstOrDefaultAsync(k =>
-                k.KeyHash == hash &&
-                !k.Revoked &&
-                (k.ExpiresAt == null || k.ExpiresAt > DateTimeOffset.UtcNow));
+            var key = await db.ApiKeys.FirstOrDefaultAsync(k => k.KeyHash == hash);
 
-            if (key == null)
+            var valid = key != null && !key.Revoked && (key.ExpiresAt == null || key.ExpiresAt > DateTimeOffset.UtcNow);
+
+            await LogRequestAsync(db, key, ipAddress, valid);
+
+            if (!valid)
                 return AuthenticateResult.Fail("Invalid or expired API key.");
 
             var claims = new[] {
@@ -44,6 +47,31 @@ namespace EGG9000.Site.Auth {
             var identity = new ClaimsIdentity(claims, SchemeName);
             var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
             return AuthenticateResult.Success(ticket);
+        }
+
+        private static async Task LogRequestAsync(ApplicationDbContext db, ApiKey key, string ipAddress, bool success) {
+            var now = DateTimeOffset.UtcNow;
+
+            db.ApiKeyRequestLogs.Add(new ApiKeyRequestLog {
+                Id = Guid.NewGuid(),
+                ApiKeyId = key?.Id,
+                GuildId = key?.GuildId,
+                IpAddress = ipAddress,
+                Timestamp = now,
+                Success = success
+            });
+
+            if (key != null) {
+                var today = now.UtcDateTime.Date;
+                var usage = await db.ApiKeyDailyUsages.FirstOrDefaultAsync(u => u.ApiKeyId == key.Id && u.Date == today);
+                if (usage == null) {
+                    db.ApiKeyDailyUsages.Add(new ApiKeyDailyUsage { ApiKeyId = key.Id, Date = today, RequestCount = 1 });
+                } else {
+                    usage.RequestCount++;
+                }
+            }
+
+            await db.SaveChangesAsync();
         }
     }
 }

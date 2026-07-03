@@ -115,5 +115,84 @@ namespace EGG9000.Test {
             var result = await RunHandler(key, "futurekey");
             Assert.IsTrue(result.Succeeded);
         }
+
+        private static async Task<(AuthenticateResult Result, ApplicationDbContext Db)> RunHandlerWithDb(ApiKey storedKey, string headerValue, string remoteIp = "203.0.113.5", string dbName = null) {
+            var dbOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(dbName ?? Guid.NewGuid().ToString())
+                .Options;
+            var factory = new TestDbContextFactory(dbOptions);
+            if (storedKey != null) {
+                using var seed = factory.CreateDbContext();
+                seed.ApiKeys.Add(storedKey);
+                await seed.SaveChangesAsync();
+            }
+
+            var handler = new ApiKeyAuthenticationHandler(
+                new StubOptionsMonitor(),
+                NullLoggerFactory.Instance,
+                UrlEncoder.Default,
+                factory);
+
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(remoteIp);
+            if (headerValue != null)
+                context.Request.Headers[ApiKeyAuthenticationHandler.HeaderName] = headerValue;
+
+            await handler.InitializeAsync(
+                new AuthenticationScheme(ApiKeyAuthenticationHandler.SchemeName, null, typeof(ApiKeyAuthenticationHandler)),
+                context);
+
+            var result = await handler.AuthenticateAsync();
+            return (result, factory.CreateDbContext());
+        }
+
+        [TestMethod]
+        public async Task ValidKey_WritesRequestLogAndDailyUsage() {
+            var key = MakeKey("logtestkey");
+            var (result, db) = await RunHandlerWithDb(key, "logtestkey");
+
+            Assert.IsTrue(result.Succeeded);
+
+            var logRow = await db.ApiKeyRequestLogs.SingleAsync();
+            Assert.AreEqual(key.Id, logRow.ApiKeyId);
+            Assert.AreEqual(12345UL, logRow.GuildId);
+            Assert.AreEqual("203.0.113.5", logRow.IpAddress);
+            Assert.IsTrue(logRow.Success);
+
+            var usageRow = await db.ApiKeyDailyUsages.SingleAsync();
+            Assert.AreEqual(key.Id, usageRow.ApiKeyId);
+            Assert.AreEqual(1, usageRow.RequestCount);
+        }
+
+        [TestMethod]
+        public async Task ValidKey_SecondRequestSameDay_IncrementsDailyUsage() {
+            var key = MakeKey("counterkey");
+            var dbName = Guid.NewGuid().ToString();
+            await RunHandlerWithDb(key, "counterkey", dbName: dbName);
+            var (_, db) = await RunHandlerWithDb(storedKey: null, headerValue: "counterkey", dbName: dbName);
+
+            var usageRow = await db.ApiKeyDailyUsages.SingleAsync();
+            Assert.AreEqual(2, usageRow.RequestCount);
+        }
+
+        [TestMethod]
+        public async Task UnmatchedKey_WritesRequestLogWithNullApiKeyId() {
+            var (result, db) = await RunHandlerWithDb(storedKey: null, headerValue: "nonexistentkey");
+
+            Assert.IsFalse(result.Succeeded);
+
+            var logRow = await db.ApiKeyRequestLogs.SingleAsync();
+            Assert.IsNull(logRow.ApiKeyId);
+            Assert.IsNull(logRow.GuildId);
+            Assert.IsFalse(logRow.Success);
+            Assert.AreEqual("203.0.113.5", logRow.IpAddress);
+        }
+
+        [TestMethod]
+        public async Task NoHeader_DoesNotWriteRequestLog() {
+            var (_, db) = await RunHandlerWithDb(MakeKey("unused"), headerValue: null);
+
+            Assert.AreEqual(0, await db.ApiKeyRequestLogs.CountAsync());
+        }
     }
 }
