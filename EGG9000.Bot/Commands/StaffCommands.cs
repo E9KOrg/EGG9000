@@ -969,11 +969,17 @@ namespace EGG9000.Bot.Commands {
 
             var fixedCount = 0;
             var ambiguousCount = 0;
+            var collisionCount = 0;
             var fixLog = new List<string>();
             // EggIncId is part of UserCoopXref's composite primary key (UserId, CoopId, EggIncId), so it
             // can't be modified on a tracked entity - EF throws InvalidOperationException on key-property
             // mutation. Swap it via delete-old + insert-new-with-same-values instead.
             var toReplace = new List<(UserCoopXref Old, string NewId)>();
+
+            // Every key already occupied by a row for these users - both surviving (non-orphaned) rows and
+            // the target key a fix would produce must be unique, or the insert collides with an existing
+            // primary key. Seeded from every current row, then grown as each fix claims its target key.
+            var occupiedKeys = allXrefs.Select(x => (x.UserId, x.CoopId, x.EggIncId)).ToHashSet();
 
             foreach(var xref in orphaned) {
                 var user = usersById[xref.UserId];
@@ -991,6 +997,15 @@ namespace EGG9000.Bot.Commands {
                     continue;
                 }
 
+                var targetKey = (xref.UserId, xref.CoopId, targetId);
+                if(!occupiedKeys.Add(targetKey)) {
+                    // Another row (surviving or already-fixed-this-run) already owns this target key -
+                    // e.g. two stale xrefs under different old EIDs for the same user+coop. Leave both
+                    // alone rather than guess which one is the real history for that coop.
+                    collisionCount++;
+                    continue;
+                }
+
                 fixLog.Add($"{user.DiscordUsername} ({user.DiscordId}): `{xref.EggIncId}` -> `{targetId}`");
                 if(apply) {
                     toReplace.Add((xref, targetId));
@@ -1002,14 +1017,7 @@ namespace EGG9000.Bot.Commands {
                 try {
                     const int batchSize = 500;
                     for(var i = 0; i < toReplace.Count; i += batchSize) {
-                        var batch = toReplace.Skip(i).Take(batchSize).ToList();
-                        foreach(var (old, newId) in batch) {
-                            // Two rows can collide on the new key if the user already has a legit xref
-                            // for (UserId, CoopId, newId) - skip those rather than crash the whole batch.
-                            if(batch.Any(b => b.Old != old && b.Old.CoopId == old.CoopId && b.Old.UserId == old.UserId && newId == b.NewId) ||
-                               orphaned.Any(o => o != old && o.UserId == old.UserId && o.CoopId == old.CoopId && o.EggIncId == newId)) {
-                                continue;
-                            }
+                        foreach(var (old, newId) in toReplace.Skip(i).Take(batchSize)) {
                             var replacement = new UserCoopXref();
                             db.Entry(replacement).CurrentValues.SetValues(db.Entry(old).CurrentValues);
                             replacement.EggIncId = newId;
@@ -1028,7 +1036,8 @@ namespace EGG9000.Bot.Commands {
 
             var summary = $"Orphaned xrefs found: **{orphaned.Count}**\n" +
                 $"{(apply ? "Fixed" : "Would fix")}: **{fixedCount}**\n" +
-                $"Skipped, no confident match (zero accounts, or multi-account without a unique username match): **{ambiguousCount}**\n\n" +
+                $"Skipped, no confident match (zero accounts, or multi-account without a unique username match): **{ambiguousCount}**\n" +
+                $"Skipped, target key already taken by another row: **{collisionCount}**\n\n" +
                 (apply ? "Changes have been saved." : "Dry run only - re-run with `apply:true` to write changes.");
 
             var logText = fixLog.Count > 0 ? string.Join("\n", fixLog.Take(40)) + (fixLog.Count > 40 ? $"\n...and {fixLog.Count - 40} more" : "") : "(none)";
