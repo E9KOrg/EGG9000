@@ -29,19 +29,32 @@ namespace EGG9000.Bot.Automated {
                 await mainServer.DownloadUsersAsync();
 
                 var members = users.Where(x => x.GuildId == guild.Id).ToList();
-                var missingFromServer = members.Where(x => mainServer.GetUser(x.DiscordId) is null).Select(x => x.Id).ToList();
+                var missingFromCache = members.Where(x => mainServer.GetUser(x.DiscordId) is null).ToList();
 
-                if(!mainServer.HasAllMembers || mainServer.Users.Count == 0 || DepartureSpikeTooLarge(members.Count, missingFromServer.Count)) {
-                    _logger.LogWarning("Skipping departure handling for {name}: {missing}/{members} members flagged missing, HasAllMembers={hasAll}, likely an incomplete member download", guild.Name, missingFromServer.Count, members.Count, mainServer.HasAllMembers);
+                if(!mainServer.HasAllMembers || mainServer.Users.Count == 0) {
+                    _logger.LogWarning("Skipping departure handling for {name}: HasAllMembers={hasAll}, likely an incomplete member download", guild.Name, mainServer.HasAllMembers);
                 } else {
-                    var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(CancellationToken.None);
+                    // A large chunk missing from the gateway cache is often a spike from a
+                    // missed member-download rather than a real mass exodus, so each candidate
+                    // is confirmed with a live REST lookup (bypasses the gateway cache) instead
+                    // of trusting the cache snapshot outright. This also means real departures
+                    // during an actual mass-exodus event are no longer stuck behind a blanket skip.
+                    var confirmedMissing = new List<Guid>();
+                    foreach(var candidate in missingFromCache) {
+                        var restUser = await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId);
+                        if(restUser is null)
+                            confirmedMissing.Add(candidate.Id);
+                        StillAlive();
+                    }
+
+                    var membersMissing = await _db.DBUsers.Where(x => confirmedMissing.Contains(x.Id)).ToListAsync(CancellationToken.None);
                     membersMissing.ForEach(x => {
                         x.GuildId = 0; x.LastGuild = guild.Id;
                         _logger.LogInformation("Removing member from the guild {name}", x.DiscordUsername);
                         StillAlive();
                     });
 
-                    await PurgePendingAssignments(_db, missingFromServer, guild.Id);
+                    await PurgePendingAssignments(_db, confirmedMissing, guild.Id);
                 }
 
                 // Re-associate any registered user who is present in this server but whose GuildId is unset.
