@@ -914,8 +914,8 @@ namespace EGG9000.Bot.Commands {
         public static async Task FixOrphanedXrefs(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Actually write the fixes; omit to preview only", Required = false)] bool apply = false) {
             await command.DeferAsync();
 
-            var users = await db.DBUsers.Where(x => x._eggIncIds != null && x._eggIncIds != "").ToListAsync();
-            var usersById = users.ToDictionary(x => x.Id);
+            var users = await db.DBUsers.ToListAsync();
+            var usersById = users.Where(x => x.EggIncAccounts.Count > 0).ToDictionary(x => x.Id);
 
             var allXrefs = await db.UserCoopXrefs
                 .Where(x => usersById.Keys.Contains(x.UserId))
