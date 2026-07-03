@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -950,7 +951,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand(Description = "Repair UserCoopXref rows left with a stale EID from before an EID change", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task FixOrphanedXrefs(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Actually write the fixes; omit to preview only", Required = false)] bool apply = false) {
+        public static async Task FixOrphanedXrefs(FauxCommand command, ApplicationDbContext db, ILogger logger, [SlashParam(Description = "Actually write the fixes; omit to preview only", Required = false)] bool apply = false) {
             await command.DeferAsync();
 
             var users = await db.DBUsers.ToListAsync();
@@ -969,6 +970,10 @@ namespace EGG9000.Bot.Commands {
             var fixedCount = 0;
             var ambiguousCount = 0;
             var fixLog = new List<string>();
+            // EggIncId is part of UserCoopXref's composite primary key (UserId, CoopId, EggIncId), so it
+            // can't be modified on a tracked entity - EF throws InvalidOperationException on key-property
+            // mutation. Swap it via delete-old + insert-new-with-same-values instead.
+            var toReplace = new List<(UserCoopXref Old, string NewId)>();
 
             foreach(var xref in orphaned) {
                 var user = usersById[xref.UserId];
@@ -988,13 +993,37 @@ namespace EGG9000.Bot.Commands {
 
                 fixLog.Add($"{user.DiscordUsername} ({user.DiscordId}): `{xref.EggIncId}` -> `{targetId}`");
                 if(apply) {
-                    xref.EggIncId = targetId;
+                    toReplace.Add((xref, targetId));
                 }
                 fixedCount++;
             }
 
-            if(apply && fixedCount > 0) {
-                await db.SaveChangesAsync();
+            if(apply && toReplace.Count > 0) {
+                try {
+                    const int batchSize = 500;
+                    for(var i = 0; i < toReplace.Count; i += batchSize) {
+                        var batch = toReplace.Skip(i).Take(batchSize).ToList();
+                        foreach(var (old, newId) in batch) {
+                            // Two rows can collide on the new key if the user already has a legit xref
+                            // for (UserId, CoopId, newId) - skip those rather than crash the whole batch.
+                            if(batch.Any(b => b.Old != old && b.Old.CoopId == old.CoopId && b.Old.UserId == old.UserId && newId == b.NewId) ||
+                               orphaned.Any(o => o != old && o.UserId == old.UserId && o.CoopId == old.CoopId && o.EggIncId == newId)) {
+                                continue;
+                            }
+                            var replacement = new UserCoopXref();
+                            db.Entry(replacement).CurrentValues.SetValues(db.Entry(old).CurrentValues);
+                            replacement.EggIncId = newId;
+                            db.UserCoopXrefs.Remove(old);
+                            db.UserCoopXrefs.Add(replacement);
+                        }
+                        await db.SaveChangesAsync();
+                        db.ChangeTracker.Clear();
+                    }
+                } catch(Exception ex) {
+                    logger.LogError(ex, "FixOrphanedXrefs: failed while saving batched updates");
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Save failed partway through: {ex.GetType().Name}: {ex.Message}"); });
+                    return;
+                }
             }
 
             var summary = $"Orphaned xrefs found: **{orphaned.Count}**\n" +
