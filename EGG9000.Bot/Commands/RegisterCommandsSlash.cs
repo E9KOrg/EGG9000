@@ -241,6 +241,16 @@ namespace EGG9000.Bot.Commands {
             if(user.EggIncAccounts.Count > 1) user.EggIncAccounts[accountnumber - 1] = newAccount;
             else user.EggIncAccounts = [newAccount];
 
+            // UserCoopXref.EggIncId is a snapshot taken when the xref was created. Without this,
+            // every xref written under the old EID becomes permanently invisible to EggIncId-keyed
+            // lookups (MyFarms history, /coop history, duplicate-assignment checks) the moment the
+            // account's live EID changes.
+            if(newAccount.Id != existingAccount.Id) {
+                await db.UserCoopXrefs
+                    .Where(x => x.UserId == user.Id && x.EggIncId == existingAccount.Id)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.EggIncId, newAccount.Id));
+            }
+
             foreach(var account in user.EggIncAccounts) {
                 var customBackup = new CustomBackup((await EggIncApi.FirstContact(account.Id))?.Backup, await db.CachedEiContractsAsync(), account?.Backup ?? null);
                 if(customBackup?.Farms is not null) {

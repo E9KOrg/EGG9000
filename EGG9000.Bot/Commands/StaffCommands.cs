@@ -905,6 +905,72 @@ namespace EGG9000.Bot.Commands {
 
             await command.RespondAsync($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }
+
+        // UserCoopXref.EggIncId is set once, when the xref is created, to whatever EID the account
+        // had at that moment. /updateid changes EggIncAccount.Id going forward but historically left
+        // old xrefs stamped with the stale EID, orphaning them from every EggIncId-keyed lookup
+        // (MyFarms history, /coop history, duplicate-assignment checks). This repairs the backlog.
+        [SlashCommand(Description = "Repair UserCoopXref rows left with a stale EID from before an EID change", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
+        public static async Task FixOrphanedXrefs(FauxCommand command, ApplicationDbContext db, [SlashParam(Description = "Actually write the fixes; omit to preview only", Required = false)] bool apply = false) {
+            await command.DeferAsync();
+
+            var users = await db.DBUsers.Where(x => x._eggIncIds != null && x._eggIncIds != "").ToListAsync();
+            var usersById = users.ToDictionary(x => x.Id);
+
+            var allXrefs = await db.UserCoopXrefs
+                .Where(x => usersById.Keys.Contains(x.UserId))
+                .ToListAsync();
+
+            var orphaned = allXrefs.Where(x => {
+                var user = usersById[x.UserId];
+                var currentIds = user.EggIncAccounts.Select(a => a.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                return !currentIds.Contains(x.EggIncId);
+            }).ToList();
+
+            var fixedCount = 0;
+            var ambiguousCount = 0;
+            var fixLog = new List<string>();
+
+            foreach(var xref in orphaned) {
+                var user = usersById[xref.UserId];
+
+                string targetId = null;
+                if(user.EggIncAccounts.Count == 1) {
+                    targetId = user.EggIncAccounts[0].Id;
+                } else if(!string.IsNullOrEmpty(xref.FixedUserName)) {
+                    var candidates = user.EggIncAccounts.Where(a => a.Backup?.UserName == xref.FixedUserName).ToList();
+                    if(candidates.Count == 1) targetId = candidates[0].Id;
+                }
+
+                if(targetId is null) {
+                    ambiguousCount++;
+                    continue;
+                }
+
+                fixLog.Add($"{user.DiscordUsername} ({user.DiscordId}): `{xref.EggIncId}` -> `{targetId}`");
+                if(apply) {
+                    xref.EggIncId = targetId;
+                }
+                fixedCount++;
+            }
+
+            if(apply && fixedCount > 0) {
+                await db.SaveChangesAsync();
+            }
+
+            var summary = $"Orphaned xrefs found: **{orphaned.Count}**\n" +
+                $"{(apply ? "Fixed" : "Would fix")}: **{fixedCount}**\n" +
+                $"Skipped, no confident match (zero accounts, or multi-account without a unique username match): **{ambiguousCount}**\n\n" +
+                (apply ? "Changes have been saved." : "Dry run only - re-run with `apply:true` to write changes.");
+
+            var logText = fixLog.Count > 0 ? string.Join("\n", fixLog.Take(40)) + (fixLog.Count > 40 ? $"\n...and {fixLog.Count - 40} more" : "") : "(none)";
+            Embed[] embedArray = [
+                apply ? EmbedSuccess(summary) : EmbedWarning(summary),
+                new EmbedBuilder().WithTitle("Fix details").WithDescription(logText.Truncate(4000)).Build()
+            ];
+
+            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embedArray; });
+        }
     }
 }
 

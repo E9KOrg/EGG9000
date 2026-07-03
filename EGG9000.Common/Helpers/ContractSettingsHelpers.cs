@@ -4,7 +4,7 @@ namespace EGG9000.Common.Helpers {
     public class ContractSettingsHelpers {
         public static Dictionary<Ei.RewardType, string> GetRewardDictionary() {
             return new Dictionary<Ei.RewardType, string> {
-                { Ei.RewardType.EggsOfProphecy, "Eggs Of Prophecy (Leggacy Only)" },
+                { Ei.RewardType.EggsOfProphecy, "Eggs of Prophecy (Leggacy Only)" },
                 { Ei.RewardType.Artifact, "Artifacts" },
                 { Ei.RewardType.PiggyMultiplier, "Piggy Bank" },
                 { Ei.RewardType.ShellScript, "Shell Tickets" },

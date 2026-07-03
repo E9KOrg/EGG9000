@@ -47,7 +47,7 @@
                         <div class="form-check">
                             <input class="form-check-input cs-reward" type="checkbox" value="@((int)r.Type)"
                                    id="cs-reward-@(index)-@((int)r.Type)" @(rewardFilter.Contains(r.Type) ? "checked" : "") @dis />
-                            <label class="form-check-label" for="cs-reward-@(index)-@((int)r.Type)">@(r.Type == Ei.RewardType.EggsOfProphecy ? "Eggs Of Prophecy" : r.Label)</label>
+                            <label class="form-check-label" for="cs-reward-@(index)-@((int)r.Type)">@(r.Type == Ei.RewardType.EggsOfProphecy ? "Eggs of Prophecy" : r.Label)</label>
                             @if (r.Type == Ei.RewardType.EggsOfProphecy) {
                                 <span style="font-size:0.82em; color:#e0a52b;">(only applies to leggacy contracts, ignored for seasonals)</span>
                             }
