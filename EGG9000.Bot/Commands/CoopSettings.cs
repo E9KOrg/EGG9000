@@ -142,8 +142,6 @@ namespace EGG9000.Bot.Commands {
 
             var settingName = data.Split(",")[0];
 
-            dbuser.UpdateAccounts();
-
             var xref = await db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
             var setting = xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild);
             setting[settingName] = !setting[settingName];
