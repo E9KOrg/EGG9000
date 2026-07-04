@@ -1,0 +1,82 @@
+@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin)
+@{
+    string displayKey(UserSnapShot s) =>
+        $"{s.CurrentEgg}|{s.CuriosityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.IntegrityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.HumilityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.ResilienceDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.KindnessDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.TeTotal}|{s.TeEarned}|{s.TePending}|{s.ShiftCount}|{s.Resets}";
+
+    // Collapse consecutive snapshots that render identically at the table's precision.
+    // Each surviving row keeps the earliest date its values appeared.
+    var collapsedSnapshots = new List<UserSnapShot>();
+    foreach (var s in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
+        if (collapsedSnapshots.Count > 0 && displayKey(collapsedSnapshots[^1]) == displayKey(s)) collapsedSnapshots[^1] = s;
+        else collapsedSnapshots.Add(s);
+    }
+
+    var latestTePending = Model.backup.EggsOfTruthTotal - (int)Model.backup.EggsOfTruth;
+    var latestCuriosity = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(0);
+    var latestIntegrity = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(1);
+    var latestHumility = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(2);
+    var latestResilience = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(3);
+    var latestKindness = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(4);
+}
+
+<div class="container">
+    <div class="row">
+        <div class="col-sm">
+            <div class="card" style="margin-top:15px;">
+                <h4 class="card-header" style="text-align: center;">Virtue Progress History</h4>
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>TE (Total)</th>
+                                <th>TE (Earned)</th>
+                                <th>TE (Pending)</th>
+                                <th>Current Egg</th>
+                                <th style="text-align: right !important;">Curiosity</th>
+                                <th style="text-align: right !important;">Integrity</th>
+                                <th style="text-align: right !important;">Humility</th>
+                                <th style="text-align: right !important;">Resilience</th>
+                                <th style="text-align: right !important;">Kindness</th>
+                                <th>Shifts</th>
+                                <th>Resets</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Latest</td>
+                                <td>@Model.backup.EggsOfTruthTotal</td>
+                                <td>@Model.backup.EggsOfTruth</td>
+                                <td>@latestTePending</td>
+                                <td>@Model.backup.MaxEggReached</td>
+                                <td align="right">@latestCuriosity.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                <td align="right">@latestIntegrity.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                <td align="right">@latestHumility.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                <td align="right">@latestResilience.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                <td align="right">@latestKindness.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                <td>@Model.backup.ShiftCount</td>
+                                <td>@Model.backup.Resets</td>
+                            </tr>
+                            @foreach (var snapshot in collapsedSnapshots) {
+                                <tr>
+                                    <td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
+                                    <td>@snapshot.TeTotal</td>
+                                    <td>@snapshot.TeEarned</td>
+                                    <td>@snapshot.TePending</td>
+                                    <td>@snapshot.CurrentEgg</td>
+                                    <td align="right">@snapshot.CuriosityDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                    <td align="right">@snapshot.IntegrityDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                    <td align="right">@snapshot.HumilityDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                    <td align="right">@snapshot.ResilienceDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                    <td align="right">@snapshot.KindnessDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                    <td>@snapshot.ShiftCount</td>
+                                    <td>@snapshot.Resets</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

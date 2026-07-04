@@ -54,7 +54,18 @@ namespace EGG9000.Bot.Automated {
                             && lastSnapshot.EarningsBonus == backup.EarningsBonus
                             && lastSnapshot.EggsOfProphecy == backup.EggsOfProphecy
                             && lastSnapshot.SoulEggs == backup.SoulEggs
-                            && lastSnapshot.EggsOfTruth == backup.EggsOfTruth;
+                            && lastSnapshot.EggsOfTruth == backup.EggsOfTruth
+                            && lastSnapshot.CurrentEgg == backup.MaxEggReached
+                            && lastSnapshot.CuriosityDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(0)
+                            && lastSnapshot.IntegrityDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(1)
+                            && lastSnapshot.HumilityDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(2)
+                            && lastSnapshot.ResilienceDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(3)
+                            && lastSnapshot.KindnessDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(4)
+                            && lastSnapshot.TeTotal == backup.EggsOfTruthTotal
+                            && lastSnapshot.TeEarned == backup.EggsOfTruth
+                            && lastSnapshot.TePending == backup.EggsOfTruthTotal - (int)backup.EggsOfTruth
+                            && lastSnapshot.ShiftCount == backup.ShiftCount
+                            && lastSnapshot.Resets == backup.Resets;
                         if(unchanged && !forceWrite) continue;
 
                         _db.UserSnapShots.Add(new UserSnapShot {
@@ -66,7 +77,17 @@ namespace EGG9000.Bot.Automated {
                             EggsOfProphecy = backup.EggsOfProphecy,
                             SoulEggs = backup.SoulEggs,
                             EggsOfTruth = backup.EggsOfTruth,
-
+                            CurrentEgg = backup.MaxEggReached,
+                            CuriosityDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(0),
+                            IntegrityDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(1),
+                            HumilityDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(2),
+                            ResilienceDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(3),
+                            KindnessDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(4),
+                            TeTotal = backup.EggsOfTruthTotal,
+                            TeEarned = backup.EggsOfTruth,
+                            TePending = backup.EggsOfTruthTotal - (int)backup.EggsOfTruth,
+                            ShiftCount = backup.ShiftCount,
+                            Resets = backup.Resets,
                         });
                         _logger.LogTrace("Adding Snapshot for {user}", user.Id);
                         if(snapshots++ >= 50) {
