@@ -131,6 +131,12 @@
                         <button type="button" class="btn btn-secondary cs-num-step" data-step="1000" tabindex="-1" @dis>+</button>
                     </div>
                 </div>
+
+                <div class="cs-dependent cs-redoothermatch-wrap-@index" style="margin-top:6px; @(redoMode == (int)RedoLeggacyOption.YesOtherAccountMatch ? "" : "display:none;")">
+                    <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
+                        Also applies to Seasonal contracts: forces this account in whenever a sibling account (same boarding group) is force-assigned by the Seasonal Contracts filter above.
+                    </p>
+                </div>
             </div>
 
             <div class="form-check cs-check" style="margin-top:18px;">

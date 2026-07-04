@@ -22,6 +22,13 @@
                     }
                 </datalist>
             </div>
+            <div class="form-check" style="margin-top:8px;">
+                <input class="form-check-input ta-sibling-assigned" type="checkbox" id="ta-sibling-@index" />
+                <label class="form-check-label" for="ta-sibling-@index">Simulate a sibling account being assigned</label>
+                <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
+                    Only matters if "Redo leggacies" is set to "if other account matches" — previews whether a sibling getting assigned would pull this account in too (Leggacy redo or Seasonal force-assign).
+                </p>
+            </div>
             <p style="font-size:0.85em; color:grey; margin-top:8px;">Ignores current-round assignment (whether you are already in a co-op).</p>
             <div class="ta-result" id="ta-result-@index" style="margin-top:12px;"></div>
         </div>

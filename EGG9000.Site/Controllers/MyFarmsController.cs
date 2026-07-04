@@ -365,6 +365,9 @@ namespace EGG9000.Site.Controllers {
         public record TestAssignmentModel {
             public int AccountIndex { get; set; }
             public string ContractId { get; set; }
+            // Simulates a sibling account being assigned, for previewing RedoLeggacyOption.YesOtherAccountMatch
+            // (normally only resolved by AssignmentEvaluator.EvaluateUser's two-pass, multi-account run).
+            public bool SimulateSiblingAssigned { get; set; }
         }
 
         [HttpPost]
@@ -389,6 +392,11 @@ namespace EGG9000.Site.Controllers {
             var contractFacts = Common.Contracts.Assignment.ContractFactsBuilder.Build(contract, season);
             var accountFacts = Common.Contracts.Assignment.AccountFactsBuilder.Build(dbuser, account, contract, new List<Coop>(), latest, season, seasonProgresses);
 
+            // Only means anything under YesOtherAccountMatch; on any other redo mode nothing reads the flag.
+            var siblingMatchApplies = m.SimulateSiblingAssigned
+                && (account.Assignment?.Redo?.Mode ?? Common.Helpers.RedoLeggacyOption.NotSet) == Common.Helpers.RedoLeggacyOption.YesOtherAccountMatch;
+            if(siblingMatchApplies) accountFacts.SiblingMatchProvisionalInclude = true;
+
             var dbGuild = _db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
             var decision = Common.Contracts.Assignment.AssignmentEvaluator.Evaluate(accountFacts, contractFacts, account.Assignment, dbGuild?.RuleOverrides, dbGuild?.DisableBG ?? false, verbose: true);
 
@@ -403,7 +411,8 @@ namespace EGG9000.Site.Controllers {
                     missingColleggtible = accountFacts.MissingColleggtible,
                     previouslyCompleted = accountFacts.PreviouslyCompleted,
                     previousScore = accountFacts.PreviousScoreOnThisContract,
-                    filtersDisabled = dbGuild?.DisableBG ?? false
+                    filtersDisabled = dbGuild?.DisableBG ?? false,
+                    siblingMatchSimulated = siblingMatchApplies
                 },
                 results = decision.Results.Select(r => new {
                     rule = r.Rule.ToString(),
