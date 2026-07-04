@@ -831,6 +831,8 @@
                         if (field === 'redoMode') {
                             const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);
                             if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
+                            const otherMatchWrap = container.querySelector('.cs-redoothermatch-wrap-' + accountIndex);
+                            if (otherMatchWrap) otherMatchWrap.style.display = (value === '4') ? '' : 'none';
                         }
                         saveContractSetting(container, accountIndex, field, value, () => {
                             if (el.type === 'checkbox') el.checked = (before === 'true');
@@ -900,6 +902,7 @@
                     const index = parseInt(btn.dataset.index);
                     const select = document.getElementById('ta-contract-' + index);
                     const result = document.getElementById('ta-result-' + index);
+                    const siblingCheckbox = document.getElementById('ta-sibling-' + index);
                     if (!select || !result) return;
                     // The picker value is "Name (contractId)"; pull the id from the trailing parens.
                     // Fall back to the raw text so a directly-typed id still works.
@@ -912,7 +915,7 @@
                     fetch('/MyFarms/TestAssignment', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ accountIndex: index, contractId: contractId })
+                        body: JSON.stringify({ accountIndex: index, contractId: contractId, simulateSiblingAssigned: !!(siblingCheckbox && siblingCheckbox.checked) })
                     }).then(res => {
                         if (!res.ok) {
                             result.innerHTML = '<span style="color:red;">Test failed (' + res.status + ').</span>';
@@ -945,6 +948,7 @@
             ];
             if (d.previousScore != null) diagParts.push('Prev score: ' + Math.round(d.previousScore).toLocaleString());
             if (d.filtersDisabled) diagParts.push('Filters OFF (server uses roles)');
+            if (d.siblingMatchSimulated) diagParts.push('Sibling match simulated');
             const diag = '<div style="margin:8px 0; font-size:.85em; color:#9aa0a6; line-height:1.6;">' + escapeHtml(diagParts.join('  ·  ')) + '</div>';
 
             const outMeta = {

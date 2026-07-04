@@ -57,5 +57,39 @@ namespace EGG9000.Test.Assignment {
             Assert.IsTrue(siblingDecision.Assigned);
             Assert.IsFalse(replayDecision.Assigned, "different boarding group means no sibling match");
         }
+
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void YesOtherAccountMatch_IncludedWhenSiblingForcedBySeasonal() {
+            var contract = TestFactsBuilder.Contract().Seasonal(true).Grade(G.GradeC, Ei.RewardType.Gold).Build();
+
+            // The replay account: seasonal goal already met (Force tier would Exclude it outright),
+            // group 1, opted into YesOtherAccountMatch.
+            var replay = TestFactsBuilder.Account().AccountId("replay").Grade(G.GradeC).BoardingGroup(1)
+                .MissingSeasonalPe(false).Build();
+            var replaySettings = new AssignmentSettings {
+                Redo = new RedoRule { Mode = RedoLeggacyOption.YesOtherAccountMatch },
+                Seasonal = new SeasonalRule { Mode = SeasonalMode.UntilPeEarned, RewardFilterAfter = false }
+            };
+
+            // The sibling: still missing seasonal PE -> force-assigned in pass 1, same grade + group.
+            var sibling = TestFactsBuilder.Account().AccountId("sibling").Grade(G.GradeC).BoardingGroup(1)
+                .MissingSeasonalPe(true).Build();
+            var siblingSettings = new AssignmentSettings {
+                Seasonal = new SeasonalRule { Mode = SeasonalMode.UntilPeEarned }
+            };
+
+            var inputs = new List<(AccountFacts, AssignmentSettings)> {
+                (replay, replaySettings),
+                (sibling, siblingSettings)
+            };
+
+            var results = AssignmentEvaluator.EvaluateUser(inputs, contract);
+            var replayDecision = results.First(r => r.facts.AccountId == "replay").decision;
+            var siblingDecision = results.First(r => r.facts.AccountId == "sibling").decision;
+
+            Assert.IsTrue(siblingDecision.Assigned, "sibling should be force-assigned by the seasonal rule");
+            Assert.IsTrue(replayDecision.Assigned, "replay should be pulled in by the seasonal-forced sibling");
+        }
     }
 }
