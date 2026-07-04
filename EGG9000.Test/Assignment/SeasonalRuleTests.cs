@@ -1,4 +1,5 @@
 using EGG9000.Common.Contracts.Assignment;
+using EGG9000.Common.Helpers;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -21,6 +22,30 @@ namespace EGG9000.Test.Assignment {
             var c = TestFactsBuilder.Contract().Seasonal(true).Build();
             var f = TestFactsBuilder.Account().MissingSeasonalPe(false).Build();
             Assert.AreEqual(RuleOutcome.ForceInclude, new SeasonalContractsRule().Evaluate(f, c, With(SeasonalMode.AlwaysAssign)));
+        }
+
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void AlwaysAssign_ExcludeSeasonal_PreviouslyCompleted_Excludes() {
+            var c = TestFactsBuilder.Contract().Seasonal(true).Build();
+            var f = TestFactsBuilder.Account().PreviouslyCompleted(true).Build();
+            var s = new AssignmentSettings {
+                Seasonal = new SeasonalRule { Mode = SeasonalMode.AlwaysAssign },
+                Redo = new RedoRule { Mode = RedoLeggacyOption.No, ExcludeSeasonal = true }
+            };
+            Assert.AreEqual(RuleOutcome.Exclude, new SeasonalContractsRule().Evaluate(f, c, s));
+        }
+
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void AlwaysAssign_ExcludeSeasonal_NotCompleted_StillForces() {
+            var c = TestFactsBuilder.Contract().Seasonal(true).Build();
+            var f = TestFactsBuilder.Account().PreviouslyCompleted(false).Build();
+            var s = new AssignmentSettings {
+                Seasonal = new SeasonalRule { Mode = SeasonalMode.AlwaysAssign },
+                Redo = new RedoRule { Mode = RedoLeggacyOption.No, ExcludeSeasonal = true }
+            };
+            Assert.AreEqual(RuleOutcome.ForceInclude, new SeasonalContractsRule().Evaluate(f, c, s));
         }
 
         [TestMethod]
