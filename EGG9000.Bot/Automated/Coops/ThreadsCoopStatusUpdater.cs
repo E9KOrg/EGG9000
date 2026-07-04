@@ -455,12 +455,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(!coop.FinalizedFinishedOrFailed()) {
                     await CheckHighestEBJoined(coop, usersWithStatus, coopDetails, coopThread, _db, usersNotJoined);
 
-                    if(!coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.UtcNow) {
+                    if(!status.Finished && !coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined >= 100 && coop.CoopEnds > DateTimeOffset.UtcNow) {
                         coop.ProjectedToFinish = true;
                         _queue.EnqueueLow(() => coopThread.SendMessageAsync($"Coop {coop.Name} is now projected to finish!"));
                     }
 
-                    if(status.SecondsRemaining > 1 && coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined < 100 && coop.CoopEnds > DateTimeOffset.UtcNow) {
+                    if(!status.Finished && status.SecondsRemaining > 1 && coop.ProjectedToFinish && coopDetails.PercentProjectedForJoined < 100 && coop.CoopEnds > DateTimeOffset.UtcNow) {
                         coop.ProjectedToFinish = false;
                         _queue.EnqueueLow(() => coopThread.SendMessageAsync($"Coop {coop.Name} is **no longer** projected to finish."));
                     }
