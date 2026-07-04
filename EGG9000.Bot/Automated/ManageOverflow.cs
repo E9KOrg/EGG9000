@@ -58,14 +58,25 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 // Re-associate any registered user who is present in this server but whose GuildId is unset.
-                // Presence is reliable even on a partial cache (only absence is not), so this is safe to run
-                // unconditionally. Covers both LastGuild-trail returns and the no-trail users that earlier
-                // zeroing left with GuildId = 0 and no record of their original guild.
-                var returned = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
-                var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync(CancellationToken.None);
+                // The gateway cache can be wrong in this direction too (a stale add that never got
+                // evicted by a missed/delayed remove), so, same as the departure check above, each
+                // candidate is confirmed with a live REST lookup before being written back, instead of
+                // trusting the cache snapshot on its own. Covers both LastGuild-trail returns and the
+                // no-trail users that earlier zeroing left with GuildId = 0 and no record of their
+                // original guild.
+                var returnCandidates = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).ToList();
+                var confirmedReturned = new List<Guid>();
+                foreach(var candidate in returnCandidates) {
+                    var restUser = await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId);
+                    if(restUser is not null)
+                        confirmedReturned.Add(candidate.Id);
+                    StillAlive();
+                }
+
+                var membersReturn = await _db.DBUsers.Where(x => confirmedReturned.Contains(x.Id)).ToListAsync(CancellationToken.None);
                 membersReturn.ForEach(x => {
                     x.GuildId = guild.Id;
-                    _logger.LogInformation("Re-associating member {name} to guild {guild} (present in server, GuildId was unset)", x.DiscordUsername, guild.Name);
+                    _logger.LogInformation("Re-associating member {name} to guild {guild} (present in server, GuildId was unset, REST-confirmed)", x.DiscordUsername, guild.Name);
                     StillAlive();
                 });
 

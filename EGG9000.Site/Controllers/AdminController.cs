@@ -1395,29 +1395,19 @@ music
 
         public async Task<IActionResult> NonServerUsers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var guild = _discord.Guilds.First(x => x.Id == guildId);
-            await guild.DownloadUsersAsync();
-
-            // A partial roster cannot tell "left" from "not yet downloaded"; refuse to list
-            // so staff never unassign a real member during an incomplete cache.
-            if(!guild.HasAllMembers) {
-                return View((new List<DBUser>(), true));
-            }
-
-            var memberIds = guild.Users.Select(u => u.Id).ToHashSet();
 
             var candidates = await _db.DBUsers
                 .Where(u => u.GuildId == guildId)
                 .Select(u => new { u.Id, u.DiscordId, u.DiscordUsername, u._eggIncIds, u._contractRegistrationByte })
                 .ToListAsync();
 
+            // The gateway member cache (both the WS cache and this Site's own separate client) can be
+            // wrong in either direction, stale-present after a missed departure, or stale-absent right
+            // after a join, so it's not consulted at all here. REST is authoritative and bypasses both
+            // caches; every candidate is decided by it directly instead of only falling back to it when
+            // the cache claims someone is already gone.
             var rows = new List<DBUser>();
             foreach(var u in candidates) {
-                if(memberIds.Contains(u.DiscordId)) continue;
-
-                // Gateway member cache can lag or miss a departure (Site runs its own
-                // long-lived client independent of the bot). Confirm via REST, which
-                // bypasses the cache, before treating someone as gone.
                 var restUser = await _discord.Rest.GetGuildUserAsync(guildId, u.DiscordId);
                 if(restUser != null) continue;
 
