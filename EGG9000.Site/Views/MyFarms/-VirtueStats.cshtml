@@ -1,5 +1,8 @@
 @model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin)
 @{
+    string eggAmount(double delivered) => delivered.ToEggString(numberOfDecimalPlaces: 3);
+    int eggLevel(double delivered) => VirtueHelper.CurrentLevel(delivered);
+
     string displayKey(UserSnapShot s) =>
         $"{s.CurrentEgg}|{s.CuriosityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.IntegrityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.HumilityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.ResilienceDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.KindnessDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.TeTotal}|{s.TeEarned}|{s.TePending}|{s.ShiftCount}|{s.Resets}";
 
@@ -33,11 +36,11 @@
                                 <th>TE (Earned)</th>
                                 <th>TE (Pending)</th>
                                 <th>Current Egg</th>
-                                <th style="text-align: right !important;">Curiosity</th>
-                                <th style="text-align: right !important;">Integrity</th>
-                                <th style="text-align: right !important;">Humility</th>
-                                <th style="text-align: right !important;">Resilience</th>
-                                <th style="text-align: right !important;">Kindness</th>
+                                <th style="text-align: center;">Curiosity</th>
+                                <th style="text-align: center;">Integrity</th>
+                                <th style="text-align: center;">Humility</th>
+                                <th style="text-align: center;">Resilience</th>
+                                <th style="text-align: center;">Kindness</th>
                                 <th>Shifts</th>
                                 <th>Resets</th>
                             </tr>
@@ -49,11 +52,11 @@
                                 <td>@Model.backup.EggsOfTruth</td>
                                 <td>@latestTePending</td>
                                 <td>@Model.backup.MaxEggReached</td>
-                                <td align="right">@latestCuriosity.ToEggString(numberOfDecimalPlaces: 3)</td>
-                                <td align="right">@latestIntegrity.ToEggString(numberOfDecimalPlaces: 3)</td>
-                                <td align="right">@latestHumility.ToEggString(numberOfDecimalPlaces: 3)</td>
-                                <td align="right">@latestResilience.ToEggString(numberOfDecimalPlaces: 3)</td>
-                                <td align="right">@latestKindness.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                <td style="text-align: center;">@eggAmount(latestCuriosity) <span class="text-muted">(@eggLevel(latestCuriosity))</span></td>
+                                <td style="text-align: center;">@eggAmount(latestIntegrity) <span class="text-muted">(@eggLevel(latestIntegrity))</span></td>
+                                <td style="text-align: center;">@eggAmount(latestHumility) <span class="text-muted">(@eggLevel(latestHumility))</span></td>
+                                <td style="text-align: center;">@eggAmount(latestResilience) <span class="text-muted">(@eggLevel(latestResilience))</span></td>
+                                <td style="text-align: center;">@eggAmount(latestKindness) <span class="text-muted">(@eggLevel(latestKindness))</span></td>
                                 <td>@Model.backup.ShiftCount</td>
                                 <td>@Model.backup.Resets</td>
                             </tr>
@@ -64,11 +67,11 @@
                                     <td>@snapshot.TeEarned</td>
                                     <td>@snapshot.TePending</td>
                                     <td>@snapshot.CurrentEgg</td>
-                                    <td align="right">@snapshot.CuriosityDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
-                                    <td align="right">@snapshot.IntegrityDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
-                                    <td align="right">@snapshot.HumilityDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
-                                    <td align="right">@snapshot.ResilienceDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
-                                    <td align="right">@snapshot.KindnessDelivered.ToEggString(numberOfDecimalPlaces: 3)</td>
+                                    <td style="text-align: center;">@eggAmount(snapshot.CuriosityDelivered) <span class="text-muted">(@eggLevel(snapshot.CuriosityDelivered))</span></td>
+                                    <td style="text-align: center;">@eggAmount(snapshot.IntegrityDelivered) <span class="text-muted">(@eggLevel(snapshot.IntegrityDelivered))</span></td>
+                                    <td style="text-align: center;">@eggAmount(snapshot.HumilityDelivered) <span class="text-muted">(@eggLevel(snapshot.HumilityDelivered))</span></td>
+                                    <td style="text-align: center;">@eggAmount(snapshot.ResilienceDelivered) <span class="text-muted">(@eggLevel(snapshot.ResilienceDelivered))</span></td>
+                                    <td style="text-align: center;">@eggAmount(snapshot.KindnessDelivered) <span class="text-muted">(@eggLevel(snapshot.KindnessDelivered))</span></td>
                                     <td>@snapshot.ShiftCount</td>
                                     <td>@snapshot.Resets</td>
                                 </tr>
