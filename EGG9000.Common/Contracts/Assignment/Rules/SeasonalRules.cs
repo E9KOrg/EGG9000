@@ -8,8 +8,13 @@ namespace EGG9000.Common.Contracts.Assignment {
         public bool AppliesTo(ContractFacts c) => c.IsSeasonal;
         public RuleOutcome Evaluate(AccountFacts f, ContractFacts c, AssignmentSettings s) {
             var r = s.Seasonal ?? new SeasonalRule();
+            var redo = s.Redo ?? new RedoRule();
             switch(r.Mode) {
                 case SeasonalMode.AlwaysAssign:
+                    // Skip-seasonal-replays carve-out: Force tier short-circuits before the Include tier's
+                    // PreviouslyCompletedRule ever runs, so that carve-out must be honored here too, else
+                    // AlwaysAssign force-includes previously-completed seasonal contracts unconditionally.
+                    if(redo.ExcludeSeasonal && (f.PreviouslyCompleted || f.CompletedExactlyTwoGoals)) return RuleOutcome.Exclude;
                     return RuleOutcome.ForceInclude;
                 case SeasonalMode.UntilPeEarned:
                     if(f.MissingSeasonalPe) return RuleOutcome.ForceInclude;
@@ -27,7 +32,7 @@ namespace EGG9000.Common.Contracts.Assignment {
             }
         }
         public string Describe(RuleOutcome o) => o == RuleOutcome.Exclude
-            ? "Seasonal goal met (not assigned)"
+            ? "Seasonal goal met or already completed (not assigned)"
             : "Seasonal contract (force assign)";
     }
 }
