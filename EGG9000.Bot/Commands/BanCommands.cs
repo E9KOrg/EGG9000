@@ -23,7 +23,7 @@ namespace EGG9000.Bot.Commands {
     [Group("b", "Ban management commands")]
     [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
     [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
-    public class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
         [SlashCommand("banlist", "Check the list of Users/EIDs that have been banned from the server via /kick")]
