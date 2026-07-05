@@ -19,23 +19,16 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    [Group("a", "Admin commands")]
-    [StaffOnly(StaffTier.CluckingCoordinator)]
-    public class RankupModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
-        private static string Trunc(string s, int n) => string.IsNullOrEmpty(s) ? s : s.Length <= n ? s : s[..(n - 1)] + "…";
-
+    public partial class AdminModule {
         private static string ScopeName(int oom) =>
             oom == RankupMessage.GlobalPool ? "Global" : RankRegistry.ForOom(oom).DisplayName;
-
-        private static async Task<Guild> LoadGuild(ApplicationDbContext db, ulong? gid) =>
-            gid is null ? null : await db.Guilds.FirstOrDefaultAsync(g => g.Id == gid || g.OverflowServersJson.Contains(gid.Value.ToString()));
 
         private static SelectMenuBuilder NavMenu() =>
             new SelectMenuBuilder().WithCustomId("RuNav").WithPlaceholder("Rank-up section...")
                 .AddOption("Overview", "overview").AddOption("Toggles", "toggles")
                 .AddOption("Message Pools", "groups").AddOption("Notify Filter", "filter");
 
-        private static ButtonBuilder BackTo(string target, string label = "← Back") =>
+        private static ButtonBuilder RuBackTo(string target, string label = "← Back") =>
             new ButtonBuilder().WithLabel(label).WithCustomId($"RuBack:{target}").WithStyle(ButtonStyle.Secondary);
 
         private static async Task<(Embed, MessageComponent)> BuildViewAsync(ApplicationDbContext db, string section, Guild g, string payload = null) {
@@ -46,7 +39,7 @@ namespace EGG9000.Bot.Commands {
                 case "toggles": {
                     cb.WithButton($"Messages Enabled: {(g.RankupMessagesEnabled ? "ON" : "off")}", customId: "RuToggle:RankupMessagesEnabled", style: g.RankupMessagesEnabled ? ButtonStyle.Success : ButtonStyle.Secondary, row: 0);
                     cb.WithButton($"Exclusive Group Pool: {(g.RankupExclusivePool ? "ON" : "off")}", customId: "RuToggle:RankupExclusivePool", style: g.RankupExclusivePool ? ButtonStyle.Success : ButtonStyle.Secondary, row: 0);
-                    cb.WithButton(BackTo("overview"), row: 1);
+                    cb.WithButton(RuBackTo("overview"), row: 1);
                     eb.WithTitle("Toggles").WithDescription(
                         "**Messages Enabled** - master switch for rank-up announcements.\n" +
                         "**Exclusive Group Pool** - when a group has its own messages, don't mix in the global pool.");
@@ -59,7 +52,7 @@ namespace EGG9000.Bot.Commands {
                     foreach(var lead in leads)
                         pick.AddOption(lead.DisplayName, lead.GroupBase.ToString(), isDefault: !g.RankupDisabledGroups.Contains(lead.GroupBase));
                     cb.WithSelectMenu(pick, row: 0);
-                    cb.WithButton(BackTo("overview"), row: 1);
+                    cb.WithButton(RuBackTo("overview"), row: 1);
                     eb.WithTitle("Notify Filter").WithDescription("Selected groups announce rank-ups; unselected groups stay silent. (This is on top of which roles your server actually creates.)");
                     break;
                 }
@@ -73,7 +66,7 @@ namespace EGG9000.Bot.Commands {
                         cb.WithSelectMenu(pick, row: 0);
                     }
                     cb.WithButton("Add Message", customId: $"RuAdd:{scope}", style: ButtonStyle.Success, row: 1);
-                    cb.WithButton(BackTo("groups", "← Pools"), row: 1);
+                    cb.WithButton(RuBackTo("groups", "← Pools"), row: 1);
                     eb.WithTitle($"{ScopeName(scope)} pool")
                       .WithDescription(messages.Count == 0
                           ? "_No custom messages for this scope. Without any, the palace defaults are used._"
@@ -85,7 +78,7 @@ namespace EGG9000.Bot.Commands {
                     if(msg is null) { return await BuildViewAsync(db, "groups", g); }
                     cb.WithButton("Edit", customId: $"RuEditBtn:{msg.InternalId}", style: ButtonStyle.Primary, row: 0);
                     cb.WithButton("Delete", customId: $"RuDelBtn:{msg.InternalId}", style: ButtonStyle.Danger, row: 0);
-                    cb.WithButton(BackTo("pool:" + msg.GroupBaseOom, "← Pool"), row: 1);
+                    cb.WithButton(RuBackTo("pool:" + msg.GroupBaseOom, "← Pool"), row: 1);
                     eb.WithTitle($"{ScopeName(msg.GroupBaseOom)} message").WithDescription(Trunc(msg.Text, 4000));
                     break;
                 }
@@ -95,7 +88,7 @@ namespace EGG9000.Bot.Commands {
                     foreach(var lead in RankRegistry.GroupLeads)
                         pick.AddOption(lead.DisplayName, lead.GroupBase.ToString());
                     cb.WithSelectMenu(pick, row: 0);
-                    cb.WithButton(BackTo("overview"), row: 1);
+                    cb.WithButton(RuBackTo("overview"), row: 1);
                     eb.WithTitle("Message Pools").WithDescription("Pick the Global pool or a rank group to edit its messages. Tokens: `{{user}}` `{{rank}}` `{{eb}}` `{{oom}}` `{{emoji:name}}` `{{command:name}}`.");
                     break;
                 }
@@ -114,6 +107,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("rankup", "Customize this server's rank-up announcements")]
+        [StaffOnly(StaffTier.CluckingCoordinator)]
         public async Task Rankup() {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -250,10 +244,6 @@ namespace EGG9000.Bot.Commands {
             await modal.UpdateAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        private static (string, string) SplitFirst(string s) {
-            var i = s.IndexOf(':');
-            return i < 0 ? (s, null) : (s[..i], s[(i + 1)..]);
-        }
     }
 
     public class RankupMessageModal : IModal {

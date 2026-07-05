@@ -3,27 +3,20 @@ using Discord.Interactions;
 
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Consumers;
-using EGG9000.Common.Database;
 using EGG9000.Common.EggIncAPI;
-using EGG9000.Common.Services;
 
 using MassTransit;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-using System;
 using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    [Group("a", "Admin commands")]
-    [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
-    public class ApiVersionModule(IDbContextFactory<ApplicationDbContext> dbFactory, IServiceProvider provider) : E9KModuleBase(dbFactory) {
-        private readonly IServiceProvider _provider = provider;
-
+    public partial class AdminModule {
         [SlashCommand("setversions", "Update the Egg Inc API version triple at runtime (validated against the live API first).")]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task SetVersions(
             [Summary(description: "Numeric client version (e.g. 72)")] int clientVersion,
             [Summary(description: "App version string (e.g. 1.35.6)")] string appVersion,
@@ -45,7 +38,7 @@ namespace EGG9000.Bot.Commands {
             var oldTriple = $"{EggIncApi.ClientVersion} / {EggIncApi.AppVersion} / {EggIncApi.AppBuild}";
             EggIncApi.SetVersions((uint)clientVersion, appVersion, appBuild);
 
-            var publisher = _provider.GetService<IPublishEndpoint>();
+            var publisher = serviceProvider.GetService<IPublishEndpoint>();
             var scope = "this instance only (broadcast unavailable)";
             if(publisher is not null) {
                 await publisher.Publish(new UpdateApiVersionsMessage { ClientVersion = (uint)clientVersion, AppVersion = appVersion, AppBuild = appBuild });

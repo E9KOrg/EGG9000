@@ -20,9 +20,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    [Group("a", "Admin commands")]
-    [StaffOnly(StaffTier.Admin)]
-    public class ConfigureModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
+    public partial class AdminModule {
         private static string EnumDesc(GuildChannelType v) =>
             typeof(GuildChannelType).GetField(v.ToString())?.GetCustomAttribute<DescriptionAttribute>()?.Description ?? v.ToString();
         private static string EnumDesc(GuildCoopSetting v) =>
@@ -34,7 +32,7 @@ namespace EGG9000.Bot.Commands {
         private static string Pretty(string desc) => desc
             .Replace("/TC/", "").Replace("/R/", "").Replace("Required: ", "").Replace("Optional: ", "").Trim();
 
-        private static string Trunc(string s, int n) => s.Length <= n ? s : s[..(n - 1)] + "…";
+        private static string Trunc(string s, int n) => string.IsNullOrEmpty(s) ? s : s.Length <= n ? s : s[..(n - 1)] + "…";
 
         private static IEnumerable<GuildChannelType> ChannelTypes() =>
             Enum.GetValues<GuildChannelType>().Where(v => !IsRole(EnumDesc(v)));
@@ -207,6 +205,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("configure", "Configure this server (same as the website)")]
+        [StaffOnly(StaffTier.Admin)]
         public async Task Configure() {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var g = await LoadGuild(Db, Context.Guild?.Id);

@@ -20,13 +20,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    [Group("a", "Admin commands")]
-    [StaffOnly(StaffTier.Admin)]
-    public class EditFaqModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : E9KModuleBase(dbFactory) {
-        private readonly DiscordHostedService _client = client;
-
-        private static string Trunc(string s, int n) => string.IsNullOrEmpty(s) ? s : s.Length <= n ? s : s[..(n - 1)] + "…";
-
+    public partial class AdminModule {
         private static bool IsPalaceGuild(Guild g) {
 #if DEV9002
             return g.DiscordSeverId == 1108127105088241746;
@@ -34,9 +28,6 @@ namespace EGG9000.Bot.Commands {
             return g.DiscordSeverId == 656455567858073601;
 #endif
         }
-
-        private static async Task<Guild> LoadGuild(ApplicationDbContext db, ulong? gid) =>
-            gid is null ? null : await db.Guilds.FirstOrDefaultAsync(g => g.Id == gid || g.OverflowServersJson.Contains(gid.Value.ToString()));
 
         private static List<string> KeywordsOf(FAQTopic t) {
             try { return t.Keywords ?? []; } catch { return []; }
@@ -96,6 +87,7 @@ namespace EGG9000.Bot.Commands {
                 .AddTextInputSafe("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
 
         [SlashCommand("editfaq", "Edit this server's FAQ topics")]
+        [StaffOnly(StaffTier.Admin)]
         public async Task EditFaq() {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -103,62 +95,62 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find this server's config record."); });
                 return;
             }
-            var (embed, components) = await BuildViewAsync(Db, _client, "list", g);
+            var (embed, components) = await BuildViewAsync(Db, client, "list", g);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("FeBack")]
+        [ComponentInteraction("FeBack", ignoreGroupNames: true)]
         public async Task FeBack() {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
-            var (embed, components) = await BuildViewAsync(Db, _client, "list", g);
+            var (embed, components) = await BuildViewAsync(Db, client, "list", g);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("FePick")]
+        [ComponentInteraction("FePick", ignoreGroupNames: true)]
         public async Task FePick(string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
-            var (embed, components) = await BuildViewAsync(Db, _client, "detail", g, values.FirstOrDefault());
+            var (embed, components) = await BuildViewAsync(Db, client, "detail", g, values.FirstOrDefault());
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("FeAdd")]
+        [ComponentInteraction("FeAdd", ignoreGroupNames: true)]
         public async Task FeAdd() {
             await Context.Interaction.RespondWithModalAsync(TopicModal("FeModal:new", null).Build());
         }
 
-        [ComponentInteraction("FeEditText:*")]
+        [ComponentInteraction("FeEditText:*", ignoreGroupNames: true)]
         public async Task FeEditText(string data) {
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data);
             if(t is null) { await Context.Interaction.DeferAsync(); return; }
             await Context.Interaction.RespondWithModalAsync(TopicModal($"FeModal:edit:{data}", t).Build());
         }
 
-        [ComponentInteraction("FeStaff:*")]
+        [ComponentInteraction("FeStaff:*", ignoreGroupNames: true)]
         public async Task FeStaff(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
             if(t is not null) { t.StaffOnly = !t.StaffOnly; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
-            var (embed, components) = await BuildViewAsync(Db, _client, "detail", g, data);
+            var (embed, components) = await BuildViewAsync(Db, client, "detail", g, data);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("FePalace:*")]
+        [ComponentInteraction("FePalace:*", ignoreGroupNames: true)]
         public async Task FePalace(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
             if(t is not null && IsPalaceGuild(g)) { t.PalaceOnly = !t.PalaceOnly; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
-            var (embed, components) = await BuildViewAsync(Db, _client, "detail", g, data);
+            var (embed, components) = await BuildViewAsync(Db, client, "detail", g, data);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("FeWUp:*")]
+        [ComponentInteraction("FeWUp:*", ignoreGroupNames: true)]
         public async Task FeWUp(string data) => await AdjustWeight(data, +1);
 
-        [ComponentInteraction("FeWDn:*")]
+        [ComponentInteraction("FeWDn:*", ignoreGroupNames: true)]
         public async Task FeWDn(string data) => await AdjustWeight(data, -1);
 
         private async Task AdjustWeight(string data, int delta) {
@@ -166,21 +158,21 @@ namespace EGG9000.Bot.Commands {
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
             if(t is not null) { t.Weight += delta; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
-            var (embed, components) = await BuildViewAsync(Db, _client, "detail", g, data);
+            var (embed, components) = await BuildViewAsync(Db, client, "detail", g, data);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("FeDel:*")]
+        [ComponentInteraction("FeDel:*", ignoreGroupNames: true)]
         public async Task FeDel(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
             if(t is not null) { Db.FAQTopics.Remove(t); await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
-            var (embed, components) = await BuildViewAsync(Db, _client, "list", g);
+            var (embed, components) = await BuildViewAsync(Db, client, "list", g);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ModalInteraction("FeModal:*")]
+        [ModalInteraction("FeModal:*", ignoreGroupNames: true)]
         public async Task FeModal(string data, FaqTopicModal form) {
             var modal = (SocketModal)Context.Interaction;
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -215,7 +207,7 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
-            var (embed, components) = await BuildViewAsync(Db, _client, section, g, detailId);
+            var (embed, components) = await BuildViewAsync(Db, client, section, g, detailId);
             await modal.UpdateAsync(x => { x.Content = error is null ? "" : $"⚠️ {error}"; x.Embed = embed; x.Components = components; });
         }
 
