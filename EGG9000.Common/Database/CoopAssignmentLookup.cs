@@ -1,5 +1,3 @@
-using EGG9000.Common.Database.Entities;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 

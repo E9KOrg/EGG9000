@@ -1,7 +1,6 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -12,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.FAQHelper;
@@ -160,7 +158,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class FaqModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<FaqModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class FaqModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<FaqModule> logger) : Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly ILogger<FaqModule> _logger = logger;
 
@@ -247,9 +245,9 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class AdminModule {
-        [Discord.Interactions.SlashCommand("faq", "Lookup brief explanations of key topics/templates")]
-        [Discord.Interactions.CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
-        public Task FAQ([Discord.Interactions.Summary("query", "Topic or keyword")][Discord.Interactions.MaxLength(MAX_KEYWORD_LENGTH)] string query, [Discord.Interactions.Summary("respondto", "Which message to respond to")] string respondto = "") {
+        [SlashCommand("faq", "Lookup brief explanations of key topics/templates")]
+        [CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
+        public Task FAQ([Summary("query", "Topic or keyword")][MaxLength(MAX_KEYWORD_LENGTH)] string query, [Summary("respondto", "Which message to respond to")] string respondto = "") {
             return FAQCommandSlash._faq(Context.Interaction, Db, client, query, true, respondto, _logger);
         }
     }

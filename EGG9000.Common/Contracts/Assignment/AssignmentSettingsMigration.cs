@@ -2,7 +2,6 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 
 using System.Collections.Generic;
-using System.Linq;
 
 namespace EGG9000.Common.Contracts.Assignment {
     public static class AssignmentSettingsMigration {

@@ -5,8 +5,6 @@ using MessagePack;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using System.Collections.Generic;
-
 namespace EGG9000.Test.Assignment {
     [TestClass]
     public class AssignmentSettingsSerializationTests {

@@ -1,8 +1,6 @@
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using Microsoft.Extensions.Configuration;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Linq;
 
 namespace EGG9000.Test.Integration;
 

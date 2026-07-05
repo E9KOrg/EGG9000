@@ -1,35 +1,26 @@
 ﻿using Discord;
 using Discord.Net;
 using Discord.WebSocket;
-using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Humanizer;
-using MassTransit;
 using MassTransit.Initializers;
-using MassTransit.Internals;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.CreateCoopsV2;
 using static EGG9000.Common.Helpers.Prefarm;
-using static Ei.Contract.Types;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater, BotLogger botLogger) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
@@ -142,7 +133,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 _logger.LogWarning("Trying to create a new thread for {coop} already has a thread at {thread}", coop.Name, existingThread?.Name ?? "null");
                                 continue;
                             }
-                            var coopThread = await _queue.EnqueueLowAsync<IThreadChannel>(() => CreateThreadChannelAsync(coop.Name, headerChannel));
+                            var coopThread = await _queue.EnqueueLowAsync(() => CreateThreadChannelAsync(coop.Name, headerChannel));
                             if(coopThread != null) {
                                 timings.Set("Thread created");
                                 coop.Status = CoopStatusEnum.WaitingOnAssigned;
@@ -419,7 +410,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
                 return null;
             }
-            return await _queue.EnqueueLowAsync<SocketGuildChannel>(() => OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger));
+            return await _queue.EnqueueLowAsync(() => OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger));
         }
 
 

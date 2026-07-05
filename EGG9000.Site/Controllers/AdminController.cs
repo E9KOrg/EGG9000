@@ -4,7 +4,6 @@ using Discord.WebSocket;
 using EGG9000.Common.Consumers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
@@ -554,7 +553,7 @@ namespace EGG9000.Site.Controllers {
                     DiscordId = user.DiscordId,
                     DiscordUsername = user.DiscordUsername,
                     RunningScore = y.xref.RunningScore.Value,
-                    Grade = (Ei.Contract.Types.PlayerGrade)y.League,
+                    Grade = (PlayerGrade)y.League,
                     EggIncId = y.xref?.EggIncId ?? "",
                     Disabled = user.TempDisabled
                 };
@@ -570,7 +569,7 @@ namespace EGG9000.Site.Controllers {
                     DiscordUsername = user.DiscordUsername,
                     Score = y.Score,
                     DiscordUser = guild.GetUser(user.DiscordId),
-                    Grade = (Ei.Contract.Types.PlayerGrade)y.League,
+                    Grade = (PlayerGrade)y.League,
                     EggIncId = y.xref?.EggIncId ?? ""
                 };
             });
@@ -645,7 +644,7 @@ namespace EGG9000.Site.Controllers {
             public float RunningScore { get; set; }
             public float Score { get; set; }
             public IGuildUser DiscordUser { get; set; }
-            public Ei.Contract.Types.PlayerGrade Grade { get; set; }
+            public PlayerGrade Grade { get; set; }
             public string EggIncId { get; set; }
             public bool Disabled { get; set; }
         }

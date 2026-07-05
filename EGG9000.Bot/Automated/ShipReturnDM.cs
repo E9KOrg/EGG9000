@@ -4,7 +4,6 @@ using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -12,8 +11,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Database.Entities.DBUser;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM(IServiceProvider provider) : _UpdaterBase<ShipReturnDM>(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {

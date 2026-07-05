@@ -1,34 +1,19 @@
-﻿using Discord;
-using Discord.Net;
-using Discord.WebSocket;
-using EGG9000.Bot.Services;
-using EGG9000.Common.Contracts;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
-using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-using Humanizer;
-using MassTransit;
 using MassTransit.Initializers;
-using MassTransit.Internals;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.CreateCoopsV2;
-using static EGG9000.Common.Helpers.Prefarm;
 using static Ei.Contract.Types;
 
 namespace EGG9000.Bot.Automated.Coops {

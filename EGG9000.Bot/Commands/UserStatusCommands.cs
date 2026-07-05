@@ -1,7 +1,6 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -205,7 +204,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class UserStatusModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<UserStatusModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class UserStatusModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<UserStatusModule> logger) : Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly ILogger<UserStatusModule> _logger = logger;
 
@@ -218,9 +217,9 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class AdminModule {
-        [Discord.Interactions.SlashCommand("userstatus", "Get a users status")]
-        public Task UserStatus([Discord.Interactions.Summary("user")] SocketUser user, [Discord.Interactions.Summary("showinchannel")] bool showinchannel = false,
-            [Discord.Interactions.Summary("pullfreshbackup", "Pull a fresh backup for all accounts of this user before reporting their status")] bool pullfreshbackup = false) {
+        [SlashCommand("userstatus", "Get a users status")]
+        public Task UserStatus([Summary("user")] SocketUser user, [Summary("showinchannel")] bool showinchannel = false,
+            [Summary("pullfreshbackup", "Pull a fresh backup for all accounts of this user before reporting their status")] bool pullfreshbackup = false) {
             return UserStatusCommands._userstatus(Context.Interaction, Db, client, _logger, user, true, showinchannel, pullfreshbackup);
         }
     }

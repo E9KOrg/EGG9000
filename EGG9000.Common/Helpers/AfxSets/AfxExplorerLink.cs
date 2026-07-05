@@ -1,4 +1,3 @@
-using EGG9000.Common.Helpers;
 using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Helpers.AfxSets {

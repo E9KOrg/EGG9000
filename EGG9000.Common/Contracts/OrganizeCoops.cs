@@ -1,9 +1,7 @@
-﻿using Discord;
-using Discord.WebSocket;
+﻿using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Extensions;
-using EGG9000.Common.Helpers;
 
 using Microsoft.EntityFrameworkCore;
 

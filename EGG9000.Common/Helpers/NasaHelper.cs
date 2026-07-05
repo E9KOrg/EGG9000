@@ -8,14 +8,13 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Common.Helpers.Discord.ChannelHelper;
 using static EGG9000.Common.Database.Entities.NasaApod;
+using static EGG9000.Common.Helpers.Discord.ChannelHelper;
 
 namespace EGG9000.Common.Helpers;
 

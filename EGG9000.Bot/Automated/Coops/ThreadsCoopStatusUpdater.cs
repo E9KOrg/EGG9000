@@ -17,7 +17,6 @@ using Humanizer;
 using MassTransit.Testing;
 using MassTransit.Util;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -27,7 +26,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -195,7 +193,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 //Make sure the thread isn't archived before continuing
                 if(coopThread.IsArchived) {
                     try {
-                        await _queue.EnqueueLowAsync<bool>(async () => { await coopThread.ModifyAsync(t => t.Archived = false); return true; });
+                        await _queue.EnqueueLowAsync(async () => { await coopThread.ModifyAsync(t => t.Archived = false); return true; });
                     } catch(Exception) {
                         _logger.LogError("Could not un-archive thread for {coop}.", coop.Name);
                         return false;
@@ -243,30 +241,30 @@ namespace EGG9000.Bot.Automated.Coops {
                     //Attempt to fix not started co-op
                     _logger.LogInformation("Attempting to start co-op: {coopName}", coop.Name);
 
-                    var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
+                    var joinResponse = await EggIncApi.Post<JoinCoopResponse, JoinCoopRequest>(new JoinCoopRequest {
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
                         UserId = coop.CreatorID, ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
                     }, coop.CreatorID, false);
 
 
-                    var statusUpdate = new Ei.ContractCoopStatusUpdateRequest {
+                    var statusUpdate = new ContractCoopStatusUpdateRequest {
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
                         Eop = 1, SoulPower = 24, UserId = coop.CreatorID, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = coop.CreatorID, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
-                        ProductionParams = new Ei.FarmProductionParams {
+                        ProductionParams = new FarmProductionParams {
                             FarmPopulation = 1, Delivered = 1, Elr = 1, FarmCapacity = 1, Ihr = 1, Sr = 1
                         }
                     };
 
-                    var response = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, false);
+                    var response = await EggIncApi.Post<ContractCoopStatusUpdateResponse, ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, false);
 
 
                     await Task.Delay(1000, cancellationToken);
                     var checkStatus = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name.ToLower(), coop.CreatorID, cancellationToken: cancellationToken);
 
 
-                    var kickPlayer = await EggIncApi.Send(new Ei.KickPlayerCoopRequest {
+                    var kickPlayer = await EggIncApi.Send(new KickPlayerCoopRequest {
                         ClientVersion = EggIncApi.ClientVersion,
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
@@ -311,7 +309,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 //** Handle creation account not being kicked from co-op
                 if(coopDetails.CoopParticipants.Any(x => x.Account?.Id == EggIncApi.UserId) && !coop.FinishedOrFailedOrExpired()) {
-                    var success = await EggIncApi.Send(new Ei.KickPlayerCoopRequest { Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = EggIncApi.ClientVersion, ContractIdentifier = coop.ContractID, CoopIdentifier = coop.Name, PlayerIdentifier = EggIncApi.UserId, RequestingUserId = EggIncApi.UserId, Rinfo = EggIncApi.GetInfo(EggIncApi.UserId) }, EggIncApi.UserId);
+                    var success = await EggIncApi.Send(new KickPlayerCoopRequest { Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = EggIncApi.ClientVersion, ContractIdentifier = coop.ContractID, CoopIdentifier = coop.Name, PlayerIdentifier = EggIncApi.UserId, RequestingUserId = EggIncApi.UserId, Rinfo = EggIncApi.GetInfo(EggIncApi.UserId) }, EggIncApi.UserId);
                     _logger.LogInformation("Attempted to kick co-op creator to free up spot for {co-op}, it returned {status}", coop.Name, success.ToString());
                 }
 
@@ -963,7 +961,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(coopThread.Name != coopname) {
                         for(var i = 0; i < 5; i++) {
                             try {
-                                await _queue.EnqueueLowAsync<bool>(async () => {
+                                await _queue.EnqueueLowAsync(async () => {
                                     await coopThread.ModifyAsync(x => x.Name = coopname);
                                     return true;
                                 });
@@ -1115,7 +1113,7 @@ namespace EGG9000.Bot.Automated.Coops {
             return true;
         }
 
-        private async Task CheckForCoopCreatorStillIn(Coop coop, Ei.ContractCoopStatusResponse status) {
+        private async Task CheckForCoopCreatorStillIn(Coop coop, ContractCoopStatusResponse status) {
             if(!EggIncApi.CoopCreatorIds.Any(x => x.EggIncId == coop.CreatorID))
                 return;
             if(status.Contributors.Any(x => x.UserId == coop.CreatorID)) {
@@ -1125,7 +1123,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public class UserWithStatus {
             public CustomBackup Backup { get; set; }
-            public Ei.ContractCoopStatusResponse.Types.ContributionInfo Status { get; set; }
+            public ContractCoopStatusResponse.Types.ContributionInfo Status { get; set; }
             public DBUser User { get; set; }
             public TimeSpan? Sleeping { get; set; }
             public UserCoopXref Xref { get; set; }
@@ -1264,7 +1262,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, EGG9000.Common.Database.Entities.Contract contract) {
+        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Common.Database.Entities.Contract contract) {
             var table = new List<List<FixedWidthCell>> {new () {
                 new($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
                 new("Discord", CellAlignment.Center),
@@ -1338,7 +1336,7 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private class StatusResponse {
-            public Ei.ContractCoopStatusResponse Status { get; set; }
+            public ContractCoopStatusResponse Status { get; set; }
             public List<IMessage> DiscordMessages { get; set; }
         }
 
@@ -1663,7 +1661,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public async Task CheckDeflectorChange(Ei.ContractCoopStatusResponse prevStatus, Ei.ContractCoopStatusResponse newStatus, Coop coop, List<UserWithStatus> usersWithStatus, IThreadChannel coopChannel, ApplicationDbContext _db) {
+        public async Task CheckDeflectorChange(ContractCoopStatusResponse prevStatus, ContractCoopStatusResponse newStatus, Coop coop, List<UserWithStatus> usersWithStatus, IThreadChannel coopChannel, ApplicationDbContext _db) {
             if(prevStatus == null || coop.FinishedOrFailed() || coop.CoopEnds < DateTimeOffset.UtcNow) {
                 return;
             }
@@ -1678,7 +1676,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        private static decimal GetTachyonAmount(IEnumerable<Ei.ContractCoopStatusResponse.Types.ContributionInfo> contributions, string currentUserUuid) {
+        private static decimal GetTachyonAmount(IEnumerable<ContractCoopStatusResponse.Types.ContributionInfo> contributions, string currentUserUuid) {
             var matches = contributions.Where(x => x.Uuid != currentUserUuid && x.BuffHistory.Count > 0);
             var histories = matches.Select(x => x.BuffHistory.Last());
             return histories.Sum(x => (decimal)x.EggLayingRate - 1);

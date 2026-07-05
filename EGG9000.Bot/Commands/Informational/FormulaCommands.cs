@@ -1,22 +1,18 @@
 using Discord;
 using Discord.Interactions;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.JsonData.EiAfxConfig;
-using EGG9000.Common.Services;
 using Ei;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
@@ -25,7 +21,7 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Bot.Commands.Informational {
     [Group("formulae", "Game formula calculators (MER, LLC, EB)")]
     [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
-    public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : Interactions.E9KModuleBase(dbFactory) {
         private readonly IMemoryCache _cache = cache;
         private readonly ILogger<FormulaeModule> _logger = logger;
 

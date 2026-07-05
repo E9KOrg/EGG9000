@@ -1,33 +1,25 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Interactions;
-using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
-
 using Humanizer;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-
 using static EGG9000.Common.Helpers.FixedWidthTable;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
@@ -278,7 +270,7 @@ namespace EGG9000.Bot.Commands {
             var cts = new CancellationTokenSource();
             var session = new SysLoadSession { Cts = cts, Section = "overview" };
             _sysLoad[message.Id] = session;
-            var factory = serviceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<ApplicationDbContext>>();
+            var factory = serviceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
             var gatewayCapt = gateway;
             var interaction = Context.Interaction;
 

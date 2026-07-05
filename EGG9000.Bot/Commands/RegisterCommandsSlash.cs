@@ -3,8 +3,6 @@ using Discord;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
-using EGG9000.Bot.Interactions;
-using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
@@ -15,13 +13,10 @@ using MassTransit.Initializers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
     public static partial class RegisterCommandsSlash {
@@ -181,7 +176,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = updatedEmbeds; });
         }
 
-        public static async Task RegisterAccountAsync(IMessageChannel channel, System.Func<System.Action<MessageProperties>, Task> reply, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger, System.Func<Task> onComplete = null, bool isStaff = false) {
+        public static async Task RegisterAccountAsync(IMessageChannel channel, Func<Action<MessageProperties>, Task> reply, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger, Func<Task> onComplete = null, bool isStaff = false) {
             eggincid = eggincid.ToUpper();
 
             if(!MyRegex().IsMatch(eggincid)) {
@@ -379,7 +374,7 @@ namespace EGG9000.Bot.Commands {
         private static partial Regex MyRegex1();
     }
 
-    public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger) : Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly IClient _bugsnag = bugsnag;
         private readonly ILogger<RegisterModule> _logger = logger;
@@ -456,33 +451,33 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("register", "Register your EggInc account with the bot")]
         public async Task Register([Summary("eggincid", "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
             await Context.Interaction.DeferAsync(ephemeral: true);
-            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, _client, _bugsnag, eggincid, Context.User, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(System.Exception) { } });
+            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, _client, _bugsnag, eggincid, Context.User, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(Exception) { } });
         }
     }
 
     public partial class AdminModule {
-        [Discord.Interactions.SlashCommand("removeid", "Removed registered EggInc ID from a user's account")]
-        public Task RemoveID([Discord.Interactions.Summary("eggincid")] string eggincid, [Discord.Interactions.Summary("targetuser")] SocketUser targetUser) {
+        [SlashCommand("removeid", "Removed registered EggInc ID from a user's account")]
+        public Task RemoveID([Summary("eggincid")] string eggincid, [Summary("targetuser")] SocketUser targetUser) {
             return RegisterCommandsSlash._RemoveID(Context.Interaction, Db, eggincid, targetUser.Id);
         }
 
-        [Discord.Interactions.SlashCommand("accept", "Accept the rules of this discord server")]
-        public async Task Accept([Discord.Interactions.Summary("targetuser")] SocketGuildUser targetUser) {
+        [SlashCommand("accept", "Accept the rules of this discord server")]
+        public async Task Accept([Summary("targetuser")] SocketGuildUser targetUser) {
             await RegisterCommandsSlash._Accept(Context.Interaction, Db, client, targetUser);
         }
 
-        [Discord.Interactions.SlashCommand("updateid", "EggIncID someones ID")]
-        public async Task UpdateID([Discord.Interactions.Summary("eggincid", "EggIncID starting with EI")] string eggincid, [Discord.Interactions.Summary("targetuser")] SocketGuildUser targetUser, [Discord.Interactions.Summary("accountnumber", "Account Number (if you have more than one)")] int accountnumber = 0) {
+        [SlashCommand("updateid", "EggIncID someones ID")]
+        public async Task UpdateID([Summary("eggincid", "EggIncID starting with EI")] string eggincid, [Summary("targetuser")] SocketGuildUser targetUser, [Summary("accountnumber", "Account Number (if you have more than one)")] int accountnumber = 0) {
             await RegisterCommandsSlash._UpdateID(Context.Interaction, Db, eggincid, targetUser, accountnumber);
         }
 
-        [Discord.Interactions.SlashCommand("register", "Register your EggInc account with the bot")]
-        public async Task Register([Discord.Interactions.Summary("eggincid", "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [Discord.Interactions.Summary("user")] SocketGuildUser user) {
+        [SlashCommand("register", "Register your EggInc account with the bot")]
+        public async Task Register([Summary("eggincid", "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [Summary("user")] SocketGuildUser user) {
             await Context.Interaction.DeferAsync();
-            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, client, bugsnag, eggincid, user, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(System.Exception) { } }, isStaff: true);
+            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, client, bugsnag, eggincid, user, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(Exception) { } }, isStaff: true);
         }
 
-        [Discord.Interactions.SlashCommand("clean", "Removes any unpinned messages from the channel")]
+        [SlashCommand("clean", "Removes any unpinned messages from the channel")]
         public async Task Clean() {
             var command = Context.Interaction;
             await command.RespondAsyncGettingMessage("Cleaning...");

@@ -1,11 +1,9 @@
 using Discord.Interactions;
 using Discord.WebSocket;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
-using EGG9000.Common.Services;
 
 using Humanizer;
 
@@ -13,8 +11,6 @@ using Microsoft.EntityFrameworkCore;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -40,7 +36,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class DemeritModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class DemeritModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
         [SlashCommand("demerits", "List your demerits")]
         [CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
         public async Task Demerits() {

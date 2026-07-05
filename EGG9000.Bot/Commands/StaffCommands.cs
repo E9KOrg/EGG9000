@@ -11,14 +11,10 @@ using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Humanizer;
-using MassTransit;
-using MassTransit.SagaStateMachine;
-using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -27,8 +23,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
-using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordHostedService;
 
@@ -36,18 +32,18 @@ namespace EGG9000.Bot.Commands {
     public static class StaffCommands {
 
         public enum MarkCleanOption {
-            [Discord.Interactions.ChoiceDisplay("Artifacts")] Artifacts = 0,
-            [Discord.Interactions.ChoiceDisplay("Crafting XP")] CraftingXP = 1,
-            [Discord.Interactions.ChoiceDisplay("MER")] MER = 2,
-            [Discord.Interactions.ChoiceDisplay("Time Cheats")] TimeCheats = 3
+            [ChoiceDisplay("Artifacts")] Artifacts = 0,
+            [ChoiceDisplay("Crafting XP")] CraftingXP = 1,
+            [ChoiceDisplay("MER")] MER = 2,
+            [ChoiceDisplay("Time Cheats")] TimeCheats = 3
         }
 
         public enum MarkDirtyOption {
-            [Discord.Interactions.ChoiceDisplay("Artifacts")] Artifacts = 0,
-            [Discord.Interactions.ChoiceDisplay("Crafting XP")] CraftingXP = 1,
-            [Discord.Interactions.ChoiceDisplay("MER")] MER = 2,
-            [Discord.Interactions.ChoiceDisplay("Time Cheats")] TimeCheats = 3,
-            [Discord.Interactions.ChoiceDisplay("All")] All = 4,
+            [ChoiceDisplay("Artifacts")] Artifacts = 0,
+            [ChoiceDisplay("Crafting XP")] CraftingXP = 1,
+            [ChoiceDisplay("MER")] MER = 2,
+            [ChoiceDisplay("Time Cheats")] TimeCheats = 3,
+            [ChoiceDisplay("All")] All = 4,
         }
 
         private class RemoveCleanUser {
@@ -69,7 +65,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class StaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class StaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
 
         [SlashCommand("clearcustomeggs", "Clear ALL custom eggs from the DB, and remove Emoji.")]
@@ -138,8 +134,8 @@ namespace EGG9000.Bot.Commands {
 
     public partial class AdminModule {
 
-        [Discord.Interactions.SlashCommand("afs", "Determine a user's artifact fairness score")]
-        public Task AFS([Discord.Interactions.Summary("user")] SocketGuildUser user, [Discord.Interactions.Summary("showinchannel")] bool ShowInChannel = false) {
+        [SlashCommand("afs", "Determine a user's artifact fairness score")]
+        public Task AFS([Summary("user")] SocketGuildUser user, [Summary("showinchannel")] bool ShowInChannel = false) {
             return StaffCommands._afs(Context.Interaction, Db, user, ShowInChannel);
         }
 
@@ -242,7 +238,7 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class BotGroupModule {
-        [Discord.Interactions.SlashCommand("status", "Get the bot's status")]
+        [SlashCommand("status", "Get the bot's status")]
         public async Task Status() {
             var command = Context.Interaction;
             var lastComplete = await Db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
@@ -282,8 +278,8 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsyncGettingMessage($"```\n{GetTable(table)}```");
         }
 
-        [Discord.Interactions.SlashCommand("restartservice", "Restart an automated service")]
-        public async Task RestartService([Discord.Interactions.Autocomplete(typeof(ServiceNameAutoComplete))][Discord.Interactions.Summary("servicename")] string serviceName) {
+        [SlashCommand("restartservice", "Restart an automated service")]
+        public async Task RestartService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -327,8 +323,8 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted {serviceName}"); });
         }
 
-        [Discord.Interactions.SlashCommand("stopservice", "Stop an automated service")]
-        public async Task StopService([Discord.Interactions.Autocomplete(typeof(ServiceNameAutoComplete))][Discord.Interactions.Summary("servicename")] string serviceName) {
+        [SlashCommand("stopservice", "Stop an automated service")]
+        public async Task StopService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -363,8 +359,8 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Stopped {serviceName}"); });
         }
 
-        [Discord.Interactions.SlashCommand("runservice", "Run automated service now")]
-        public async Task RunService([Discord.Interactions.Autocomplete(typeof(ServiceNameAutoComplete))][Discord.Interactions.Summary("servicename")] string serviceName) {
+        [SlashCommand("runservice", "Run automated service now")]
+        public async Task RunService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -399,8 +395,8 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Ran {serviceName}"); });
         }
 
-        [Discord.Interactions.SlashCommand("startservice", "Start an automated service")]
-        public async Task StartService([Discord.Interactions.Autocomplete(typeof(ServiceNameAutoComplete))][Discord.Interactions.Summary("servicename")] string serviceName) {
+        [SlashCommand("startservice", "Start an automated service")]
+        public async Task StartService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -432,7 +428,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Started {serviceName}"); });
         }
 
-        [Discord.Interactions.SlashCommand("dbload", "Database load, cache sizes, and process memory")]
+        [SlashCommand("dbload", "Database load, cache sizes, and process memory")]
         public async Task DbLoad() {
             var command = Context.Interaction;
             await command.DeferAsync(ephemeral: true);
@@ -475,7 +471,7 @@ namespace EGG9000.Bot.Commands {
             await command.RespondAsyncGettingMessage($"```\n{GetTable(rows)}```", ephemeral: true);
         }
 
-        [Discord.Interactions.SlashCommand("coopstats", "Active Co-op Stats")]
+        [SlashCommand("coopstats", "Active Co-op Stats")]
         public async Task CoopStats() {
             var command = Context.Interaction;
             await command.DeferAsync();

@@ -33,8 +33,8 @@ namespace EGG9000.Common.Database {
         // Grade of the most recently accepted contract, with when it was accepted. last_cpi is no
         // longer in backups, so this is how we read a player's current grade. The accept time lets
         // callers ignore it when a known promotion is newer than any contract.
-        public (Ei.Contract.Types.PlayerGrade Grade, DateTimeOffset Accepted) GetMostRecentContractGrade() {
-            var graded = new List<(double time, Ei.Contract.Types.PlayerGrade grade)>();
+        public (PlayerGrade Grade, DateTimeOffset Accepted) GetMostRecentContractGrade() {
+            var graded = new List<(double time, PlayerGrade grade)>();
             if(Farms is not null)
                 graded.AddRange(Farms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
             if(ArchivedFarms is not null)

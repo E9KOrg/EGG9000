@@ -1,5 +1,4 @@
 using Discord.Interactions;
-using Discord.WebSocket;
 using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;

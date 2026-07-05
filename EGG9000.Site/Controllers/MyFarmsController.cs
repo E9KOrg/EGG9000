@@ -1,6 +1,5 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
@@ -27,7 +26,7 @@ namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         RoleManager<IdentityRole> roleManager, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache,
-        IServiceScopeFactory scopeFactory, EGG9000.Site.Services.ArtifactImageRenderer artifactRenderer) : Controller {
+        IServiceScopeFactory scopeFactory, ArtifactImageRenderer artifactRenderer) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -38,7 +37,7 @@ namespace EGG9000.Site.Controllers {
         private readonly IMemoryCache _cache = cache;
         private readonly DatabaseCache _databaseCache = databaseCache;
         private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
-        private readonly EGG9000.Site.Services.ArtifactImageRenderer _artifactRenderer = artifactRenderer;
+        private readonly ArtifactImageRenderer _artifactRenderer = artifactRenderer;
 
         public async Task<IActionResult> Index() {
             var sw = new Stopwatch();

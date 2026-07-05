@@ -208,7 +208,7 @@ namespace EGG9000.Bot.Automated {
                             try {
                                 var capturedUser = discordUser;
                                 _logger.LogInformation("Updating {user} to {newname}", discordUser.Nickname, discordUser.GetCleanName());
-                                await _queue.EnqueueLowAsync<bool>(async () => { await capturedUser.ModifyAsync(x => x.Nickname = capturedUser.GetCleanName()); return true; });
+                                await _queue.EnqueueLowAsync(async () => { await capturedUser.ModifyAsync(x => x.Nickname = capturedUser.GetCleanName()); return true; });
                             } catch(Exception) {
                                 _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }

@@ -1,11 +1,8 @@
 ﻿using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Common.Services;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -96,7 +93,7 @@ namespace EGG9000.Common.Helpers {
 
             public bool PotentialBoxCarry { get; set; }
             public UserCoopXref Xref { get; set; }
-            public Ei.ContractCoopStatusResponse.Types.ContributionInfo ContributionInfo { get; set; }
+            public ContributionInfo ContributionInfo { get; set; }
         }
 
         public static string GetTimeRemaining(double targetAmount, double currentRate, double currentAmount) {

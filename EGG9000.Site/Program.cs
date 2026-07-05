@@ -2,12 +2,9 @@ using Bugsnag.AspNet.Core;
 
 using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
-using EGG9000.Common.Services;
 using EGG9000.Site.Auth;
 using EGG9000.Site.Data;
 using EGG9000.Site.Services;
@@ -24,9 +21,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
-
-
-using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -39,10 +33,7 @@ using NLog.Web;
 using Prometheus;
 
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.IO.Compression;
-using System.Net;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
@@ -150,7 +141,7 @@ app.MapControllerRoute(
 // Admin role only. The explicit RequireAuthorization overrides the deny-by-default FallbackPolicy:
 // unauthenticated users hit the Discord login flow, authenticated non-Admins get 403. GuildAdmin /
 // GuildLesserAdmin are intentionally excluded - runtime/host metrics are a global ops concern.
-app.MapMetrics().RequireAuthorization(new Microsoft.AspNetCore.Authorization.AuthorizeAttribute { Roles = "Admin" });
+app.MapMetrics().RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" });
 
 app.MapRazorPages();
 app.Run();
@@ -238,7 +229,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
-    services.AddSingleton<EGG9000.Site.Services.ArtifactImageRenderer>();
+    services.AddSingleton<ArtifactImageRenderer>();
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
     services.AddHostedService<UserCacheRefreshService>();

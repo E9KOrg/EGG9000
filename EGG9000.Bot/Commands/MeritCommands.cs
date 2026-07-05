@@ -1,16 +1,12 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
-using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -74,7 +70,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("addmerit", "Add merit to user(s)")]
         [DefaultMemberPermissions(Discord.GuildPermission.ModerateMembers)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.ChickenTender)]
+        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.ChickenTender)]
         public async Task AddMerit(
             [Summary("reason", "Merit Reason")] string reason,
             [Summary("users", "Mention one or more users (e.g. @a @b) or paste IDs")] string usersInput) {
@@ -102,7 +98,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("removemerit", "Remove merit from user")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task RemoveMerit([Summary("user", "user")] SocketGuildUser user) {
             try {
                 var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
@@ -127,7 +123,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("meritsforuser", "List merits for user")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task MeritsForUser([Summary("targetuser", "targetUser")] SocketGuildUser targetUser) {
             try {
                 var user = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
@@ -146,7 +142,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
         // Long merit histories can exceed Discord's 2000-char message limit; fall back to a file
         // attachment instead of letting RespondAsyncGettingMessage throw.
         private async Task RespondWithMeritList(string mentionText, List<Merit> merits, bool ephemeral) {

@@ -1,7 +1,6 @@
 using Discord.Interactions;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
-using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System.IO;

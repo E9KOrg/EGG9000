@@ -1,6 +1,5 @@
 using Discord;
 using Discord.WebSocket;
-using EGG9000.Common.Helpers.Discord;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;

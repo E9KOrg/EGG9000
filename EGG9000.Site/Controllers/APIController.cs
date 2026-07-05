@@ -1,5 +1,4 @@
 ﻿using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.AfxSets;
 using Microsoft.AspNetCore.Authorization;
@@ -9,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
@@ -25,13 +23,13 @@ using static EGG9000.Common.Helpers.ArtifactHelpers;
 namespace EGG9000.Site.Controllers {
 
     [AllowAnonymous]
-    public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env, EGG9000.Site.Services.ArtifactImageRenderer renderer) : Controller {
+    public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env, Services.ArtifactImageRenderer renderer) : Controller {
         private readonly ApplicationDbContext _db = db;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
         private readonly IServiceProvider _provider = provider;
         private readonly ILogger<APIController> _logger = logger;
         private readonly IWebHostEnvironment _env = env;
-        private readonly EGG9000.Site.Services.ArtifactImageRenderer _renderer = renderer;
+        private readonly Services.ArtifactImageRenderer _renderer = renderer;
 
         private void DrawArtifactCell(Image<Rgba32> canvas, EggIncArtifactInstance inst, int cellX, int rowY, AfxSetsCreatorConfig config) {
             var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);

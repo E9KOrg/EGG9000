@@ -2,10 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
-
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 
@@ -23,8 +20,8 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     [Group("b", "Ban management commands")]
     [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-    [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
-    public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+    public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
         [SlashCommand("banlist", "Check the list of Users/EIDs that have been banned from the server via /kick")]
@@ -98,7 +95,7 @@ namespace EGG9000.Bot.Commands {
     public partial class AdminGroupModule {
         [SlashCommand("kick", "Kick user(s) with DM")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
+        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task Kick(
             [Summary("users", "Mention one or more users (e.g. @a @b @c) or paste IDs")] string usersInput,
             [Summary("reason", "reason")] string reason,

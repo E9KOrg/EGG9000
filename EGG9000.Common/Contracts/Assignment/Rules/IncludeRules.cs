@@ -1,4 +1,3 @@
-using EGG9000.Common.Contracts.Assignment;
 using EGG9000.Common.Helpers;
 
 namespace EGG9000.Common.Contracts.Assignment.Rules {

@@ -11,9 +11,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace EGG9000.Common.JsonData {
 
@@ -114,7 +111,7 @@ namespace EGG9000.Common.JsonData {
 
         [JsonProperty("prices")]
         public List<double> Prices { get; set; }
-        [Newtonsoft.Json.JsonIgnore]
+        [JsonIgnore]
         public List<double> EoVPrices { get; set; }
 
     }

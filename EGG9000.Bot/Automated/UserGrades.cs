@@ -1,6 +1,4 @@
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 
 using Microsoft.EntityFrameworkCore;

@@ -1,4 +1,3 @@
-using EGG9000.Common.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Security.Cryptography;

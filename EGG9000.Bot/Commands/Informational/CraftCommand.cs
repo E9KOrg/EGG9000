@@ -1,7 +1,6 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
@@ -15,7 +14,6 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Runtime.ConstrainedExecution;
 using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
@@ -24,7 +22,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Bot.Commands.Informational {
-    public class CraftModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public class CraftModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
 
         [SlashCommand("craftedcount", "Show you how many times you have crafted the requested artifact.")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]

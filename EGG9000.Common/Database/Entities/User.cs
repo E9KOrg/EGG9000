@@ -45,12 +45,12 @@ namespace EGG9000.Common.Database.Entities {
         public bool SkipNoArtifacts { get; set; }
         public bool SkipNoPiggyDouble { get; set; }
         [NotMapped]
-        public List<Ei.RewardType> PingForRewards {
+        public List<RewardType> PingForRewards {
             get {
                 if(!SkipNoArtifacts && !SkipNoPE && !SkipNoPiggyDouble) {
                     return [Ei.RewardType.UnknownReward];
                 }
-                var rewards = new List<Ei.RewardType>();
+                var rewards = new List<RewardType>();
                 if(SkipNoPE)
                     rewards.Add(Ei.RewardType.EggsOfProphecy);
                 if(SkipNoArtifacts) {
@@ -255,12 +255,12 @@ namespace EGG9000.Common.Database.Entities {
 
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 
-        public bool UserMatchesProto(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
+        public bool UserMatchesProto(ContractCoopStatusResponse.Types.ContributionInfo proto) {
             return EggIncAccounts.Any(x => x.Id == proto.UserId);
         }
 
 
-        public void UpdateNameAndId(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
+        public void UpdateNameAndId(ContractCoopStatusResponse.Types.ContributionInfo proto) {
             var eggIncIds = EggIncAccounts;
             var nameId = eggIncIds.First(x => x.Id == proto.UserId);
 

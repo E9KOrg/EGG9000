@@ -1,8 +1,6 @@
 ﻿using Bugsnag;
 
 using Discord;
-using Discord.Net.Rest;
-using Discord.Net.WebSockets;
 using Discord.Rest;
 using Discord.WebSocket;
 

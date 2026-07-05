@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Server.IISIntegration;
-
-using SixLabors.Fonts;
+﻿using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
@@ -9,8 +7,6 @@ using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class EIIDScreenShots {
@@ -18,7 +14,7 @@ namespace EGG9000.Common.Helpers {
         private static readonly double MinWhitePercent = 0.50;
 
         public static Image<Rgba32> CropScreenShot(Image image) {
-            var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+            var rgbaImage = image.CloneAs<Rgba32>();
 
             var rows = new ImageRowStats[image.Height];
             for(var y = 0; y < image.Height; y++) {

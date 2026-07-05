@@ -1,5 +1,3 @@
-using EGG9000.Common.Contracts.Assignment;
-
 namespace EGG9000.Common.Contracts.Assignment.Rules {
     // Seasonal Contracts rule (Force tier). Mandatory: there is no off. Force-assigns until the chosen
     // condition is met; once met, RewardFilterAfter decides whether the normal reward filter governs

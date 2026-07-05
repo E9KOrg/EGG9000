@@ -12,7 +12,6 @@ using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Ei;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -24,7 +23,6 @@ using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 using static Ei.Contract.Types;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 using Exception = System.Exception;
 
 namespace EGG9000.Bot.Commands {
@@ -68,7 +66,7 @@ namespace EGG9000.Bot.Commands {
 
             if(status?.Participants?.Count == contract.MaxUsers) {
                 logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
-                var res3 = await EggIncApi.Send(new Ei.KickPlayerCoopRequest {
+                var res3 = await EggIncApi.Send(new KickPlayerCoopRequest {
                     ClientVersion = 24,
                     ContractIdentifier = coop.ContractID,
                     CoopIdentifier = coop.Name,
@@ -98,12 +96,12 @@ namespace EGG9000.Bot.Commands {
         }
 
         public enum FindCoopPrioritization {
-            [Discord.Interactions.ChoiceDisplay("Low finish time (default)")] FinishTimeLow = 0,
-            [Discord.Interactions.ChoiceDisplay("High finish time")] FinishTimeHigh = 1,
-            [Discord.Interactions.ChoiceDisplay("Low player count")] LowPlayerCount = 2,
-            [Discord.Interactions.ChoiceDisplay("High player count")] HighPlayerCount = 3,
-            [Discord.Interactions.ChoiceDisplay("Needs high EB")] NeedsHighEB = 4,
-            [Discord.Interactions.ChoiceDisplay("Has high EB")] HasHighEB = 5,
+            [ChoiceDisplay("Low finish time (default)")] FinishTimeLow = 0,
+            [ChoiceDisplay("High finish time")] FinishTimeHigh = 1,
+            [ChoiceDisplay("Low player count")] LowPlayerCount = 2,
+            [ChoiceDisplay("High player count")] HighPlayerCount = 3,
+            [ChoiceDisplay("Needs high EB")] NeedsHighEB = 4,
+            [ChoiceDisplay("Has high EB")] HasHighEB = 5,
         };
 
         public enum PotentialCoopCode {
@@ -121,7 +119,7 @@ namespace EGG9000.Bot.Commands {
             public Coop FoundCoop { get; set; } = null;
         }
 
-        public static async Task<PotentialCoopResponse> FindPotentialCoopForUser(EggIncAccount account, EGG9000.Common.Database.Entities.Contract contract, Guild guild, DiscordSocketClient _client, ApplicationDbContext db, FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
+        public static async Task<PotentialCoopResponse> FindPotentialCoopForUser(EggIncAccount account, Common.Database.Entities.Contract contract, Guild guild, DiscordSocketClient _client, ApplicationDbContext db, FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
 
             var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).Where(x => x.EggIncId == account.Id).ToListAsync();
             var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && (int)r.Coop.Status > 2 && (int)r.Coop.Status < 13 && r.Coop.CoopEnds > DateTimeOffset.UtcNow);
@@ -213,7 +211,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("makepublic", "Makes a co-op public")]
         [DefaultMemberPermissions(GuildPermission.ManageChannels)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+        [StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
         public async Task MakePublic() {
             await Context.Interaction.DeferAsync();
             var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
@@ -227,7 +225,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var response = await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+            var response = await EggIncApi.Post<UpdateCoopPermissionsResponse, UpdateCoopPermissionsRequest>(new UpdateCoopPermissionsRequest {
                 ClientVersion = EggIncApi.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
@@ -244,7 +242,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("movegrade", "Move a user to a different grade of coop")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task MoveGrade([Summary("useraccount")][Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))] string useraccount,
             [Summary("newgrade")][Autocomplete(typeof(MoveGradeAutoComplete))] uint newgrade) {
             await Context.Interaction.DeferAsync();
@@ -318,7 +316,7 @@ namespace EGG9000.Bot.Commands {
                 if((uint)account.LastGrade != newgrade) {
                     await Context.Interaction.ModifyOriginalResponseAsync(x => {
                         x.Content = ""; x.Embed = EmbedWarning($"A new backup was pulled, and the obtained grade " +
-                        $"({PlayerGradeDetails.GetEmoji(account.LastGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)newgrade)}).\nTry forcing a new backup?");
+                        $"({PlayerGradeDetails.GetEmoji(account.LastGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji((PlayerGrade)newgrade)}).\nTry forcing a new backup?");
                     });
                     return;
                 }
@@ -350,7 +348,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("findcoopforuser", "Attempt to find a coop for a user, move user to said coop")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task FindCoopForUser([Summary("useraccount")][Autocomplete(typeof(UserAccountAutoComplete))] string useraccount,
             [Summary("contractid")][Autocomplete(typeof(StaffContractAutoComplete))] string contractid, [Summary("priority")] ContractCommandsSlash.FindCoopPrioritization priority = ContractCommandsSlash.FindCoopPrioritization.FinishTimeLow) {
             await Context.Interaction.DeferAsync();
@@ -395,7 +393,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("addcoop", "Adds an outside co-op so you can track it's progress")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task AddCoop([Summary("contract")][Autocomplete(typeof(StaffContractAutoComplete))] string contract,
             [Summary("coopname")] string coopname, [Summary("grade")][Autocomplete(typeof(GradeAutoComplete))] uint grade,
             [Summary("anygrade", "Is the coop any-grade?")] bool anygrade = false) {
@@ -445,7 +443,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("fixreference", "Silently moves to coop (if needed), followed by fixing reference")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task FixReference([Summary("useraccount")][Autocomplete(typeof(UserAccountAutoComplete))] string useraccount,
             [Summary("eggincname", "(Usually not required) Egg Inc Name, will match partial name")] string eggincname = "") {
             await Context.Interaction.DeferAsync();
@@ -516,7 +514,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("movetocoop", "Move a user to a co-op.")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task MoveToCoop([Summary("useraccount")][Autocomplete(typeof(UserAccountAutoComplete))] string useraccount,
             [Summary("coopid")][Autocomplete(typeof(MoveToCoopCoopNameAutoComplete))] string coopid, [Summary("silent", "If true, will not ping user in coop channel")] bool silent = false) {
             await Context.Interaction.DeferAsync();
@@ -562,7 +560,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("removefromcoop", "Remove user from co-op (only works if the bot doesn't see them as joined)")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task RemoveFromCoop([Summary("useraccount")][Autocomplete(typeof(RemoveFromCoopAutoComplete))] string useraccount) {
             await Context.Interaction.DeferAsync();
             var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
@@ -960,7 +958,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("leavecoop", "Used to remove a user from a co-op to fix a glitch.")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
         public async Task LeaveCoop([Summary("useraccount")][Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))] string useraccount) {
             await Context.Interaction.DeferAsync();
             var coop = await Db.Coops.FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
@@ -984,7 +982,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var contract = await Db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
-            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (Ei.Contract.Types.PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
+            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
             await Task.Delay(TimeSpan.FromSeconds(2));
             var status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
@@ -1007,8 +1005,8 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class AdminModule {
-        [Discord.Interactions.SlashCommand("fixfullcooperror", "Fix a user getting full co-op error")]
-        public async Task FixFullCoopError([Discord.Interactions.Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Discord.Interactions.Summary("useraccount")] string useraccount) {
+        [SlashCommand("fixfullcooperror", "Fix a user getting full co-op error")]
+        public async Task FixFullCoopError([Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Summary("useraccount")] string useraccount) {
             await Context.Interaction.DeferAsync();
             var userid = useraccount.Split("|")[0];
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
@@ -1043,7 +1041,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var response = await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+            var response = await EggIncApi.Post<UpdateCoopPermissionsResponse, UpdateCoopPermissionsRequest>(new UpdateCoopPermissionsRequest {
                 ClientVersion = EggIncApi.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),

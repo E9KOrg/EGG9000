@@ -5,8 +5,6 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using System;
@@ -132,7 +130,7 @@ namespace EGG9000.Common.Helpers {
 
 
             if(kickCreator) {
-                var r = await EggIncApi.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+                var r = await EggIncApi.Send(new Ei.KickPlayerCoopRequest {
                     ClientVersion = EggIncApi.ClientVersion,
                     ContractIdentifier = ContractID,
                     CoopIdentifier = coopName.ToLower(),

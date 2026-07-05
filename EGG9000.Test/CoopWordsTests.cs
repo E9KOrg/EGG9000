@@ -43,7 +43,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Second_word_avoids_first_words_last_letter() {
-            var words = new EGG9000.Common.Helpers.Words();
+            var words = new Common.Helpers.Words();
             for(var i = 0; i < 500; i++) {
                 var first = words.GetRandomWord();
                 var second = words.GetRandomSecondWord(first);

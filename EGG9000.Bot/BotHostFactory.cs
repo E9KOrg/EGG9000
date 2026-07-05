@@ -1,20 +1,12 @@
-using Bugsnag.AspNet.Core;
-using EGG9000.Bot.Automated;
-using EGG9000.Bot.Automated.Coops;
-using EGG9000.Bot.Services;
-using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.Mocks;
 using EGG9000.Common.Services;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
-using System.Reflection;
 
 namespace EGG9000.Bot;
 

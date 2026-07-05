@@ -2,7 +2,6 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace EGG9000.Test {
     [TestClass]

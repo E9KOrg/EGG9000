@@ -1,5 +1,4 @@
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;

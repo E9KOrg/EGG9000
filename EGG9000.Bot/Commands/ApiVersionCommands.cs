@@ -1,7 +1,4 @@
-using Discord;
 using Discord.Interactions;
-
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Consumers;
 using EGG9000.Common.EggIncAPI;
 
@@ -16,7 +13,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public partial class BotGroupModule {
         [SlashCommand("setversions", "Update the Egg Inc API version triple at runtime (validated against the live API first).")]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
+        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task SetVersions(
             [Summary(description: "Numeric client version (e.g. 72)")] int clientVersion,
             [Summary(description: "App version string (e.g. 1.35.6)")] string appVersion,

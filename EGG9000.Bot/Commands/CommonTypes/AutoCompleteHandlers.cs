@@ -26,8 +26,8 @@ namespace EGG9000.Bot.Commands.CommonTypes {
         // path, so [StaffOnly] alone leaves admin-only params open if a guild ever grants the
         // parent command to a non-staff role. Re-check it here as a backstop.
         private static async Task<bool> PassesStaffGate(IInteractionContext context, IParameterInfo parameter, IServiceProvider services) {
-            var staffOnly = parameter.Command.Preconditions.OfType<EGG9000.Bot.Interactions.StaffOnlyAttribute>().FirstOrDefault()
-                ?? parameter.Command.Module.Preconditions.OfType<EGG9000.Bot.Interactions.StaffOnlyAttribute>().FirstOrDefault();
+            var staffOnly = parameter.Command.Preconditions.OfType<Interactions.StaffOnlyAttribute>().FirstOrDefault()
+                ?? parameter.Command.Module.Preconditions.OfType<Interactions.StaffOnlyAttribute>().FirstOrDefault();
             if(staffOnly is null) return true;
             var result = await staffOnly.CheckRequirementsAsync(context, parameter.Command, services);
             return result.IsSuccess;
@@ -78,7 +78,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return results;
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var guilds = await ResolveGuilds(services);
@@ -124,7 +124,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return results;
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var results = await ComputeResults(arg, null);
@@ -163,7 +163,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return results;
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var guilds = await ResolveGuilds(services);
@@ -188,7 +188,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return [.. contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID))];
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var results = await ComputeResults(arg, null);
@@ -222,7 +222,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return [.. contractObjs.Select(c => new AutocompleteResult(c.Name, c.ID))];
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var results = await ComputeResults(arg, null);
@@ -250,7 +250,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                     .Select(x => new AutocompleteResult(PlayerGradeDetails.GetText((PlayerGrade)x), (uint)x))];
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var results = await ComputeResults(arg, null);
@@ -266,7 +266,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return Task.FromResult(result);
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var results = await ComputeResults(arg, null);
@@ -286,7 +286,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return [.. users.DistinctBy(x => x.EggIncId).Take(25).Select(x => new AutocompleteResult(x.DiscordUsername + " - " + (x.User?.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)"), x.UserId.ToString()))];
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var results = await ComputeResults(arg, null);
@@ -317,7 +317,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return Task.FromResult(coops.DistinctBy(x => x.Id).ToList().Select(c => new AutocompleteResult($"{c.Name} - {c.Contract} - {PlayerGradeDetails.GetNameFromLeague(c.League)}", c.Id.ToString())).ToList());
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var guilds = await ResolveGuilds(services);
@@ -368,7 +368,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return Task.FromResult(results.OrderBy(x => x.Name).ToList());
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 var results = await ComputeResults(arg, null);
@@ -389,7 +389,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 return Task.FromResult(artifactFamilies.Select(c => new AutocompleteResult($"{c.name}", c.id)).Take(25).ToList());
             }
 
-            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, Discord.IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
+            public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
                 var arg = (SocketAutocompleteInteraction)autocompleteInteraction;
                 if(!await PassesStaffGate(context, parameter, services)) return AutocompletionResult.FromSuccess([]);
                 try {

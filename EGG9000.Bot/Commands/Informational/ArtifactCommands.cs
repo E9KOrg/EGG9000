@@ -1,14 +1,12 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.AfxSets;
 using EGG9000.Common.Helpers.Discord;
-using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -76,7 +74,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public partial class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public partial class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
 
         [SlashCommand("viewinventory", "View your inventory")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
@@ -303,8 +301,8 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class AdminModule {
-        [Discord.Interactions.SlashCommand("viewinventory", "View a user's inventory")]
-        public async Task ViewInventory([Discord.Interactions.Autocomplete(typeof(UserAccountAutoComplete))][Discord.Interactions.Summary("useraccount")] string useraccount, [Discord.Interactions.Summary("showinchannel")] bool showinchannel = false) {
+        [SlashCommand("viewinventory", "View a user's inventory")]
+        public async Task ViewInventory([Autocomplete(typeof(UserAccountAutoComplete))][Summary("useraccount")] string useraccount, [Summary("showinchannel")] bool showinchannel = false) {
             await Context.Interaction.DeferAsync(ephemeral: !showinchannel);
             var userid = useraccount.Split("|")[0];
             DBUser dbuser = null;
