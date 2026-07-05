@@ -123,9 +123,9 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("selectroleusers", "Select X random users with Y role")]
         [StaffOnly(StaffTier.FarmHand)]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        public async Task SelectRoleUsers([Summary("numberOfUsers")] int numberOfUsers,
+        public async Task SelectRoleUsers([Summary("numberofusers")] int numberOfUsers,
             [Summary("role", "Role the user(s) should have")] SocketRole role, [Summary("role2", "Second role [...]")] SocketRole role2 = null, [Summary("role3", "Third role [...]")] SocketRole role3 = null,
-            [Summary("antiRole", "Role the user(s) should NOT have")] SocketRole antiRole = null, [Summary("antiRole2", "Second role [...]")] SocketRole antiRole2 = null, [Summary("antiRole3", "Third role [...]")] SocketRole antiRole3 = null) {
+            [Summary("antirole", "Role the user(s) should NOT have")] SocketRole antiRole = null, [Summary("antirole2", "Second role [...]")] SocketRole antiRole2 = null, [Summary("antirole3", "Third role [...]")] SocketRole antiRole3 = null) {
             try {
                 var randomUsers = _client.Guilds.FirstOrDefault(g => g.Id == Context.Guild?.Id).Users
                     .Where(u =>

@@ -10,6 +10,7 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
+using EGG9000.Site.Auth;
 using EGG9000.Site.Models;
 using EGG9000.Site.Services;
 
@@ -563,6 +564,40 @@ namespace EGG9000.Site.Controllers {
             public double SoulEggs { get; set; }
             public ushort EggsOfProphecy { get; set; }
             public bool ProPermit { get; set; }
+        }
+
+        public class LeaderboardApiItem {
+            public string DiscordName { get; set; }
+            public ulong DiscordId { get; set; }
+            public string EggIncName { get; set; }
+            public double EarningsBonus { get; set; }
+            public double SoulEggs { get; set; }
+            public ushort EggsOfProphecy { get; set; }
+            public double MER { get; set; }
+            public uint EggsOfTruth { get; set; }
+            public ulong NumPrestiges { get; set; }
+        }
+
+        [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]
+        [HttpGet]
+        public async Task<IActionResult> LeaderboardJson() {
+            var guildId = ulong.Parse(User.Claims.First(x => x.Type == "GuildId").Value);
+            var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildId);
+            if (guild == null) return StatusCode(503);
+            await guild.DownloadUsersAsync();
+            var leaderboard = await _getLeaderboard(guildId);
+            var result = leaderboard.Select(x => new LeaderboardApiItem {
+                DiscordName = x.DisplayName,
+                DiscordId = x.DisplayDiscordId,
+                EggIncName = x.Backup.UserName,
+                EarningsBonus = x.Backup.EarningsBonus,
+                SoulEggs = x.Backup.SoulEggs,
+                EggsOfProphecy = x.Backup.EggsOfProphecy,
+                MER = x.Backup.MER,
+                EggsOfTruth = x.Backup.EggsOfTruth,
+                NumPrestiges = x.Backup.NumPrestiges
+            }).ToList();
+            return Json(result);
         }
 
         [Authorize]

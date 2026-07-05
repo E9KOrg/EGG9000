@@ -314,20 +314,20 @@ namespace EGG9000.Bot.Commands {
                 var mainGuild = _gateway.Guilds.FirstOrDefault(g => g.Id == dbGuild.DiscordSeverId);
                 var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
 
-                //Fetch a new backup so they don't lose access to this channel when role update happens
-                var rawBackup = await EggIncApi.FirstContact(account.Id);
-                var customBackup = new CustomBackup(rawBackup.Backup, await Db.CachedEiContractsAsync(), account?.Backup ?? null);
-                var pulledGrade = customBackup.GetMostRecentContractGrade().Grade;
+                //Pull a fresh backup (so they keep channel access through the role update) and refresh the
+                //grade via the extras path - the backup alone no longer carries the grade, ApplyExtrasAsync
+                //fetches it through get_contract_player_info so account.LastGrade is genuinely current.
+                var freshBackup = await AccountRefresh.RefreshBackupAsync(account, await Db.CachedEiContractsAsync(), _logger);
+                await AccountRefresh.ApplyExtrasAsync(dbuser, account, Db, _logger);
 
-                if((uint)pulledGrade != newgrade) {
+                if((uint)account.LastGrade != newgrade) {
                     await Context.Interaction.ModifyOriginalResponseAsync(x => {
                         x.Content = ""; x.Embed = EmbedWarning($"A new backup was pulled, and the obtained grade " +
-                        $"({PlayerGradeDetails.GetEmoji(pulledGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)newgrade)}).\nTry forcing a new backup?");
+                        $"({PlayerGradeDetails.GetEmoji(account.LastGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)newgrade)}).\nTry forcing a new backup?");
                     });
                     return;
                 }
-                if(customBackup?.Farms is not null) {
-                    account.Backup = customBackup;
+                if(freshBackup is not null) {
                     dbuser.UpdateAccounts();
                 }
                 await mainGuild.GetUser(dbuser.DiscordId).AddRoleAsync(socketGradeRole.Id);
@@ -610,15 +610,17 @@ namespace EGG9000.Bot.Commands {
 
             var userid = Guid.Parse(useraccount.Split("|")[0]);
             var xref = await Db.UserCoopXrefs.Include(x => x.User).Where(xref => xref.UserId == userid && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
-            var username = xref.User.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId)?.Backup?.UserName ?? "(No Name)";
 
             if(xref == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user in co-op"); });
                 return;
             }
 
+            var username = xref.User.EggIncAccounts.FirstOrDefault(x => x.Id == xref.EggIncId)?.Backup?.UserName ?? "(No Name)";
+
             Db.Remove(xref);
             await Db.SaveChangesAsync();
+            _lookup.Remove(xref.UserId, targetCoop.ContractID);
 
             await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Removed <@{xref.User.DiscordId}> ({username}) from co-op");
 

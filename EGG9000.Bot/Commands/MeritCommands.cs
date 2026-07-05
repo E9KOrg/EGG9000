@@ -130,7 +130,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("meritsforuser", "List merits for user")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
         [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
-        public async Task MeritsForUser([Summary("targetUser", "targetUser")] SocketGuildUser targetUser) {
+        public async Task MeritsForUser([Summary("targetuser", "targetUser")] SocketGuildUser targetUser) {
             try {
                 var user = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
 

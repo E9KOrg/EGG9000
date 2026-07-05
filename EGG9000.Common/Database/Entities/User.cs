@@ -242,8 +242,8 @@ namespace EGG9000.Common.Database.Entities {
             var compressedAccounts = MessagePackSerializer.Serialize(_accounts, lz4Options);
             var changed = compressedAccounts != _contractRegistrationByte;
             _contractRegistrationByte = compressedAccounts;
-            Usernames = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.UserName).ToList());
-            EIDs = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId).ToList());
+            Usernames = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.UserName) ?? []);
+            EIDs = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId) ?? []);
             return changed;
         }
 

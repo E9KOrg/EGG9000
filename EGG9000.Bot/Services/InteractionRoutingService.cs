@@ -32,9 +32,11 @@ namespace EGG9000.Bot.Services {
             _interactions.ModalCommandExecuted += (i, c, r) => OnExecuted(i, c, r);
             _discord.Gateway.InteractionCreated += OnInteractionCreated;
 
-            foreach(var guild in _discord.Guilds) {
-                await _interactions.RegisterCommandsToGuildAsync(guild.Id);
-            }
+            // Global registration only - guild-scoped registration on top of this duplicated every
+            // command in every guild (the old CommandService partitioned DM-eligible commands
+            // globally vs guild-only commands per-guild, never both; global-only is the simplest
+            // correct replacement under Discord.NET's InteractionService, which doesn't support
+            // that partition without breaking [Group] attribution across mixed DM/non-DM modules).
             await _interactions.RegisterCommandsGloballyAsync();
         }
 

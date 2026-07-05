@@ -133,6 +133,9 @@ namespace EGG9000.Common.Database {
         public DbSet<NasaApod> NasaApods { get; set; }
         public DbSet<SeasonInfo> SeasonInfos { get; set; }
         public DbSet<UserSeasonProgress> UserSeasonProgresses { get; set; }
+        public DbSet<ApiKey> ApiKeys { get; set; }
+        public DbSet<ApiKeyRequestLog> ApiKeyRequestLogs { get; set; }
+        public DbSet<ApiKeyDailyUsage> ApiKeyDailyUsages { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -291,6 +294,9 @@ namespace EGG9000.Common.Database {
             builder.Entity<NasaApod>().HasKey(x => x.ID);
             builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD')");
 
+            builder.Entity<ApiKey>().HasIndex(x => x.KeyHash).IsUnique();
+            builder.Entity<ApiKeyRequestLog>().HasIndex(x => new { x.ApiKeyId, x.Timestamp });
+            builder.Entity<ApiKeyDailyUsage>().HasKey(x => new { x.ApiKeyId, x.Date });
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
             builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
             builder.Entity<Guild>().HasIndex(x => x.DiscordSeverId);

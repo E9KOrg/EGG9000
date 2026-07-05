@@ -218,7 +218,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgNav")]
+        [ComponentInteraction("CfgNav", ignoreGroupNames: true)]
         public async Task CfgNav(string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -226,7 +226,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgPickChannel:*")]
+        [ComponentInteraction("CfgPickChannel:*", ignoreGroupNames: true)]
         public async Task CfgPickChannel(string slot, string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -234,7 +234,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgPickRole:*")]
+        [ComponentInteraction("CfgPickRole:*", ignoreGroupNames: true)]
         public async Task CfgPickRole(string slot, string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -242,7 +242,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgPickCoop")]
+        [ComponentInteraction("CfgPickCoop", ignoreGroupNames: true)]
         public async Task CfgPickCoop(string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -250,7 +250,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgPickList")]
+        [ComponentInteraction("CfgPickList", ignoreGroupNames: true)]
         public async Task CfgPickList(string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -258,7 +258,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgSetChannel:*")]
+        [ComponentInteraction("CfgSetChannel:*", ignoreGroupNames: true)]
         public async Task CfgSetChannel(string data, IChannel[] channels) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -270,7 +270,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgSetRole:*")]
+        [ComponentInteraction("CfgSetRole:*", ignoreGroupNames: true)]
         public async Task CfgSetRole(string data, IRole[] roles) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -282,7 +282,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgClear:*")]
+        [ComponentInteraction("CfgClear:*", ignoreGroupNames: true)]
         public async Task CfgClear(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -295,7 +295,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgCoopEn:*")]
+        [ComponentInteraction("CfgCoopEn:*", ignoreGroupNames: true)]
         public async Task CfgCoopEn(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -307,7 +307,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgCoopLock:*")]
+        [ComponentInteraction("CfgCoopLock:*", ignoreGroupNames: true)]
         public async Task CfgCoopLock(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -319,7 +319,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgToggle:*")]
+        [ComponentInteraction("CfgToggle:*", ignoreGroupNames: true)]
         public async Task CfgToggle(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -332,7 +332,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgSetCsvCat:*")]
+        [ComponentInteraction("CfgSetCsvCat:*", ignoreGroupNames: true)]
         public async Task CfgSetCsvCat(string data, IChannel[] channels) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -345,7 +345,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgSetCsvRole:*")]
+        [ComponentInteraction("CfgSetCsvRole:*", ignoreGroupNames: true)]
         public async Task CfgSetCsvRole(string data, IRole[] roles) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -358,7 +358,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("CfgEdit:*")]
+        [ComponentInteraction("CfgEdit:*", ignoreGroupNames: true)]
         public async Task CfgEdit(string data) {
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);

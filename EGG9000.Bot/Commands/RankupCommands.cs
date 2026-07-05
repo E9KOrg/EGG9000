@@ -125,7 +125,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("RuNav")]
+        [ComponentInteraction("RuNav", ignoreGroupNames: true)]
         public async Task RuNav(string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -142,7 +142,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("RuToggle:*")]
+        [ComponentInteraction("RuToggle:*", ignoreGroupNames: true)]
         public async Task RuToggle(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -153,7 +153,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("RuFilter")]
+        [ComponentInteraction("RuFilter", ignoreGroupNames: true)]
         public async Task RuFilter(string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -164,7 +164,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("RuPickGroup")]
+        [ComponentInteraction("RuPickGroup", ignoreGroupNames: true)]
         public async Task RuPickGroup(string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -172,7 +172,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("RuPickMsg")]
+        [ComponentInteraction("RuPickMsg", ignoreGroupNames: true)]
         public async Task RuPickMsg(string[] values) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
@@ -180,7 +180,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        [ComponentInteraction("RuAdd:*")]
+        [ComponentInteraction("RuAdd:*", ignoreGroupNames: true)]
         public async Task RuAdd(string data) {
             var modal = new ModalBuilder().WithTitleSafe("New rank-up message").WithCustomId($"RuMsgModal:new:{data}")
                 .AddTextInputSafe("Message", customId: "text", TextInputStyle.Paragraph, placeholder: "Use {{user}} {{rank}} {{eb}} {{oom}} {{emoji:name}}", required: true, maxLength: 1500)
@@ -188,7 +188,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.RespondWithModalAsync(modal);
         }
 
-        [ComponentInteraction("RuEditBtn:*")]
+        [ComponentInteraction("RuEditBtn:*", ignoreGroupNames: true)]
         public async Task RuEditBtn(string data) {
             var msg = await Db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data);
             if(msg is null) { await Context.Interaction.DeferAsync(); return; }
@@ -198,7 +198,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.RespondWithModalAsync(modal);
         }
 
-        [ComponentInteraction("RuDelBtn:*")]
+        [ComponentInteraction("RuDelBtn:*", ignoreGroupNames: true)]
         public async Task RuDelBtn(string data) {
             await Context.Interaction.DeferAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);

@@ -81,6 +81,9 @@
     <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="EGG9000.Test" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Update="Views\Admin\StandardPermit.cshtml">
       <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

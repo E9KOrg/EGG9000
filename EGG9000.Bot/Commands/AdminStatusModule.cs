@@ -33,8 +33,9 @@ namespace EGG9000.Bot.Commands {
     public partial class AdminModule {
 
         [SlashCommand("botstatus", "One-look bot/DB/deploy/load status")]
-        public async Task BotStatus(CoopStatsCache stats) {
+        public async Task BotStatus() {
             await Context.Interaction.DeferAsync(ephemeral: true);
+            var stats = serviceProvider.GetRequiredService<CoopStatsCache>();
 
 #if DEBUG
             var buildConfig = "Debug";

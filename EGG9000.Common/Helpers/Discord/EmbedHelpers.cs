@@ -52,6 +52,9 @@ namespace EGG9000.Common.Helpers.Discord {
                 }
             }
             var frame2 = new StackTrace(e, true).GetFrame(0);
+            if(frame2 is null) {
+                return EmbedInternalError($"**Message**:\n{e.Message}\n\n**Frame info**:\n\t(No stack trace available)");
+            }
             return EmbedInternalError(
                 $"**Message**:\n{e.Message}\n\n" +
                 $"**Frame info**:\n\t" +

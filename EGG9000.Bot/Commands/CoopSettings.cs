@@ -25,6 +25,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbuser == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
+                return;
             }
 
             var inCoopChannel = await Db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == Context.Interaction.ChannelId || x.Coop.DiscordChannelId == Context.Interaction.ChannelId));
@@ -151,8 +152,6 @@ namespace EGG9000.Bot.Commands {
             var dbGuild = Db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
             var settingName = data.Split(",")[0];
-
-            dbuser.UpdateAccounts();
 
             var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
             var setting = xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild);

@@ -198,7 +198,7 @@ namespace EGG9000.Bot.Services {
             ApplicationDbContext db = null;
             try {
                 var guild = message.Channel is SocketGuildChannel ? (message.Channel as SocketGuildChannel).Guild : null;
-                if(((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
+                if(guild is not null && _cpGuild is not null && ((IMessage)message).Type == MessageType.UserPremiumGuildSubscription && guild.Id == _cpGuild.Id) {
                     _logger.LogInformation("Detected boost message in CP guild from {user}", message.Author.Username);
                     db ??= await _dbContextFactory.CreateDbContextAsync();
                     var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id);
@@ -231,6 +231,9 @@ namespace EGG9000.Bot.Services {
                         }
                     }
                 }
+            } catch(Exception ex) {
+                _logger.LogError(ex, "Caught exception in HandleMessageReceived (top-level)");
+                _bugsnag.Notify(ex);
             } finally {
                 if(db is not null) await db.DisposeAsync();
             }

@@ -112,7 +112,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("nextrank", "How many SE/PE needed for next rank up")]
         [EnabledInDm(true)]
-        public async Task NextRank([Summary("ShowInChannel")] bool ShowInChannel = false) {
+        public async Task NextRank([Summary("showinchannel")] bool ShowInChannel = false) {
             await Context.Interaction.DeferAsync(ephemeral: !ShowInChannel);
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
@@ -286,7 +286,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("callstaff", "Get help from staff, please give details")]
-        public async Task CallStaff([Summary("details")] string details, [Summary("keepPrivate", "If private then only staff will see your message")] bool keepPrivate = false) {
+        public async Task CallStaff([Summary("details")] string details, [Summary("keepprivate", "If private then only staff will see your message")] bool keepPrivate = false) {
             await Context.Interaction.DeferAsync(ephemeral: keepPrivate);
             var guildFind = Db.Guilds.First(x => x.Id == Context.Interaction.GuildId || x.OverflowServersJson.IndexOf(Context.Interaction.GuildId.ToString()) > -1);
 

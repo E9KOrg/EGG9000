@@ -38,7 +38,7 @@ namespace EGG9000.Bot.Commands {
         };
 
         [SlashCommand("mer", "Calculate your Mystical Egg Ratio (MER)")]
-        public async Task Mer([Summary("MERValue")] MERChoice MERValue = MERChoice.Current) {
+        public async Task Mer([Summary("mervalue")] MERChoice MERValue = MERChoice.Current) {
             await Context.Interaction.RespondAsyncGettingMessage("Getting account backups...");
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
@@ -254,7 +254,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("eb", "Calculate the EB% based on SE and PE inputs")]
-        public async Task Eb([Summary("SE", "SE")] string SE, [Summary("PE", "PE")] [MinValue(0)] int PE) {
+        public async Task Eb([Summary("se", "SE")] string SE, [Summary("pe", "PE")] [MinValue(0)] int PE) {
             await Context.Interaction.RespondAsyncGettingMessage("Calculating...");
 
             double seValue;

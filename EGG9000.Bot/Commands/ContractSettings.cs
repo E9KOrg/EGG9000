@@ -164,11 +164,11 @@ namespace EGG9000.Bot.Commands {
                 RedoLeggacyOption.YesAll => "Yes (Will redo all contracts to help out others)",
                 RedoLeggacyOption.YesNoUltra => "Yes (Will not redo completed Ultra contracts)",
                 RedoLeggacyOption.YesThreshold => $"Yes (If previous score was under {account.Assignment.Redo.ScoreThreshold} score)",
-                RedoLeggacyOption.YesOtherAccountMatch => "Yes (If any other of your accounts get assigned)",
+                RedoLeggacyOption.YesOtherAccountMatch => "Yes (If any other of your accounts get assigned, also applies to seasonal contracts)",
                 RedoLeggacyOption.No => "No (Will still be assigned to incomplete leggacies)",
                 _ => "No (Will still be assigned to incomplete leggacies)"
             };
-            var content = "This option allows you to determine which Leggacy contracts you will redo, when they are offered in-game.\n\n**NOTE:** You will **always** be assigned to incomplete Leggacy contracts, so long as they match your rewards filter.";
+            var content = "This option allows you to determine which Leggacy contracts you will redo, when they are offered in-game. The \"other account matches\" option also applies to Seasonal contracts, forcing this account in whenever a sibling account is force-assigned by the seasonal filter.\n\n**NOTE:** You will **always** be assigned to incomplete Leggacy contracts, so long as they match your rewards filter.";
             return MenuEmbedTemplate("Redo Leggacies Menu", content, account, dbuser)
                 .AddField("Redo Completed Leggacies", redoText)
                 .AddField("Skip Seasonal Replays", account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF");
