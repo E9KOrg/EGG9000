@@ -1,25 +1,22 @@
 @model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin)
 @{
+    Ei.Egg[] virtueEggs = [Ei.Egg.Curiosity, Ei.Egg.Integrity, Ei.Egg.Humility, Ei.Egg.Resilience, Ei.Egg.Kindness];
+
     string eggAmount(double delivered) => delivered.ToEggString(numberOfDecimalPlaces: 3);
     int eggLevel(double delivered) => VirtueHelper.CurrentLevel(delivered);
-
-    string displayKey(UserSnapShot s) =>
-        $"{s.CurrentEgg}|{s.CuriosityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.IntegrityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.HumilityDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.ResilienceDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.KindnessDelivered.ToEggString(numberOfDecimalPlaces: 3)}|{s.TeTotal}|{s.TeEarned}|{s.TePending}|{s.ShiftCount}|{s.Resets}";
 
     // Collapse consecutive snapshots that render identically at the table's precision.
     // Each surviving row keeps the earliest date its values appeared.
     var collapsedSnapshots = new List<UserSnapShot>();
     foreach (var s in Model.snapshots.Where(x => x.EggIncID == Model.backup.EggIncId).OrderByDescending(x => x.Date)) {
-        if (collapsedSnapshots.Count > 0 && displayKey(collapsedSnapshots[^1]) == displayKey(s)) collapsedSnapshots[^1] = s;
+        if (collapsedSnapshots.Count > 0 && collapsedSnapshots[^1].VirtueStats.Equals(s.VirtueStats)) collapsedSnapshots[^1] = s;
         else collapsedSnapshots.Add(s);
     }
 
     var latestTePending = Model.backup.EggsOfTruthTotal - (int)Model.backup.EggsOfTruth;
-    var latestCuriosity = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(0);
-    var latestIntegrity = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(1);
-    var latestHumility = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(2);
-    var latestResilience = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(3);
-    var latestKindness = Model.backup.VirtueEggsDelivered.ElementAtOrDefault(4);
+    var latestDelivered = virtueEggs
+        .Select((egg, i) => (egg, val: Model.backup.VirtueEggsDelivered.ElementAtOrDefault(i)))
+        .ToDictionary(x => x.egg, x => x.val);
 }
 
 <div class="container">
@@ -36,11 +33,9 @@
                                 <th>TE (Earned)</th>
                                 <th>TE (Pending)</th>
                                 <th>Current Egg</th>
-                                <th style="text-align: center;">Curiosity</th>
-                                <th style="text-align: center;">Integrity</th>
-                                <th style="text-align: center;">Humility</th>
-                                <th style="text-align: center;">Resilience</th>
-                                <th style="text-align: center;">Kindness</th>
+                                @foreach (var egg in virtueEggs) {
+                                    <th style="text-align: center;">@egg</th>
+                                }
                                 <th>Shifts</th>
                                 <th>Resets</th>
                             </tr>
@@ -52,28 +47,25 @@
                                 <td>@Model.backup.EggsOfTruth</td>
                                 <td>@latestTePending</td>
                                 <td>@Model.backup.MaxEggReached</td>
-                                <td style="text-align: center;">@eggAmount(latestCuriosity) <span class="text-muted">(@eggLevel(latestCuriosity))</span></td>
-                                <td style="text-align: center;">@eggAmount(latestIntegrity) <span class="text-muted">(@eggLevel(latestIntegrity))</span></td>
-                                <td style="text-align: center;">@eggAmount(latestHumility) <span class="text-muted">(@eggLevel(latestHumility))</span></td>
-                                <td style="text-align: center;">@eggAmount(latestResilience) <span class="text-muted">(@eggLevel(latestResilience))</span></td>
-                                <td style="text-align: center;">@eggAmount(latestKindness) <span class="text-muted">(@eggLevel(latestKindness))</span></td>
+                                @foreach (var egg in virtueEggs) {
+                                    <td style="text-align: center;">@eggAmount(latestDelivered[egg]) <span class="text-muted">(@eggLevel(latestDelivered[egg]))</span></td>
+                                }
                                 <td>@Model.backup.ShiftCount</td>
                                 <td>@Model.backup.Resets</td>
                             </tr>
                             @foreach (var snapshot in collapsedSnapshots) {
                                 <tr>
                                     <td>@snapshot.Date.ToString("yyyy-MM-dd")</td>
-                                    <td>@snapshot.TeTotal</td>
-                                    <td>@snapshot.TeEarned</td>
-                                    <td>@snapshot.TePending</td>
-                                    <td>@snapshot.CurrentEgg</td>
-                                    <td style="text-align: center;">@eggAmount(snapshot.CuriosityDelivered) <span class="text-muted">(@eggLevel(snapshot.CuriosityDelivered))</span></td>
-                                    <td style="text-align: center;">@eggAmount(snapshot.IntegrityDelivered) <span class="text-muted">(@eggLevel(snapshot.IntegrityDelivered))</span></td>
-                                    <td style="text-align: center;">@eggAmount(snapshot.HumilityDelivered) <span class="text-muted">(@eggLevel(snapshot.HumilityDelivered))</span></td>
-                                    <td style="text-align: center;">@eggAmount(snapshot.ResilienceDelivered) <span class="text-muted">(@eggLevel(snapshot.ResilienceDelivered))</span></td>
-                                    <td style="text-align: center;">@eggAmount(snapshot.KindnessDelivered) <span class="text-muted">(@eggLevel(snapshot.KindnessDelivered))</span></td>
-                                    <td>@snapshot.ShiftCount</td>
-                                    <td>@snapshot.Resets</td>
+                                    <td>@snapshot.VirtueStats.TeTotal</td>
+                                    <td>@snapshot.VirtueStats.TeEarned</td>
+                                    <td>@snapshot.VirtueStats.TePending</td>
+                                    <td>@snapshot.VirtueStats.CurrentEgg</td>
+                                    @foreach (var egg in virtueEggs) {
+                                        var delivered = snapshot.VirtueStats.Delivered.GetValueOrDefault(egg);
+                                        <td style="text-align: center;">@eggAmount(delivered) <span class="text-muted">(@eggLevel(delivered))</span></td>
+                                    }
+                                    <td>@snapshot.VirtueStats.ShiftCount</td>
+                                    <td>@snapshot.VirtueStats.Resets</td>
                                 </tr>
                             }
                         </tbody>

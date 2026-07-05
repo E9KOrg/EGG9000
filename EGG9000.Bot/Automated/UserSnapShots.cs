@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,6 +48,22 @@ namespace EGG9000.Bot.Automated {
                         // up on the next pass, instead of a single global flag starving the tail.
                         if(lastSnapshot?.Date == DateTime.UtcNow.Date) continue;
 
+                        var newVirtueStats = new VirtueSnapshotStats {
+                            CurrentEgg = backup.MaxEggReached,
+                            Delivered = new Dictionary<Ei.Egg, double> {
+                                [Ei.Egg.Curiosity] = backup.VirtueEggsDelivered.ElementAtOrDefault(0),
+                                [Ei.Egg.Integrity] = backup.VirtueEggsDelivered.ElementAtOrDefault(1),
+                                [Ei.Egg.Humility] = backup.VirtueEggsDelivered.ElementAtOrDefault(2),
+                                [Ei.Egg.Resilience] = backup.VirtueEggsDelivered.ElementAtOrDefault(3),
+                                [Ei.Egg.Kindness] = backup.VirtueEggsDelivered.ElementAtOrDefault(4),
+                            },
+                            TeTotal = backup.EggsOfTruthTotal,
+                            TeEarned = backup.EggsOfTruth,
+                            TePending = backup.EggsOfTruthTotal - (int)backup.EggsOfTruth,
+                            ShiftCount = backup.ShiftCount,
+                            Resets = backup.Resets,
+                        };
+
                         // Skip when nothing changed since the last snapshot; a date gap
                         // in the table means "unchanged", not "missing".
                         var unchanged = lastSnapshot is not null
@@ -55,17 +72,7 @@ namespace EGG9000.Bot.Automated {
                             && lastSnapshot.EggsOfProphecy == backup.EggsOfProphecy
                             && lastSnapshot.SoulEggs == backup.SoulEggs
                             && lastSnapshot.EggsOfTruth == backup.EggsOfTruth
-                            && lastSnapshot.CurrentEgg == backup.MaxEggReached
-                            && lastSnapshot.CuriosityDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(0)
-                            && lastSnapshot.IntegrityDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(1)
-                            && lastSnapshot.HumilityDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(2)
-                            && lastSnapshot.ResilienceDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(3)
-                            && lastSnapshot.KindnessDelivered == backup.VirtueEggsDelivered.ElementAtOrDefault(4)
-                            && lastSnapshot.TeTotal == backup.EggsOfTruthTotal
-                            && lastSnapshot.TeEarned == backup.EggsOfTruth
-                            && lastSnapshot.TePending == backup.EggsOfTruthTotal - (int)backup.EggsOfTruth
-                            && lastSnapshot.ShiftCount == backup.ShiftCount
-                            && lastSnapshot.Resets == backup.Resets;
+                            && lastSnapshot.VirtueStats.Equals(newVirtueStats);
                         if(unchanged && !forceWrite) continue;
 
                         _db.UserSnapShots.Add(new UserSnapShot {
@@ -77,17 +84,7 @@ namespace EGG9000.Bot.Automated {
                             EggsOfProphecy = backup.EggsOfProphecy,
                             SoulEggs = backup.SoulEggs,
                             EggsOfTruth = backup.EggsOfTruth,
-                            CurrentEgg = backup.MaxEggReached,
-                            CuriosityDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(0),
-                            IntegrityDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(1),
-                            HumilityDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(2),
-                            ResilienceDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(3),
-                            KindnessDelivered = backup.VirtueEggsDelivered.ElementAtOrDefault(4),
-                            TeTotal = backup.EggsOfTruthTotal,
-                            TeEarned = backup.EggsOfTruth,
-                            TePending = backup.EggsOfTruthTotal - (int)backup.EggsOfTruth,
-                            ShiftCount = backup.ShiftCount,
-                            Resets = backup.Resets,
+                            VirtueStats = newVirtueStats,
                         });
                         _logger.LogTrace("Adding Snapshot for {user}", user.Id);
                         if(snapshots++ >= 50) {

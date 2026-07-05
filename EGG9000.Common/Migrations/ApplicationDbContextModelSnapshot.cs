@@ -1366,12 +1366,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("EggIncID")
                         .HasColumnType("text");
 
-                    b.Property<double>("CuriosityDelivered")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("CurrentEgg")
-                        .HasColumnType("integer");
-
                     b.Property<double>("EarningsBonus")
                         .HasColumnType("double precision");
 
@@ -1381,38 +1375,14 @@ namespace EGG9000.Common.Migrations
                     b.Property<decimal>("EggsOfTruth")
                         .HasColumnType("numeric(20,0)");
 
-                    b.Property<double>("HumilityDelivered")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("IntegrityDelivered")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("KindnessDelivered")
-                        .HasColumnType("double precision");
-
                     b.Property<decimal>("Prestiges")
                         .HasColumnType("numeric(20,0)");
-
-                    b.Property<long>("Resets")
-                        .HasColumnType("bigint");
-
-                    b.Property<double>("ResilienceDelivered")
-                        .HasColumnType("double precision");
-
-                    b.Property<long>("ShiftCount")
-                        .HasColumnType("bigint");
 
                     b.Property<double>("SoulEggs")
                         .HasColumnType("double precision");
 
-                    b.Property<long>("TeEarned")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("TePending")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TeTotal")
-                        .HasColumnType("integer");
+                    b.Property<string>("VirtueStatsJson")
+                        .HasColumnType("text");
 
                     b.HasKey("UserId", "Date", "EggIncID");
 
