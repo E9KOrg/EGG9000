@@ -22,7 +22,7 @@ public class UtcConverterTests {
     [TestMethod]
     public async Task LocalOffsetDateTimeOffset_WritesAndQueries() {
         await using var ctx = new ApplicationDbContext(Options());
-        await ctx.Database.MigrateAsync(TestContext.CancellationToken);
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
 
         // A deliberately non-UTC offset - the exact shape that crashed CoopAssignmentLookup.
         var localNow = new DateTimeOffset(2026, 6, 12, 9, 0, 0, TimeSpan.FromHours(-5));
@@ -32,14 +32,14 @@ public class UtcConverterTests {
             Type = "UtcConverterTest",
             Skipped = false,
         });
-        await ctx.SaveChangesAsync(TestContext.CancellationToken);
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
 
         // Query with a local-offset parameter - EF must route it through the converter.
         // Both the write above and this query would throw the Npgsql offset error without it.
         var cutoff = localNow.AddMinutes(-1);
         var found = await ctx.AutomationLogs
             .Where(x => x.Type == "UtcConverterTest" && x.StartTime > cutoff)
-            .ToListAsync(TestContext.CancellationToken);
+            .ToListAsync(TestContext!.CancellationToken);
 
         Assert.IsNotEmpty(found, "Row written with a local offset should be queryable by a local-offset parameter.");
         // Instant must round-trip exactly (DateTimeOffset equality compares the instant, not the offset).
@@ -55,12 +55,12 @@ public class UtcConverterTests {
     [TestMethod]
     public async Task LocalOffsetParameter_AgainstDateColumn_DoesNotThrow() {
         await using var ctx = new ApplicationDbContext(Options());
-        await ctx.Database.MigrateAsync(TestContext.CancellationToken);
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
 
         var eggIncId = "UtcInterceptorTest-" + Guid.NewGuid().ToString("N");
         ctx.UserSnapShots.Add(new UserSnapShot { Date = new DateTime(2026, 7, 10), UserId = Guid.NewGuid(), EggIncID = eggIncId, EarningsBonus = 1 });
         ctx.UserSnapShots.Add(new UserSnapShot { Date = new DateTime(2026, 7, 12), UserId = Guid.NewGuid(), EggIncID = eggIncId, EarningsBonus = 2 });
-        await ctx.SaveChangesAsync(TestContext.CancellationToken);
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
 
         var cutoff = new DateTimeOffset(2026, 7, 14, 11, 0, 0, TimeSpan.FromHours(-5));
         var ids = new[] { eggIncId };
@@ -69,7 +69,7 @@ public class UtcConverterTests {
             .Where(x => ids.Contains(x.EggIncID) && x.Date < cutoff)
             .GroupBy(x => x.EggIncID)
             .Select(g => g.OrderByDescending(y => y.Date).First())
-            .ToListAsync(TestContext.CancellationToken);
+            .ToListAsync(TestContext!.CancellationToken);
 
         Assert.HasCount(1, latest, "The pre-cutoff snapshot query must run without an Npgsql offset error.");
         Assert.AreEqual(new DateTime(2026, 7, 12), latest[0].Date, "Should return the latest snapshot before the cutoff.");

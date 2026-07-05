@@ -59,7 +59,7 @@ namespace EGG9000.Test {
                 EggIncAccounts = [
                     new() { Id = "EI555", Name = "C" }
                 ],
-                _CustomBackups = MessagePackSerializer.Serialize(new List<CustomBackup>(), DBUser.lz4Options, TestContext.CancellationToken)
+                _CustomBackups = MessagePackSerializer.Serialize(new List<CustomBackup>(), DBUser.lz4Options, TestContext!.CancellationToken)
             };
             var fullIds = AccountIds(full); // exercises the _CustomBackups branch in the getter
 

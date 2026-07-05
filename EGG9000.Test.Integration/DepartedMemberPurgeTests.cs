@@ -30,7 +30,7 @@ public class DepartedMemberPurgeTests {
     [TestMethod]
     public async Task PendingAssignmentPurgeFilter_SelectsOnlyActiveUnjoinedThisGuild() {
         await using var ctx = new ApplicationDbContext(Options());
-        await ctx.Database.MigrateAsync(TestContext.CancellationToken);
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
 
         var now = DateTimeOffset.UtcNow;
         var userId = Guid.NewGuid();
@@ -54,12 +54,12 @@ public class DepartedMemberPurgeTests {
             NewXref(userId, expired.Id, joinedCoop: false),
             NewXref(userId, full.Id, joinedCoop: false));
 
-        await ctx.SaveChangesAsync(TestContext.CancellationToken);
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
 
         var matched = await ctx.UserCoopXrefs
             .Where(ManageOverflow.PendingAssignmentPurgeFilter([userId], guildId, now))
             .Select(x => x.CoopId)
-            .ToListAsync(TestContext.CancellationToken);
+            .ToListAsync(TestContext!.CancellationToken);
 
         CollectionAssert.AreEquivalent(new[] { match.Id }, matched,
             "Only the active, unjoined, same-guild assignment should be selected for purge.");

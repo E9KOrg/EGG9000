@@ -21,19 +21,19 @@ public class DbLaunchTests {
     [TestMethod]
     public async Task AllMigrations_ApplyToEmptyDatabase() {
         await using var ctx = new ApplicationDbContext(Options());
-        await ctx.Database.MigrateAsync(TestContext.CancellationToken);
-        var applied = await ctx.Database.GetAppliedMigrationsAsync(TestContext.CancellationToken);
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
+        var applied = await ctx.Database.GetAppliedMigrationsAsync(TestContext!.CancellationToken);
         Assert.IsNotEmpty(applied, "Expected at least one migration to be applied.");
-        var pending = await ctx.Database.GetPendingMigrationsAsync(TestContext.CancellationToken);
+        var pending = await ctx.Database.GetPendingMigrationsAsync(TestContext!.CancellationToken);
         Assert.IsEmpty(pending, "All migrations should be applied after MigrateAsync.");
     }
 
     [TestMethod]
     public async Task Context_OpensAndQueriesAfterMigrate() {
         await using var ctx = new ApplicationDbContext(Options());
-        await ctx.Database.MigrateAsync(TestContext.CancellationToken);
-        Assert.IsTrue(await ctx.Database.CanConnectAsync(TestContext.CancellationToken), "Context should connect to the migrated database.");
-        var userCount = await ctx.DBUsers.CountAsync(TestContext.CancellationToken);
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
+        Assert.IsTrue(await ctx.Database.CanConnectAsync(TestContext!.CancellationToken), "Context should connect to the migrated database.");
+        var userCount = await ctx.DBUsers.CountAsync(TestContext!.CancellationToken);
         Assert.IsGreaterThanOrEqualTo(0, userCount);
     }
 

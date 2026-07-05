@@ -18,9 +18,10 @@ namespace EGG9000.Test.Assignment {
                 RewardFilter = [Ei.RewardType.Gold],
                 Seasonal = new SeasonalRule { Mode = SeasonalMode.UntilCsGoal, CsGoal = 12000, RewardFilterAfter = true }
             };
-            var bytes = MessagePackSerializer.Serialize(s, Lz4, TestContext.CancellationToken);
-            var back = MessagePackSerializer.Deserialize<AssignmentSettings>(bytes, Lz4, TestContext.CancellationToken);
+            var bytes = MessagePackSerializer.Serialize(s, Lz4, TestContext!.CancellationToken);
+            var back = MessagePackSerializer.Deserialize<AssignmentSettings>(bytes, Lz4, TestContext!.CancellationToken);
 
+            Assert.IsNotNull(back);
             Assert.AreEqual(SeasonalMode.UntilCsGoal, back.Seasonal.Mode);
             Assert.AreEqual(12000d, back.Seasonal.CsGoal);
             Assert.IsTrue(back.Seasonal.RewardFilterAfter);
@@ -39,9 +40,10 @@ namespace EGG9000.Test.Assignment {
             };
             s.SetForce(PermanentRewardKind.Colleggtible, ForceMode.AssignIfMissing);
 
-            var bytes = MessagePackSerializer.Serialize(s, Lz4, TestContext.CancellationToken);
-            var back = MessagePackSerializer.Deserialize<AssignmentSettings>(bytes, Lz4, TestContext.CancellationToken);
+            var bytes = MessagePackSerializer.Serialize(s, Lz4, TestContext!.CancellationToken);
+            var back = MessagePackSerializer.Deserialize<AssignmentSettings>(bytes, Lz4, TestContext!.CancellationToken);
 
+            Assert.IsNotNull(back);
             CollectionAssert.AreEqual(s.RewardFilter, back.RewardFilter);
             Assert.AreEqual(RedoLeggacyOption.YesThreshold, back.Redo.Mode);
             Assert.AreEqual(33000, back.Redo.ScoreThreshold);

@@ -170,7 +170,7 @@ namespace EGG9000.Test {
 
             Assert.IsTrue(result.Succeeded);
 
-            var logRow = await db.ApiKeyRequestLogs.SingleAsync(TestContext.CancellationToken);
+            var logRow = await db.ApiKeyRequestLogs.SingleAsync(TestContext!.CancellationToken);
             Assert.AreEqual(key.Id, logRow.ApiKeyId);
             Assert.AreEqual(12345UL, logRow.GuildId);
             Assert.AreEqual("203.0.113.5", logRow.IpAddress);
@@ -189,7 +189,7 @@ namespace EGG9000.Test {
             await RunHandlerWithDb(key, "counterkey", dbName: dbName);
             var (_, db) = await RunHandlerWithDb(storedKey: null, headerValue: "counterkey", dbName: dbName);
 
-            var usageRow = await db.ApiKeyDailyUsages.SingleAsync(TestContext.CancellationToken);
+            var usageRow = await db.ApiKeyDailyUsages.SingleAsync(TestContext!.CancellationToken);
             Assert.AreEqual(2, usageRow.RequestCount);
         }
 
@@ -199,7 +199,7 @@ namespace EGG9000.Test {
 
             Assert.IsFalse(result.Succeeded);
 
-            var logRow = await db.ApiKeyRequestLogs.SingleAsync(TestContext.CancellationToken);
+            var logRow = await db.ApiKeyRequestLogs.SingleAsync(TestContext!.CancellationToken);
             Assert.IsNull(logRow.ApiKeyId);
             Assert.IsNull(logRow.GuildId);
             Assert.IsFalse(logRow.Success);
@@ -210,7 +210,7 @@ namespace EGG9000.Test {
         public async Task NoHeader_DoesNotWriteRequestLog() {
             var (_, db) = await RunHandlerWithDb(MakeKey("unused"), headerValue: null);
 
-            Assert.AreEqual(0, await db.ApiKeyRequestLogs.CountAsync(TestContext.CancellationToken));
+            Assert.AreEqual(0, await db.ApiKeyRequestLogs.CountAsync(TestContext!.CancellationToken));
         }
 
         [TestMethod]
@@ -224,7 +224,7 @@ namespace EGG9000.Test {
             var factory = new TestDbContextFactory(dbOptions);
             using(var seed = factory.CreateDbContext()) {
                 seed.ApiKeys.Add(key);
-                await seed.SaveChangesAsync(TestContext.CancellationToken);
+                await seed.SaveChangesAsync(TestContext!.CancellationToken);
             }
 
             var brokenFactory = new ThrowingDbContextFactory(dbOptions);

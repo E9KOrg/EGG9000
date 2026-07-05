@@ -22,11 +22,11 @@ public class DemeritAdminUserIdTests {
     [TestMethod]
     public async Task Demerit_WithGuidEmptyAdmin_PersistsAsNull() {
         await using var ctx = new ApplicationDbContext(Options());
-        await ctx.Database.MigrateAsync(TestContext.CancellationToken);
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
 
         var userId = Guid.NewGuid();
         ctx.DBUsers.Add(new DBUser { Id = userId, DiscordId = 1234500000 + (ulong)Random.Shared.Next(1, 99999), DiscordUsername = "fk-test" });
-        await ctx.SaveChangesAsync(TestContext.CancellationToken);
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
 
         var demeritId = Guid.NewGuid();
         ctx.Demerit.Add(new Demerit {
@@ -38,9 +38,9 @@ public class DemeritAdminUserIdTests {
         });
 
         // Before the fix this threw a foreign-key violation. It must now succeed.
-        await ctx.SaveChangesAsync(TestContext.CancellationToken);
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
 
-        var saved = await ctx.Demerit.AsNoTracking().FirstAsync(x => x.Id == demeritId, TestContext.CancellationToken);
+        var saved = await ctx.Demerit.AsNoTracking().FirstAsync(x => x.Id == demeritId, TestContext!.CancellationToken);
         Assert.IsNull(saved.AdminUserId, "Guid.Empty admin sentinel should persist as null, not violate the FK.");
     }
 
