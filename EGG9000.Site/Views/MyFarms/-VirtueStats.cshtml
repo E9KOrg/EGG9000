@@ -48,31 +48,28 @@
 }
 
 <div class="container" style="padding: 0 12px;">
-
     <div class="row">
         <div class="col-sm">
-            <!-- CHART CARD -->
             <div class="card" style="margin-top:15px;" id="virtueStatsNarrowCard-@(virtueStatsSuffix)">
                 <h4 class="card-header d-flex justify-content-between align-items-center flex-wrap gap-1">
                     <span style="white-space: nowrap; margin-right: 8px;">Virtue Progress Graph</span>
                     <div class="d-flex flex-wrap gap-1">
-                        <button class="btn btn-sm btn-primary me-1"           id="virtueStatsBtn-curiosity-@(virtueStatsSuffix)"  onclick="virtueStatsToggle_@(virtueStatsSuffix)('curiosity')">Curiosity</button>
-                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-integrity-@(virtueStatsSuffix)"  onclick="virtueStatsToggle_@(virtueStatsSuffix)('integrity')">Integrity</button>
-                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-humility-@(virtueStatsSuffix)"   onclick="virtueStatsToggle_@(virtueStatsSuffix)('humility')">Humility</button>
+                        <button class="btn btn-sm btn-primary me-1" id="virtueStatsBtn-curiosity-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('curiosity')">Curiosity</button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-integrity-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('integrity')">Integrity</button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-humility-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('humility')">Humility</button>
                         <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-resilience-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('resilience')">Resilience</button>
-                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-kindness-@(virtueStatsSuffix)"   onclick="virtueStatsToggle_@(virtueStatsSuffix)('kindness')">Kindness</button>
-                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-teTotal-@(virtueStatsSuffix)"    onclick="virtueStatsToggle_@(virtueStatsSuffix)('teTotal')">TE Total</button>
-                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-teEarned-@(virtueStatsSuffix)"   onclick="virtueStatsToggle_@(virtueStatsSuffix)('teEarned')">TE Earned</button>
-                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-tePending-@(virtueStatsSuffix)"  onclick="virtueStatsToggle_@(virtueStatsSuffix)('tePending')">TE Pending</button>
-                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-shifts-@(virtueStatsSuffix)"     onclick="virtueStatsToggle_@(virtueStatsSuffix)('shifts')">Shifts</button>
-                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-resets-@(virtueStatsSuffix)"     onclick="virtueStatsToggle_@(virtueStatsSuffix)('resets')">Resets</button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-kindness-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('kindness')">Kindness</button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-teTotal-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('teTotal')">TE Total</button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-teEarned-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('teEarned')">TE Earned</button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-tePending-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('tePending')">TE Pending</button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-shifts-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('shifts')">Shifts</button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" id="virtueStatsBtn-resets-@(virtueStatsSuffix)" onclick="virtueStatsToggle_@(virtueStatsSuffix)('resets')">Resets</button>
                     </div>
                 </h4>
                 <div class="card-body p-2">
                     <div id="virtueStatsChartNarrow-@(virtueStatsSuffix)"></div>
                 </div>
             </div>
-            <!-- EXISTING VIRTUE PROGRESS HISTORY TABLE (unchanged) -->
             <div class="card" style="margin-top:15px;">
                 <h4 class="card-header" style="text-align: center;">Virtue Progress History</h4>
                 <div class="table-responsive">
@@ -125,7 +122,6 @@
             </div>
         </div>
     </div>
-
 </div>
 <partial name="_ApexCharts" />
 <script src="~/js/virtue-stats-chart.js" asp-append-version="true"></script>

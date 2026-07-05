@@ -61,7 +61,11 @@ namespace EGG9000.Bot.Automated {
                                 _logger.LogWarning("Unable to get scores for {user} {account}", user.DiscordUsername, account.Id);
                                 continue;
                             }
-                            foreach(var score in scores.Contracts) {
+                            // Egg Inc moves a completed contract from Contracts into Archive once fully
+                            // closed/graced, which can happen before this job's next Mon/Wed/Fri run.
+                            // Scanning only Contracts silently drops the score for anything that's already
+                            // archived by run time, leaving redo-Leggacy threshold checks with no score.
+                            foreach(var score in scores.Contracts.Concat(scores.Archive ?? [])) {
                                 //Max length for coop because of weird names
                                 var coopIdentifier = score.CoopIdentifier.Length > 100 ? score.CoopIdentifier[..100] : score.CoopIdentifier;
                                 //Get the score from existing ones
@@ -72,8 +76,11 @@ namespace EGG9000.Bot.Automated {
                                     //If it doesn't exist, add a new one
                                     scoresToAdd.Add(new UserCsHistoryEntry(score.Contract.Identifier, coopIdentifier, score.Evaluation.Cxp, account.Id));
                                 } else if(existingScore.Cxp != score.Evaluation.Cxp) {
-                                    //If it does, update the score and coop name. Should only happen if the dev changes the scoring algorithm
+                                    //If it does, update the score and coop name, and bump Created so a
+                                    //changed score (e.g. a later replay observed under the same coop
+                                    //identifier) still sorts as the most recent play.
                                     existingScore.Cxp = score.Evaluation.Cxp;
+                                    existingScore.Created = DateTimeOffset.UtcNow;
                                 }
                             }
                         } catch(Exception ex) {

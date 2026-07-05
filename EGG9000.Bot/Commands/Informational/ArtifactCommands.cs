@@ -1,7 +1,8 @@
-﻿using Discord;
+using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Common.EggIncAPI;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -18,55 +19,10 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
-namespace EGG9000.Bot.Commands.Informational {
+namespace EGG9000.Bot.Commands {
     public static class ArtifactCommands {
 
-        [SlashCommand(Description = "View a user's inventory", AdminOnly = StaffOnlyLevel.FarmHand, ParentCommand = "a")]
-        public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(UserAccountAutoComplete))] string useraccount, [SlashParam(Required = false)] bool showinchannel = false) {
-            await command.DeferAsync(ephemeral: !showinchannel);
-            var userid = useraccount.Split("|")[0];
-            DBUser dbuser = null;
-            try { dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
-            if(dbuser is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
-            EggIncAccount account = null;
-            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
-            if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
-
-            await _viewInventory(command, db, dbuser, account, showinchannel);
-        }
-
-        [SlashCommand(Description = "View your inventory", AllowInDMs = true)]
-        public static async Task ViewInventory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
-            await command.DeferAsync();
-            var userid = useraccount.Split("|")[0];
-            DBUser dbuser = null;
-            try { dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) {
-                //Don't keep EIDs in plaintext in the command history
-                if(Regex.IsMatch(useraccount, @"^EI\d{16}$")) {
-                    await command.DeleteOriginalResponseAsync();
-                    await command.Channel.SendMessageAsync(embed: EmbedError($"{command.User.Mention} - Please select an account from the list, instead of typing an input.\n\n**(Command use deleted to hide your EID)**."));
-                } else {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
-                }
-                return; 
-            }
-            if(dbuser is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
-            
-            //I hate that people are like this
-            if(dbuser.DiscordId != command.User.Id) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Stop trying to view other's inventories."); });
-                return;
-            }
-            
-            EggIncAccount account = null;
-            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
-            if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
-
-            await _viewInventory(command, db, dbuser, account);
-        }
-
-        public static async Task _viewInventory(FauxCommand command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
-            //Pull and save a fresh backup
+        public static async Task _viewInventory(SocketInteraction command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
             var backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
             if(account.Backup is null) account.Backup = backup;
             else account.Backup.ArtifactHall = backup.ArtifactHall;
@@ -79,18 +35,19 @@ namespace EGG9000.Bot.Commands.Informational {
             }
 
             var (B64, Config) = await InventoryB64(account);
-            if(string.IsNullOrEmpty(B64) || B64.StartsWith("$ERROR$:")) { 
-                await command.ModifyOriginalResponseAsync(x => { 
-                    x.Content = ""; 
-                    x.Embed = EmbedError($"User inventory could not be converted.${(B64.StartsWith("$ERROR$:") ? $"\n```{B64.Replace("$ERROR$:", "")}```" : "")}"); 
-                }); 
-                return; 
+            if(string.IsNullOrEmpty(B64) || B64.StartsWith("$ERROR$:")) {
+                await command.ModifyOriginalResponseAsync(x => {
+                    x.Content = "";
+                    x.Embed = EmbedError($"User inventory could not be converted.${(B64.StartsWith("$ERROR$:") ? $"\n```{B64.Replace("$ERROR$:", "")}```" : "")}");
+                });
+                return;
             }
 
             var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
-            await command.RespondWithFileAsync(image, text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
+            await command.RespondWithFilesAsyncGettingMessage([image], text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
             var response = await command.GetOriginalResponseAsync(); // Get the response to edit it
-            var imageUrl = TrimImageUrl(response.Embeds.First().Image.ToString());
+            var baseUrl = response.Embeds.First().Image.ToString();
+            var imageUrl = TrimImageUrl(baseUrl);
             await command.ModifyOriginalResponseAsync(x => {
                 x.Content = "";
                 x.Embed = _inventoryEmbed(user, account, imageUrl);
@@ -112,11 +69,51 @@ namespace EGG9000.Bot.Commands.Informational {
             return builder.Build();
         }
 
-        [SlashCommand(Description = "Show off your saved Artifact Sets")]
-        public static async Task SavedAfSets(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount) {
+        public static string TrimImageUrl(string baseUrl) {
+            var i = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
+            return i != -1 ? baseUrl[..i] : baseUrl;
+        }
+    }
+
+    public class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+
+        [SlashCommand("viewinventory", "View your inventory")]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
+        public async Task ViewInventory([Autocomplete(typeof(PersonalUserAccountAutoComplete))][Summary("useraccount")] string useraccount) {
+            var command = Context.Interaction;
+            await command.DeferAsync();
+            var userid = useraccount.Split("|")[0];
+            DBUser dbuser = null;
+            try { dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) {
+                //Don't keep EIDs in plaintext in the command history
+                if(Regex.IsMatch(useraccount, @"^EI\d{16}$")) {
+                    await command.DeleteOriginalResponseAsync();
+                    await command.Channel.SendMessageAsync(embed: EmbedError($"{command.User.Mention} - Please select an account from the list, instead of typing an input.\n\n**(Command use deleted to hide your EID)**."));
+                } else {
+                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                }
+                return;
+            }
+            if(dbuser is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
+
+            if(dbuser.DiscordId != command.User.Id) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Stop trying to view other's inventories."); });
+                return;
+            }
+
+            EggIncAccount account = null;
+            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
+
+            await ArtifactCommands._viewInventory(command, Db, dbuser, account);
+        }
+
+        [SlashCommand("savedafsets", "Show off your saved Artifact Sets")]
+        public async Task SavedAfSets([Autocomplete(typeof(PersonalUserAccountAutoComplete))][Summary("useraccount")] string useraccount) {
+            var command = Context.Interaction;
             await command.DeferAsync();
 
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
             if(dbUser == null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
                 return;
@@ -134,11 +131,11 @@ namespace EGG9000.Bot.Commands.Informational {
 
             // Fresh pull, update only the sets. Use the fresh backup as the initial one if the
             // account had none yet (new/failed registration) rather than bailing on usable data.
-            var fresh = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
+            var fresh = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await Db.CachedEiContractsAsync(), account.Backup ?? null);
             if(account.Backup is null) account.Backup = fresh;
             else account.Backup.ArtifactSets = fresh.ArtifactSets;
             dbUser.UpdateAccounts();
-            await db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
 
             var sets = account.Backup.ArtifactSets;
             if(sets is null || sets.Count == 0) {
@@ -160,7 +157,7 @@ namespace EGG9000.Bot.Commands.Informational {
             // resolved CDN url is only used for the clickable full-resolution title link.
             var file = new FileAttachment(new MemoryStream(Convert.FromBase64String(pages[0])), AfxSetsImageFileName, "Artifact Sets");
             var resp = await command.RespondWithFilesAsyncGettingMessage([file], text: "",
-                embeds: new[] { AfxSetsImageEmbed(dbUser, account, 0, pageCount, null), AfxSetsDetailEmbed(null) },
+                embeds: [AfxSetsImageEmbed(dbUser, account, 0, pageCount, null), AfxSetsDetailEmbed(null)],
                 components: AfxSetsComponents(dbUser, accountIndex, sets, pageCount, 0));
 
             var fullResUrl = ResolveAttachmentUrl(resp);
@@ -175,7 +172,7 @@ namespace EGG9000.Bot.Commands.Informational {
 
         private static string ResolveAttachmentUrl(IUserMessage message) {
             var url = message?.Embeds?.FirstOrDefault(e => e.Image is not null)?.Image?.Url;
-            return string.IsNullOrEmpty(url) ? "" : TrimImageUrl(url);
+            return string.IsNullOrEmpty(url) ? "" : ArtifactCommands.TrimImageUrl(url);
         }
 
         // Renders a single page on the Site, swaps in the new attachment, and refreshes the
@@ -199,11 +196,6 @@ namespace EGG9000.Bot.Commands.Informational {
                     x.Embeds = new[] { AfxSetsImageEmbed(user, account, page, pageCount, fullResUrl), detailEmbed };
                 });
             }
-        }
-
-        public static string TrimImageUrl(string baseUrl) {
-            var i = baseUrl.IndexOf("&format", StringComparison.OrdinalIgnoreCase);
-            return i != -1 ? baseUrl[..i] : baseUrl;
         }
 
         private static Embed AfxSetsImageEmbed(DBUser user, EggIncAccount account, int page, int pageCount, string fullResUrl) {
@@ -262,15 +254,16 @@ namespace EGG9000.Bot.Commands.Informational {
             return cb.Build();
         }
 
-        [ComponentCommand]
-        public static async Task AfxSetsPage(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        [ComponentInteraction("AfxSetsPage:*", ignoreGroupNames: true)]
+        public async Task AfxSetsPage(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
             var parts = data.Split(",");
             if(parts.Length < 3) return;
             var discordId = ulong.Parse(parts[0]);
             var accountIndex = int.Parse(parts[1]);
             var page = int.Parse(parts[2]);
 
-            var user = db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
+            var user = Db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
             if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
             var account = user.EggIncAccounts[accountIndex];
             var sets = account.Backup?.ArtifactSets;
@@ -282,8 +275,9 @@ namespace EGG9000.Bot.Commands.Informational {
             await RenderAfxPage(component, user, account, accountIndex, sets, pageCount, page, AfxSetsDetailEmbed(null));
         }
 
-        [ComponentCommand]
-        public static async Task AfxSetsSelect(SocketMessageComponent component, [ComponentData] string data, ApplicationDbContext db) {
+        [ComponentInteraction("AfxSetsSelect:*", ignoreGroupNames: true)]
+        public async Task AfxSetsSelect(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
             var parts = data.Split(",");
             if(parts.Length < 3) return;
             var discordId = ulong.Parse(parts[0]);
@@ -291,7 +285,7 @@ namespace EGG9000.Bot.Commands.Informational {
             var page = int.Parse(parts[2]);
             var selected = int.Parse(component.Data.Values.First());
 
-            var user = db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
+            var user = Db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
             if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
             var account = user.EggIncAccounts[accountIndex];
             var sets = account.Backup?.ArtifactSets;
@@ -303,5 +297,21 @@ namespace EGG9000.Bot.Commands.Informational {
             await RenderAfxPage(component, user, account, accountIndex, sets, pageCount, page, AfxSetsDetailEmbed(sets[selected], selected));
         }
 
+    }
+
+    public partial class AdminModule {
+        [Discord.Interactions.SlashCommand("viewinventory", "View a user's inventory")]
+        public async Task ViewInventory([Discord.Interactions.Autocomplete(typeof(UserAccountAutoComplete))][Discord.Interactions.Summary("useraccount")] string useraccount, [Discord.Interactions.Summary("showinchannel")] bool showinchannel = false) {
+            await Context.Interaction.DeferAsync(ephemeral: !showinchannel);
+            var userid = useraccount.Split("|")[0];
+            DBUser dbuser = null;
+            try { dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            if(dbuser is null) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
+            EggIncAccount account = null;
+            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            if(account is null) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
+
+            await ArtifactCommands._viewInventory(Context.Interaction, Db, dbuser, account, showinchannel);
+        }
     }
 }

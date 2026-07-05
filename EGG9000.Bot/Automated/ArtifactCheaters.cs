@@ -1,5 +1,5 @@
 ﻿using Discord;
-using EGG9000.Bot.Commands.Informational;
+using EGG9000.Bot.Commands;
 using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;

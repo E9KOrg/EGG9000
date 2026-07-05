@@ -149,7 +149,7 @@ namespace EGG9000.Bot.Automated {
             return embedBuilder.Build();
         }
 
-        public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild,  Guild dbGuild, FauxCommand slashCommand = null) {
+        public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild,  Guild dbGuild, SocketInteraction slashCommand = null) {
             try {
                 _logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
 

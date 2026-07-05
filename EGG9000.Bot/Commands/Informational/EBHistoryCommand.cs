@@ -1,10 +1,10 @@
-﻿using Discord;
+using Discord;
+using Discord.Interactions;
 
 using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -16,7 +16,7 @@ using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public static class EBHistoryCommand {
+    public class EBHistoryModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
 
         private class TextHistoryEntry(DateOnly entryDate, string ebString, string roleString, TextHistoryEntry lastEntry = null) {
             public DateOnly EntryDate { get; set; } = entryDate;
@@ -48,36 +48,35 @@ namespace EGG9000.Bot.Commands {
 
         }
 
-        [SlashCommand(Description = "View key points in your EB history")]
-        public static async Task EBHistory(FauxCommand command, ApplicationDbContext db, [SlashParam(AutocompleteHandler = typeof(PersonalUserAccountAutoComplete))] string useraccount, [SlashParam(Required = false)] bool showinchannel = false) {
-            await command.DeferAsync(ephemeral: !showinchannel);
+        [SlashCommand("ebhistory", "View key points in your EB history")]
+        public async Task EBHistory([Autocomplete(typeof(PersonalUserAccountAutoComplete))][Summary("useraccount")] string useraccount, [Summary("showinchannel")] bool showinchannel = false) {
+            await Context.Interaction.DeferAsync(ephemeral: !showinchannel);
             var userid = useraccount.Split("|")[0];
             DBUser dbuser = null;
-            try { dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) {
+            try { dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) {
                 //Don't keep EIDs in plaintext in the command history
                 if(Regex.IsMatch(useraccount, @"^EI\d{16}$")) {
-                    await command.DeleteOriginalResponseAsync();
-                    await command.Channel.SendMessageAsync(embed: EmbedError($"{command.User.Mention} - Please select an account from the list, instead of typing an input.\n\n**(Command use deleted to hide your EID)**."));
+                    await Context.Interaction.DeleteOriginalResponseAsync();
+                    await Context.Channel.SendMessageAsync(embed: EmbedError($"{Context.User.Mention} - Please select an account from the list, instead of typing an input.\n\n**(Command use deleted to hide your EID)**."));
                 } else {
-                    await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                    await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
                 }
                 return;
             }
-            if(dbuser is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
+            if(dbuser is null) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID {userid}"); }); return; }
 
-            //I hate that people are like this
-            if(dbuser.DiscordId != command.User.Id) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Stop trying to run commands on others' accounts."); });
+            if(dbuser.DiscordId != Context.User.Id) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Stop trying to run commands on others' accounts."); });
                 return;
             }
 
             EggIncAccount account = null;
-            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
-            if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
+            try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
+            if(account is null) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            var snapshots = await db.UserSnapShots.AsQueryable().Where(x => x.UserId == dbuser.Id && x.EggIncID == account.Id).ToListAsync();
+            var snapshots = await Db.UserSnapShots.AsQueryable().Where(x => x.UserId == dbuser.Id && x.EggIncID == account.Id).ToListAsync();
 
-            if(!snapshots.Any()) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No EB history for {userid} ({account.Backup?.UserName ?? account.Name}) could not be found"); }); return; }
+            if(!snapshots.Any()) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No EB history for {userid} ({account.Backup?.UserName ?? account.Name}) could not be found"); }); return; }
 
             var entries = new List<TextHistoryEntry>();
             var iterRank = "";
@@ -99,7 +98,7 @@ namespace EGG9000.Bot.Commands {
             entries.ForEach(e => e.MutateStrings(longestEBLength, longestRankLength));
 
             var sb = new StringBuilder();
-            sb.Append($"{command.User.Mention} - {account.Backup?.UserName ?? account.Name}'s Earnings Boost rank history, with a first entry from {DiscordHelpers.TimeStamper(snapshots.First().Date)}.");
+            sb.Append($"{Context.User.Mention} - {account.Backup?.UserName ?? account.Name}'s Earnings Boost rank history, with a first entry from {DiscordHelpers.TimeStamper(snapshots.First().Date)}.");
             sb.AppendLine("```");
             sb.AppendLine($"Date        EB{new string(' ', longestEBLength - 2)}   Rank{new string(' ', longestRankLength - 2)}");
             foreach(var customEntry in entries) {
@@ -112,7 +111,7 @@ namespace EGG9000.Bot.Commands {
             builder.Description = sb.ToString();
             builder.Color = Color.DarkGreen;
 
-            await command.ModifyOriginalResponseAsync(c => { c.Content = ""; c.Embed = builder.Build(); });
+            await Context.Interaction.ModifyOriginalResponseAsync(c => { c.Content = ""; c.Embed = builder.Build(); });
         }
 
     }

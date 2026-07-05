@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -186,7 +187,7 @@ public static partial class NasaHelper {
         return sentMessage != null;
     }
 
-    public static async Task<bool> TrySendLatestNasaAPODAdHoc(this FauxCommand command, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
+    public static async Task<bool> TrySendLatestNasaAPODAdHoc(this SocketInteraction command, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
         var customMessage = await apod.GetCustomMessage(db, logger);
         if(customMessage is null) {
             logger.LogWarning("Failed to get Custom Message for APOD ID: {apodId}", apod.ID);
