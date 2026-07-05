@@ -44,5 +44,5 @@ public class DemeritAdminUserIdTests {
         Assert.IsNull(saved.AdminUserId, "Guid.Empty admin sentinel should persist as null, not violate the FK.");
     }
 
-    public TestContext TestContext { get; set; }
+    public TestContext? TestContext { get; set; }
 }

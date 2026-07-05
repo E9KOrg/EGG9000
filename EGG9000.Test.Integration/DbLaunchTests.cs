@@ -37,5 +37,5 @@ public class DbLaunchTests {
         Assert.IsGreaterThanOrEqualTo(0, userCount);
     }
 
-    public TestContext TestContext { get; set; }
+    public TestContext? TestContext { get; set; }
 }

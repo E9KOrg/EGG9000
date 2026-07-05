@@ -75,5 +75,5 @@ public class UtcConverterTests {
         Assert.AreEqual(new DateTime(2026, 7, 12), latest[0].Date, "Should return the latest snapshot before the cutoff.");
     }
 
-    public TestContext TestContext { get; set; }
+    public TestContext? TestContext { get; set; }
 }

@@ -87,5 +87,5 @@ public class DepartedMemberPurgeTests {
         };
     }
 
-    public TestContext TestContext { get; set; }
+    public TestContext? TestContext { get; set; }
 }

@@ -75,6 +75,6 @@ namespace EGG9000.Test.Assignment {
             Assert.IsEmpty(s.ForceRules, "Get must not mutate the list");
         }
 
-        public TestContext TestContext { get; set; }
+        public TestContext? TestContext { get; set; }
     }
 }

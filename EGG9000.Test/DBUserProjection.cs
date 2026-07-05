@@ -118,6 +118,6 @@ namespace EGG9000.Test {
             Assert.AreEqual(G.GradeAaa, user.EggIncAccounts.Single().LastGrade);
         }
 
-        public TestContext TestContext { get; set; }
+        public TestContext? TestContext { get; set; }
     }
 }

@@ -80,5 +80,5 @@ public class ApiBackupGradeTests {
         Assert.AreNotEqual(Ei.Contract.Types.PlayerGrade.GradeUnset, info.Grade, "grade is unset");
     }
 
-    public TestContext TestContext { get; set; }
+    public TestContext? TestContext { get; set; }
 }
