@@ -7,7 +7,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public sealed class FarmerRank {
         public int Oom { get; init; }
         public string DisplayName { get; init; }

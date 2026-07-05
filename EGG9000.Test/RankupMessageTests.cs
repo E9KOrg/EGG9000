@@ -1,16 +1,14 @@
-using System.Collections.Generic;
-using System.Linq;
-
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
-
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
 namespace EGG9000.Test {
     [TestClass]
     public class RankupMessageTests {
-        private static RankupMessage Msg(int group, ulong guildId = 1, bool palaceOnly = false) =>
-            new() { GroupBaseOom = group, GuildId = guildId, Text = $"g{group}", PalaceOnly = palaceOnly, Weight = 1 };
+        private static RankupMessage Msg(int group, ulong guildId = 1, bool palaceOnly = false) {
+            return new() { GroupBaseOom = group, GuildId = guildId, Text = $"g{group}", PalaceOnly = palaceOnly, Weight = 1 };
+        }
 
         [TestMethod]
         public void ShouldAnnounce_true_when_higher_enabled_not_filtered() {
@@ -57,7 +55,7 @@ namespace EGG9000.Test {
         public void WeightedPick_returns_pool_member_or_null() {
             Assert.IsNull(RankupMessageHelper.WeightedPick([]));
             var pool = new List<RankupMessage> { Msg(0), Msg(3) };
-            for(int i = 0; i < 50; i++) Assert.IsTrue(pool.Contains(RankupMessageHelper.WeightedPick(pool)));
+            for(var i = 0; i < 50; i++) Assert.Contains(RankupMessageHelper.WeightedPick(pool), pool);
         }
 
         [TestMethod]

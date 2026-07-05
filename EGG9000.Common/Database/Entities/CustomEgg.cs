@@ -51,7 +51,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         private List<DBCustomEggModifier> _modifiers { get; set; }
         [NotMapped]
-        public List<DBCustomEggModifier> Modifiers { 
+        public List<DBCustomEggModifier> Modifiers {
             get {
                 if(_modifiers != null) return _modifiers;
                 if(_modifiersBytes == null) return null;
@@ -140,7 +140,7 @@ namespace EGG9000.Common.Database.Entities {
     }
 
     [MessagePackObject]
-    public class  DBCustomEggModifier {
+    public class DBCustomEggModifier {
         public DBCustomEggModifier() { }
 
         public DBCustomEggModifier(GameModifier modifier) {

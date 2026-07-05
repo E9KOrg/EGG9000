@@ -59,7 +59,7 @@ namespace EGG9000.Test {
             // Append a clean Game submessage so we can assert fields after the bad string survive.
             var tail = new Ei.Backup { Game = new Ei.Backup.Types.Game { SoulEggsD = soulEggs } }.ToByteArray();
             head.AddRange(tail);
-            return head.ToArray();
+            return [.. head];
         }
     }
 }

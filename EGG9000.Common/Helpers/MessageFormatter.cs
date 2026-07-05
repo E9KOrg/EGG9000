@@ -7,8 +7,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
-    public static class MessageFormatter {
-        private static readonly Regex TokenRegex = new(@"\{\{([^}]+)\}\}", RegexOptions.Compiled);
+    public static partial class MessageFormatter {
+        private static readonly Regex TokenRegex = MyRegex();
 
         public static async Task<string> FormatAsync(
             string text,
@@ -49,10 +49,13 @@ namespace EGG9000.Common.Helpers {
                 resolveCommand: name => client.GetSlashCommandStringAsync(guild, name),
                 resolveEmoji: async name => {
                     var appEmojis = await client.GetApplicationEmotesAsync();
-                    var emoji = appEmojis.FirstOrDefault(e => e.Name.ToLower() == name.ToLower())
-                        ?? guild.Emotes.FirstOrDefault(e => e.Name.ToLower() == name.ToLower());
+                    var emoji = appEmojis.FirstOrDefault(e => e.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase))
+                        ?? guild.Emotes.FirstOrDefault(e => e.Name.Equals(name, StringComparison.CurrentCultureIgnoreCase));
                     return emoji is null ? null : $"<:{emoji.Name}:{emoji.Id}>";
                 });
         }
+
+        [GeneratedRegex(@"\{\{([^}]+)\}\}", RegexOptions.Compiled)]
+        private static partial Regex MyRegex();
     }
 }

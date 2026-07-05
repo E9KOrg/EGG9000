@@ -1,5 +1,5 @@
 using EGG9000.Common.Database;
-
+using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,15 +13,10 @@ using System;
 var logger = LogManager.Setup().GetCurrentClassLogger();
 logger.Log(NLog.LogLevel.Info, "Main Start");
 
-try
-{
-#if DEBUG
-    var machineName = $"{Environment.MachineName}_debug";
-#else
-    var machineName = Environment.MachineName;
-#endif
-    NLog.GlobalDiagnosticsContext.Set("CustomMachineName", machineName);
-    NLog.GlobalDiagnosticsContext.Set("CustomAppName", "EGG9000.Bot");
+try {
+    var machineName = BuildConfig.IsDebug ? $"{Environment.MachineName}_debug" : Environment.MachineName;
+    GlobalDiagnosticsContext.Set("CustomMachineName", machineName);
+    GlobalDiagnosticsContext.Set("CustomAppName", "EGG9000.Bot");
     logger.Log(NLog.LogLevel.Info, "CustomMachineName = " + machineName);
 
     var host = Host.CreateDefaultBuilder(args)
@@ -37,23 +32,20 @@ try
         .ConfigureServices(EGG9000.Bot.BotHostFactory.ConfigureServices)
         .Build();
 
-#if RELEASE
-    // Apply pending migrations on startup. Production only - dev configs (Debug/DEV9001/DEV9002)
-    // run against the live DB and must stay manual so a half-written migration can't auto-apply.
-    using (var scope = host.Services.CreateScope())
-    {
+    var release = BuildConfig.IsRelease;
+    if(release) {
+        // Apply pending migrations on startup. Production only - dev configs (Debug/DEV9001/DEV9002)
+        // run against the live DB and must stay manual so a half-written migration can't auto-apply.
+        using var scope = host.Services.CreateScope();
         logger.Log(NLog.LogLevel.Info, "Applying database migrations");
         var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
         await using var migrateCtx = await factory.CreateDbContextAsync();
         await migrateCtx.Database.MigrateAsync();
         logger.Log(NLog.LogLevel.Info, "Database migrations applied");
     }
-#endif
 
     await host.RunAsync();
-}
-catch (Exception ex)
-{
+} catch(Exception ex) {
     logger.Error(ex, "Fatal error during startup");
     LogManager.Shutdown();
     throw;

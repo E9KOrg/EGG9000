@@ -1,13 +1,12 @@
 using Discord;
 
-using EGG9000.Bot;
 using EGG9000.Common.Database.Entities;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Common.Helpers {

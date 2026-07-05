@@ -22,6 +22,89 @@ namespace EGG9000.Common.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("GuildId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("Revoked")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.ToTable("ApiKeys");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApiKeyDailyUsage", b =>
+                {
+                    b.Property<Guid>("ApiKeyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RequestCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ApiKeyId", "Date");
+
+                    b.ToTable("ApiKeyDailyUsages");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApiKeyRequestLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ApiKeyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Endpoint")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("GuildId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApiKeyId", "Timestamp");
+
+                    b.ToTable("ApiKeyRequestLogs");
+                });
+
             modelBuilder.Entity("EGG9000.Common.Database.Entities.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -847,6 +930,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("StaffCoopsMessageDetails")
                         .HasColumnType("text");
 
+                    b.Property<bool>("TachyonSuggestionsEnabled")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("_channelDetailsJson")
                         .HasColumnType("text");
 
@@ -1270,6 +1356,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("Status")
                         .HasColumnType("text");
 
+                    b.Property<bool>("TachyonDeflectorNotified")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("TimeCheatReported")
                         .HasColumnType("boolean");
 
@@ -1374,6 +1463,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<double>("SoulEggs")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("VirtueStatsJson")
+                        .HasColumnType("text");
 
                     b.HasKey("UserId", "Date", "EggIncID");
 

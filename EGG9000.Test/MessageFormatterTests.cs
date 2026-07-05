@@ -1,10 +1,8 @@
+using EGG9000.Common.Helpers;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-
-using EGG9000.Common.Helpers;
-
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test {
     [TestClass]

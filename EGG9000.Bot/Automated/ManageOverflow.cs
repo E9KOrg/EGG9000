@@ -1,9 +1,8 @@
 ﻿using Discord;
-using Discord.Net;
 using Discord.WebSocket;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -29,30 +28,54 @@ namespace EGG9000.Bot.Automated {
                 await mainServer.DownloadUsersAsync();
 
                 var members = users.Where(x => x.GuildId == guild.Id).ToList();
-                var missingFromServer = members.Where(x => mainServer.GetUser(x.DiscordId) is null).Select(x => x.Id).ToList();
+                var missingFromCache = members.Where(x => mainServer.GetUser(x.DiscordId) is null).ToList();
 
-                if(!mainServer.HasAllMembers || mainServer.Users.Count == 0 || DepartureSpikeTooLarge(members.Count, missingFromServer.Count)) {
-                    _logger.LogWarning("Skipping departure handling for {name}: {missing}/{members} members flagged missing, HasAllMembers={hasAll}, likely an incomplete member download", guild.Name, missingFromServer.Count, members.Count, mainServer.HasAllMembers);
+                if(!mainServer.HasAllMembers || mainServer.Users.Count == 0) {
+                    _logger.LogWarning("Skipping departure handling for {name}: HasAllMembers={hasAll}, likely an incomplete member download", guild.Name, mainServer.HasAllMembers);
                 } else {
-                    var membersMissing = await _db.DBUsers.Where(x => missingFromServer.Contains(x.Id)).ToListAsync(CancellationToken.None);
+                    // A large chunk missing from the gateway cache is often a spike from a
+                    // missed member-download rather than a real mass exodus, so each candidate
+                    // is confirmed with a live REST lookup (bypasses the gateway cache) instead
+                    // of trusting the cache snapshot outright. This also means real departures
+                    // during an actual mass-exodus event are no longer stuck behind a blanket skip.
+                    var confirmedMissing = new List<Guid>();
+                    foreach(var candidate in missingFromCache) {
+                        var restUser = await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId);
+                        if(restUser is null)
+                            confirmedMissing.Add(candidate.Id);
+                        StillAlive();
+                    }
+
+                    var membersMissing = await _db.DBUsers.Where(x => confirmedMissing.Contains(x.Id)).ToListAsync(CancellationToken.None);
                     membersMissing.ForEach(x => {
                         x.GuildId = 0; x.LastGuild = guild.Id;
                         _logger.LogInformation("Removing member from the guild {name}", x.DiscordUsername);
                         StillAlive();
                     });
 
-                    await PurgePendingAssignments(_db, missingFromServer, guild.Id);
+                    await PurgePendingAssignments(_db, confirmedMissing, guild.Id);
                 }
 
                 // Re-associate any registered user who is present in this server but whose GuildId is unset.
-                // Presence is reliable even on a partial cache (only absence is not), so this is safe to run
-                // unconditionally. Covers both LastGuild-trail returns and the no-trail users that earlier
-                // zeroing left with GuildId = 0 and no record of their original guild.
-                var returned = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).Select(x => x.Id).ToList();
-                var membersReturn = await _db.DBUsers.Where(x => returned.Contains(x.Id)).ToListAsync(CancellationToken.None);
+                // The gateway cache can be wrong in this direction too (a stale add that never got
+                // evicted by a missed/delayed remove), so, same as the departure check above, each
+                // candidate is confirmed with a live REST lookup before being written back, instead of
+                // trusting the cache snapshot on its own. Covers both LastGuild-trail returns and the
+                // no-trail users that earlier zeroing left with GuildId = 0 and no record of their
+                // original guild.
+                var returnCandidates = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).ToList();
+                var confirmedReturned = new List<Guid>();
+                foreach(var candidate in returnCandidates) {
+                    var restUser = await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId);
+                    if(restUser is not null)
+                        confirmedReturned.Add(candidate.Id);
+                    StillAlive();
+                }
+
+                var membersReturn = await _db.DBUsers.Where(x => confirmedReturned.Contains(x.Id)).ToListAsync(CancellationToken.None);
                 membersReturn.ForEach(x => {
                     x.GuildId = guild.Id;
-                    _logger.LogInformation("Re-associating member {name} to guild {guild} (present in server, GuildId was unset)", x.DiscordUsername, guild.Name);
+                    _logger.LogInformation("Re-associating member {name} to guild {guild} (present in server, GuildId was unset, REST-confirmed)", x.DiscordUsername, guild.Name);
                     StillAlive();
                 });
 
@@ -76,12 +99,6 @@ namespace EGG9000.Bot.Automated {
                 await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
                 _client.Gateway.RoleUpdated += _client_RoleUpdated;
 
-#if DEBUG
-#pragma warning disable CS0162 // Unreachable code detected
-                _ = 1;
-#pragma warning restore CS0162 // Unreachable code detected
-#endif
-
 
                 const ulong overflowRoleID = 775547850134257675;
                 const ulong registeredRoleID = 794713762396897280;
@@ -101,7 +118,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
 
-               foreach(var u in onlyMainWithoutRole) {
+                foreach(var u in onlyMainWithoutRole) {
                     await WaitOnCoopsBeingCreated(cancellationToken);
                     if(cancellationToken.IsCancellationRequested) {
                         break;
@@ -239,7 +256,7 @@ namespace EGG9000.Bot.Automated {
                             /**
                              * Can't sync role icons as the overflows aren't boosted
                              */
-                        }, new RequestOptions() { RetryMode = RetryMode.RetryRatelimit});
+                        }, new RequestOptions() { RetryMode = RetryMode.RetryRatelimit });
                     } catch(Exception) {
                     }
                 }
@@ -310,7 +327,7 @@ namespace EGG9000.Bot.Automated {
                             string.Join(",", neededRoles.Select(x => x.Name)), overflowUser.GetCleanName(), overflowServer.Name);
                         await overflowUser.AddRolesAsync(neededRoles);
                     }
-                   if(removeRoles.Count > 0) {
+                    if(removeRoles.Count > 0) {
                         _logger.LogInformation("Removing overflow roles ({roles}) to {user}", string.Join(",", removeRoles.Select(x => x.Name)), overflowUser.GetCleanName());
                         await overflowUser.RemoveRolesAsync(removeRoles);
                     }

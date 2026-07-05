@@ -7,7 +7,6 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
 using System.Reflection;
 
 namespace EGG9000.Common.Database.Entities {
@@ -46,7 +45,7 @@ namespace EGG9000.Common.Database.Entities {
             get {
                 if(Status != null && Status != "null") {
                     var status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(Status);
-                    _lastStatus = new ContributionInfoCompact (status);
+                    _lastStatus = new ContributionInfoCompact(status);
                     Status = null;
                 }
                 if(_lastStatus != null)
@@ -82,6 +81,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool OutsideCoop { get; set; }
         public bool HasTachyonDeflector { get; set; }
         public bool EquipedTachyonDeflector { get; set; }
+        public bool TachyonDeflectorNotified { get; set; }
         public bool PingOnFull { get; set; }
         public bool PingOnHighestEB { get; set; }
         public bool PingOnFinished { get; set; }
@@ -98,7 +98,7 @@ namespace EGG9000.Common.Database.Entities {
                 if(_sleepTracking != null)
                     return _sleepTracking;
                 if(_sleepTrackingByte == null) {
-                    _sleepTracking = new List<SleepTracking>();
+                    _sleepTracking = [];
                     return _sleepTracking;
                 }
                 var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);

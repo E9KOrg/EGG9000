@@ -1,4 +1,4 @@
-using EGG9000.Bot;
+using EGG9000.Common.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 
@@ -16,7 +16,7 @@ namespace EGG9000.Test {
         [TestMethod]
         public void TestNumberFromStringDouble2() {
             var value = ArgumentsHelper.NumberFromStringDouble("1Td");
-            Assert.AreEqual(1 * Math.Pow(10,42), value);
+            Assert.AreEqual(1 * Math.Pow(10, 42), value);
 
         }
         [TestMethod]
@@ -28,7 +28,7 @@ namespace EGG9000.Test {
         [TestMethod]
         public void TestNumberFromStringDouble4() {
             var value = ArgumentsHelper.NumberFromStringDouble("999D");
-            Assert.AreEqual(999*Math.Pow(10,39), value);
+            Assert.AreEqual(999 * Math.Pow(10, 39), value);
 
         }
     }

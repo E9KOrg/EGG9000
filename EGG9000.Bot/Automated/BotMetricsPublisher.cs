@@ -20,19 +20,12 @@ namespace EGG9000.Bot.Automated {
     /// rather than an _UpdaterBase job - the latter writes an AutomationLog row and runs watchdog
     /// machinery on every tick, which is wrong for a cheap 15s heartbeat.
     /// </summary>
-    public sealed class BotMetricsPublisher : PeriodicBackgroundService {
-        private readonly IPublishEndpoint _publish;
-        private readonly DiscordSocketClient _client;
-        private readonly IDiscordQueue _queue;
+    public sealed class BotMetricsPublisher(IPublishEndpoint publish, DiscordSocketClient client, IDiscordQueue queue, ILogger<BotMetricsPublisher> logger) : PeriodicBackgroundService(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), logger) {
+        private readonly IPublishEndpoint _publish = publish;
+        private readonly DiscordSocketClient _client = client;
+        private readonly IDiscordQueue _queue = queue;
 
-        public BotMetricsPublisher(IPublishEndpoint publish, DiscordSocketClient client, IDiscordQueue queue, ILogger<BotMetricsPublisher> logger)
-            : base(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), logger) {
-            _publish = publish;
-            _client = client;
-            _queue = queue;
-        }
-
-        protected override async Task DoWorkAsync(CancellationToken cancellationToken) {
+        protected async override Task DoWorkAsync(CancellationToken cancellationToken) {
             var proc = Process.GetCurrentProcess();
             var msg = new BotMetricsSnapshotMessage {
                 TimestampUnix = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),

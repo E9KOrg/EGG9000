@@ -12,16 +12,13 @@ using System.Threading.Tasks;
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class DownloadPersonalDataModel(
         UserManager<ApplicationUser> userManager,
-        ILogger<DownloadPersonalDataModel> logger) : PageModel
-    {
+        ILogger<DownloadPersonalDataModel> logger) : PageModel {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly ILogger<DownloadPersonalDataModel> _logger = logger;
 
-        public async Task<IActionResult> OnPostAsync()
-        {
+        public async Task<IActionResult> OnPostAsync() {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
+            if(user == null) {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
@@ -31,8 +28,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             var personalData = new Dictionary<string, string>();
             var personalDataProps = typeof(ApplicationUser).GetProperties().Where(
                             prop => Attribute.IsDefined(prop, typeof(PersonalDataAttribute)));
-            foreach (var p in personalDataProps)
-            {
+            foreach(var p in personalDataProps) {
                 personalData.Add(p.Name, p.GetValue(user)?.ToString() ?? "null");
             }
 

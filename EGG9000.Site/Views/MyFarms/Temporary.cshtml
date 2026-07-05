@@ -10,12 +10,10 @@
         {
             <div>
 
-                Coop
-                @if (xref.Coop.Status == CoopStatusEnum.WaitingOnCreation) {
-                    <u>[Assigned, pending creation]</u>
-                } else {
-                    <u>@xref.Coop.Name</u>
-
+                Coop <u>@xref.Coop.Name</u>
+                @if (xref.Coop.Status == CoopStatusEnum.WaitingOnCreation)
+                {
+                    @:<span class="text-muted">(pending creation)</span>
                 }
                 for contract <u>@xref.Coop.Contract.Name</u>
                 @if (Model.EggIncAccounts.Count > 1)

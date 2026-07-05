@@ -1,9 +1,8 @@
 ﻿using System;
 
 namespace EGG9000.Common.Database.Entities {
-    public class UserCoopStatus
-    {
-        public Guid Id { get; set; } 
+    public class UserCoopStatus {
+        public Guid Id { get; set; }
         public Guid? UserId { get; set; }
         public Guid CoopId { get; set; }
         public DateTimeOffset CreatedOn { get; set; }

@@ -13,8 +13,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
     public class LoginModel(SignInManager<ApplicationUser> signInManager,
         ILogger<LoginModel> logger,
-        UserManager<ApplicationUser> userManager) : PageModel
-    {
+        UserManager<ApplicationUser> userManager) : PageModel {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly ILogger<LoginModel> _logger = logger;
@@ -31,8 +30,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
         [TempData]
         public string ErrorMessage { get; set; }
 
-        public class InputModel
-        {
+        public class InputModel {
             [Required]
             [EmailAddress]
             public string Email { get; set; }
@@ -45,12 +43,11 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
             public bool RememberMe { get; set; }
         }
 
-        public IActionResult OnGetAsync(string returnUrl = null)
-        {
+        public IActionResult OnGetAsync(string returnUrl = null) {
             if(Request.Headers["User-Agent"].ToString().Contains("Discordbot")) {
                 return Redirect("/Home/Embed?returnUrl=" + returnUrl);
             }
-            
+
             var provider = "Discord";
             var redirectUrl = Url.Page("./ExternalLogin", pageHandler: "Callback", values: new { returnUrl });
             var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);

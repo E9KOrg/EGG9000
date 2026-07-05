@@ -1,15 +1,10 @@
 ﻿using EGG9000.Bot.Services;
-
+using EGG9000.Common.Helpers;
 using Microsoft.Extensions.Logging;
-
-
 using System;
-using System.Threading.Tasks;
 using System.Net.Http;
+using System.Threading.Tasks;
 
-
-
-#if RELEASE
 namespace EGG9000.Bot.Jobs {
 
     public class UptimeKuma(ILogger<UptimeKuma> logger) {
@@ -19,8 +14,11 @@ namespace EGG9000.Bot.Jobs {
         // Heartbeat: no retries on purpose. A failed beat must fail fast so it
         // cannot hold the job Running across the next tick (JobService skips
         // Running jobs); the next beat 15s later covers any single miss.
+        // Only pushes in Release - dev/debug runs should not report uptime.
         [Job("0/15 * * * * *")]
         public async Task Send() {
+            if(!BuildConfig.IsRelease) return;
+
             try {
                 var response = await httpClient.GetAsync("https://uptime.dev.sglade.com/api/push/yIc6q6ocjd?status=up&msg=OK");
 
@@ -33,4 +31,3 @@ namespace EGG9000.Bot.Jobs {
         }
     }
 }
-#endif

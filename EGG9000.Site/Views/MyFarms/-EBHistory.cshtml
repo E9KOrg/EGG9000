@@ -265,7 +265,7 @@
     }
 </style>
 <partial name="_ApexCharts" />
-<script src="~/js/eb-stats-chart.js"></script>
+<script src="~/js/eb-stats-chart.js" asp-append-version="true"></script>
 <script>
     initEbStatsChart('@(ebStatsSuffix)', @Html.Raw(ebStatsJson));
 </script>

@@ -25,7 +25,11 @@ namespace EGG9000.Bot.Automated {
 
         private const string MarkerAuthor = "Co-op Stats";
 
-        private CoopStatsCache _statsCache => _provider.GetRequiredService<CoopStatsCache>();
+        private CoopStatsCache _statsCache {
+            get {
+                return _provider.GetRequiredService<CoopStatsCache>();
+            }
+        }
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             await _statsCache.RefreshAsync();

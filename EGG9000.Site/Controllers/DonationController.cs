@@ -1,6 +1,5 @@
 using Discord.WebSocket;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

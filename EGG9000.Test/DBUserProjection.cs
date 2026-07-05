@@ -5,8 +5,11 @@ using MessagePack;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using G = Ei.Contract.Types.PlayerGrade;
 
 namespace EGG9000.Test {
     // Guards the InactivePlayers / register projection change. Both call sites stopped loading the
@@ -16,15 +19,17 @@ namespace EGG9000.Test {
     // callers read.
     [TestClass]
     public class DBUserProjectionTests {
-        private static List<string> AccountIds(DBUser u) => u.EggIncAccounts.Select(a => a.Id).ToList();
+        private static List<string> AccountIds(DBUser u) {
+            return [.. u.EggIncAccounts.Select(a => a.Id)];
+        }
 
         [TestMethod]
         public void MessagePackPathYieldsSameAccountIds() {
             var source = new DBUser {
-                EggIncAccounts = new List<EggIncAccount> {
+                EggIncAccounts = [
                     new() { Id = "EI111", Name = "A" },
                     new() { Id = "EI222", Name = "B" }
-                }
+                ]
             };
             // Setter stored accounts into _contractRegistrationByte; this is what the DB persists.
             var projected = DBUser.FromAccountColumns(source._eggIncIds, source._contractRegistrationByte);
@@ -51,10 +56,10 @@ namespace EGG9000.Test {
             // The full entity may carry a _CustomBackups blob the projection drops. It only hydrates
             // account.Backup, never account.Id, so the id set must be unchanged.
             var full = new DBUser {
-                EggIncAccounts = new List<EggIncAccount> {
+                EggIncAccounts = [
                     new() { Id = "EI555", Name = "C" }
-                },
-                _CustomBackups = MessagePackSerializer.Serialize(new List<CustomBackup>(), DBUser.lz4Options)
+                ],
+                _CustomBackups = MessagePackSerializer.Serialize(new List<CustomBackup>(), DBUser.lz4Options, TestContext!.CancellationToken)
             };
             var fullIds = AccountIds(full); // exercises the _CustomBackups branch in the getter
 
@@ -67,7 +72,52 @@ namespace EGG9000.Test {
         [TestMethod]
         public void NullColumnsYieldNoAccounts() {
             var projected = DBUser.FromAccountColumns(null, null);
-            Assert.AreEqual(0, projected.EggIncAccounts.Count);
+            Assert.IsEmpty(projected.EggIncAccounts);
         }
+
+        // The EggIncAccounts getter syncs LastGrade from the most-recent backup contract grade. That
+        // sync may only catch the grade up, never push it down. A lower-grade backup contract accepted
+        // after PromotionTime is a grade pull (ULTRA all-grade coop join), not a demotion - it must not
+        // overwrite a higher LastGrade. These build the user via the persisted columns so the getter's
+        // backup-hydration + grade-sync branch runs.
+        private static DBUser UserWithBackupGrade(G lastGrade, long promotionTimeUnix, G backupGrade, long backupAccepted) {
+            var source = new DBUser {
+                EggIncAccounts = [
+                    new() {
+                        Id = "EI777",
+                        Name = "Z",
+                        LastGrade = lastGrade,
+                        PromotionTime = DateTimeOffset.FromUnixTimeSeconds(promotionTimeUnix)
+                    }
+                ]
+            };
+            source._CustomBackups = MessagePackSerializer.Serialize(new List<CustomBackup> {
+                new() {
+                    EggIncId = "EI777",
+                    Farms = [new CustomFarm { Grade = backupGrade, TimeAccepted = backupAccepted }]
+                }
+            }, DBUser.lz4Options);
+            // Rehydrate from the persisted columns so the getter runs the backup-hydration + grade-sync
+            // branch (the in-memory _accounts cache on `source` would otherwise short-circuit it).
+            return new DBUser {
+                _eggIncIds = source._eggIncIds,
+                _contractRegistrationByte = source._contractRegistrationByte,
+                _CustomBackups = source._CustomBackups
+            };
+        }
+
+        [TestMethod]
+        public void LowerGradeBackupContractDoesNotDemoteLastGrade() {
+            var user = UserWithBackupGrade(G.GradeAaa, 1_000_000_000, G.GradeAa, 2_000_000_000);
+            Assert.AreEqual(G.GradeAaa, user.EggIncAccounts.Single().LastGrade);
+        }
+
+        [TestMethod]
+        public void HigherGradeBackupContractCatchesLastGradeUp() {
+            var user = UserWithBackupGrade(G.GradeAa, 1_000_000_000, G.GradeAaa, 2_000_000_000);
+            Assert.AreEqual(G.GradeAaa, user.EggIncAccounts.Single().LastGrade);
+        }
+
+        public TestContext? TestContext { get; set; }
     }
 }

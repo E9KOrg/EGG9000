@@ -8,7 +8,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Data {
-    public class CustomClaimsPrincipleFactory(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IOptions<IdentityOptions> optionsAccessor, ApplicationDbContext db) 
+    public class CustomClaimsPrincipleFactory(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IOptions<IdentityOptions> optionsAccessor, ApplicationDbContext db)
         : UserClaimsPrincipalFactory<ApplicationUser, IdentityRole>(userManager, roleManager, optionsAccessor) {
 
         private readonly ApplicationDbContext _db = db;
@@ -17,7 +17,7 @@ namespace EGG9000.Site.Data {
         protected async override Task<ClaimsIdentity> GenerateClaimsAsync(ApplicationUser user) {
             var identity = await base.GenerateClaimsAsync(user);
             var logins = await _userManager.GetLoginsAsync(user);
-            var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey)) 
+            var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey))
                 ?? throw new DiscordAccountNotFoundException("This discord account isn't registered with the bot EGG9000.");
             identity.AddClaim(new Claim("DbUserId", dbuser.Id.ToString()));
             identity.AddClaim(new Claim("DiscordId", logins.First().ProviderKey));
@@ -28,13 +28,13 @@ namespace EGG9000.Site.Data {
         }
 
         public class DiscordAccountNotFoundException : Exception {
-            public DiscordAccountNotFoundException() {}
+            public DiscordAccountNotFoundException() { }
 
             public DiscordAccountNotFoundException(string message)
-                : base(message) {}
+                : base(message) { }
 
             public DiscordAccountNotFoundException(string message, Exception inner)
-                : base(message, inner) {}
+                : base(message, inner) { }
         }
     }
 }

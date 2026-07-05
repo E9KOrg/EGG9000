@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Database.Entities {
-    public class FAQTopic {
+    public partial class FAQTopic {
 
         [Key]
         public string InternalId { get; set; }
@@ -39,12 +39,12 @@ namespace EGG9000.Common.Database.Entities {
             }
         }
 
-        
+
         public string CreatedBy { get; set; } = "";
 
         public string GuildName { get; set; } = "";
         public string GuildIdString { get; set; } = "";
-        public ulong GuildId { get; set; } 
+        public ulong GuildId { get; set; }
 
         public string _subscribedGuildIds { get; set; } = "";
         [NotMapped]
@@ -63,7 +63,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public Color EmbedColor {
             get {
-                if(string.IsNullOrEmpty(EmbedColorHex) || !Regex.IsMatch(EmbedColorHex, @"^#?[0-9a-fA-F]{6}")) return Color.DarkerGrey;
+                if(string.IsNullOrEmpty(EmbedColorHex) || !MyRegex().IsMatch(EmbedColorHex)) return Color.DarkerGrey;
                 else return new Color(uint.Parse(EmbedColorHex.Replace("#", ""), NumberStyles.HexNumber));
             }
         }
@@ -75,5 +75,8 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public string ImageUrl { get; set; } = "";
+
+        [GeneratedRegex(@"^#?[0-9a-fA-F]{6}")]
+        private static partial Regex MyRegex();
     }
 }
