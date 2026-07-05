@@ -34,7 +34,7 @@ namespace EGG9000.Bot.Commands {
         private readonly ILogger<MiscModule> _logger = logger;
 
         [SlashCommand("starttestprocess", "Start EID screenshot recognition process.")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task StartTestProcess() {
             if(Context.Interaction.GuildId != null) {
                 await Context.Interaction.RespondAsyncGettingMessage(
@@ -51,7 +51,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("trackeb", "Track your EB since the last time you ran this command")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task TrackEB() {
             await Context.Interaction.DeferAsync(ephemeral: Context.Interaction.IsDMInteraction ? false : true);
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("nextrank", "How many SE/PE needed for next rank up")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task NextRank([Summary("showinchannel")] bool ShowInChannel = false) {
             await Context.Interaction.DeferAsync(ephemeral: !ShowInChannel);
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);

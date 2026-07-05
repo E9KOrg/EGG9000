@@ -451,7 +451,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("updateid", "Update your EggIncID if it has changed")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task UpdateID([Summary("eggincid", "EggIncID starting with EI")] string eggincid, [Summary("accountnumber", "Account Number (if you have more than one)")] int accountnumber = 0) {
             await RegisterCommandsSlash._UpdateID(Context.Interaction, Db, eggincid, await Context.Channel.GetUserAsync(Context.User.Id) as SocketGuildUser, accountnumber);
         }

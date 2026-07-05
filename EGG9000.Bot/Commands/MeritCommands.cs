@@ -148,7 +148,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("merits", "List your merits")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task Merits() {
             try {
                 var socketUser = Context.User;

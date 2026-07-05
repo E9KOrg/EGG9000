@@ -23,7 +23,7 @@ namespace EGG9000.Bot.Commands {
         private readonly DiscordSocketClient _client = client;
 
         [SlashCommand("chasing", "Show you players ahead and behind you.")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task Chasing([Summary("parameter")] ChasingParameters parameter) {
             await Context.Interaction.DeferAsync();
 

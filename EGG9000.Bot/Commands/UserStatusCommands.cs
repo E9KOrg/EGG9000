@@ -214,7 +214,7 @@ namespace EGG9000.Bot.Commands {
         private readonly ILogger<UserStatusModule> _logger = logger;
 
         [SlashCommand("userstatus", "Get your status")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public Task UserStatus() {
             var command = Context.Interaction;
             return UserStatusCommands._userstatus(command, Db, _client, _logger, Context.User);

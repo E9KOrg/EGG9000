@@ -104,7 +104,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("demerits", "List your demerits")]
-        [EnabledInDm(true)]
+        [CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
         public async Task Demerits() {
             await Context.Interaction.DeferAsync(ephemeral: true);
             try {

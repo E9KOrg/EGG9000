@@ -12,7 +12,7 @@ namespace EGG9000.Bot.Commands {
     public class PingModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
 
         [SlashCommand("ping", "Test to see if bot is alive")]
-        [EnabledInDm(true)]
+        [CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
         public async Task Ping() {
             await Context.Interaction.RespondAsync("Pong!", ephemeral: false);
         }

@@ -166,7 +166,7 @@ namespace EGG9000.Bot.Commands {
         private readonly ILogger<FaqModule> _logger = logger;
 
         [SlashCommand("faq", "Lookup brief explanations of key topics")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public Task FAQ([Summary("query", "Topic or keyword")][MaxLength(MAX_KEYWORD_LENGTH)] string query) {
             return FAQCommandSlash._faq(Context.Interaction, Db, _client, query, false, "", _logger);
         }
@@ -249,7 +249,7 @@ namespace EGG9000.Bot.Commands {
 
     public partial class AdminModule {
         [Discord.Interactions.SlashCommand("faq", "Lookup brief explanations of key topics/templates")]
-        [Discord.Interactions.EnabledInDm(true)]
+        [Discord.Interactions.CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
         public Task FAQ([Discord.Interactions.Summary("query", "Topic or keyword")][Discord.Interactions.MaxLength(MAX_KEYWORD_LENGTH)] string query, [Discord.Interactions.Summary("respondto", "Which message to respond to")] string respondto = "") {
             return FAQCommandSlash._faq(Context.Interaction, Db, client, query, true, respondto, _logger);
         }

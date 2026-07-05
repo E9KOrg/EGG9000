@@ -78,7 +78,7 @@ namespace EGG9000.Bot.Commands {
     public class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
 
         [SlashCommand("viewinventory", "View your inventory")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task ViewInventory([Autocomplete(typeof(PersonalUserAccountAutoComplete))][Summary("useraccount")] string useraccount) {
             var command = Context.Interaction;
             await command.DeferAsync();

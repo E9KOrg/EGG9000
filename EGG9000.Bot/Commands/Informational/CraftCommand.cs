@@ -32,7 +32,7 @@ namespace EGG9000.Bot.Commands {
     public class CraftModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
 
         [SlashCommand("craftedcount", "Show you how many times you have crafted the requested artifact.")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task CraftedCount([Autocomplete(typeof(ArtifactNameAutoComplete))][Summary("artifact")] string artifact) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
 
@@ -123,7 +123,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("craft", "Show you required artifacts to craft the requested artifact.")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task Craft([Summary("quantity", "Quantity")] int quantity, [Summary("quality")] TierInput quality, [Autocomplete(typeof(ArtifactNameAutoComplete))][Summary("artifact")] string artifact) {
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
 

@@ -24,7 +24,7 @@ using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Bot.Commands {
     [Group("formulae", "Game formula calculators (MER, LLC, EB)")]
-    [EnabledInDm(true)]
+    [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
     public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
         private readonly IMemoryCache _cache = cache;
         private readonly ILogger<FormulaeModule> _logger = logger;

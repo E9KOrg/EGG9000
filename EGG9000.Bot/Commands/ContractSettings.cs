@@ -400,7 +400,7 @@ namespace EGG9000.Bot.Commands {
         private readonly ILogger<ContractSettingsModule> _logger = logger;
 
         [SlashCommand("mycontractsettings", "My Contract Settings")]
-        [EnabledInDm(true)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task MyContractSettings() {
             var command = Context.Interaction;
             var db = Db;
