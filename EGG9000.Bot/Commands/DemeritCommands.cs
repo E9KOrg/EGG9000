@@ -40,69 +40,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class DemeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
-        private readonly DiscordSocketClient _client = client;
-
-        [SlashCommand("adddemerit", "Add demerit to user")]
-        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
-        public async Task AddDemerit([Summary("user")] SocketGuildUser user, [Summary("reason")] string reason, [Summary("hidden")] bool hidden = false) {
-            await Context.Interaction.DeferAsync(ephemeral: hidden);
-            try {
-                var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
-                var dbuser = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-
-                var demerit = new Demerit {
-                    When = DateTimeOffset.UtcNow,
-                    AdminUserId = admin.Id,
-                    UserId = dbuser.Id,
-                    Id = Guid.NewGuid(),
-                    Reason = reason
-                };
-                Db.Demerit.Add(demerit);
-                await Db.SaveChangesAsync();
-
-                var count = await Db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).CountAsync();
-
-                var message = $"Demerit added to {user.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits";
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = message; });
-                if(hidden) {
-                    await Context.Channel.SendMessageAsync(message);
-                }
-
-                var dbguild = await Db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
-                var response = await ChannelHelper.DetermineAndSend(_client, dbguild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
-            } catch(Exception e) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
-            }
-        }
-
-        [SlashCommand("removedemerit", "Remove latest demerit from user")]
-        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
-        public async Task RemoveDemerit([Summary("user")] SocketGuildUser user) {
-            await Context.Interaction.DeferAsync();
-            try {
-                var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
-                var dbuser = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-
-
-                var demerit = await Db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).OrderByDescending(x => x.When).FirstOrDefaultAsync();
-                if(demerit == null) {
-                    await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"There are no recent demerits for {user.Mention}");
-                    return;
-                }
-                Db.Remove(demerit);
-                await Db.SaveChangesAsync();
-
-                var count = await Db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).CountAsync();
-
-                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Demerit removed for {user.Mention}, they currently have {count} demerits");
-            } catch(Exception e) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
-            }
-        }
-
+    public class DemeritModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
         [SlashCommand("demerits", "List your demerits")]
         [CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
         public async Task Demerits() {
@@ -135,10 +73,66 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
             }
         }
+    }
+
+    public partial class AdminGroupModule {
+        [SlashCommand("adddemerit", "Add demerit to user")]
+        public async Task AddDemerit([Summary("user")] SocketGuildUser user, [Summary("reason")] string reason, [Summary("hidden")] bool hidden = false) {
+            await Context.Interaction.DeferAsync(ephemeral: hidden);
+            try {
+                var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
+                var dbuser = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+
+                var demerit = new Demerit {
+                    When = DateTimeOffset.UtcNow,
+                    AdminUserId = admin.Id,
+                    UserId = dbuser.Id,
+                    Id = Guid.NewGuid(),
+                    Reason = reason
+                };
+                Db.Demerit.Add(demerit);
+                await Db.SaveChangesAsync();
+
+                var count = await Db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).CountAsync();
+
+                var message = $"Demerit added to {user.Mention} for the reason: {demerit.Reason}\nThey currently have {count} demerits";
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = message; });
+                if(hidden) {
+                    await Context.Channel.SendMessageAsync(message);
+                }
+
+                var dbguild = await Db.Guilds.FirstOrDefaultAsync(x => x.Id == dbuser.GuildId);
+                var response = await ChannelHelper.DetermineAndSend(gateway, dbguild, GuildChannelType.DemeritLogChannel, new() { Text = count >= 3 ? $"**{message}**" : message });
+            } catch(Exception e) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
+            }
+        }
+
+        [SlashCommand("removedemerit", "Remove latest demerit from user")]
+        public async Task RemoveDemerit([Summary("user")] SocketGuildUser user) {
+            await Context.Interaction.DeferAsync();
+            try {
+                var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
+                var dbuser = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+
+
+                var demerit = await Db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).OrderByDescending(x => x.When).FirstOrDefaultAsync();
+                if(demerit == null) {
+                    await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"There are no recent demerits for {user.Mention}");
+                    return;
+                }
+                Db.Remove(demerit);
+                await Db.SaveChangesAsync();
+
+                var count = await Db.Demerit.AsQueryable().Where(x => x.UserId == dbuser.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).CountAsync();
+
+                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Demerit removed for {user.Mention}, they currently have {count} demerits");
+            } catch(Exception e) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
+            }
+        }
 
         [SlashCommand("demeritsforuser", "List demerits for user")]
-        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task DemeritsForUser([Summary("user")] SocketGuildUser user, [Summary("hidden")] bool hidden = false) {
             await Context.Interaction.DeferAsync(ephemeral: hidden);
             try {
@@ -153,8 +147,6 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("nodemerit", "Stops user from getting demerit in co-op")]
-        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task NoDemerit([Summary("user")] SocketGuildUser user) {
             await Context.Interaction.DeferAsync();
             List<UserCoopXref> xref;

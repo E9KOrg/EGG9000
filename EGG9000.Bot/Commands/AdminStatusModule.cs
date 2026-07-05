@@ -30,7 +30,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
-    public partial class AdminModule {
+    public partial class BotGroupModule {
 
         [SlashCommand("botstatus", "One-look bot/DB/deploy/load status")]
         public async Task BotStatus() {

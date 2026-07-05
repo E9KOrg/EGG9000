@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public partial class AdminModule {
+    public partial class BotGroupModule {
         [SlashCommand("setversions", "Update the Egg Inc API version triple at runtime (validated against the live API first).")]
         [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
         public async Task SetVersions(

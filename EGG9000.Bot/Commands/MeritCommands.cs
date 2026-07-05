@@ -54,9 +54,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
-        private readonly DiscordSocketClient _client = client;
-
+    public partial class AdminModule {
         // Long merit histories can exceed Discord's 2000-char message limit; fall back to a file
         // attachment instead of letting RespondAsyncGettingMessage throw.
         private async Task RespondWithMeritList(string mentionText, List<Merit> merits, bool ephemeral) {
@@ -94,7 +92,7 @@ namespace EGG9000.Bot.Commands {
             var dbGuild = await Db.Guilds.FirstOrDefaultAsync(x => x.Id == Context.Interaction.GuildId || x.OverflowServersJson.IndexOf(Context.Interaction.GuildId.ToString()) > -1);
 
             foreach(var mention in users) {
-                await MeritCommands.CreateMerit(reason, Db, _client, mention, admin.Id, guild: dbGuild);
+                await MeritCommands.CreateMerit(reason, Db, gateway, mention, admin.Id, guild: dbGuild);
                 var dbMention = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == mention.Id);
                 var count = await Db.Merit.AsQueryable().Where(x => x.UserId == dbMention.Id).CountAsync();
                 await Context.Channel.SendMessageAsync($"Merit Added {mention.Mention}: {reason} (Merits: {count})");
@@ -146,6 +144,25 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedExceptionFrame(e));
             }
         }
+    }
+
+    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+        // Long merit histories can exceed Discord's 2000-char message limit; fall back to a file
+        // attachment instead of letting RespondAsyncGettingMessage throw.
+        private async Task RespondWithMeritList(string mentionText, List<Merit> merits, bool ephemeral) {
+            var i = 1;
+            var meritDesc = string.Join("\n", merits.Select(x => $"{i++}: {x.Reason}"));
+            var header = $"Merit info for {mentionText}\n";
+
+            if((header.Length + meritDesc.Length) <= 1900) {
+                await Context.Interaction.RespondAsyncGettingMessage(header + meritDesc, ephemeral: ephemeral);
+            } else {
+                await Context.Interaction.RespondWithFilesAsyncGettingMessage(
+                    [new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(meritDesc)), "Merits.txt")],
+                    text: header + "_(List too large for Discord - see attached file)_",
+                    ephemeral: ephemeral);
+            }
+        }
 
         [SlashCommand("merits", "List your merits")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
@@ -165,6 +182,5 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedExceptionFrame(e));
             }
         }
-
     }
 }

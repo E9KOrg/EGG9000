@@ -177,103 +177,6 @@ namespace EGG9000.Bot.Commands {
             });
         }
 
-        [SlashCommand("renamecoop", "Rename a co-op channel to mistype")]
-        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
-        public async Task RenameCoop([Summary("correctcoopname")] string correctcoopname) {
-            await Context.Interaction.DeferAsync();
-            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
-            if(targetCoop == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
-                return;
-            }
-
-
-            targetCoop.Name = correctcoopname;
-            await Db.SaveChangesAsync();
-            await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Co-op renamed to {correctcoopname}");
-        }
-
-        [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
-        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
-        public async Task UpdateChannel() {
-            var command = Context.Interaction;
-            await command.DeferAsync(ephemeral: true);
-            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop != null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
-                var guild = _client.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
-                var users = await Db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
-                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-                var parentGuild = _client.Guilds.First(x => x.Id == dbguild.Id);
-                await _coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
-
-                await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
-                return;
-            }
-
-            var targetGuildContract = await Db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetGuildContract != null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating contract...");
-                var guild = _client.Guilds.First(x => x.Id == targetGuildContract.GuildID);
-                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
-                await _contractUpdater.UpdateContractChannel(Db, targetGuildContract, guild, dbguild, command);
-                await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
-                return;
-            }
-
-            await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in contract or co-op channels"));
-        }
-
-        [SlashCommand("temprole", "Adds a temporary role for users that last a specific amount of time")]
-        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
-        public async Task TempRole(
-            [Summary("role")] SocketRole role,
-            [Summary("timespan")] string timespan,
-            [Summary("reason")] string reason,
-            [Summary("users", "Mention one or more users (e.g. @a @b) or paste IDs")] string usersInput) {
-            var users = EGG9000.Bot.Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
-            if(users.Length == 0) {
-                await Context.Interaction.RespondAsyncGettingMessage("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs.");
-                return;
-            }
-            DateTimeOffset expireTime;
-            try {
-                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
-            } catch(Exception ex) {
-                await Context.Interaction.RespondAsyncGettingMessage($"Unable to parse the timespan `{timespan}`, {ex.Message}");
-                return;
-            }
-
-            var maxRolePosition = ((SocketGuildUser)Context.User).Roles.Max(role => role.Position);
-            if(role.Position >= maxRolePosition) {
-                await Context.Interaction.RespondAsyncGettingMessage("You cannot assign roles higher or equal than your own");
-                return;
-            }
-
-            await Context.Interaction.DeferAsync();
-            var userids = users.Select(x => x.Id);
-            var existingTempRoles = await Db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.UtcNow && userids.Contains(x.UserId)).ToListAsync();
-            var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
-            foreach(var user in users) {
-                var tempRole = existingTempRoles.FirstOrDefault(x => x.RoleId == role.Id && user.Id == x.UserId);
-                if(tempRole == null) {
-                    tempRole = new TemporaryRole { RoleId = role.Id, Created = DateTimeOffset.UtcNow, UserId = user.Id, GuildId = guild.Id };
-                    Db.Add(tempRole);
-                    await user.AddRoleAsync(role);
-                }
-
-                tempRole.Reason = reason;
-                tempRole.Expires = expireTime;
-            }
-
-            await Db.SaveChangesAsync();
-
-            await Context.Interaction.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
-        }
-
         [ComponentInteraction("WhatIsRSC", ignoreGroupNames: true)]
         public async Task WhatIsRSC() {
             var component = (SocketMessageComponent)Context.Interaction;
@@ -366,6 +269,103 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
 
             await Context.Interaction.ModifyOriginalResponseAsync(m => m.Content = $"Added the custom co-op prefix {customName} to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>");
+        }
+
+        [SlashCommand("renamecoop", "Rename a co-op channel to mistype")]
+        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        public async Task RenameCoop([Summary("correctcoopname")] string correctcoopname) {
+            await Context.Interaction.DeferAsync();
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
+            if(targetCoop == null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
+                return;
+            }
+
+
+            targetCoop.Name = correctcoopname;
+            await Db.SaveChangesAsync();
+            await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Co-op renamed to {correctcoopname}");
+        }
+
+        [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
+        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+        public async Task UpdateChannel() {
+            var command = Context.Interaction;
+            await command.DeferAsync(ephemeral: true);
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            if(targetCoop != null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
+                var guild = gateway.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
+                var users = await Db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
+                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
+                var parentGuild = gateway.Guilds.First(x => x.Id == dbguild.Id);
+                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList(), dbguild, default);
+
+                await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
+                return;
+            }
+
+            var targetGuildContract = await Db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            if(targetGuildContract != null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating contract...");
+                var guild = gateway.Guilds.First(x => x.Id == targetGuildContract.GuildID);
+                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
+                await contractUpdater.UpdateContractChannel(Db, targetGuildContract, guild, dbguild, command);
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
+                return;
+            }
+
+            await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in contract or co-op channels"));
+        }
+
+        [SlashCommand("temprole", "Adds a temporary role for users that last a specific amount of time")]
+        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
+        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+        public async Task TempRole(
+            [Summary("role")] SocketRole role,
+            [Summary("timespan")] string timespan,
+            [Summary("reason")] string reason,
+            [Summary("users", "Mention one or more users (e.g. @a @b) or paste IDs")] string usersInput) {
+            var users = EGG9000.Bot.Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
+            if(users.Length == 0) {
+                await Context.Interaction.RespondAsyncGettingMessage("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs.");
+                return;
+            }
+            DateTimeOffset expireTime;
+            try {
+                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
+            } catch(Exception ex) {
+                await Context.Interaction.RespondAsyncGettingMessage($"Unable to parse the timespan `{timespan}`, {ex.Message}");
+                return;
+            }
+
+            var maxRolePosition = ((SocketGuildUser)Context.User).Roles.Max(role => role.Position);
+            if(role.Position >= maxRolePosition) {
+                await Context.Interaction.RespondAsyncGettingMessage("You cannot assign roles higher or equal than your own");
+                return;
+            }
+
+            await Context.Interaction.DeferAsync();
+            var userids = users.Select(x => x.Id);
+            var existingTempRoles = await Db.TemporaryRoles.Where(x => x.RoleId == role.Id && x.Expires > DateTimeOffset.UtcNow && userids.Contains(x.UserId)).ToListAsync();
+            var guild = gateway.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
+            foreach(var user in users) {
+                var tempRole = existingTempRoles.FirstOrDefault(x => x.RoleId == role.Id && user.Id == x.UserId);
+                if(tempRole == null) {
+                    tempRole = new TemporaryRole { RoleId = role.Id, Created = DateTimeOffset.UtcNow, UserId = user.Id, GuildId = guild.Id };
+                    Db.Add(tempRole);
+                    await user.AddRoleAsync(role);
+                }
+
+                tempRole.Reason = reason;
+                tempRole.Expires = expireTime;
+            }
+
+            await Db.SaveChangesAsync();
+
+            await Context.Interaction.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
         }
     }
 }

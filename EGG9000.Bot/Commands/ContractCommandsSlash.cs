@@ -398,38 +398,6 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
         }
 
-        [SlashCommand("makeprivate", "Makes this co-op private")]
-        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
-        public async Task MakePrivate() {
-            await Context.Interaction.DeferAsync();
-            var name = new Regex(@"\w+").Match(Context.Channel.Name.ToLower()).Value;
-            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
-            if(coop == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find coop for this channel {Context.Channel.Name}"); });
-                return;
-            }
-
-            if(string.IsNullOrEmpty(coop.CreatorID)) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find creator for {Context.Channel.Name}"); });
-                return;
-            }
-
-            var response = await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
-                ClientVersion = EggIncApi.ClientVersion,
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
-                Public = false,
-                RequestingUserId = coop.CreatorID
-            }, coop.CreatorID);
-
-            if(response.Success) {
-                await Context.Interaction.ModifyOriginalResponseAsync($"{coop.Name} is now private.");
-            } else {
-                await Context.Interaction.ModifyOriginalResponseAsync($"{coop.Name} should now be private.");
-            }
-        }
-
         [SlashCommand("addcoop", "Adds an outside co-op so you can track it's progress")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
         [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
@@ -624,25 +592,6 @@ namespace EGG9000.Bot.Commands {
 
             await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Removed <@{xref.User.DiscordId}> ({username}) from co-op");
 
-        }
-
-        [SlashCommand("deletecontract", "Delete a contract channel (Please use this instead of deleting the channel in discord)")]
-        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
-        [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
-        public async Task DeleteContract() {
-            var guildContract = Db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == Context.Channel.Id);
-            if(guildContract == null) {
-                await Context.Interaction.RespondAsync(text: "", embed: EmbedError("Unable to find contract, use only in contract channels."));
-                return;
-            }
-            var dbGuild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
-            _logger.LogInformation("Deleting header channels for {} because the contract channel was deleted", guildContract.Contract.Name);
-            await dbGuild.DeleteCoopThreadHeadersAsync(_gateway, guildContract.Contract, _logger);
-
-            guildContract.DeletedChannel = true;
-            await Db.SaveChangesAsync();
-            var channel = (SocketTextChannel)Context.Channel;
-            await channel.DeleteAsync();
         }
 
         [SlashCommand("createcoop", "Create a co-op with the selected contract for you")]
@@ -1080,6 +1029,55 @@ namespace EGG9000.Bot.Commands {
             }
 
             await ContractCommandsSlash._fixFullCoopError(Context.Interaction, Db, client, coopStatusUpdaterThreads, _logger, dbuser, coop);
+        }
+    }
+
+    public partial class AdminGroupModule {
+        [SlashCommand("makeprivate", "Makes this co-op private")]
+        public async Task MakePrivate() {
+            await Context.Interaction.DeferAsync();
+            var name = new Regex(@"\w+").Match(Context.Channel.Name.ToLower()).Value;
+            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
+            if(coop == null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find coop for this channel {Context.Channel.Name}"); });
+                return;
+            }
+
+            if(string.IsNullOrEmpty(coop.CreatorID)) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to find creator for {Context.Channel.Name}"); });
+                return;
+            }
+
+            var response = await EggIncApi.Post<Ei.UpdateCoopPermissionsResponse, Ei.UpdateCoopPermissionsRequest>(new Ei.UpdateCoopPermissionsRequest {
+                ClientVersion = EggIncApi.ClientVersion,
+                ContractIdentifier = coop.ContractID,
+                CoopIdentifier = coop.Name.ToLower(),
+                Public = false,
+                RequestingUserId = coop.CreatorID
+            }, coop.CreatorID);
+
+            if(response.Success) {
+                await Context.Interaction.ModifyOriginalResponseAsync($"{coop.Name} is now private.");
+            } else {
+                await Context.Interaction.ModifyOriginalResponseAsync($"{coop.Name} should now be private.");
+            }
+        }
+
+        [SlashCommand("deletecontract", "Delete a contract channel (Please use this instead of deleting the channel in discord)")]
+        public async Task DeleteContract() {
+            var guildContract = Db.GuildContracts.Include(x => x.Contract).FirstOrDefault(x => x.DiscordChannelId == Context.Channel.Id);
+            if(guildContract == null) {
+                await Context.Interaction.RespondAsync(text: "", embed: EmbedError("Unable to find contract, use only in contract channels."));
+                return;
+            }
+            var dbGuild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == guildContract.GuildID);
+            _logger.LogInformation("Deleting header channels for {} because the contract channel was deleted", guildContract.Contract.Name);
+            await dbGuild.DeleteCoopThreadHeadersAsync(gateway, guildContract.Contract, _logger);
+
+            guildContract.DeletedChannel = true;
+            await Db.SaveChangesAsync();
+            var channel = (SocketTextChannel)Context.Channel;
+            await channel.DeleteAsync();
         }
     }
 }

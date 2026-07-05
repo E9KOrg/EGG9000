@@ -94,9 +94,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class BanModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
-        private readonly DiscordHostedService _client = client;
-
+    public partial class AdminGroupModule {
         [SlashCommand("kick", "Kick user(s) with DM")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
         [EGG9000.Bot.Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]

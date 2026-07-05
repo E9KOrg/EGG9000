@@ -1,5 +1,6 @@
 using Discord.Interactions;
 using Discord.WebSocket;
+using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Interactions;
 using EGG9000.Bot.Services;
@@ -17,7 +18,7 @@ namespace EGG9000.Bot.Commands {
     [Group("a", "Admin commands")]
     [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
     [StaffOnly(StaffTier.FarmHand)]
-    public partial class AdminModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<AdminModule> logger, DiscordHostedService client, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, Bugsnag.IClient bugsnag, JobService jobService, IServiceProvider serviceProvider) : E9KModuleBase(dbFactory) {
+    public partial class AdminModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<AdminModule> logger, DiscordHostedService client, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater, Bugsnag.IClient bugsnag, JobService jobService, IServiceProvider serviceProvider) : E9KModuleBase(dbFactory) {
         private readonly ILogger<AdminModule> _logger = logger;
     }
 }

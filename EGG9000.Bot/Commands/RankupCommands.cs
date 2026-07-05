@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public partial class AdminModule {
+    public partial class AdminGroupModule {
         private static string ScopeName(int oom) =>
             oom == RankupMessage.GlobalPool ? "Global" : RankRegistry.ForOom(oom).DisplayName;
 
@@ -107,7 +107,6 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("rankup", "Customize this server's rank-up announcements")]
-        [StaffOnly(StaffTier.CluckingCoordinator)]
         public async Task Rankup() {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var g = await LoadGuild(Db, Context.Guild?.Id);

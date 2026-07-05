@@ -120,134 +120,6 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        [SlashCommand("selectroleusers", "Select X random users with Y role")]
-        [StaffOnly(StaffTier.FarmHand)]
-        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        public async Task SelectRoleUsers([Summary("numberofusers")] int numberOfUsers,
-            [Summary("role", "Role the user(s) should have")] SocketRole role, [Summary("role2", "Second role [...]")] SocketRole role2 = null, [Summary("role3", "Third role [...]")] SocketRole role3 = null,
-            [Summary("antirole", "Role the user(s) should NOT have")] SocketRole antiRole = null, [Summary("antirole2", "Second role [...]")] SocketRole antiRole2 = null, [Summary("antirole3", "Third role [...]")] SocketRole antiRole3 = null) {
-            try {
-                var randomUsers = _client.Guilds.FirstOrDefault(g => g.Id == Context.Guild?.Id).Users
-                    .Where(u =>
-                        u.Roles.Contains(role) && (role2 is null || u.Roles.Contains(role2)) && (role3 is null || u.Roles.Contains(role3))
-                        && (antiRole == null || !u.Roles.Contains(antiRole)) && (antiRole2 == null || !u.Roles.Contains(antiRole2)) && (antiRole3 == null || !u.Roles.Contains(antiRole3))
-                    )
-                    .OrderBy(u => new Random().Next()).ToList();
-                if(numberOfUsers != 0) randomUsers = randomUsers.Take(numberOfUsers).ToList();
-
-                var userList = randomUsers.Count != 0 ? string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>")) : "_No users found that have this filter of role(s)_\n";
-
-                var roleCount = 1 + (role2 == null ? 0 : 1) + (role3 == null ? 0 : 1);
-                var antiRoleCount = 0 + (antiRole == null ? 0 : 1) + (antiRole2 == null ? 0 : 1) + (antiRole3 == null ? 0 : 1);
-
-                var roleDescription = $"{randomUsers.Count} Users with the role{(roleCount > 1 ? "(s)" : "")}:\n\t\t<@&{role.Id}>{(role2 is not null ? $"\n\t\t<@&{role2.Id}>" : "")}{(role3 is not null ? $"\n\t\t<@&{role3.Id}>" : "")}" +
-                    $"{((antiRole != null || antiRole2 != null || antiRole3 != null) ? $"\nAnd without the role{(antiRoleCount > 1 ? "(s)" : "")}:\n\t\t{(antiRole is not null ? $"\t\t<@&{antiRole.Id}>" : "")}{(antiRole2 is not null ? $"\n\t\t<@&{antiRole2.Id}>" : "")}{(antiRole3 is not null ? $"\n\t\t<@&{antiRole3.Id}>" : "")}" : "")}\n\n";
-
-                var tooLong = roleDescription.Length + userList.Length > 1800;
-                var responseEmbedBuilder = new EmbedBuilder()
-                    .WithAuthor(new EmbedAuthorBuilder().WithName("Selected Users").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).WithColor(Color.Blue)
-                    .WithDescription(roleDescription + $"{(tooLong ? "_(List too large for Discord - see attached file)_\n" : userList)}");
-
-                if(randomUsers.Count < numberOfUsers && randomUsers.Count != 0) {
-                    responseEmbedBuilder.WithFooter(new EmbedFooterBuilder().WithText($"{numberOfUsers} users requested - only {randomUsers.Count} found"));
-                } else if(numberOfUsers == 0 && randomUsers.Count != 0) {
-                    responseEmbedBuilder.WithFooter(new EmbedFooterBuilder().WithText($"Showing all matching users"));
-                }
-
-                if(tooLong) await Context.Interaction.RespondWithFilesAsyncGettingMessage([new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "RoleUsers.txt")], text: "", embed: responseEmbedBuilder.Build());
-                else await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: responseEmbedBuilder.Build());
-
-            } catch(Exception ex) {
-                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to parse role `{role}`.\n\n**Message**\n{ex.Message}"));
-                return;
-            }
-        }
-
-        [SlashCommand("temporaryprefix", "Add a temporary prefex for a users co-op (PrefixWord11)")]
-        [StaffOnly(StaffTier.CluckingCoordinator)]
-        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-        public async Task TemporaryPrefix([Summary("user")] SocketGuildUser user, [Summary("prefix")] string prefix, [Summary("timespan")] string timespan) {
-            DateTimeOffset expireTime;
-            try {
-                expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
-            } catch(Exception ex) {
-                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to parse the timespan `{timespan}`, {ex.Message}"));
-                return;
-            }
-            await Context.Interaction.DeferAsync();
-
-            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = $""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"); });
-                return;
-            }
-
-            dbuser.CustomCoopName = prefix;
-            dbuser.ExpireCustomCoopName = expireTime;
-            await Db.SaveChangesAsync();
-
-            await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Added the co-op prefix `{prefix}` to {user.Mention} until <t:{expireTime.ToUnixTimeSeconds()}:f>. They will have any co-ops they are in named after them during that time.");
-        }
-
-        [SlashCommand("pingeveryoneincoop", "Ping everyone in a co-op with a message")]
-        [StaffOnly(StaffTier.FarmHand)]
-        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        public async Task PingEveryoneInCoop([Summary("message")] string message) {
-            var coop = await Db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == Context.Interaction.ChannelId);
-            if(coop == null) {
-                await Context.Interaction.RespondAsyncGettingMessage($"Error finding co-op for this thread", ephemeral: true);
-                return;
-            }
-
-            await Context.Interaction.RespondAsyncGettingMessage($"Pinging now", ephemeral: true);
-
-            var pings = String.Join(" ", coop.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
-
-            await Context.Channel.SendMessageAsync($"{pings} {message}");
-        }
-
-        [SlashCommand("fixjoinissue", "Fix where the server doesn't show them as joined")]
-        [StaffOnly(StaffTier.FarmHand)]
-        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        public async Task FixJoinIssue([Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Summary("useraccount")] string useraccount) {
-            await Context.Interaction.DeferAsync(ephemeral: true);
-
-            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
-            if(coop == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
-                return;
-            }
-
-            var userid = useraccount.Split("|")[0];
-            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
-            if(dbUser is null) {
-                await Context.Interaction.RespondAsyncGettingMessage($"ERROR: Unable to locate DBUser entry for user");
-                return;
-            }
-
-            var account = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
-
-            var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
-
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
-                UserId = account.Id,
-                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
-            }, account.Id);
-
-
-            var updateResponse = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
-                Eop = 1, SoulPower = 24, UserId = account.Id, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = account.Backup.DeviceId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
-                ProductionParams = new Ei.FarmProductionParams {
-                    FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
-                }
-            }, account.Id, true);
-
-            await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Join response- Status: {joinResponse.Status}, Banned: {joinResponse.Banned}, Success: {joinResponse.Success}");
-        }
-
         [SlashCommand("disable", "Disable user, user will not be assigned to co-ops until re-enabled")]
         [StaffOnly(StaffTier.FarmHand)]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
@@ -262,24 +134,6 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
 
             await Context.Interaction.RespondAsyncGettingMessage($"{user.Mention} is disabled.");
-        }
-
-        [SlashCommand("enable", "Re-enable user")]
-        [StaffOnly(StaffTier.Admin)]
-        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        public async Task Enable([Summary("user")] SocketUser user) {
-            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
-            if(dbuser == null) {
-                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
-                return;
-            }
-
-            dbuser.TempDisabled = false;
-            await Db.SaveChangesAsync();
-
-            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.UtcNow) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
-
-            await Context.Interaction.RespondAsyncGettingMessage($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }
     }
 
@@ -405,6 +259,105 @@ namespace EGG9000.Bot.Commands {
             return StaffCommands._afs(Context.Interaction, Db, user, ShowInChannel);
         }
 
+        [SlashCommand("selectroleusers", "Select X random users with Y role")]
+        [StaffOnly(StaffTier.FarmHand)]
+        public async Task SelectRoleUsers([Summary("numberofusers")] int numberOfUsers,
+            [Summary("role", "Role the user(s) should have")] SocketRole role, [Summary("role2", "Second role [...]")] SocketRole role2 = null, [Summary("role3", "Third role [...]")] SocketRole role3 = null,
+            [Summary("antirole", "Role the user(s) should NOT have")] SocketRole antiRole = null, [Summary("antirole2", "Second role [...]")] SocketRole antiRole2 = null, [Summary("antirole3", "Third role [...]")] SocketRole antiRole3 = null) {
+            try {
+                var randomUsers = gateway.Guilds.FirstOrDefault(g => g.Id == Context.Guild?.Id).Users
+                    .Where(u =>
+                        u.Roles.Contains(role) && (role2 is null || u.Roles.Contains(role2)) && (role3 is null || u.Roles.Contains(role3))
+                        && (antiRole == null || !u.Roles.Contains(antiRole)) && (antiRole2 == null || !u.Roles.Contains(antiRole2)) && (antiRole3 == null || !u.Roles.Contains(antiRole3))
+                    )
+                    .OrderBy(u => new Random().Next()).ToList();
+                if(numberOfUsers != 0) randomUsers = randomUsers.Take(numberOfUsers).ToList();
+
+                var userList = randomUsers.Count != 0 ? string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>")) : "_No users found that have this filter of role(s)_\n";
+
+                var roleCount = 1 + (role2 == null ? 0 : 1) + (role3 == null ? 0 : 1);
+                var antiRoleCount = 0 + (antiRole == null ? 0 : 1) + (antiRole2 == null ? 0 : 1) + (antiRole3 == null ? 0 : 1);
+
+                var roleDescription = $"{randomUsers.Count} Users with the role{(roleCount > 1 ? "(s)" : "")}:\n\t\t<@&{role.Id}>{(role2 is not null ? $"\n\t\t<@&{role2.Id}>" : "")}{(role3 is not null ? $"\n\t\t<@&{role3.Id}>" : "")}" +
+                    $"{((antiRole != null || antiRole2 != null || antiRole3 != null) ? $"\nAnd without the role{(antiRoleCount > 1 ? "(s)" : "")}:\n\t\t{(antiRole is not null ? $"\t\t<@&{antiRole.Id}>" : "")}{(antiRole2 is not null ? $"\n\t\t<@&{antiRole2.Id}>" : "")}{(antiRole3 is not null ? $"\n\t\t<@&{antiRole3.Id}>" : "")}" : "")}\n\n";
+
+                var tooLong = roleDescription.Length + userList.Length > 1800;
+                var responseEmbedBuilder = new EmbedBuilder()
+                    .WithAuthor(new EmbedAuthorBuilder().WithName("Selected Users").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).WithColor(Color.Blue)
+                    .WithDescription(roleDescription + $"{(tooLong ? "_(List too large for Discord - see attached file)_\n" : userList)}");
+
+                if(randomUsers.Count < numberOfUsers && randomUsers.Count != 0) {
+                    responseEmbedBuilder.WithFooter(new EmbedFooterBuilder().WithText($"{numberOfUsers} users requested - only {randomUsers.Count} found"));
+                } else if(numberOfUsers == 0 && randomUsers.Count != 0) {
+                    responseEmbedBuilder.WithFooter(new EmbedFooterBuilder().WithText($"Showing all matching users"));
+                }
+
+                if(tooLong) await Context.Interaction.RespondWithFilesAsyncGettingMessage([new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "RoleUsers.txt")], text: "", embed: responseEmbedBuilder.Build());
+                else await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: responseEmbedBuilder.Build());
+
+            } catch(Exception ex) {
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to parse role `{role}`.\n\n**Message**\n{ex.Message}"));
+                return;
+            }
+        }
+
+        [SlashCommand("pingeveryoneincoop", "Ping everyone in a co-op with a message")]
+        public async Task PingEveryoneInCoop([Summary("message")] string message) {
+            var coop = await Db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == Context.Interaction.ChannelId);
+            if(coop == null) {
+                await Context.Interaction.RespondAsyncGettingMessage($"Error finding co-op for this thread", ephemeral: true);
+                return;
+            }
+
+            await Context.Interaction.RespondAsyncGettingMessage($"Pinging now", ephemeral: true);
+
+            var pings = String.Join(" ", coop.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
+
+            await Context.Channel.SendMessageAsync($"{pings} {message}");
+        }
+
+        [SlashCommand("fixjoinissue", "Fix where the server doesn't show them as joined")]
+        public async Task FixJoinIssue([Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Summary("useraccount")] string useraccount) {
+            await Context.Interaction.DeferAsync(ephemeral: true);
+
+            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
+            if(coop == null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
+                return;
+            }
+
+            var userid = useraccount.Split("|")[0];
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
+            if(dbUser is null) {
+                await Context.Interaction.RespondAsyncGettingMessage($"ERROR: Unable to locate DBUser entry for user");
+                return;
+            }
+
+            var account = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+
+            var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
+
+                ContractIdentifier = coop.ContractID,
+                CoopIdentifier = coop.Name.ToLower(),
+                UserId = account.Id,
+                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
+            }, account.Id);
+
+
+            var updateResponse = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
+                ContractIdentifier = coop.ContractID,
+                CoopIdentifier = coop.Name.ToLower(),
+                Eop = 1, SoulPower = 24, UserId = account.Id, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = account.Backup.DeviceId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
+                ProductionParams = new Ei.FarmProductionParams {
+                    FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
+                }
+            }, account.Id, true);
+
+            await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Join response- Status: {joinResponse.Status}, Banned: {joinResponse.Banned}, Success: {joinResponse.Success}");
+        }
+    }
+
+    public partial class BotGroupModule {
         [Discord.Interactions.SlashCommand("status", "Get the bot's status")]
         public async Task Status() {
             var command = Context.Interaction;

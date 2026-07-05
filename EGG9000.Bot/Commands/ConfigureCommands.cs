@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public partial class AdminModule {
+    public partial class AdminGroupModule {
         private static string EnumDesc(GuildChannelType v) =>
             typeof(GuildChannelType).GetField(v.ToString())?.GetCustomAttribute<DescriptionAttribute>()?.Description ?? v.ToString();
         private static string EnumDesc(GuildCoopSetting v) =>
@@ -205,7 +205,6 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("configure", "Configure this server (same as the website)")]
-        [StaffOnly(StaffTier.Admin)]
         public async Task Configure() {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var g = await LoadGuild(Db, Context.Guild?.Id);

@@ -18,7 +18,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public partial class AdminModule {
+    public partial class BotGroupModule {
         [SlashCommand("ping", "Test to see if bot is alive/check version")]
         public async Task Ping([Summary("showinchannel")] bool showInChannel = false) {
 

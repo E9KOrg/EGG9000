@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public partial class AdminModule {
+    public partial class AdminGroupModule {
         private static bool IsPalaceGuild(Guild g) {
 #if DEV9002
             return g.DiscordSeverId == 1108127105088241746;
@@ -87,7 +87,6 @@ namespace EGG9000.Bot.Commands {
                 .AddTextInputSafe("Image URL (optional)", customId: "image", value: existing?.ImageUrl, required: false, maxLength: 400);
 
         [SlashCommand("editfaq", "Edit this server's FAQ topics")]
-        [StaffOnly(StaffTier.Admin)]
         public async Task EditFaq() {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var g = await LoadGuild(Db, Context.Guild?.Id);
