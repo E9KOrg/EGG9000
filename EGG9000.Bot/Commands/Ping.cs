@@ -3,10 +3,10 @@ using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 
 namespace EGG9000.Bot.Commands {
     public class PingModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {

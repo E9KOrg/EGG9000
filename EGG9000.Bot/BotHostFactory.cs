@@ -22,8 +22,7 @@ public static class BotHostFactory {
     public static void ConfigureServices(HostBuilderContext hostContext, IServiceCollection services) {
         var logger = NLog.LogManager.GetCurrentClassLogger();
         logger.Log(NLog.LogLevel.Info, "ConfigureServices Start");
-        try
-        {
+        try {
             var serviceProvider = services.BuildServiceProvider();
             StaticLoggerFactory.Initialize(serviceProvider.GetRequiredService<ILoggerFactory>());
 
@@ -45,8 +44,7 @@ public static class BotHostFactory {
                 "ConnectionStrings:DefaultConnection",
                 "db_connection_string");
 
-            if (string.IsNullOrEmpty(connectionString))
-            {
+            if(string.IsNullOrEmpty(connectionString)) {
                 throw new InvalidOperationException(
                     "Connection string 'DefaultConnection' not found. " +
                     "Ensure it's set in: " +
@@ -223,8 +221,7 @@ public static class BotHostFactory {
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");
             throw;
-        }
-        finally {
+        } finally {
             NLog.LogManager.Shutdown();
         }
     }

@@ -8,14 +8,14 @@ namespace EGG9000.Common.Contracts.Assignment {
     public static class AssignmentSettingsMigration {
         public static AssignmentSettings FromLegacyKeys(EggIncAccount a) {
             return new AssignmentSettings {
-                ForceRules = new List<PermanentRewardRule> {
+                ForceRules = [
                     new() {
                         Kind = PermanentRewardKind.Colleggtible,
                         Mode = a.DoUnfinishedCollegtibles ? ForceMode.AssignIfMissing : ForceMode.NotSet
                     }
-                },
+                ],
                 RewardFilter = SingleRewardFilter(a),
-                LegacyRewardFilter = new List<Ei.RewardType>(),
+                LegacyRewardFilter = [],
                 Seasonal = SeasonalFromOption(a),
                 Redo = new RedoRule {
                     Mode = a.RedoLeggacySelection,

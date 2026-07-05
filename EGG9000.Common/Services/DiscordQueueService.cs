@@ -70,12 +70,12 @@ namespace EGG9000.Common.Services {
         }
 
         public void EnqueueHigh(Func<Task> operation) {
-            if (!_high.Writer.TryWrite(new QueueItem(operation)))
+            if(!_high.Writer.TryWrite(new QueueItem(operation)))
                 _logger.LogWarning("DiscordQueue HIGH dropped item - service is stopped");
         }
 
         public void EnqueueLow(Func<Task> operation) {
-            if (!_low.Writer.TryWrite(new QueueItem(operation)))
+            if(!_low.Writer.TryWrite(new QueueItem(operation)))
                 _logger.LogWarning("DiscordQueue LOW dropped item - service is stopped");
         }
 
@@ -86,7 +86,7 @@ namespace EGG9000.Common.Services {
             var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
             var reg = ct.Register(static s => ((TaskCompletionSource<T>)s!).TrySetCanceled(), tcs);
             tcs.Task.ContinueWith(_ => reg.Dispose(), TaskScheduler.Default);
-            if (!channel.Writer.TryWrite(new QueueItem(async () => {
+            if(!channel.Writer.TryWrite(new QueueItem(async () => {
                 try {
                     tcs.TrySetResult(await operation());
                 } catch(Exception ex) {

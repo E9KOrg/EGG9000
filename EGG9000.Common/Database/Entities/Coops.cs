@@ -61,7 +61,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool ThreadArchived { get; set; } = false;
         public bool RolesAddedToThread { get; set; } = false;
 
-        
+
         public CoopStatusEnum Status { get; set; }
         public bool PseudoExpired { get; set; } = false;
 
@@ -113,7 +113,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public static void CopyTo(Stream src, Stream dst) {
-            byte[] bytes = new byte[4096];
+            var bytes = new byte[4096];
 
             int cnt;
 

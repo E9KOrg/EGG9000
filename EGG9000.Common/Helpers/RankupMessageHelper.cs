@@ -1,7 +1,5 @@
 using Discord;
 
-using EGG9000.Bot;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -21,7 +19,7 @@ namespace EGG9000.Common.Helpers {
             messagesEnabled && !groupDisabled && newOom > highWater;
 
         public static List<RankupMessage> SelectPool(IEnumerable<RankupMessage> applicable, int groupBaseOom, bool exclusive) {
-            var all = applicable as IList<RankupMessage> ?? applicable.ToList();
+            var all = applicable as IList<RankupMessage> ?? [.. applicable];
             var group = all.Where(m => m.GroupBaseOom == groupBaseOom).ToList();
             var global = all.Where(m => m.GroupBaseOom == RankupMessage.GlobalPool).ToList();
             if(exclusive && group.Count > 0) return group;

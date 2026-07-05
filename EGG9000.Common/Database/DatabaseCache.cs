@@ -23,9 +23,9 @@ namespace EGG9000.Common.Database {
             _logger = logger;
             var db = dbContextFactory.CreateDbContext();
             _lastCacheUpdateUser = DateTimeOffset.UtcNow;
-            _cachedUsers = db.DBUsers.AsNoTracking().ToList();
+            _cachedUsers = [.. db.DBUsers.AsNoTracking()];
 
-            _cachedActiveCoops = db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived).ToList();
+            _cachedActiveCoops = [.. db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived)];
         }
 
         private volatile List<DBUser> _cachedUsers;

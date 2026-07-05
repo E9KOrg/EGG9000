@@ -1,20 +1,15 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using Ei;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using Newtonsoft.Json;
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -69,10 +64,10 @@ namespace EGG9000.Bot.Automated {
                 await UpdateMessages(e, _db, Ended: true);
             }
 
-            int newCount = 0;
-            int significantChangeCount = 0;
-            int timeChangeCount = 0;
-            int unchangedCount = 0;
+            var newCount = 0;
+            var significantChangeCount = 0;
+            var timeChangeCount = 0;
+            var unchangedCount = 0;
 
             var events = response.Events.Events.ToList();
             foreach(var evt in events) {
@@ -296,9 +291,9 @@ namespace EGG9000.Bot.Automated {
             foreach(var dbguild in dbguilds) {
                 var customization = await _db.GetCustomizationAsync(dbguild, currentEvent);
                 var (embed, embedImage) = await GetEventEmbed(_db, currentEvent, customization, Ended, Crossout);
-                byte[] embedImageBytes = embedImage.HasValue ? ((MemoryStream)embedImage.Value.Stream).ToArray() : null;
-                string embedImageFileName = embedImage.HasValue ? embedImage.Value.FileName : null;
-                string embedImageDescription = embedImage.HasValue ? embedImage.Value.Description : null;
+                var embedImageBytes = embedImage.HasValue ? ((MemoryStream)embedImage.Value.Stream).ToArray() : null;
+                var embedImageFileName = embedImage.HasValue ? embedImage.Value.FileName : null;
+                var embedImageDescription = embedImage.HasValue ? embedImage.Value.Description : null;
 
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 if(guild == null) continue;

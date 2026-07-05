@@ -7,7 +7,7 @@ namespace EGG9000.Common.Helpers {
         protected override JsonProperty CreateProperty(MemberInfo member, MemberSerialization memberSerialization) {
             var property = base.CreateProperty(member, memberSerialization);
 
-            if (property.PropertyName.StartsWith("Has") || property.PropertyName == "Participants") {
+            if(property.PropertyName.StartsWith("Has") || property.PropertyName == "Participants") {
                 property.ShouldSerialize = i => false;
                 property.Ignored = true;
             }

@@ -6,8 +6,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace EGG9000.Test.Assignment {
     [TestClass]
     public class ContractSettingFieldTests {
-        private static ContractSettingApplyStatus Apply(AssignmentSettings s, string field, string value) =>
-            ContractSettingField.Apply(s, field, value).Status;
+        private static ContractSettingApplyStatus Apply(AssignmentSettings s, string field, string value) {
+            return ContractSettingField.Apply(s, field, value).Status;
+        }
 
         [TestMethod]
         [TestCategory("Unit")]
@@ -122,7 +123,7 @@ namespace EGG9000.Test.Assignment {
         public void RewardFilter_Empty_Ok() {
             var s = new AssignmentSettings();
             Assert.AreEqual(ContractSettingApplyStatus.Ok, Apply(s, "rewardFilter", ""));
-            Assert.AreEqual(0, s.RewardFilter.Count);
+            Assert.IsEmpty(s.RewardFilter);
         }
 
         [TestMethod]

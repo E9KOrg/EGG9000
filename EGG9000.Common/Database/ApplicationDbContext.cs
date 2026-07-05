@@ -1,7 +1,4 @@
 ﻿using EGG9000.Common.Database.Entities;
-
-using Npgsql;
-
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -10,7 +7,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-
+using Npgsql;
 using System;
 using System.Collections.Frozen;
 using System.IO;
@@ -214,12 +211,12 @@ namespace EGG9000.Common.Database {
         }
 #nullable disable
 
-        void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
+        private void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
             if(!e.FromQuery && e.Entry.State == EntityState.Added && e.Entry.Entity is ILastModified entity)
                 entity.LastModified = DateTimeOffset.UtcNow;
         }
 
-        void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
+        private void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
             if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
                 entity.LastModified = DateTimeOffset.UtcNow;
         }

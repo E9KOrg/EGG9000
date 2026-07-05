@@ -13,20 +13,21 @@ namespace EGG9000.Test.Integration;
 [TestClass]
 [TestCategory("Integration")]
 public class DemeritAdminUserIdTests {
-    private static DbContextOptions<ApplicationDbContext> Options() =>
-        new DbContextOptionsBuilder<ApplicationDbContext>()
+    private static DbContextOptions<ApplicationDbContext> Options() {
+        return new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(PostgresFixture.ConnectionString, o => o.MigrationsAssembly("EGG9000.Common"))
             .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
+    }
 
     [TestMethod]
     public async Task Demerit_WithGuidEmptyAdmin_PersistsAsNull() {
         await using var ctx = new ApplicationDbContext(Options());
-        await ctx.Database.MigrateAsync();
+        await ctx.Database.MigrateAsync(TestContext.CancellationToken);
 
         var userId = Guid.NewGuid();
         ctx.DBUsers.Add(new DBUser { Id = userId, DiscordId = 1234500000 + (ulong)Random.Shared.Next(1, 99999), DiscordUsername = "fk-test" });
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext.CancellationToken);
 
         var demeritId = Guid.NewGuid();
         ctx.Demerit.Add(new Demerit {
@@ -38,9 +39,11 @@ public class DemeritAdminUserIdTests {
         });
 
         // Before the fix this threw a foreign-key violation. It must now succeed.
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext.CancellationToken);
 
-        var saved = await ctx.Demerit.AsNoTracking().FirstAsync(x => x.Id == demeritId);
+        var saved = await ctx.Demerit.AsNoTracking().FirstAsync(x => x.Id == demeritId, TestContext.CancellationToken);
         Assert.IsNull(saved.AdminUserId, "Guid.Empty admin sentinel should persist as null, not violate the FK.");
     }
+
+    public TestContext TestContext { get; set; }
 }

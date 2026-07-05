@@ -34,9 +34,9 @@ namespace EGG9000.Common.Helpers {
             var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
 #endif
             var faqTopics = await db.GetFAQTopicsAsync(palaceGuild) ?? [];
-            faqTopics = faqTopics.Where(                f => f.PalaceFAQAppliesToGuild(guild) &&
+            faqTopics = [.. faqTopics.Where(f => f.PalaceFAQAppliesToGuild(guild) &&
                 (!f.StaffOnly || withStaffPerms)
-            ).ToList();
+            )];
             if(guild.Id != palaceGuild.Id) {
                 var guildSpecificTopics = (await db.GetFAQTopicsAsync(guild)).Where(t => !t.StaffOnly || withStaffPerms);
                 faqTopics.AddRange(guildSpecificTopics);
@@ -44,7 +44,7 @@ namespace EGG9000.Common.Helpers {
             var filteredTopics = faqTopics.Where(f =>
                 keyword == "" ||
                 (f.Keywords?.Contains(keyword) ?? false) ||
-                (f.Keywords?.Any(k => k.ToLowerInvariant().Contains(keyword)) ?? false)
+                (f.Keywords?.Any(k => k.Contains(keyword, StringComparison.InvariantCultureIgnoreCase)) ?? false)
             ).ToList();
             filteredTopics ??= [];
 
@@ -54,7 +54,7 @@ namespace EGG9000.Common.Helpers {
 
         public static string InvalidateFAQTopics(this ApplicationDbContext db, Guild guild) {
             db._cache.Set(guild.GetFAQCacheKey(), new List<FAQTopic>(), TimeSpan.FromMilliseconds(1));
-            return guild.GetFAQCacheKey(); 
+            return guild.GetFAQCacheKey();
         }
 
         private static string GetFAQCacheKey(this Guild g) {

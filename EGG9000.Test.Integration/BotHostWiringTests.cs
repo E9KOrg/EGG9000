@@ -48,6 +48,6 @@ public class BotHostWiringTests {
             "ApplicationDbContext factory should be registered.");
 
         var hostedServices = services.Where(d => d.ServiceType == typeof(IHostedService)).ToList();
-        Assert.IsTrue(hostedServices.Count > 0, "Bot should register hosted services.");
+        Assert.IsNotEmpty(hostedServices, "Bot should register hosted services.");
     }
 }

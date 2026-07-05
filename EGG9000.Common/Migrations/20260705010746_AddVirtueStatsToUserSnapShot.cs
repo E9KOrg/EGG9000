@@ -2,14 +2,11 @@
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     /// <inheritdoc />
-    public partial class AddVirtueStatsToUserSnapShot : Migration
-    {
+    public partial class AddVirtueStatsToUserSnapShot : Migration {
         /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
+        protected override void Up(MigrationBuilder migrationBuilder) {
             migrationBuilder.AddColumn<string>(
                 name: "VirtueStatsJson",
                 table: "UserSnapShots",
@@ -18,8 +15,7 @@ namespace EGG9000.Common.Migrations
         }
 
         /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
+        protected override void Down(MigrationBuilder migrationBuilder) {
             migrationBuilder.DropColumn(
                 name: "VirtueStatsJson",
                 table: "UserSnapShots");

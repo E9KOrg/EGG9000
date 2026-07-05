@@ -1,35 +1,33 @@
+using EGG9000.Common.JsonData;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-using EGG9000.Common.JsonData;
-
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-
 namespace EGG9000.Test {
     [TestClass]
     [TestCategory("Unit")]
-    public class CoopWordsTests {
+    public partial class CoopWordsTests {
 
         [TestMethod]
         public void Loads_a_large_word_pool() {
             var words = CoopWords.Get();
             Assert.IsNotNull(words);
-            Assert.IsTrue(words.Count > 1500, $"expected an expanded pool, got {words.Count}");
+            Assert.IsGreaterThan(1500, words.Count, $"expected an expanded pool, got {words.Count}");
         }
 
         [TestMethod]
         public void All_words_are_lowercase_three_to_five_chars() {
-            var rx = new Regex("^[a-z]{3,5}$");
+            var rx = MyRegex();
             var bad = CoopWords.Get().Where(w => !rx.IsMatch(w)).ToList();
-            Assert.AreEqual(0, bad.Count, $"non-conforming entries: {string.Join(", ", bad.Take(20))}");
+            Assert.IsEmpty(bad, $"non-conforming entries: {string.Join(", ", bad.Take(20))}");
         }
 
         [TestMethod]
         public void No_duplicate_words() {
             var words = CoopWords.Get();
             var dupes = words.GroupBy(w => w).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
-            Assert.AreEqual(0, dupes.Count, $"duplicates: {string.Join(", ", dupes)}");
+            Assert.IsEmpty(dupes, $"duplicates: {string.Join(", ", dupes)}");
         }
 
         [TestMethod]
@@ -40,12 +38,12 @@ namespace EGG9000.Test {
                 "plow", "probe", "ooze", "slick", "jab", "crave", "flirt", "booty", "girth"
             };
             var present = CoopWords.Get().Where(offenders.Contains).ToList();
-            Assert.AreEqual(0, present.Count, $"offenders still present: {string.Join(", ", present)}");
+            Assert.IsEmpty(present, $"offenders still present: {string.Join(", ", present)}");
         }
 
         [TestMethod]
         public void Second_word_avoids_first_words_last_letter() {
-            var words = new EGG9000.Bot.Words();
+            var words = new EGG9000.Common.Helpers.Words();
             for(var i = 0; i < 500; i++) {
                 var first = words.GetRandomWord();
                 var second = words.GetRandomSecondWord(first);
@@ -55,5 +53,8 @@ namespace EGG9000.Test {
                     $"'{first}' + '{second}' repeats the boundary letter");
             }
         }
+
+        [GeneratedRegex("^[a-z]{3,5}$")]
+        private static partial Regex MyRegex();
     }
 }

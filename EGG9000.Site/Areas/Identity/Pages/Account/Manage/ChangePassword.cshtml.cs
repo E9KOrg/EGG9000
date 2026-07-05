@@ -8,8 +8,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class ChangePasswordModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        ILogger<ChangePasswordModel> logger) : PageModel
-    {
+        ILogger<ChangePasswordModel> logger) : PageModel {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly ILogger<ChangePasswordModel> _logger = logger;
@@ -20,8 +19,7 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
         [TempData]
         public string StatusMessage { get; set; }
 
-        public class InputModel
-        {
+        public class InputModel {
             [Required]
             [DataType(DataType.Password)]
             [Display(Name = "Current password")]
@@ -39,41 +37,33 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             public string ConfirmPassword { get; set; }
         }
 
-        public async Task<IActionResult> OnGetAsync()
-        {
+        public async Task<IActionResult> OnGetAsync() {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
+            if(user == null) {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
             var hasPassword = await _userManager.HasPasswordAsync(user);
-            if (!hasPassword)
-            {
+            if(!hasPassword) {
                 return RedirectToPage("./SetPassword");
             }
 
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
-        {
-            if (!ModelState.IsValid)
-            {
+        public async Task<IActionResult> OnPostAsync() {
+            if(!ModelState.IsValid) {
                 return Page();
             }
 
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
+            if(user == null) {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
             var changePasswordResult = await _userManager.ChangePasswordAsync(user, Input.OldPassword, Input.NewPassword);
-            if (!changePasswordResult.Succeeded)
-            {
-                foreach (var error in changePasswordResult.Errors)
-                {
+            if(!changePasswordResult.Succeeded) {
+                foreach(var error in changePasswordResult.Errors) {
                     ModelState.AddModelError(string.Empty, error.Description);
                 }
                 return Page();

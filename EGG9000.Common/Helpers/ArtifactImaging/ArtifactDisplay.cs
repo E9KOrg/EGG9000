@@ -144,7 +144,7 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
         // artifactTemplate() so those suggestions keep their familiar "+50%" / "2x" / "+3" look.
         private static string DerivedValue(EggIncArtifactInstance artifact) {
             if(artifact is null) return "";
-            if(artifact.Boost == JsonData.EiStatics.EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
+            if(artifact.Boost == JsonData.EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
                 var pct = Math.Round(artifact.Value * 100);
                 return pct == 0 ? "" : $"{pct}%";
             }
@@ -157,13 +157,11 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
         }
 
         private static (string Size, string Target)? SafeEffect(EggIncArtifactInstance artifact) {
-            try { return EggIncArtifacts.GetEffectDisplay(artifact); }
-            catch { return null; }
+            try { return EggIncArtifacts.GetEffectDisplay(artifact); } catch { return null; }
         }
 
         private static int SafeTier(EggIncArtifactInstance artifact) {
-            try { return EggIncArtifacts.GetDisplayTier(artifact); }
-            catch { return Math.Max(1, (int)artifact.Tier); }
+            try { return EggIncArtifacts.GetDisplayTier(artifact); } catch { return Math.Max(1, (int)artifact.Tier); }
         }
 
         private static string SafeName(EggIncArtifactInstance artifact) {

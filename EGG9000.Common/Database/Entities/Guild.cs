@@ -40,8 +40,8 @@ namespace EGG9000.Common.Database.Entities {
         [GuildConfig("Finished Categories", "Lists", GuildConfigKind.CsvCategories, Description = "Categories finished co-op channels move to")]
         public string FinishedCategories { get; set; }
 
-	    [GuildConfig("Minimum Running Score", "Numbers", GuildConfigKind.Float, Description = "Running-score threshold for slacker detection")]
-	    public float MinimumRunningScore { get; set; }
+        [GuildConfig("Minimum Running Score", "Numbers", GuildConfigKind.Float, Description = "Running-score threshold for slacker detection")]
+        public float MinimumRunningScore { get; set; }
         [GuildConfig("Add Outside Co-ops", "Toggles", GuildConfigKind.Bool, Description = "Add outside co-ops discovered from backups")]
         public bool AddOutsideCoops { get; set; } = true;
 

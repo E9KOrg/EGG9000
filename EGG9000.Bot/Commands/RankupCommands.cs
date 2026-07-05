@@ -2,8 +2,6 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 
-using EGG9000.Bot.Helpers;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -37,71 +35,71 @@ namespace EGG9000.Bot.Commands {
 
             switch(section) {
                 case "toggles": {
-                    cb.WithButton($"Messages Enabled: {(g.RankupMessagesEnabled ? "ON" : "off")}", customId: "RuToggle:RankupMessagesEnabled", style: g.RankupMessagesEnabled ? ButtonStyle.Success : ButtonStyle.Secondary, row: 0);
-                    cb.WithButton($"Exclusive Group Pool: {(g.RankupExclusivePool ? "ON" : "off")}", customId: "RuToggle:RankupExclusivePool", style: g.RankupExclusivePool ? ButtonStyle.Success : ButtonStyle.Secondary, row: 0);
-                    cb.WithButton(RuBackTo("overview"), row: 1);
-                    eb.WithTitle("Toggles").WithDescription(
-                        "**Messages Enabled** - master switch for rank-up announcements.\n" +
-                        "**Exclusive Group Pool** - when a group has its own messages, don't mix in the global pool.");
-                    break;
-                }
-                case "filter": {
-                    var leads = RankRegistry.GroupLeads.ToList();
-                    var pick = new SelectMenuBuilder().WithCustomId("RuFilter").WithPlaceholder("Groups that announce...")
-                        .WithMinValues(0).WithMaxValues(leads.Count);
-                    foreach(var lead in leads)
-                        pick.AddOption(lead.DisplayName, lead.GroupBase.ToString(), isDefault: !g.RankupDisabledGroups.Contains(lead.GroupBase));
-                    cb.WithSelectMenu(pick, row: 0);
-                    cb.WithButton(RuBackTo("overview"), row: 1);
-                    eb.WithTitle("Notify Filter").WithDescription("Selected groups announce rank-ups; unselected groups stay silent. (This is on top of which roles your server actually creates.)");
-                    break;
-                }
-                case "pool": {
-                    var scope = int.Parse(payload);
-                    var messages = await db.RankupMessages.Where(m => m.GuildId == g.Id && m.GroupBaseOom == scope).ToListAsync();
-                    if(messages.Count > 0) {
-                        var pick = new SelectMenuBuilder().WithCustomId("RuPickMsg").WithPlaceholder("Pick a message to edit or remove...");
-                        foreach(var (m, i) in messages.Take(25).Select((m, i) => (m, i)))
-                            pick.AddOption($"#{i + 1}: {Trunc(m.Text, 90)}", m.InternalId);
-                        cb.WithSelectMenu(pick, row: 0);
+                        cb.WithButton($"Messages Enabled: {(g.RankupMessagesEnabled ? "ON" : "off")}", customId: "RuToggle:RankupMessagesEnabled", style: g.RankupMessagesEnabled ? ButtonStyle.Success : ButtonStyle.Secondary, row: 0);
+                        cb.WithButton($"Exclusive Group Pool: {(g.RankupExclusivePool ? "ON" : "off")}", customId: "RuToggle:RankupExclusivePool", style: g.RankupExclusivePool ? ButtonStyle.Success : ButtonStyle.Secondary, row: 0);
+                        cb.WithButton(RuBackTo("overview"), row: 1);
+                        eb.WithTitle("Toggles").WithDescription(
+                            "**Messages Enabled** - master switch for rank-up announcements.\n" +
+                            "**Exclusive Group Pool** - when a group has its own messages, don't mix in the global pool.");
+                        break;
                     }
-                    cb.WithButton("Add Message", customId: $"RuAdd:{scope}", style: ButtonStyle.Success, row: 1);
-                    cb.WithButton(RuBackTo("groups", "← Pools"), row: 1);
-                    eb.WithTitle($"{ScopeName(scope)} pool")
-                      .WithDescription(messages.Count == 0
-                          ? "_No custom messages for this scope. Without any, the palace defaults are used._"
-                          : string.Join("\n", messages.Take(25).Select((m, i) => $"**#{i + 1}** {Trunc(m.Text, 120)}")));
-                    break;
-                }
+                case "filter": {
+                        var leads = RankRegistry.GroupLeads.ToList();
+                        var pick = new SelectMenuBuilder().WithCustomId("RuFilter").WithPlaceholder("Groups that announce...")
+                            .WithMinValues(0).WithMaxValues(leads.Count);
+                        foreach(var lead in leads)
+                            pick.AddOption(lead.DisplayName, lead.GroupBase.ToString(), isDefault: !g.RankupDisabledGroups.Contains(lead.GroupBase));
+                        cb.WithSelectMenu(pick, row: 0);
+                        cb.WithButton(RuBackTo("overview"), row: 1);
+                        eb.WithTitle("Notify Filter").WithDescription("Selected groups announce rank-ups; unselected groups stay silent. (This is on top of which roles your server actually creates.)");
+                        break;
+                    }
+                case "pool": {
+                        var scope = int.Parse(payload);
+                        var messages = await db.RankupMessages.Where(m => m.GuildId == g.Id && m.GroupBaseOom == scope).ToListAsync();
+                        if(messages.Count > 0) {
+                            var pick = new SelectMenuBuilder().WithCustomId("RuPickMsg").WithPlaceholder("Pick a message to edit or remove...");
+                            foreach(var (m, i) in messages.Take(25).Select((m, i) => (m, i)))
+                                pick.AddOption($"#{i + 1}: {Trunc(m.Text, 90)}", m.InternalId);
+                            cb.WithSelectMenu(pick, row: 0);
+                        }
+                        cb.WithButton("Add Message", customId: $"RuAdd:{scope}", style: ButtonStyle.Success, row: 1);
+                        cb.WithButton(RuBackTo("groups", "← Pools"), row: 1);
+                        eb.WithTitle($"{ScopeName(scope)} pool")
+                          .WithDescription(messages.Count == 0
+                              ? "_No custom messages for this scope. Without any, the palace defaults are used._"
+                              : string.Join("\n", messages.Take(25).Select((m, i) => $"**#{i + 1}** {Trunc(m.Text, 120)}")));
+                        break;
+                    }
                 case "detail": {
-                    var msg = await db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == payload);
-                    if(msg is null) { return await BuildViewAsync(db, "groups", g); }
-                    cb.WithButton("Edit", customId: $"RuEditBtn:{msg.InternalId}", style: ButtonStyle.Primary, row: 0);
-                    cb.WithButton("Delete", customId: $"RuDelBtn:{msg.InternalId}", style: ButtonStyle.Danger, row: 0);
-                    cb.WithButton(RuBackTo("pool:" + msg.GroupBaseOom, "← Pool"), row: 1);
-                    eb.WithTitle($"{ScopeName(msg.GroupBaseOom)} message").WithDescription(Trunc(msg.Text, 4000));
-                    break;
-                }
+                        var msg = await db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == payload);
+                        if(msg is null) { return await BuildViewAsync(db, "groups", g); }
+                        cb.WithButton("Edit", customId: $"RuEditBtn:{msg.InternalId}", style: ButtonStyle.Primary, row: 0);
+                        cb.WithButton("Delete", customId: $"RuDelBtn:{msg.InternalId}", style: ButtonStyle.Danger, row: 0);
+                        cb.WithButton(RuBackTo("pool:" + msg.GroupBaseOom, "← Pool"), row: 1);
+                        eb.WithTitle($"{ScopeName(msg.GroupBaseOom)} message").WithDescription(Trunc(msg.Text, 4000));
+                        break;
+                    }
                 case "groups": {
-                    var pick = new SelectMenuBuilder().WithCustomId("RuPickGroup").WithPlaceholder("Pick a pool to edit...");
-                    pick.AddOption("Global (all ranks)", RankupMessage.GlobalPool.ToString());
-                    foreach(var lead in RankRegistry.GroupLeads)
-                        pick.AddOption(lead.DisplayName, lead.GroupBase.ToString());
-                    cb.WithSelectMenu(pick, row: 0);
-                    cb.WithButton(RuBackTo("overview"), row: 1);
-                    eb.WithTitle("Message Pools").WithDescription("Pick the Global pool or a rank group to edit its messages. Tokens: `{{user}}` `{{rank}}` `{{eb}}` `{{oom}}` `{{emoji:name}}` `{{command:name}}`.");
-                    break;
-                }
+                        var pick = new SelectMenuBuilder().WithCustomId("RuPickGroup").WithPlaceholder("Pick a pool to edit...");
+                        pick.AddOption("Global (all ranks)", RankupMessage.GlobalPool.ToString());
+                        foreach(var lead in RankRegistry.GroupLeads)
+                            pick.AddOption(lead.DisplayName, lead.GroupBase.ToString());
+                        cb.WithSelectMenu(pick, row: 0);
+                        cb.WithButton(RuBackTo("overview"), row: 1);
+                        eb.WithTitle("Message Pools").WithDescription("Pick the Global pool or a rank group to edit its messages. Tokens: `{{user}}` `{{rank}}` `{{eb}}` `{{oom}}` `{{emoji:name}}` `{{command:name}}`.");
+                        break;
+                    }
                 default: {
-                    var total = await db.RankupMessages.CountAsync(m => m.GuildId == g.Id);
-                    cb.WithSelectMenu(NavMenu());
-                    eb.WithTitle("Overview").WithDescription("Customize this server's rank-up announcements.");
-                    eb.AddField("Enabled", g.RankupMessagesEnabled ? "Yes" : "No", inline: true);
-                    eb.AddField("Exclusive group pool", g.RankupExclusivePool ? "Yes" : "No", inline: true);
-                    eb.AddField("Silenced groups", g.RankupDisabledGroups.Count.ToString(), inline: true);
-                    eb.AddField("Custom messages", total.ToString(), inline: true);
-                    break;
-                }
+                        var total = await db.RankupMessages.CountAsync(m => m.GuildId == g.Id);
+                        cb.WithSelectMenu(NavMenu());
+                        eb.WithTitle("Overview").WithDescription("Customize this server's rank-up announcements.");
+                        eb.AddField("Enabled", g.RankupMessagesEnabled ? "Yes" : "No", inline: true);
+                        eb.AddField("Exclusive group pool", g.RankupExclusivePool ? "Yes" : "No", inline: true);
+                        eb.AddField("Silenced groups", g.RankupDisabledGroups.Count.ToString(), inline: true);
+                        eb.AddField("Custom messages", total.ToString(), inline: true);
+                        break;
+                    }
             }
             return (eb.Build(), cb.Build());
         }
@@ -212,8 +210,8 @@ namespace EGG9000.Bot.Commands {
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (op, arg) = SplitFirst(data);
             var text = form.Text?.Trim() ?? "";
-            string section = "pool";
-            int scope = RankupMessage.GlobalPool;
+            var section = "pool";
+            var scope = RankupMessage.GlobalPool;
             if(op == "edit") {
                 var msg = await Db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == arg && m.GuildId == g.Id);
                 if(msg is null) {
@@ -246,7 +244,11 @@ namespace EGG9000.Bot.Commands {
     }
 
     public class RankupMessageModal : IModal {
-        public string Title => "Rank-up message";
+        public string Title {
+            get {
+                return "Rank-up message";
+            }
+        }
 
         [InputLabel("Message")]
         [ModalTextInput("text", TextInputStyle.Paragraph, maxLength: 1500)]

@@ -3,9 +3,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Helpers {
-    public static class TimespanStringParser {
+    public static partial class TimespanStringParser {
         public static DateTimeOffset AddTimeSpanString(this string timeSpanString, DateTimeOffset time) {
-            var timeSpanSplit = new Regex(@"([\d\.]+)\s?(\w+)").Matches(timeSpanString);
+            var timeSpanSplit = MyRegex().Matches(timeSpanString);
 
 
             var timeValue = double.Parse(timeSpanSplit.First().Groups[1].Value);
@@ -58,5 +58,8 @@ namespace EGG9000.Common.Helpers {
 
             return returnTime;
         }
+
+        [GeneratedRegex(@"([\d\.]+)\s?(\w+)")]
+        private static partial Regex MyRegex();
     }
 }

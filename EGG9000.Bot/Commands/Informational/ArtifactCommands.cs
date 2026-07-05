@@ -1,12 +1,13 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.AfxSets;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -15,7 +16,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
@@ -75,7 +76,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+    public partial class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
 
         [SlashCommand("viewinventory", "View your inventory")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
@@ -86,7 +87,7 @@ namespace EGG9000.Bot.Commands {
             DBUser dbuser = null;
             try { dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) {
                 //Don't keep EIDs in plaintext in the command history
-                if(Regex.IsMatch(useraccount, @"^EI\d{16}$")) {
+                if(MyRegex().IsMatch(useraccount)) {
                     await command.DeleteOriginalResponseAsync();
                     await command.Channel.SendMessageAsync(embed: EmbedError($"{command.User.Mention} - Please select an account from the list, instead of typing an input.\n\n**(Command use deleted to hide your EID)**."));
                 } else {
@@ -297,6 +298,8 @@ namespace EGG9000.Bot.Commands {
             await RenderAfxPage(component, user, account, accountIndex, sets, pageCount, page, AfxSetsDetailEmbed(sets[selected], selected));
         }
 
+        [GeneratedRegex(@"^EI\d{16}$")]
+        private static partial Regex MyRegex();
     }
 
     public partial class AdminModule {

@@ -1,19 +1,18 @@
-using Discord;
+﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Bot.Interactions;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Humanizer;
 using MassTransit;
 using MassTransit.SagaStateMachine;
-
 using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -27,8 +26,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordHostedService;
@@ -56,7 +55,7 @@ namespace EGG9000.Bot.Commands {
             public DBUser User { get; set; }
         }
 
-        internal static async Task _afs(SocketInteraction command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
+        static async internal Task _afs(SocketInteraction command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
             await command.DeferAsync(ephemeral: !showInChannel);
             var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discUser.Id);
 
@@ -138,121 +137,6 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class AdminModule {
-        [Discord.Interactions.SlashCommand("markclean", "Mark a potential cheater as clean")]
-        public async Task MarkClean([Discord.Interactions.Autocomplete(typeof(UserAccountAutoComplete))][Discord.Interactions.Summary("useraccount")] string useraccount, [Discord.Interactions.Summary("cleantype")] StaffCommands.MarkCleanOption cleantype) {
-            var command = Context.Interaction;
-            await command.DeferAsync(ephemeral: false);
-            var userid = useraccount.Split("|")[0];
-            if(userid is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("User id could not be found from param"); });
-            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
-            if(dbuser is null) await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"DB user could not be found from user ID `{userid}`"); });
-            var index = int.Parse(useraccount.Split("|")[1]);
-            var account = dbuser.EggIncAccounts[index];
-
-            if(account is null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account `{index}` for <@{userid}> could not be found"); });
-            } else {
-                var identifier = string.IsNullOrEmpty(account.Name) ? account.Id : account.Name;
-#if DEV9002
-                await command.RespondAsyncGettingMessage($"User account `<@{dbuser.DiscordId}>` ({identifier}) marked as having clean {cleantype}.");
-#else
-                await command.RespondAsyncGettingMessage($"User account <@{dbuser.DiscordId}> ({identifier}) marked as having clean {cleantype}.");
-#endif
-                switch(cleantype) {
-                    case StaffCommands.MarkCleanOption.Artifacts:
-                        account.AFSMarkedClean = true; break;
-                    case StaffCommands.MarkCleanOption.CraftingXP:
-                        account.CraftingMarkedClean = true; break;
-                    case StaffCommands.MarkCleanOption.MER:
-                        account.MERMarkedClean = true; break;
-                    case StaffCommands.MarkCleanOption.TimeCheats:
-                        account.TimeCheatsMarkedClean = true; break;
-                }
-                dbuser.UpdateAccounts();
-                await Db.SaveChangesAsync();
-            }
-        }
-
-        [Discord.Interactions.SlashCommand("guildclearclean", "Remove all 'Clean' markings from all accounts of users in this guild")]
-        public async Task GuildClearClean([Discord.Interactions.Summary("removewarningsent", "Remove 'Warning Sent' flags - bot will re-send detection messages")] bool removewarningsent, [Discord.Interactions.Summary("cleantype", "Clear this marking, if not provided, clear all")] StaffCommands.MarkDirtyOption cleantype = StaffCommands.MarkDirtyOption.Artifacts) {
-            var command = Context.Interaction;
-            await command.DeferAsync();
-            var dbGuild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == command.GuildId || g.OverflowServersJson.Contains(command.GuildId.ToString()));
-            if(dbGuild is null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not determine which guild this is being run for."); });
-                return;
-            }
-
-            var dbusers = await Db.DBUsers.Where(u => u.GuildId == dbGuild.Id).ToListAsync();
-            var accounts = dbusers.SelectMany(u => u.EggIncAccounts).ToList();
-            var updatedCount = 0;
-            switch(cleantype) {
-                case StaffCommands.MarkDirtyOption.Artifacts:
-                    accounts = accounts.Where(a => a.AFSMarkedClean || (removewarningsent && a.AFSWarningSent)).ToList();
-                    foreach(var account in accounts) {
-                        account.AFSWarningSent = false;
-                        account.AFSMarkedClean = false;
-                        updatedCount++;
-                    }
-                    break;
-                case StaffCommands.MarkDirtyOption.CraftingXP:
-                    accounts = accounts.Where(a => a.CraftingMarkedClean || (removewarningsent && a.CraftingWarningSent)).ToList();
-                    foreach(var account in accounts) {
-                        account.CraftingWarningSent = false;
-                        account.CraftingMarkedClean = false;
-                        updatedCount++;
-                    }
-                    break;
-                case StaffCommands.MarkDirtyOption.MER:
-                    accounts = accounts.Where(a => a.MERMarkedClean || (removewarningsent && a.MERWarningSent)).ToList();
-                    foreach(var account in accounts) {
-                        account.MERWarningSent = false;
-                        account.MERMarkedClean = false;
-                        updatedCount++;
-                    }
-                    break;
-                case StaffCommands.MarkDirtyOption.TimeCheats:
-                    accounts = accounts.Where(a => a.TimeCheatsMarkedClean).ToList();
-                    foreach(var account in accounts) {
-                        account.TimeCheatsMarkedClean = false;
-                        updatedCount++;
-                    }
-                    break;
-                case StaffCommands.MarkDirtyOption.All:
-                    accounts = accounts.Where(a =>
-                        a.AFSMarkedClean || (removewarningsent && a.AFSWarningSent) ||
-                        a.CraftingMarkedClean || (removewarningsent && a.CraftingWarningSent) ||
-                        a.MERMarkedClean || (removewarningsent && a.MERWarningSent) ||
-                        a.TimeCheatsMarkedClean
-                    ).ToList();
-                    foreach(var account in accounts) {
-                        account.AFSWarningSent = false;
-                        account.AFSMarkedClean = false;
-                        account.CraftingWarningSent = false;
-                        account.CraftingMarkedClean = false;
-                        account.MERWarningSent = false;
-                        account.MERMarkedClean = false;
-                        account.TimeCheatsMarkedClean = false;
-                        updatedCount++;
-                    }
-                    break;
-                default: break;
-            }
-
-            if(updatedCount == 0) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("No users found to clear this marking from."); });
-                return;
-            }
-
-            var accountIds = accounts.Select(a => a.Id).ToList();
-            var usersToUpdate = dbusers.Where(u => u.EggIncAccounts.Any(a => accountIds.Contains(a.Id))).ToList();
-            foreach(var user in usersToUpdate) {
-                user.UpdateAccounts();
-            }
-            await Db.SaveChangesAsync();
-
-            await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Modified flags on `{updatedCount}` accounts across `{usersToUpdate.Count}` users."); });
-        }
 
         [Discord.Interactions.SlashCommand("afs", "Determine a user's artifact fairness score")]
         public Task AFS([Discord.Interactions.Summary("user")] SocketGuildUser user, [Discord.Interactions.Summary("showinchannel")] bool ShowInChannel = false) {
@@ -271,7 +155,7 @@ namespace EGG9000.Bot.Commands {
                         && (antiRole == null || !u.Roles.Contains(antiRole)) && (antiRole2 == null || !u.Roles.Contains(antiRole2)) && (antiRole3 == null || !u.Roles.Contains(antiRole3))
                     )
                     .OrderBy(u => new Random().Next()).ToList();
-                if(numberOfUsers != 0) randomUsers = randomUsers.Take(numberOfUsers).ToList();
+                if(numberOfUsers != 0) randomUsers = [.. randomUsers.Take(numberOfUsers)];
 
                 var userList = randomUsers.Count != 0 ? string.Join("\n", randomUsers.Select(u => $"<@{u.Id}>")) : "_No users found that have this filter of role(s)_\n";
 

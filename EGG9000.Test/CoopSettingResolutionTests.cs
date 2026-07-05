@@ -1,9 +1,7 @@
+using EGG9000.Common.Database.Entities;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Collections.Generic;
 using System.Linq;
-
-using EGG9000.Common.Database.Entities;
-
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test {
     /// <summary>
@@ -13,8 +11,9 @@ namespace EGG9000.Test {
     /// </summary>
     [TestClass]
     public class CoopSettingResolutionTests {
-        private static Guild GuildWith(params ServerCoopSetting[] settings) =>
-            new() { CoopSettings = settings.ToList() };
+        private static Guild GuildWith(params ServerCoopSetting[] settings) {
+            return new() { CoopSettings = [.. settings] };
+        }
 
         [TestMethod]
         [TestCategory("Unit")]

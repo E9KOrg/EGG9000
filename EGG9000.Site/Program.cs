@@ -77,7 +77,7 @@ using (var migrateScope = app.Services.CreateScope())
 // Ensure the read-only staff role exists. Site roles are granted by hand in the admin Permissions UI,
 // so the IdentityRole row must be present before an admin can assign it. Idempotent: creates only when
 // missing, so it is safe to run on every startup (incl. dev against the live DB).
-using (var roleScope = app.Services.CreateScope()) {
+using(var roleScope = app.Services.CreateScope()) {
     var roleManager = roleScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     if(!await roleManager.RoleExistsAsync("GuildReadOnlyAdmin")) {
         await roleManager.CreateAsync(new IdentityRole("GuildReadOnlyAdmin"));
@@ -129,7 +129,7 @@ app.UseRouting();
 // endpoint below.
 app.UseHttpMetrics();
 app.UseResponseCaching();
-app.UseAuthentication(); 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapStaticAssets();
@@ -251,8 +251,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         // Trusted proxy subnet(s) come from TRUSTED_PROXY_NETWORKS (comma-separated CIDR). Forwarded
         // headers from any other source IP are ignored. Falls back to the prior hardcoded value when
         // unset so an un-updated deploy keeps its old behavior instead of trusting nothing.
-        string trustedNetworks = Configuration["TRUSTED_PROXY_NETWORKS"] ?? "192.168.0.0/24";
-        foreach (string cidr in trustedNetworks.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
+        var trustedNetworks = Configuration["TRUSTED_PROXY_NETWORKS"] ?? "192.168.0.0/24";
+        foreach(var cidr in trustedNetworks.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
             options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr));
         }
     });
@@ -321,8 +321,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         }
     });
 #else
-            services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
-            services.AddBugsnag();
+    services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
+    services.AddBugsnag();
 #endif
 
     services.AddDatabaseDeveloperPageExceptionFilter();

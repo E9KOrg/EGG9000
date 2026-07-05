@@ -3,22 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public class FixedWidthTable {
         public static List<string> GetTableListFormatted(List<List<FixedWidthCell>> contents) {
             var table = GetTable(contents);
             var rows = table.Split("\n");
-            return [..rows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => $"`{x}`")];
+            return [.. rows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => $"`{x}`")];
         }
         public static string GetTable(List<List<FixedWidthCell>> contents) {
             var sb = new StringBuilder();
 
             //Find max column widths
             var columnWidths = new Dictionary<int, int>();
-            foreach((var row, int rowIndex) in contents.Select((item, i) => (item, i))) {
+            foreach((var row, var rowIndex) in contents.Select((item, i) => (item, i))) {
                 if(row == null)
                     continue;
-                foreach((var cell, int columnIndex) in row.Select((item, i) => (item, i))) {
+                foreach((var cell, var columnIndex) in row.Select((item, i) => (item, i))) {
                     var content = cell.Content?.Replace("**", "");
                     if(columnWidths.ContainsKey(columnIndex) && columnWidths[columnIndex] < (cell.OverrideWidth ?? (content ?? "").Length)) {
                         columnWidths[columnIndex] = cell.OverrideWidth ?? content.Length;
@@ -28,10 +28,10 @@ namespace EGG9000.Bot.Helpers {
                 }
             }
 
-            foreach((var row, int rowIndex) in contents.Select((item, i) => (item, i))) {
+            foreach((var row, var rowIndex) in contents.Select((item, i) => (item, i))) {
                 if(row == null)
                     continue;
-                foreach((var cell, int columnIndex) in row.Select((item, i) => (item, i))) {
+                foreach((var cell, var columnIndex) in row.Select((item, i) => (item, i))) {
                     var padding = columnWidths[columnIndex];
                     if(cell.ReducePadding)
                         padding--;

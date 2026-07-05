@@ -15,9 +15,7 @@ namespace EGG9000.Common.Contracts.Assignment {
         // Normalizes a stored/parsed reward filter: strips the "any reward" sentinel, and optionally PE
         // (the V1 new-contract filter never carried PE; the legacy filter did).
         public static List<Ei.RewardType> Sanitize(IEnumerable<Ei.RewardType> source, bool stripPe = false) =>
-            (source ?? Enumerable.Empty<Ei.RewardType>())
-                .Where(r => r != Ei.RewardType.UnknownReward && (!stripPe || r != Ei.RewardType.EggsOfProphecy))
-                .ToList();
+            [.. (source ?? []).Where(r => r != Ei.RewardType.UnknownReward && (!stripPe || r != Ei.RewardType.EggsOfProphecy))];
 
         public static bool Matches(GradeRewardFacts grade, IReadOnlyList<Ei.RewardType> filter, int completedGoals) {
             if(filter is null || filter.Count == 0) return true;

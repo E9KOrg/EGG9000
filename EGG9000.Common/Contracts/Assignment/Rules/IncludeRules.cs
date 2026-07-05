@@ -1,7 +1,8 @@
+using EGG9000.Common.Contracts.Assignment;
 using EGG9000.Common.Helpers;
 
-namespace EGG9000.Common.Contracts.Assignment {
-    internal static class IncludeRuleHelpers {
+namespace EGG9000.Common.Contracts.Assignment.Rules {
+    static internal class IncludeRuleHelpers {
         public static GradeRewardFacts GradeOrNull(ContractFacts c, Ei.Contract.Types.PlayerGrade grade) =>
             c.GradeRewards != null && c.GradeRewards.TryGetValue(grade, out var g) ? g : null;
     }

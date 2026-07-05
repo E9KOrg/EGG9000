@@ -2,14 +2,11 @@
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     /// <inheritdoc />
-    public partial class AddRankupMessages : Migration
-    {
+    public partial class AddRankupMessages : Migration {
         /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
+        protected override void Up(MigrationBuilder migrationBuilder) {
             migrationBuilder.AddColumn<int>(
                 name: "HighestAnnouncedOom",
                 table: "Users",
@@ -39,8 +36,7 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "RankupMessages",
-                columns: table => new
-                {
+                columns: table => new {
                     InternalId = table.Column<string>(type: "text", nullable: false),
                     GuildId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     GuildName = table.Column<string>(type: "text", nullable: true),
@@ -53,15 +49,13 @@ namespace EGG9000.Common.Migrations
                     CreatedById = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     CreatedBy = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_RankupMessages", x => x.InternalId);
                 });
         }
 
         /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
+        protected override void Down(MigrationBuilder migrationBuilder) {
             migrationBuilder.DropTable(
                 name: "RankupMessages");
 

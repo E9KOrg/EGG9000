@@ -22,8 +22,8 @@ namespace EGG9000.Site.Auth {
         public const string SchemeName = "ApiKey";
         public const string HeaderName = "X-Api-Key";
 
-        protected override async Task<AuthenticateResult> HandleAuthenticateAsync() {
-            if (!Request.Headers.TryGetValue(HeaderName, out var rawKeyValues) || rawKeyValues.Count == 0)
+        protected async override Task<AuthenticateResult> HandleAuthenticateAsync() {
+            if(!Request.Headers.TryGetValue(HeaderName, out var rawKeyValues) || rawKeyValues.Count == 0)
                 return AuthenticateResult.NoResult();
 
             var rawKey = rawKeyValues[0]!.Trim();
@@ -38,11 +38,11 @@ namespace EGG9000.Site.Auth {
 
             try {
                 await LogRequestAsync(db, key, ipAddress, endpoint, valid);
-            } catch (Exception ex) {
+            } catch(Exception ex) {
                 Logger.LogError(ex, "Failed to write API key request log/usage for key {ApiKeyId}.", key?.Id);
             }
 
-            if (!valid)
+            if(!valid)
                 return AuthenticateResult.Fail("Invalid or expired API key.");
 
             var claims = new[] {
@@ -69,12 +69,12 @@ namespace EGG9000.Site.Auth {
 
             await db.SaveChangesAsync();
 
-            if (key != null)
+            if(key != null)
                 await IncrementDailyUsageAsync(db, key.Id, now.UtcDateTime.Date);
         }
 
         private static async Task IncrementDailyUsageAsync(ApplicationDbContext db, Guid apiKeyId, DateTime today) {
-            if (db.Database.IsNpgsql()) {
+            if(db.Database.IsNpgsql()) {
                 await db.Database.ExecuteSqlInterpolatedAsync($"""
                     INSERT INTO "ApiKeyDailyUsages" ("ApiKeyId", "Date", "RequestCount")
                     VALUES ({apiKeyId}, {today}, 1)
@@ -84,7 +84,7 @@ namespace EGG9000.Site.Auth {
             }
 
             var usage = await db.ApiKeyDailyUsages.FirstOrDefaultAsync(u => u.ApiKeyId == apiKeyId && u.Date == today);
-            if (usage == null) {
+            if(usage == null) {
                 db.ApiKeyDailyUsages.Add(new ApiKeyDailyUsage { ApiKeyId = apiKeyId, Date = today, RequestCount = 1 });
             } else {
                 usage.RequestCount++;

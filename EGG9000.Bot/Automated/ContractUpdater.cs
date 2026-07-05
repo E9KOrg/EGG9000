@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -126,7 +125,7 @@ namespace EGG9000.Bot.Automated {
 
             var embedBuilder = new EmbedBuilder().WithDescription(description);
             var author = new EmbedAuthorBuilder().WithName($"{guildContract.Contract.Name} - {guildContract.Contract.ID}");
-            
+
             author.WithIconUrl(EggIncStatics.GetEggByContract(guildContract.Contract, await db.GetCustomEggsAsync()).image);
 
             embedBuilder.WithAuthor(author);
@@ -149,16 +148,16 @@ namespace EGG9000.Bot.Automated {
             return embedBuilder.Build();
         }
 
-        public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild,  Guild dbGuild, SocketInteraction slashCommand = null) {
+        public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild, Guild dbGuild, SocketInteraction slashCommand = null) {
             try {
                 _logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
 
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
 
                 if(
-                    guildContract.Contract.MaxUsers > 1 
-                    && guildContract.GuildID == 656455567858073601 
-                    && !guildContract.ReadyToScore 
+                    guildContract.Contract.MaxUsers > 1
+                    && guildContract.GuildID == 656455567858073601
+                    && !guildContract.ReadyToScore
                     && guildContract.Created < DateTimeOffset.UtcNow - guildContract.Contract.ContractTime - TimeSpan.FromDays(3)
                     && guildContract.Contract.Details.GradeSpecs.All(x => x.LengthSeconds > TimeSpan.FromDays(1).TotalSeconds)) {
                     var farmersUnion = guild.GetTextChannel(777303939442802710); //#farmers-union
@@ -215,7 +214,7 @@ namespace EGG9000.Bot.Automated {
 
                 var existingMessages = (await channel.GetMessagesAsync(limit: 1000).FlattenAsync()).ToList();
 
-                var nonBotMessages = existingMessages.Where(x => 
+                var nonBotMessages = existingMessages.Where(x =>
                     !x.Author.IsBot ||
                     (x is IUserMessage userMsg && userMsg.InteractionMetadata?.Type == InteractionType.ApplicationCommand)
                 ).ToList();
@@ -277,7 +276,7 @@ namespace EGG9000.Bot.Automated {
             if(guildContract.CcOnly) {
                 var subCategory = await _client.GetCategoryAsync(GuildChannelType.SubscriptionContractCategory, guild);
             }
-            emoji += DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) ? "⛔" : ( guildContract.CcOnly ? "💰" : "✅");     
+            emoji += DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) ? "⛔" : (guildContract.CcOnly ? "💰" : "✅");
 
             channelName = emoji + channelName;
 

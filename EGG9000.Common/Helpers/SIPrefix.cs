@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public class SIPrefix {
 
         public static IList<RankInfo> GetNextRankInfo(CustomBackup backup, bool withSubRank) {
@@ -13,7 +13,7 @@ namespace EGG9000.Bot.Helpers {
             var nextRank = GetPrefixFromEB((withSubRank ? 10 : 1000) * backup.EarningsBonus);
             var nextRankEB = Math.Pow(10, nextRank.Base + (withSubRank ? nextRank.SubRank - 1 : 0)) * 100;
 
-            for(int i = 0; i <= 10; i++) {
+            for(var i = 0; i <= 10; i++) {
                 var totalSEForNextRank = nextRankEB
                     / (backup.SoulEggBonus * Math.Pow(backup.ProphecyEggBonus, backup.EggsOfProphecy + i));
                 ranks.Add(new RankInfo {

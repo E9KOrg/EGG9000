@@ -1,28 +1,28 @@
-using System.Collections.Generic;
-
 using EGG9000.Common.Database.Entities;
-
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
 namespace EGG9000.Test {
     [TestClass]
     [TestCategory("Unit")]
     public class VirtueSnapshotStatsTests {
-        private static VirtueSnapshotStats Sample() => new VirtueSnapshotStats {
-            CurrentEgg = Ei.Egg.Integrity,
-            Delivered = new Dictionary<Ei.Egg, double> {
-                [Ei.Egg.Curiosity] = 1.5e9,
-                [Ei.Egg.Integrity] = 2.5e9,
-                [Ei.Egg.Humility] = 0,
-                [Ei.Egg.Resilience] = 0,
-                [Ei.Egg.Kindness] = 0,
-            },
-            TeTotal = 10,
-            TeEarned = 7,
-            TePending = 3,
-            ShiftCount = 2,
-            Resets = 1,
-        };
+        private static VirtueSnapshotStats Sample() {
+            return new() {
+                CurrentEgg = Ei.Egg.Integrity,
+                Delivered = new Dictionary<Ei.Egg, double> {
+                    [Ei.Egg.Curiosity] = 1.5e9,
+                    [Ei.Egg.Integrity] = 2.5e9,
+                    [Ei.Egg.Humility] = 0,
+                    [Ei.Egg.Resilience] = 0,
+                    [Ei.Egg.Kindness] = 0,
+                },
+                TeTotal = 10,
+                TeEarned = 7,
+                TePending = 3,
+                ShiftCount = 2,
+                Resets = 1,
+            };
+        }
 
         [TestMethod]
         public void Equals_SameValues_DifferentDictionaryInsertionOrder_ReturnsTrue() {

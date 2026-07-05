@@ -1,10 +1,10 @@
 using Discord;
 using Discord.Interactions;
 
-using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -12,11 +12,11 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
-namespace EGG9000.Bot.Commands {
-    public class EBHistoryModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
+namespace EGG9000.Bot.Commands.Informational {
+    public partial class EBHistoryModule(IDbContextFactory<ApplicationDbContext> dbFactory) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
 
         private class TextHistoryEntry(DateOnly entryDate, string ebString, string roleString, TextHistoryEntry lastEntry = null) {
             public DateOnly EntryDate { get; set; } = entryDate;
@@ -55,7 +55,7 @@ namespace EGG9000.Bot.Commands {
             DBUser dbuser = null;
             try { dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid)); } catch(Exception) {
                 //Don't keep EIDs in plaintext in the command history
-                if(Regex.IsMatch(useraccount, @"^EI\d{16}$")) {
+                if(MyRegex().IsMatch(useraccount)) {
                     await Context.Interaction.DeleteOriginalResponseAsync();
                     await Context.Channel.SendMessageAsync(embed: EmbedError($"{Context.User.Mention} - Please select an account from the list, instead of typing an input.\n\n**(Command use deleted to hide your EID)**."));
                 } else {
@@ -114,5 +114,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(c => { c.Content = ""; c.Embed = builder.Build(); });
         }
 
+        [GeneratedRegex(@"^EI\d{16}$")]
+        private static partial Regex MyRegex();
     }
 }

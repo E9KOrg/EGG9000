@@ -1,8 +1,7 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Extensions;
-using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.JsonData;
 
-using EGG9000.Common.JsonData.EiStatics;
 using MessagePack;
 using System;
 using System.Collections.Generic;
@@ -24,7 +23,7 @@ namespace EGG9000.Common.Helpers {
                     return;
                 }
                 if(x.Stones == null)
-                    x.Stones = new List<EggIncArtifactInstance>();
+                    x.Stones = [];
                 double farmMultiple = (enlightenment && x.Boost != EggIncBoostTypeEnum.EnlightenmentEggValue) ? 0 : 1;
                 farmMultiple += x.Stones.Where(s => s.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment).Sum(s => s.Value);
                 if(x.Boost == boostType) {
@@ -104,7 +103,7 @@ namespace EGG9000.Common.Helpers {
         public static Tier GetTier(int afxId, int tierNumber) {
             var data = GetEiAfxData();
             // Should be do so, because stone fragment tiers have a different afx_id.
-            var artifact = data.artifact_families.FirstOrDefault(x => x.tiers.Any(y => y.afx_id == afxId)) 
+            var artifact = data.artifact_families.FirstOrDefault(x => x.tiers.Any(y => y.afx_id == afxId))
                 ?? throw new Exception("Unable to locate artifact family with afx_id: " + afxId);
 
             var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == tierNumber)
@@ -115,10 +114,10 @@ namespace EGG9000.Common.Helpers {
 
         public static int SlotCount(EggIncArtifactInstance instance) {
             var data = GetEiAfxData();
-            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase)) 
+            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase))
                 ?? throw new Exception("Unable to locate artifact family: " + instance.Artifact);
 
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier) 
+            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier)
                 ?? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
 
             if(!tier.has_rarities) return 0;
@@ -257,7 +256,7 @@ namespace EGG9000.Common.Helpers {
 
         public static EggIncArtifactInstance GetArtifact(Ei.ArtifactSpec artifactSpec) {
             if(artifactSpec == null) return null;
-            
+
             var artifact = GetArtifactsDB.FirstOrDefault(x => (int)x.Name == (int)artifactSpec.Name);
             if(artifact == null) return null;
 

@@ -1,3 +1,4 @@
+using EGG9000.Common.Contracts.Assignment.Rules;
 using EGG9000.Common.Helpers;
 
 using System.Collections.Generic;
@@ -109,9 +110,9 @@ namespace EGG9000.Common.Contracts.Assignment {
 
         // Rules disabled when the guild has boarding groups off (DisableBG). Reward + seasonal are the
         // only filters disabled under DisableBG; colleggtible-force and previously-completed still run.
-        private static readonly HashSet<AssignmentRuleId> DisabledUnderFiltersOff = new() {
+        private static readonly HashSet<AssignmentRuleId> DisabledUnderFiltersOff = [
             AssignmentRuleId.SeasonalContracts, AssignmentRuleId.RewardFilter
-        };
+        ];
 
         // Returns true if the rule is skipped. In verbose mode the skip is recorded with a reason.
         private static bool SkipRecorded(List<RuleResult> results, IAssignmentRule rule, ContractFacts contract, IReadOnlySet<AssignmentRuleId> forbidden, bool filtersDisabled, bool verbose) {

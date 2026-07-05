@@ -7,25 +7,19 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public class LogoutModel(SignInManager<ApplicationUser> signInManager, ILogger<LogoutModel> logger) : PageModel
-    {
+    public class LogoutModel(SignInManager<ApplicationUser> signInManager, ILogger<LogoutModel> logger) : PageModel {
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly ILogger<LogoutModel> _logger = logger;
 
-        public void OnGet()
-        {
+        public void OnGet() {
         }
 
-        public async Task<IActionResult> OnPost(string returnUrl = null)
-        {
+        public async Task<IActionResult> OnPost(string returnUrl = null) {
             await _signInManager.SignOutAsync();
             _logger.LogInformation("User logged out.");
-            if (returnUrl != null)
-            {
+            if(returnUrl != null) {
                 return LocalRedirect(returnUrl);
-            }
-            else
-            {
+            } else {
                 return RedirectToPage();
             }
         }

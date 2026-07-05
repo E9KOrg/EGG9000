@@ -1,7 +1,6 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -10,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Common.Helpers {
+namespace EGG9000.Common.Helpers.Discord {
     public class ChannelHelper {
         public static object DetermineChannelType(Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType) {
 
@@ -87,17 +86,17 @@ namespace EGG9000.Bot.Common.Helpers {
                 } else {
                     return await socketTextChannel.SendMessageAsync(message.Text, message.IsTTS, message.Embed, message.Options, message.AllowedMentions, message.MessageReference, message.Components, message.Stickers, message.Embeds, message.Flags);
                 }
-            } else if (target is SocketInteraction command) {
+            } else if(target is SocketInteraction command) {
                 var ephemeral = (message as CustomInteractionBasedDiscordMessage)?.Ephemeral ?? false;
                 var pollProperties = (message as CustomInteractionBasedDiscordMessage)?.PollProperties ?? null;
-                if (command.HasResponded) {
-                    if (message.SendFile) {
+                if(command.HasResponded) {
+                    if(message.SendFile) {
                         return await command.FollowupWithFilesAsync([message.File], message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);
                     } else {
                         return await command.FollowupAsync(message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);
                     }
                 } else {
-                    if (message.SendFile) {
+                    if(message.SendFile) {
                         return await command.RespondWithFilesAsyncGettingMessage([message.File], message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);
                     } else {
                         return await command.RespondAsyncGettingMessage(message.Text, message.Embeds, message.IsTTS, ephemeral, message.AllowedMentions, message.Components, message.Embed, message.Options, pollProperties);

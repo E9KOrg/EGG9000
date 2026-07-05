@@ -1,4 +1,5 @@
 using EGG9000.Common.Contracts.Assignment;
+using EGG9000.Common.Contracts.Assignment.Facts;
 using EGG9000.Common.Database.Entities;
 
 using System.Collections.Generic;

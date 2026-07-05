@@ -11,8 +11,9 @@ using G = Ei.Contract.Types.PlayerGrade;
 namespace EGG9000.Test.Assignment {
     [TestClass]
     public class TwoPassTests {
-        private static AssignmentSettings YesOtherAccountMatch() =>
-            new() { Redo = new RedoRule { Mode = RedoLeggacyOption.YesOtherAccountMatch } };
+        private static AssignmentSettings YesOtherAccountMatch() {
+            return new() { Redo = new RedoRule { Mode = RedoLeggacyOption.YesOtherAccountMatch } };
+        }
 
         [TestMethod]
         [TestCategory("Unit")]

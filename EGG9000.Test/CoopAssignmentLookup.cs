@@ -24,8 +24,8 @@ namespace EGG9000.Test {
 
             var map = CoopAssignmentLookup.Build(rows);
 
-            Assert.AreEqual(1, map.Count);
-            Assert.AreEqual(2, map[(UserA, "c1")].Count);
+            Assert.HasCount(1, map);
+            Assert.HasCount(2, map[(UserA, "c1")]);
         }
 
         [TestMethod]
@@ -37,7 +37,7 @@ namespace EGG9000.Test {
 
             var map = CoopAssignmentLookup.Build(rows);
 
-            Assert.AreEqual(1, map[(UserA, "c1")].Count);
+            Assert.HasCount(1, map[(UserA, "c1")]);
         }
 
         [TestMethod]
@@ -50,7 +50,7 @@ namespace EGG9000.Test {
 
             var map = CoopAssignmentLookup.Build(rows);
 
-            Assert.AreEqual(3, map.Count);
+            Assert.HasCount(3, map);
             Assert.IsTrue(map.ContainsKey((UserA, "c1")));
             Assert.IsTrue(map.ContainsKey((UserB, "c1")));
             Assert.IsTrue(map.ContainsKey((UserA, "c2")));
@@ -71,7 +71,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Build_EmptyInputProducesEmptyMap() {
-            Assert.AreEqual(0, CoopAssignmentLookup.Build([]).Count);
+            Assert.IsEmpty(CoopAssignmentLookup.Build([]));
         }
     }
 }

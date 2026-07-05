@@ -34,17 +34,17 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void ShouldMarkSentOnSuccess() {
-            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Bot.Helpers.DiscordHelpersExt.DMResult.Success));
+            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Common.Helpers.DiscordHelpersExt.DMResult.Success));
         }
 
         [TestMethod]
         public void ShouldMarkSentWhenBlocked() {
-            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Bot.Helpers.DiscordHelpersExt.DMResult.CannotSendToUser));
+            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Common.Helpers.DiscordHelpersExt.DMResult.CannotSendToUser));
         }
 
         [TestMethod]
         public void ShouldNotMarkSentOnTransientError() {
-            Assert.IsFalse(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Bot.Helpers.DiscordHelpersExt.DMResult.DiscordError));
+            Assert.IsFalse(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Common.Helpers.DiscordHelpersExt.DMResult.DiscordError));
         }
 
         [TestMethod]
@@ -57,7 +57,7 @@ namespace EGG9000.Test {
                 HasReturned: false,
                 AccountName: "TestFarmer",
                 MultiAccount: false,
-                FuelTank: new System.Collections.Generic.List<ShipReturnDmBuilder.FuelLine>(),
+                FuelTank: [],
                 UserId: 123UL,
                 AccountIndex: 0,
                 SiteBaseUrl: "https://egg9000.com");
@@ -77,7 +77,7 @@ namespace EGG9000.Test {
                 HasReturned: true,
                 AccountName: "TestFarmer",
                 MultiAccount: false,
-                FuelTank: new System.Collections.Generic.List<ShipReturnDmBuilder.FuelLine>(),
+                FuelTank: [],
                 UserId: 123UL,
                 AccountIndex: 0,
                 SiteBaseUrl: "https://egg9000.com");

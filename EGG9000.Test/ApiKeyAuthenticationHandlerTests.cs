@@ -18,11 +18,12 @@ namespace EGG9000.Test {
     [TestClass]
     [TestCategory("Unit")]
     public class ApiKeyAuthenticationHandlerTests {
-        private static string HashKey(string rawKey)
-            => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();
+        private static string HashKey(string rawKey) {
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();
+        }
 
-        private static ApiKey MakeKey(string rawKey, bool revoked = false, DateTimeOffset? expiresAt = null)
-            => new ApiKey {
+        private static ApiKey MakeKey(string rawKey, bool revoked = false, DateTimeOffset? expiresAt = null) {
+            return new() {
                 Id = Guid.NewGuid(),
                 KeyHash = HashKey(rawKey),
                 Label = "test",
@@ -31,18 +32,31 @@ namespace EGG9000.Test {
                 ExpiresAt = expiresAt,
                 Revoked = revoked
             };
+        }
 
         // Minimal stub - returns a default AuthenticationSchemeOptions for any scheme name.
         private class StubOptionsMonitor : IOptionsMonitor<AuthenticationSchemeOptions> {
-            public AuthenticationSchemeOptions CurrentValue => new();
-            public AuthenticationSchemeOptions Get(string? name) => new();
-            public IDisposable? OnChange(Action<AuthenticationSchemeOptions, string> listener) => null;
+            public AuthenticationSchemeOptions CurrentValue {
+                get {
+                    return new();
+                }
+            }
+
+            public AuthenticationSchemeOptions Get(string? name) {
+                return new();
+            }
+
+            public IDisposable? OnChange(Action<AuthenticationSchemeOptions, string> listener) {
+                return null;
+            }
         }
 
         // Minimal factory shim so we can inject a test DB without touching DI.
         private class TestDbContextFactory(DbContextOptions<ApplicationDbContext> options)
             : IDbContextFactory<ApplicationDbContext> {
-            public ApplicationDbContext CreateDbContext() => new ApplicationDbContext(options);
+            public ApplicationDbContext CreateDbContext() {
+                return new(options);
+            }
         }
 
         private static async Task<AuthenticateResult> RunHandler(ApiKey storedKey, string? headerValue) {
@@ -50,7 +64,7 @@ namespace EGG9000.Test {
                 .UseInMemoryDatabase(Guid.NewGuid().ToString())
                 .Options;
             var factory = new TestDbContextFactory(dbOptions);
-            if (storedKey != null) {
+            if(storedKey != null) {
                 using var seed = factory.CreateDbContext();
                 seed.ApiKeys.Add(storedKey);
                 await seed.SaveChangesAsync();
@@ -63,7 +77,7 @@ namespace EGG9000.Test {
                 factory);
 
             var context = new DefaultHttpContext();
-            if (headerValue != null)
+            if(headerValue != null)
                 context.Request.Headers[ApiKeyAuthenticationHandler.HeaderName] = headerValue;
 
             await handler.InitializeAsync(
@@ -122,7 +136,7 @@ namespace EGG9000.Test {
                 .UseInMemoryDatabase(dbName ?? Guid.NewGuid().ToString())
                 .Options;
             var factory = new TestDbContextFactory(dbOptions);
-            if (storedKey != null) {
+            if(storedKey != null) {
                 using var seed = factory.CreateDbContext();
                 seed.ApiKeys.Add(storedKey);
                 await seed.SaveChangesAsync();
@@ -138,7 +152,7 @@ namespace EGG9000.Test {
             context.Connection.RemoteIpAddress = System.Net.IPAddress.Parse(remoteIp);
             context.Request.Method = "GET";
             context.Request.Path = "/LeaderboardJson";
-            if (headerValue != null)
+            if(headerValue != null)
                 context.Request.Headers[ApiKeyAuthenticationHandler.HeaderName] = headerValue;
 
             await handler.InitializeAsync(
@@ -156,14 +170,14 @@ namespace EGG9000.Test {
 
             Assert.IsTrue(result.Succeeded);
 
-            var logRow = await db.ApiKeyRequestLogs.SingleAsync();
+            var logRow = await db.ApiKeyRequestLogs.SingleAsync(TestContext.CancellationToken);
             Assert.AreEqual(key.Id, logRow.ApiKeyId);
             Assert.AreEqual(12345UL, logRow.GuildId);
             Assert.AreEqual("203.0.113.5", logRow.IpAddress);
             Assert.AreEqual("GET /LeaderboardJson", logRow.Endpoint);
             Assert.IsTrue(logRow.Success);
 
-            var usageRow = await db.ApiKeyDailyUsages.SingleAsync();
+            var usageRow = await db.ApiKeyDailyUsages.SingleAsync(TestContext.CancellationToken);
             Assert.AreEqual(key.Id, usageRow.ApiKeyId);
             Assert.AreEqual(1, usageRow.RequestCount);
         }
@@ -175,7 +189,7 @@ namespace EGG9000.Test {
             await RunHandlerWithDb(key, "counterkey", dbName: dbName);
             var (_, db) = await RunHandlerWithDb(storedKey: null, headerValue: "counterkey", dbName: dbName);
 
-            var usageRow = await db.ApiKeyDailyUsages.SingleAsync();
+            var usageRow = await db.ApiKeyDailyUsages.SingleAsync(TestContext.CancellationToken);
             Assert.AreEqual(2, usageRow.RequestCount);
         }
 
@@ -185,7 +199,7 @@ namespace EGG9000.Test {
 
             Assert.IsFalse(result.Succeeded);
 
-            var logRow = await db.ApiKeyRequestLogs.SingleAsync();
+            var logRow = await db.ApiKeyRequestLogs.SingleAsync(TestContext.CancellationToken);
             Assert.IsNull(logRow.ApiKeyId);
             Assert.IsNull(logRow.GuildId);
             Assert.IsFalse(logRow.Success);
@@ -196,7 +210,7 @@ namespace EGG9000.Test {
         public async Task NoHeader_DoesNotWriteRequestLog() {
             var (_, db) = await RunHandlerWithDb(MakeKey("unused"), headerValue: null);
 
-            Assert.AreEqual(0, await db.ApiKeyRequestLogs.CountAsync());
+            Assert.AreEqual(0, await db.ApiKeyRequestLogs.CountAsync(TestContext.CancellationToken));
         }
 
         [TestMethod]
@@ -208,9 +222,9 @@ namespace EGG9000.Test {
                 .UseInMemoryDatabase(dbName)
                 .Options;
             var factory = new TestDbContextFactory(dbOptions);
-            using (var seed = factory.CreateDbContext()) {
+            using(var seed = factory.CreateDbContext()) {
                 seed.ApiKeys.Add(key);
-                await seed.SaveChangesAsync();
+                await seed.SaveChangesAsync(TestContext.CancellationToken);
             }
 
             var brokenFactory = new ThrowingDbContextFactory(dbOptions);
@@ -238,12 +252,17 @@ namespace EGG9000.Test {
         // first, so the key lookup succeeds but the subsequent log write fails - proving auth doesn't
         // depend on the log write succeeding.
         private class ThrowingDbContextFactory(DbContextOptions<ApplicationDbContext> options) : IDbContextFactory<ApplicationDbContext> {
-            public ApplicationDbContext CreateDbContext() => new ThrowingSaveChangesDbContext(options);
+            public ApplicationDbContext CreateDbContext() {
+                return new ThrowingSaveChangesDbContext(options);
+            }
         }
 
         private class ThrowingSaveChangesDbContext(DbContextOptions<ApplicationDbContext> options) : ApplicationDbContext(options) {
-            public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-                => throw new InvalidOperationException("Simulated DB failure during log write.");
+            public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) {
+                throw new InvalidOperationException("Simulated DB failure during log write.");
+            }
         }
+
+        public TestContext TestContext { get; set; }
     }
 }

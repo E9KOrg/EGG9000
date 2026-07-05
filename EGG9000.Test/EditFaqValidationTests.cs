@@ -1,8 +1,6 @@
-using System.Linq;
-
 using EGG9000.Common.Helpers;
-
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 
 namespace EGG9000.Test {
     [TestClass]

@@ -14,14 +14,14 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void RewardFilter_LegacyWinsElseMain_KeepsPeFromLegacy() {
             var a = new EggIncAccount {
-                AutoRegisterRewards = new() { Ei.RewardType.EggsOfProphecy, Ei.RewardType.Gold },
-                LeggacyAutoRegisterRewards = new() { Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy }
+                AutoRegisterRewards = [Ei.RewardType.EggsOfProphecy, Ei.RewardType.Gold],
+                LeggacyAutoRegisterRewards = [Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy]
             };
             var s = AssignmentSettingsMigration.FromLegacyKeys(a);
             // PE kept from legacy source (V1 kept it); PE still stripped when falling back to new-contract list
             CollectionAssert.AreEquivalent(new List<Ei.RewardType> { Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy }, s.RewardFilter);
 
-            var b = new EggIncAccount { AutoRegisterRewards = new() { Ei.RewardType.Gold }, LeggacyAutoRegisterRewards = new() };
+            var b = new EggIncAccount { AutoRegisterRewards = [Ei.RewardType.Gold], LeggacyAutoRegisterRewards = [] };
             CollectionAssert.AreEquivalent(new List<Ei.RewardType> { Ei.RewardType.Gold }, AssignmentSettingsMigration.FromLegacyKeys(b).RewardFilter);
         }
 
@@ -29,8 +29,8 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void RewardFilter_StripsUnknownReward() {
             var a = new EggIncAccount {
-                AutoRegisterRewards = new() { Ei.RewardType.UnknownReward, Ei.RewardType.Gold },
-                LeggacyAutoRegisterRewards = new()
+                AutoRegisterRewards = [Ei.RewardType.UnknownReward, Ei.RewardType.Gold],
+                LeggacyAutoRegisterRewards = []
             };
             CollectionAssert.AreEquivalent(new List<Ei.RewardType> { Ei.RewardType.Gold }, AssignmentSettingsMigration.FromLegacyKeys(a).RewardFilter);
         }
@@ -65,23 +65,25 @@ namespace EGG9000.Test.Assignment {
         // PE re-migration heal in the EggIncAccounts getter (DBUser). Rebuilds the user from the
         // persisted column so the getter's heal branch actually runs (an in-memory _accounts cache
         // would short-circuit it).
-        private static DBUser Rehydrate(DBUser source) => new() {
-            _eggIncIds = source._eggIncIds,
-            _contractRegistrationByte = source._contractRegistrationByte
-        };
+        private static DBUser Rehydrate(DBUser source) {
+            return new() {
+                _eggIncIds = source._eggIncIds,
+                _contractRegistrationByte = source._contractRegistrationByte
+            };
+        }
 
         [TestMethod]
         [TestCategory("Unit")]
         public void PeHeal_AddsPeOnly_PreservesPostV2Edits_StripsLegacyKey() {
             var source = new DBUser {
-                EggIncAccounts = new List<EggIncAccount> {
+                EggIncAccounts = [
                     new() {
                         Id = "EI1",
-                        LeggacyAutoRegisterRewards = new() { Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy },
+                        LeggacyAutoRegisterRewards = [Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy],
                         // Post-V2 edit the heal must not clobber.
-                        Assignment = new AssignmentSettings { RewardFilter = new() { Ei.RewardType.Gold } }
+                        Assignment = new AssignmentSettings { RewardFilter = [Ei.RewardType.Gold] }
                     }
-                }
+                ]
             };
             var healed = Rehydrate(source).EggIncAccounts.Single();
 
@@ -99,13 +101,13 @@ namespace EGG9000.Test.Assignment {
             // one-shot strip must ALSO run on this branch — otherwise the legacy key keeps PE and the
             // heal fires on a later load, resurrecting PE after the user unticks it.
             var source = new DBUser {
-                EggIncAccounts = new List<EggIncAccount> {
+                EggIncAccounts = [
                     new() {
                         Id = "EI1",
-                        LeggacyAutoRegisterRewards = new() { Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy },
+                        LeggacyAutoRegisterRewards = [Ei.RewardType.Artifact, Ei.RewardType.EggsOfProphecy],
                         Assignment = null
                     }
-                }
+                ]
             };
             var migratedUser = Rehydrate(source);
             var migrated = migratedUser.EggIncAccounts.Single();
@@ -125,13 +127,13 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void PeHeal_DoesNotResurrectPeAfterUserRemovesIt() {
             var source = new DBUser {
-                EggIncAccounts = new List<EggIncAccount> {
+                EggIncAccounts = [
                     new() {
                         Id = "EI1",
-                        LeggacyAutoRegisterRewards = new() { Ei.RewardType.EggsOfProphecy },
-                        Assignment = new AssignmentSettings { RewardFilter = new() }
+                        LeggacyAutoRegisterRewards = [Ei.RewardType.EggsOfProphecy],
+                        Assignment = new AssignmentSettings { RewardFilter = [] }
                     }
-                }
+                ]
             };
             var afterHeal = Rehydrate(source);
             var account = afterHeal.EggIncAccounts.Single();

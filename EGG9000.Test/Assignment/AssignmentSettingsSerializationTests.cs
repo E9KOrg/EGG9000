@@ -17,11 +17,11 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void Seasonal_RoundTrips_And_DefaultsToUntilPe() {
             var s = new AssignmentSettings {
-                RewardFilter = new List<Ei.RewardType> { Ei.RewardType.Gold },
+                RewardFilter = [Ei.RewardType.Gold],
                 Seasonal = new SeasonalRule { Mode = SeasonalMode.UntilCsGoal, CsGoal = 12000, RewardFilterAfter = true }
             };
-            var bytes = MessagePackSerializer.Serialize(s, Lz4);
-            var back = MessagePackSerializer.Deserialize<AssignmentSettings>(bytes, Lz4);
+            var bytes = MessagePackSerializer.Serialize(s, Lz4, TestContext.CancellationToken);
+            var back = MessagePackSerializer.Deserialize<AssignmentSettings>(bytes, Lz4, TestContext.CancellationToken);
 
             Assert.AreEqual(SeasonalMode.UntilCsGoal, back.Seasonal.Mode);
             Assert.AreEqual(12000d, back.Seasonal.CsGoal);
@@ -34,15 +34,15 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void FullModel_RoundTrips() {
             var s = new AssignmentSettings {
-                RewardFilter = new List<Ei.RewardType> { Ei.RewardType.Gold, Ei.RewardType.Artifact },
+                RewardFilter = [Ei.RewardType.Gold, Ei.RewardType.Artifact],
                 Redo = new RedoRule { Mode = RedoLeggacyOption.YesThreshold, ScoreThreshold = 33000, ExcludeSeasonal = true },
                 TwoToThree = true,
                 Seasonal = new SeasonalRule { Mode = SeasonalMode.AlwaysAssign, CsGoal = 5000, RewardFilterAfter = false }
             };
             s.SetForce(PermanentRewardKind.Colleggtible, ForceMode.AssignIfMissing);
 
-            var bytes = MessagePackSerializer.Serialize(s, Lz4);
-            var back = MessagePackSerializer.Deserialize<AssignmentSettings>(bytes, Lz4);
+            var bytes = MessagePackSerializer.Serialize(s, Lz4, TestContext.CancellationToken);
+            var back = MessagePackSerializer.Deserialize<AssignmentSettings>(bytes, Lz4, TestContext.CancellationToken);
 
             CollectionAssert.AreEqual(s.RewardFilter, back.RewardFilter);
             Assert.AreEqual(RedoLeggacyOption.YesThreshold, back.Redo.Mode);
@@ -59,11 +59,11 @@ namespace EGG9000.Test.Assignment {
             var s = new AssignmentSettings();
 
             s.SetForce(PermanentRewardKind.Colleggtible, ForceMode.AssignIfMissing);
-            Assert.AreEqual(1, s.ForceRules.Count);
+            Assert.HasCount(1, s.ForceRules);
             Assert.AreEqual(ForceMode.AssignIfMissing, s.Get(PermanentRewardKind.Colleggtible).Mode);
 
             s.SetForce(PermanentRewardKind.Colleggtible, ForceMode.NotSet, csFloor: 42);
-            Assert.AreEqual(1, s.ForceRules.Count, "SetForce must upsert, not append a duplicate");
+            Assert.HasCount(1, s.ForceRules, "SetForce must upsert, not append a duplicate");
             Assert.AreEqual(ForceMode.NotSet, s.Get(PermanentRewardKind.Colleggtible).Mode);
             Assert.AreEqual(42d, s.Get(PermanentRewardKind.Colleggtible).CsFloor);
         }
@@ -74,7 +74,9 @@ namespace EGG9000.Test.Assignment {
             var s = new AssignmentSettings();
             var rule = s.Get(PermanentRewardKind.Colleggtible);
             Assert.AreEqual(ForceMode.NotSet, rule.Mode);
-            Assert.AreEqual(0, s.ForceRules.Count, "Get must not mutate the list");
+            Assert.IsEmpty(s.ForceRules, "Get must not mutate the list");
         }
+
+        public TestContext TestContext { get; set; }
     }
 }

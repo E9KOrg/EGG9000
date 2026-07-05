@@ -1,9 +1,8 @@
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-
-using Newtonsoft.Json;
 
 namespace EGG9000.Common.Database.Entities {
     public class UserSnapShot {
@@ -35,7 +34,7 @@ namespace EGG9000.Common.Database.Entities {
 
     public class VirtueSnapshotStats : IEquatable<VirtueSnapshotStats> {
         public Ei.Egg CurrentEgg { get; set; }
-        public Dictionary<Ei.Egg, double> Delivered { get; set; } = new();
+        public Dictionary<Ei.Egg, double> Delivered { get; set; } = [];
         public int TeTotal { get; set; }
         public uint TeEarned { get; set; }
         public int TePending { get; set; }
@@ -62,7 +61,7 @@ namespace EGG9000.Common.Database.Entities {
             hash.Add(TePending);
             hash.Add(ShiftCount);
             hash.Add(Resets);
-            foreach (var kv in Delivered.OrderBy(kv => kv.Key)) {
+            foreach(var kv in Delivered.OrderBy(kv => kv.Key)) {
                 hash.Add(kv.Key);
                 hash.Add(kv.Value);
             }

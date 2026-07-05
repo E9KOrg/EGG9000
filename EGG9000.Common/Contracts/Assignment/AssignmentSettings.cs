@@ -8,10 +8,10 @@ using System.Linq;
 namespace EGG9000.Common.Contracts.Assignment {
     [MessagePackObject]
     public class AssignmentSettings {
-        [Key(0)] public List<PermanentRewardRule> ForceRules { get; set; } = new();
-        [Key(1)] public List<Ei.RewardType> RewardFilter { get; set; } = new();
+        [Key(0)] public List<PermanentRewardRule> ForceRules { get; set; } = [];
+        [Key(1)] public List<Ei.RewardType> RewardFilter { get; set; } = [];
         // Retained (unused) from the v1 model so old blobs still deserialize; superseded by RewardFilter.
-        [Key(2)] public List<Ei.RewardType> LegacyRewardFilter { get; set; } = new();
+        [Key(2)] public List<Ei.RewardType> LegacyRewardFilter { get; set; } = [];
         [Key(3)] public RedoRule Redo { get; set; } = new();
         [Key(4)] public bool TwoToThree { get; set; }
         [Key(5)] public SeasonalRule Seasonal { get; set; } = new();
@@ -21,7 +21,7 @@ namespace EGG9000.Common.Contracts.Assignment {
 
         // Upserts a force rule. Get returns a detached default for reads; writes must land in the list.
         public void SetForce(PermanentRewardKind kind, ForceMode mode, double? csFloor = null) {
-            ForceRules ??= new();
+            ForceRules ??= [];
             var rule = ForceRules.FirstOrDefault(r => r.Kind == kind);
             if(rule is null) {
                 rule = new PermanentRewardRule { Kind = kind };

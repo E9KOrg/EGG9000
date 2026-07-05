@@ -53,7 +53,7 @@ namespace EGG9000.Common.Contracts.Assignment {
         private static bool ParseBool(string value, out bool result) => bool.TryParse(value, out result);
 
         private static bool ParseRewards(string value, out List<Ei.RewardType> rewards) {
-            rewards = new List<Ei.RewardType>();
+            rewards = [];
             if(string.IsNullOrWhiteSpace(value)) return true;
             foreach(var token in value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
                 if(!int.TryParse(token, out var n) || !Enum.IsDefined(typeof(Ei.RewardType), n)) return false;

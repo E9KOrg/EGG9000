@@ -27,9 +27,9 @@ namespace EGG9000.Bot.Automated {
     }
 
     public interface IUpdaterService : IHostedService {
-        public bool Active();
-        public bool Running();
-        public void ResetTimer();
+        bool Active();
+        bool Running();
+        void ResetTimer();
     }
 
     public abstract class _UpdaterBase<T> : IUpdaterService where T : _UpdaterBase<T> {
@@ -63,7 +63,11 @@ namespace EGG9000.Bot.Automated {
         protected IDbContextFactory<ApplicationDbContext> _dbContextFactory;
 
         protected ulong _CPGuildId;
-        protected CoopsBeingCreatedService _coopsBeingCreatedService => _provider.GetService<CoopsBeingCreatedService>();   
+        protected CoopsBeingCreatedService _coopsBeingCreatedService {
+            get {
+                return _provider.GetService<CoopsBeingCreatedService>();
+            }
+        }
 
         public _UpdaterBase(TimeSpan updateInterval, TimeSpan delayedStart, IServiceProvider provider) {
             _initiate(provider);

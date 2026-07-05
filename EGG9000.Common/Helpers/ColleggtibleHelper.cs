@@ -1,4 +1,3 @@
-using EGG9000.Bot;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
@@ -26,11 +25,10 @@ namespace EGG9000.Common.Helpers {
             if(customEggs is null)
                 return [];
 
-            return customEggs
+            return [.. customEggs
                 .Select(egg => BuildRow(backup, egg))
                 .OrderBy(r => r.Missing ? 1 : 0)
-                .ThenBy(r => r.Name)
-                .ToList();
+                .ThenBy(r => r.Name)];
         }
 
         private static ColleggtibleRow BuildRow(CustomBackup backup, DBCustomEgg egg) {

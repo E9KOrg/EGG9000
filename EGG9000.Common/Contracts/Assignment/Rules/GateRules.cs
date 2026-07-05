@@ -1,4 +1,6 @@
-namespace EGG9000.Common.Contracts.Assignment {
+using EGG9000.Common.Contracts.Assignment;
+
+namespace EGG9000.Common.Contracts.Assignment.Rules {
     public sealed class GradeUnsetRule : IAssignmentRule {
         public AssignmentRuleId Id => AssignmentRuleId.GradeUnset;
         public RuleTier Tier => RuleTier.Gate;

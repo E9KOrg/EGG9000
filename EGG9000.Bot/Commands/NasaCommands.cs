@@ -18,7 +18,7 @@ namespace EGG9000.Bot.Commands {
         public async Task APODExplanation(string data) {
             var apodId = System.Guid.Parse(data);
             var explanation = await NasaHelper.GetExplanationOrEmpty(apodId, Db);
-            if (string.IsNullOrEmpty(explanation)) {
+            if(string.IsNullOrEmpty(explanation)) {
                 var failureEmbed = EmbedHelpers.EmbedWarning("No explanation found for this APOD.");
                 await Context.Interaction.RespondAsync("", embed: failureEmbed, ephemeral: true);
                 return;
@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("apod", "View NASA's latest Astronomy Picture of the Day (APOD)")]
         public async Task APOD() {
             var latestApod = await NasaHelper.GetLatestApod(Db);
-            if (latestApod is null) {
+            if(latestApod is null) {
                 var failureEmbed = EmbedHelpers.EmbedWarning("No APOD found in the database.");
                 await Context.Interaction.RespondAsync("", embed: failureEmbed, ephemeral: true);
                 return;

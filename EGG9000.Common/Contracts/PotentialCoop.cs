@@ -5,7 +5,7 @@ namespace EGG9000.Common.Contracts {
     public class PotentialCoopGroup {
         public Ei.Contract.Types.PlayerGrade Grade { get; set; }
         public int BoardingGroup { get; set; }
-        public string bg { get { return BoardingGroup.ToString();  } }
+        public string bg { get { return BoardingGroup.ToString(); } }
 
         public List<PotentialCoop> PotentialCoops { get; set; }
     }

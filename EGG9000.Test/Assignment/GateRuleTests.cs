@@ -1,4 +1,5 @@
 using EGG9000.Common.Contracts.Assignment;
+using EGG9000.Common.Contracts.Assignment.Rules;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -9,8 +10,9 @@ namespace EGG9000.Test.Assignment {
     public class GateRuleTests {
         private static readonly AssignmentSettings S = new();
 
-        private static RuleOutcome Eval(IAssignmentRule rule, AccountFactsTestBuilder acct, ContractFactsTestBuilder contract) =>
-            rule.Evaluate(acct.Build(), contract.Build(), S);
+        private static RuleOutcome Eval(IAssignmentRule rule, AccountFactsTestBuilder acct, ContractFactsTestBuilder contract) {
+            return rule.Evaluate(acct.Build(), contract.Build(), S);
+        }
 
         [TestMethod]
         [TestCategory("Unit")]

@@ -9,8 +9,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public class RegisterConfirmationModel(UserManager<ApplicationUser> userManager, IEmailSender sender) : PageModel
-    {
+    public class RegisterConfirmationModel(UserManager<ApplicationUser> userManager, IEmailSender sender) : PageModel {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly IEmailSender _sender = sender;
 
@@ -20,24 +19,20 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
 
         public string EmailConfirmationUrl { get; set; }
 
-        public async Task<IActionResult> OnGetAsync(string email)
-        {
-            if (email == null)
-            {
+        public async Task<IActionResult> OnGetAsync(string email) {
+            if(email == null) {
                 return RedirectToPage("/Index");
             }
 
             var user = await _userManager.FindByEmailAsync(email);
-            if (user == null)
-            {
+            if(user == null) {
                 return NotFound($"Unable to load user with email '{email}'.");
             }
 
             Email = email;
             // Once you add a real email sender, you should remove this code that lets you confirm the account
             DisplayConfirmAccountLink = true;
-            if (DisplayConfirmAccountLink)
-            {
+            if(DisplayConfirmAccountLink) {
                 var userId = await _userManager.GetUserIdAsync(user);
                 var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                 code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));

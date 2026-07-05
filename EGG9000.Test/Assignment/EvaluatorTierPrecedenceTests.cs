@@ -37,7 +37,7 @@ namespace EGG9000.Test.Assignment {
             // Reward filter would exclude (no match), but colleggtible force includes first.
             var contract = TestFactsBuilder.Contract().Colleggtible(true).Grade(G.GradeC, Ei.RewardType.Gold).Build();
             var facts = TestFactsBuilder.Account().Grade(G.GradeC).MissingColleggtible(true).Build();
-            var s = new AssignmentSettings { RewardFilter = new() { Ei.RewardType.Artifact } };
+            var s = new AssignmentSettings { RewardFilter = [Ei.RewardType.Artifact] };
             s.SetForce(PermanentRewardKind.Colleggtible, ForceMode.AssignIfMissing);
 
             Assert.IsTrue(AssignmentEvaluator.Evaluate(facts, contract, s).Assigned);
@@ -49,7 +49,7 @@ namespace EGG9000.Test.Assignment {
             // Reward filter would exclude, but the guild forbids the RewardFilter rule.
             var contract = TestFactsBuilder.Contract().Grade(G.GradeC, Ei.RewardType.Gold).Build();
             var facts = TestFactsBuilder.Account().Grade(G.GradeC).Build();
-            var s = new AssignmentSettings { RewardFilter = new() { Ei.RewardType.Artifact } };
+            var s = new AssignmentSettings { RewardFilter = [Ei.RewardType.Artifact] };
 
             Assert.IsFalse(AssignmentEvaluator.Evaluate(facts, contract, s).Assigned);
 
@@ -62,7 +62,7 @@ namespace EGG9000.Test.Assignment {
         public void FiltersDisabled_SkipsRewardAndSeasonal_KeepsPreviouslyCompleted() {
             var contract = TestFactsBuilder.Contract().Legacy(true).Grade(G.GradeC, Ei.RewardType.Gold).Build();
             var settings = new AssignmentSettings {
-                RewardFilter = new() { Ei.RewardType.Artifact },
+                RewardFilter = [Ei.RewardType.Artifact],
                 Redo = new RedoRule { Mode = RedoLeggacyOption.No }
             };
 

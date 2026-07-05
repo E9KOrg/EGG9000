@@ -1,9 +1,9 @@
 ﻿using Discord;
 using EGG9000.Bot.Commands;
-using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;

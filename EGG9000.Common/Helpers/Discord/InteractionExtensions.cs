@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Interactions {
+namespace EGG9000.Common.Helpers.Discord {
     public static class InteractionExtensions {
         public static async Task<IUserMessage> RespondAsyncGettingMessage(this SocketInteraction i, string content = null, Embed[] embeds = null, bool isTTS = false, bool ephemeral = false, AllowedMentions allowedMentions = null, MessageComponent components = null, Embed embed = null, RequestOptions options = null, PollProperties poll = null) {
             if(i.HasResponded)

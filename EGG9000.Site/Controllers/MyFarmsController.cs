@@ -1,18 +1,13 @@
 ﻿using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EIEpicResearch;
+using EGG9000.Common.JsonData;
 using EGG9000.Site.Services;
-
 using Ei;
-
 using Humanizer;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,16 +15,13 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-
 using Event = EGG9000.Common.Database.Entities.Event;
-using System.Collections.Frozen;
-using EGG9000.Common.JsonData;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -117,7 +109,7 @@ namespace EGG9000.Site.Controllers {
             // setting (the real floor is applied per-account at assignment; this is illustrative only).
             var latestSeason = seasonInfos.OrderByDescending(x => x.StartTime).FirstOrDefault();
             ViewBag.LatestSeasonPeCxpByGrade = latestSeason is null
-                ? new Dictionary<Ei.Contract.Types.PlayerGrade, double>()
+                ? []
                 : System.Enum.GetValues<Ei.Contract.Types.PlayerGrade>()
                     .ToDictionary(g => g, g => latestSeason.GetMaxPeCxp(g));
             var seasonPEByEggIncId = new Dictionary<string, (int Earned, int Max)>();
@@ -140,7 +132,7 @@ namespace EGG9000.Site.Controllers {
                         missing.Add(new MissingSeasonalPe(info.Name, totalCxp, goal.Cxp, goal.PeAmount, info.StartTime));
                 }
                 seasonPEByEggIncId[id] = (Earned: earned, Max: max);
-                missingSeasonalPEByEggIncId[id] = missing.OrderBy(m => m.StartTime).ToList();
+                missingSeasonalPEByEggIncId[id] = [.. missing.OrderBy(m => m.StartTime)];
             }
 
             var dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
@@ -382,15 +374,15 @@ namespace EGG9000.Site.Controllers {
             var contract = await _db.Contracts.FirstOrDefaultAsync(x => x.ID == m.ContractId);
             if(contract is null) return NotFound();
 
-            var (season, seasonProgresses) = await Common.Contracts.OrganizeCoops.LoadContractSeasonData(_db, contract, new List<DBUser> { dbuser });
+            var (season, seasonProgresses) = await Common.Contracts.OrganizeCoops.LoadContractSeasonData(_db, contract, [dbuser]);
 
             var latest = await _db.UserCsHistoryEntries
                 .Where(h => h.EggIncId == account.Id && h.ContractIdentifier == contract.ID)
                 .OrderByDescending(h => h.Created)
                 .FirstOrDefaultAsync();
 
-            var contractFacts = Common.Contracts.Assignment.ContractFactsBuilder.Build(contract, season);
-            var accountFacts = Common.Contracts.Assignment.AccountFactsBuilder.Build(dbuser, account, contract, new List<Coop>(), latest, season, seasonProgresses);
+            var contractFacts = Common.Contracts.Assignment.Facts.ContractFactsBuilder.Build(contract, season);
+            var accountFacts = Common.Contracts.Assignment.Facts.AccountFactsBuilder.Build(dbuser, account, contract, [], latest, season, seasonProgresses);
 
             // Only means anything under YesOtherAccountMatch; on any other redo mode nothing reads the flag.
             var siblingMatchApplies = m.SimulateSiblingAssigned
@@ -443,7 +435,7 @@ namespace EGG9000.Site.Controllers {
                     .Where(f =>
                         f.PEPossible > 0 && f.PEGained < f.PEPossible
                     )
-                    .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))
+                    .Select(f => contracts.FirstOrDefault(c => c.ID.Equals(f.ContractId, StringComparison.CurrentCultureIgnoreCase)))
                     .Concat(contracts.Where(c => c.Details.GetPossiblePE() > 0 && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
                     .Where(x => x is not null)
                     .ToList()

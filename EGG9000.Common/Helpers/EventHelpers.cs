@@ -1,16 +1,16 @@
-﻿using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using System.IO;
-using SixLabors.ImageSharp;
+using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public static class EventHelpers {
@@ -52,7 +52,7 @@ namespace EGG9000.Common.Helpers {
             return "EventCustomizationCache:" + g.Id.ToString();
         }
 
-        public static async Task <Image> GetEventImageAsync(this ApplicationDbContext db, Event customEvent) {
+        public static async Task<Image> GetEventImageAsync(this ApplicationDbContext db, Event customEvent) {
             var eventKey = $"{customEvent.Type.ToLowerInvariant()}-U:{customEvent.CcOnly}";
             if(!db._cache.TryGetValue(eventKey, out Image image)) {
                 image = await GenerateEventImageAsync(customEvent);

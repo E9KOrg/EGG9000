@@ -7,18 +7,11 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
-    public class GenerateRecoveryCodesModel : PageModel
-    {
-        private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ILogger<GenerateRecoveryCodesModel> _logger;
-
-        public GenerateRecoveryCodesModel(
-            UserManager<ApplicationUser> userManager,
-            ILogger<GenerateRecoveryCodesModel> logger)
-        {
-            _userManager = userManager;
-            _logger = logger;
-        }
+    public class GenerateRecoveryCodesModel(
+        UserManager<ApplicationUser> userManager,
+        ILogger<GenerateRecoveryCodesModel> logger) : PageModel {
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
+        private readonly ILogger<GenerateRecoveryCodesModel> _logger = logger;
 
         [TempData]
         public string[] RecoveryCodes { get; set; }
@@ -26,17 +19,14 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
         [TempData]
         public string StatusMessage { get; set; }
 
-        public async Task<IActionResult> OnGetAsync()
-        {
+        public async Task<IActionResult> OnGetAsync() {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
+            if(user == null) {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
             var isTwoFactorEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
-            if (!isTwoFactorEnabled)
-            {
+            if(!isTwoFactorEnabled) {
                 var userId = await _userManager.GetUserIdAsync(user);
                 throw new InvalidOperationException($"Cannot generate recovery codes for user with ID '{userId}' because they do not have 2FA enabled.");
             }
@@ -44,23 +34,20 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
-        {
+        public async Task<IActionResult> OnPostAsync() {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
+            if(user == null) {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
             var isTwoFactorEnabled = await _userManager.GetTwoFactorEnabledAsync(user);
             var userId = await _userManager.GetUserIdAsync(user);
-            if (!isTwoFactorEnabled)
-            {
+            if(!isTwoFactorEnabled) {
                 throw new InvalidOperationException($"Cannot generate recovery codes for user with ID '{userId}' as they do not have 2FA enabled.");
             }
 
             var recoveryCodes = await _userManager.GenerateNewTwoFactorRecoveryCodesAsync(user, 10);
-            RecoveryCodes = recoveryCodes.ToArray();
+            RecoveryCodes = [.. recoveryCodes];
 
             _logger.LogInformation("User with ID '{UserId}' has generated new 2FA recovery codes.", userId);
             StatusMessage = "You have generated new recovery codes.";

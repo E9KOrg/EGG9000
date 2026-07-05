@@ -1,4 +1,5 @@
 using EGG9000.Common.Contracts.Assignment;
+using EGG9000.Common.Contracts.Assignment.Rules;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

@@ -17,8 +17,9 @@ namespace EGG9000.Test.Assignment {
 
         // Builds a SeasonInfo whose GoalsJson is the JSON of Dictionary<int, List<SeasonPeGoal>> keyed by
         // (int)PlayerGrade, matching the prod serialization shape.
-        private static SeasonInfo Season(IDictionary<int, List<SeasonPeGoal>> goals) =>
-            new() { Id = SeasonId, GoalsJson = JsonConvert.SerializeObject(goals) };
+        private static SeasonInfo Season(IDictionary<int, List<SeasonPeGoal>> goals) {
+            return new() { Id = SeasonId, GoalsJson = JsonConvert.SerializeObject(goals) };
+        }
 
         private static SeasonInfo GradeCSeason(params (double cxp, int pe)[] goals) {
             var list = new List<SeasonPeGoal>();
@@ -27,8 +28,9 @@ namespace EGG9000.Test.Assignment {
             return Season(new Dictionary<int, List<SeasonPeGoal>> { [(int)G.GradeC] = list });
         }
 
-        private static List<UserSeasonProgress> Progress(double totalCxp, int startingGrade) =>
-            new() { new UserSeasonProgress { EggIncId = AccountId, SeasonId = SeasonId, TotalCxp = totalCxp, StartingGrade = startingGrade } };
+        private static List<UserSeasonProgress> Progress(double totalCxp, int startingGrade) {
+            return [new UserSeasonProgress { EggIncId = AccountId, SeasonId = SeasonId, TotalCxp = totalCxp, StartingGrade = startingGrade }];
+        }
 
         [TestMethod]
         [TestCategory("Unit")]
@@ -41,7 +43,7 @@ namespace EGG9000.Test.Assignment {
         public void NoGoalsForGrade_CountsAsMissing() {
             // Season has goals only for GradeB; the account is GradeC -> maxPe 0 -> missing.
             var season = Season(new Dictionary<int, List<SeasonPeGoal>> {
-                [(int)G.GradeB] = new() { new SeasonPeGoal { Cxp = 100, PeAmount = 5 } }
+                [(int)G.GradeB] = [new SeasonPeGoal { Cxp = 100, PeAmount = 5 }]
             });
             Assert.IsTrue(SeasonalPeProgress.IsMissing(AccountId, G.GradeC, season, null));
         }

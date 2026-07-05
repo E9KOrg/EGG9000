@@ -1,4 +1,5 @@
 using EGG9000.Common.Contracts.Assignment;
+using EGG9000.Common.Contracts.Assignment.Rules;
 using EGG9000.Common.Helpers;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -6,8 +7,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace EGG9000.Test.Assignment {
     [TestClass]
     public class SeasonalRuleTests {
-        private static AssignmentSettings With(SeasonalMode mode, double goal = 0, bool after = false) =>
-            new() { Seasonal = new SeasonalRule { Mode = mode, CsGoal = goal, RewardFilterAfter = after } };
+        private static AssignmentSettings With(SeasonalMode mode, double goal = 0, bool after = false) {
+            return new() { Seasonal = new SeasonalRule { Mode = mode, CsGoal = goal, RewardFilterAfter = after } };
+        }
 
         [TestMethod]
         [TestCategory("Unit")]

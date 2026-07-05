@@ -1,5 +1,7 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.AfxSets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -18,8 +20,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Helpers.AfxSets;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 
 namespace EGG9000.Site.Controllers {

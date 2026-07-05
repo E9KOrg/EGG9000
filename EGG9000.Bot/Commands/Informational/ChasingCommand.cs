@@ -3,7 +3,6 @@ using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
-using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -15,10 +14,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     public class ChasingModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
 
@@ -99,16 +98,16 @@ namespace EGG9000.Bot.Commands {
 
 #if DEV9002
 #else
-            accounts = accounts.Where(x => x.Account.Active).ToList();
+            accounts = [.. accounts.Where(x => x.Account.Active)];
 #endif
             var unit = "";
             switch(parameter) {
                 case ChasingParameters.EB:
-                    accounts = [..accounts.OrderByDescending(x => x.Backup.EarningsBonus)];
+                    accounts = [.. accounts.OrderByDescending(x => x.Backup.EarningsBonus)];
                     unit = "EB";
                     break;
                 case ChasingParameters.SE:
-                    accounts = [..accounts.OrderByDescending(x => x.Backup.SoulEggs)];
+                    accounts = [.. accounts.OrderByDescending(x => x.Backup.SoulEggs)];
                     unit = "SE";
                     break;
             }

@@ -1,7 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Contracts {
-    public static class PlayerGradeDetails {
+    public static partial class PlayerGradeDetails {
         public static string GetEmoji(uint league) {
             return GetEmoji((Ei.Contract.Types.PlayerGrade)league);
         }
@@ -32,7 +32,7 @@ namespace EGG9000.Common.Contracts {
         }
         public static string GetImage(Ei.Contract.Types.PlayerGrade grade) {
             var emoji = GetEmoji(grade);
-            var rgx = new Regex(@":(\d+)>");
+            var rgx = MyRegex();
             var id = rgx.Match(emoji).Groups[1];
             return $"https://cdn.discordapp.com/emojis/{id}.png?v=1";
         }
@@ -51,5 +51,8 @@ namespace EGG9000.Common.Contracts {
         public static Ei.Contract.Types.PlayerGrade GetGradeFromLeague(uint league) {
             return (Ei.Contract.Types.PlayerGrade)league;
         }
+
+        [GeneratedRegex(@":(\d+)>")]
+        private static partial Regex MyRegex();
     }
 }

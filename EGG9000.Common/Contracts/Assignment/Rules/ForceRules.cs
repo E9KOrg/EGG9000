@@ -1,4 +1,6 @@
-namespace EGG9000.Common.Contracts.Assignment {
+using EGG9000.Common.Contracts.Assignment;
+
+namespace EGG9000.Common.Contracts.Assignment.Rules {
     public sealed class ColleggtibleForceRule : IAssignmentRule {
         public AssignmentRuleId Id => AssignmentRuleId.MissingColleggtible;
         public RuleTier Tier => RuleTier.Force;

@@ -1,4 +1,4 @@
-﻿using EGG9000.Bot;
+﻿using EGG9000.Common.Helpers;
 using Humanizer;
 using System;
 using System.Collections.Generic;
@@ -25,7 +25,7 @@ namespace Ei {
                 if(_participants != null)
                     return _participants;
                 _participants = [];
-                if (Contributors == null || Contributors.Count == 0) {
+                if(Contributors == null || Contributors.Count == 0) {
                     return _participants;
                 }
                 foreach(var p in Contributors) {

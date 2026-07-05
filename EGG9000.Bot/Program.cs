@@ -13,8 +13,7 @@ using System;
 var logger = LogManager.Setup().GetCurrentClassLogger();
 logger.Log(NLog.LogLevel.Info, "Main Start");
 
-try
-{
+try {
 #if DEBUG
     var machineName = $"{Environment.MachineName}_debug";
 #else
@@ -51,9 +50,7 @@ try
 #endif
 
     await host.RunAsync();
-}
-catch (Exception ex)
-{
+} catch(Exception ex) {
     logger.Error(ex, "Fatal error during startup");
     LogManager.Shutdown();
     throw;

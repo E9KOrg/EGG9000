@@ -1,11 +1,11 @@
 using Discord;
 using Discord.Interactions;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.JsonData.EiAfxConfig;
 using EGG9000.Common.Services;
 using Ei;
@@ -22,7 +22,7 @@ using static EGG9000.Common.Helpers.ArtifactHelpers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.MissionInfo.Types;
 
-namespace EGG9000.Bot.Commands {
+namespace EGG9000.Bot.Commands.Informational {
     [Group("formulae", "Game formula calculators (MER, LLC, EB)")]
     [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
     public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
@@ -134,7 +134,7 @@ namespace EGG9000.Bot.Commands {
             foreach(var account in dbUser.EggIncAccounts.Where(x => x.Backup is not null)) {
                 var embed = await LLCCalculate(account, dbUser.DiscordUsername, _cache, _logger);
                 var newBuilder = embed.ToEmbedBuilder();
-                newBuilder.Title = $"**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})** {(string.IsNullOrWhiteSpace(embed.Title) ? "" : " " )}" + embed.Title;
+                newBuilder.Title = $"**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})** {(string.IsNullOrWhiteSpace(embed.Title) ? "" : " ")}" + embed.Title;
                 embed = newBuilder.Build();
                 embeds.Add(embed);
             }
@@ -254,7 +254,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("eb", "Calculate the EB% based on SE and PE inputs")]
-        public async Task Eb([Summary("se", "SE")] string SE, [Summary("pe", "PE")] [MinValue(0)] int PE) {
+        public async Task Eb([Summary("se", "SE")] string SE, [Summary("pe", "PE")][MinValue(0)] int PE) {
             await Context.Interaction.RespondAsyncGettingMessage("Calculating...");
 
             double seValue;

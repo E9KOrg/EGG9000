@@ -58,7 +58,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public TimeSpan ContractTime {
             get {
-                if (length_seconds == 0) {
+                if(length_seconds == 0) {
                     return TimeSpan.FromSeconds(P7);
                 }
                 return TimeSpan.FromSeconds(length_seconds);

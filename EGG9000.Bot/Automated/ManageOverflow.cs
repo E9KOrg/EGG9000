@@ -1,9 +1,9 @@
 ﻿using Discord;
 using Discord.Net;
 using Discord.WebSocket;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -125,7 +125,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
 
-               foreach(var u in onlyMainWithoutRole) {
+                foreach(var u in onlyMainWithoutRole) {
                     await WaitOnCoopsBeingCreated(cancellationToken);
                     if(cancellationToken.IsCancellationRequested) {
                         break;
@@ -263,7 +263,7 @@ namespace EGG9000.Bot.Automated {
                             /**
                              * Can't sync role icons as the overflows aren't boosted
                              */
-                        }, new RequestOptions() { RetryMode = RetryMode.RetryRatelimit});
+                        }, new RequestOptions() { RetryMode = RetryMode.RetryRatelimit });
                     } catch(Exception) {
                     }
                 }
@@ -334,7 +334,7 @@ namespace EGG9000.Bot.Automated {
                             string.Join(",", neededRoles.Select(x => x.Name)), overflowUser.GetCleanName(), overflowServer.Name);
                         await overflowUser.AddRolesAsync(neededRoles);
                     }
-                   if(removeRoles.Count > 0) {
+                    if(removeRoles.Count > 0) {
                         _logger.LogInformation("Removing overflow roles ({roles}) to {user}", string.Join(",", removeRoles.Select(x => x.Name)), overflowUser.GetCleanName());
                         await overflowUser.RemoveRolesAsync(removeRoles);
                     }

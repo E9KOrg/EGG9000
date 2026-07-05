@@ -1,8 +1,6 @@
-using System.Linq;
-
-using EGG9000.Bot.Helpers;
-
+using EGG9000.Common.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 
 namespace EGG9000.Test {
     [TestClass]
@@ -10,7 +8,7 @@ namespace EGG9000.Test {
         [TestMethod]
         public void Registry_has_52_ranks_ordered_by_oom() {
             Assert.HasCount(52, RankRegistry.All);
-            for(int i = 0; i < 52; i++) Assert.AreEqual(i, RankRegistry.All[i].Oom);
+            for(var i = 0; i < 52; i++) Assert.AreEqual(i, RankRegistry.All[i].Oom);
         }
 
         [TestMethod]

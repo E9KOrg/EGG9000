@@ -1,12 +1,10 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -17,7 +15,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordExtensions;
 using Contract = EGG9000.Common.Database.Entities.Contract;
@@ -86,14 +84,14 @@ namespace EGG9000.Bot.Automated {
                             emote = await _client.CreateCustomEggEmoji(updatedEgg, emote);
                             if(emote != null) existingEgg.GuildEmote = emote;
                         }
-                        existingEgg.Modifiers = updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b)).ToList();
+                        existingEgg.Modifiers = [.. updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b))];
                         existingEgg.Icon = new(updatedEgg.Icon);
                         dbNeedsUpdate = true;
                     }
                 }
 
                 // If any eggs were previously "un-released" (didn't have a GuildContract in the db)
-                var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.ToLower() == "customegg").ToListAsync(cancellationToken))
+                var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.Equals("customegg", StringComparison.CurrentCultureIgnoreCase)).ToListAsync(cancellationToken))
                     .Select(x => x.Details.CustomEggId.ToLower()).Distinct();
                 var newlyReleasedEggs = dbCustomEggs.Where(de => !de.Released && dbContractEggs.Contains(de.Identifier.ToLower()));
                 if(newlyReleasedEggs.Any()) {
@@ -186,13 +184,13 @@ namespace EGG9000.Bot.Automated {
 
                 // Upsert all season definitions (self-heals past seasons)
                 var (seasonInfos, seasonInfosError) = await EggIncApi.GetSeasonInfosAsync();
-                if (seasonInfos == null) {
+                if(seasonInfos == null) {
                     _logger.LogWarning("Failed to fetch season infos: {error}", seasonInfosError);
                 } else {
-                    foreach (var proto in seasonInfos.Infos.Where(SeasonInfo.HasPeRewards)) {
+                    foreach(var proto in seasonInfos.Infos.Where(SeasonInfo.HasPeRewards)) {
                         var newInfo = SeasonInfo.FromProto(proto);
                         var existingSeason = await _db.SeasonInfos.FindAsync(proto.Id);
-                        if (existingSeason == null) {
+                        if(existingSeason == null) {
                             _db.SeasonInfos.Add(newInfo);
                             _logger.LogInformation("New season {seasonId} added to DB", proto.Id);
                         } else {

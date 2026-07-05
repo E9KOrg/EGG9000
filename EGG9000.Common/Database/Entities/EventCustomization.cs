@@ -4,8 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EGG9000.Common.Database.Entities {
-    public class EventCustomization
-    {
+    public class EventCustomization {
         [Key]
         public string Type { get; set; }
 
@@ -18,10 +17,8 @@ namespace EGG9000.Common.Database.Entities {
 
         public string _settings { get; set; }
         [NotMapped]
-        public EventCustomizationSettings Settings
-        {
-            get
-            {
+        public EventCustomizationSettings Settings {
+            get {
                 return JsonConvert.DeserializeObject<EventCustomizationSettings>(_settings ?? "{}");
             }
             set {
@@ -30,13 +27,11 @@ namespace EGG9000.Common.Database.Entities {
         }
     }
 
-    public class EventCustomizationSettings
-    {
+    public class EventCustomizationSettings {
         public List<EventNotification> Notifications { get; set; }
     }
 
-    public class EventNotification
-    {
+    public class EventNotification {
         public ulong GuildID { get; set; }
         public decimal MinValue { get; set; }
         public ulong RoleID { get; set; }

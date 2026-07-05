@@ -2,14 +2,11 @@
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     /// <inheritdoc />
-    public partial class AddApiKeyRequestLogEndpoint : Migration
-    {
+    public partial class AddApiKeyRequestLogEndpoint : Migration {
         /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
+        protected override void Up(MigrationBuilder migrationBuilder) {
             migrationBuilder.AddColumn<string>(
                 name: "Endpoint",
                 table: "ApiKeyRequestLogs",
@@ -18,8 +15,7 @@ namespace EGG9000.Common.Migrations
         }
 
         /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
+        protected override void Down(MigrationBuilder migrationBuilder) {
             migrationBuilder.DropColumn(
                 name: "Endpoint",
                 table: "ApiKeyRequestLogs");

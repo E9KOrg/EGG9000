@@ -5,7 +5,7 @@ using System.IO;
 
 namespace EGG9000.Common.Helpers.Discord {
     public class EmbedHelpers {
-        
+
         public enum EmbedType {
             Success = 0,
             InProgress = 1,
@@ -15,7 +15,7 @@ namespace EGG9000.Common.Helpers.Discord {
             InternalError = 5,
         }
 
-        
+
         public static Embed EmbedInProgress(string text) {
             return new EmbedBuilder().WithColor(Color.Blue).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Please wait...").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }
@@ -23,7 +23,7 @@ namespace EGG9000.Common.Helpers.Discord {
         public static Embed EmbedAlert(string text) {
             return new EmbedBuilder().WithColor(Color.Orange).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Alert").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }
-        
+
         public static Embed EmbedSuccess(string text) {
             return new EmbedBuilder().WithColor(Color.Green).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Success").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
         }
@@ -41,8 +41,8 @@ namespace EGG9000.Common.Helpers.Discord {
         }
 
         public static Embed EmbedExceptionFrame(Exception e) {
-            foreach(var frame in new StackTrace(e, true).GetFrames() ?? Array.Empty<StackFrame>()) {
-                if (frame.GetFileLineNumber() > 0) {
+            foreach(var frame in new StackTrace(e, true).GetFrames() ?? []) {
+                if(frame.GetFileLineNumber() > 0) {
                     return EmbedInternalError(
                         $"**Message**:\n{e.Message}\n\n" +
                         $"**Frame info**:\n\t" +

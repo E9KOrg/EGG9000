@@ -1,22 +1,21 @@
-using Discord.WebSocket;
 using Discord;
 using Discord.Interactions;
+using Discord.WebSocket;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using static EGG9000.Common.Helpers.FAQHelper;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
-using EGG9000.Common.Database.Entities;
-using Microsoft.EntityFrameworkCore;
-using EGG9000.Common.Helpers.Discord;
-using EGG9000.Common.Helpers;
-using System;
-using EGG9000.Bot.Helpers;
 using System.Text.RegularExpressions;
-using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
+using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.FAQHelper;
 
 namespace EGG9000.Bot.Commands {
     public static class FAQCommandSlash {
@@ -93,7 +92,7 @@ namespace EGG9000.Bot.Commands {
 
             var informationText = await MessageFormatter.FormatAsync(currentItem.Explanation, _client, guildId);
 
-            if (informationText.Length >= 1024) {
+            if(informationText.Length >= 1024) {
                 informationText = string.Concat(informationText.AsSpan(0, 950), "...\n\n**_(Topic was cut-off due to Discord's `1024` character limit)_**");
             }
             embedBuilder.AddField("Information", informationText);

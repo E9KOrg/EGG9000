@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 
-namespace EGG9000.Bot {
+namespace EGG9000.Bot.Services {
     public static class AssemblyExtensions {
         // GetExportedTypes() throws hard if any exported type fails to load (e.g. a
         // third-party assembly compiled against a different dependency ABI). Reflection

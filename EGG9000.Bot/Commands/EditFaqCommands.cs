@@ -182,7 +182,7 @@ namespace EGG9000.Bot.Commands {
             var (color, colorError) = EditFaqValidation.NormalizeColor(form.Color);
             var error = kwError ?? colorError;
 
-            string section = "list";
+            var section = "list";
             string detailId = null;
 
             if(error is null) {
@@ -217,7 +217,11 @@ namespace EGG9000.Bot.Commands {
     }
 
     public class FaqTopicModal : IModal {
-        public string Title => "FAQ Topic";
+        public string Title {
+            get {
+                return "FAQ Topic";
+            }
+        }
 
         [InputLabel("Name")]
         [ModalTextInput("name", maxLength: 100)]

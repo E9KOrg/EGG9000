@@ -1,48 +1,43 @@
 ﻿using Discord;
 using Discord.Net;
 using Discord.WebSocket;
-
+using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
-using static EGG9000.Common.Helpers.CreateCoopsV2;
-
 using Humanizer;
-
+using MassTransit;
 using MassTransit.Initializers;
+using MassTransit.Internals;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using Newtonsoft.Json;
-
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
+using static EGG9000.Common.Helpers.CreateCoopsV2;
 using static EGG9000.Common.Helpers.Prefarm;
-using System.Collections.Concurrent;
-using MassTransit.Internals;
-using Microsoft.Extensions.Caching.Memory;
 using static Ei.Contract.Types;
-using EGG9000.Bot.Services;
-using EGG9000.Common.EggIncAPI;
-using MassTransit;
-using EGG9000.Common.Factories;
 
 namespace EGG9000.Bot.Automated.Coops {
     public class CreateCoopThreads(IServiceProvider provider, ThreadsCoopStatusUpdater threadsCoopStatusUpdater, BotLogger botLogger) : _UpdaterBase<CreateCoopThreads>(TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(0), provider) {
-        private ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
-        private BotLogger _botLogger = botLogger;
+        private readonly ThreadsCoopStatusUpdater _threadsCoopStatusUpdater = threadsCoopStatusUpdater;
+        private readonly BotLogger _botLogger = botLogger;
         private const double THREAD_CREATION_DELAY_MS = 6050;
 
-        private readonly Dictionary<string, int> CoopsTimeoutCounter = new();
+        private readonly Dictionary<string, int> CoopsTimeoutCounter = [];
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
@@ -56,7 +51,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             var dbguilds = _db.CachedGuilds.ToList();
 
-            Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats = new();
+            Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats = [];
 
             while(
                 (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnThread).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
@@ -192,7 +187,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                             var m3 = await capturedThread.SendMessageAsync("\u17B5");
                                             var m4 = await capturedThread.SendMessageAsync("\u17B5");
                                             var m5 = await capturedThread.SendMessageAsync("\u17B5");
-                                            return new List<ulong> { m1.Id, m2.Id, m3.Id, m4.Id, m5.Id };
+                                            return [m1.Id, m2.Id, m3.Id, m4.Id, m5.Id];
                                         });
                                         coopToUpdate.UpdateMessagesId = JsonConvert.SerializeObject(msgIds);
                                         await db2.SaveChangesAsyncRetry(cancellationToken: cancellationToken);
@@ -295,8 +290,8 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public class HeaderChannelsForGuild {
             public ulong GuildId { get; set; }
-            public List<ServerHeaderChannel> HeaderChannels = new();
-            public List<LastAccessedByServer> LastAccessed = new();
+            public List<ServerHeaderChannel> HeaderChannels = [];
+            public List<LastAccessedByServer> LastAccessed = [];
         }
 
         public class ServerHeaderChannel {
@@ -311,7 +306,7 @@ namespace EGG9000.Bot.Automated.Coops {
             public DateTimeOffset LastAccessed { get; set; }
         }
 
-        object __headerChannelLock = new object();
+        private readonly object __headerChannelLock = new();
         private async Task<SocketGuildChannel> GetHeaderChannelAndWait(List<HeaderChannelsForGuild> headerChannels, Coop coop) {
             SocketGuildChannel headerChannel;
             DateTimeOffset lastAccessed;
@@ -334,7 +329,7 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private async Task<List<HeaderChannelsForGuild>> GetOrCreateHeaderChannelsForCoops(ApplicationDbContext db, List<Coop> coops, List<Guild> guilds, List<GuildContract> guildContracts) {
-            List<HeaderChannelsForGuild> headerChannelsForGuilds = new();
+            List<HeaderChannelsForGuild> headerChannelsForGuilds = [];
             foreach(var guild in guilds) {
                 HeaderChannelsForGuild headerChannelsForGuild = new HeaderChannelsForGuild { GuildId = guild.Id };
                 headerChannelsForGuilds.Add(headerChannelsForGuild);
@@ -362,7 +357,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     } else {
                         var headerChannel = await GetOrCreateHeaderChannel(db, contractGroup.Key.League, mainServer, mainServer, guildContract);
-                        headerChannelsForGuild.HeaderChannels.Add(new ServerHeaderChannel { ContractId = contractGroup.Key.ContractID, HeaderChannel = headerChannel, ServerId = mainServer.Id, League = contractGroup.Key.League});
+                        headerChannelsForGuild.HeaderChannels.Add(new ServerHeaderChannel { ContractId = contractGroup.Key.ContractID, HeaderChannel = headerChannel, ServerId = mainServer.Id, League = contractGroup.Key.League });
                     }
                 }
             }
@@ -455,7 +450,7 @@ namespace EGG9000.Bot.Automated.Coops {
             private List<CoopCategories> CoopCategories { get; set; }
             public async Task<List<CoopCategories>> GetCoopCategories(DiscordHostedService discord) {
                 if(Guild == null) return null;
-                CoopCategories ??= (await discord.GetAllCoopCategories(Guild)).Select(x => new CoopCategories(Guild, x)).ToList();
+                CoopCategories ??= [.. (await discord.GetAllCoopCategories(Guild)).Select(x => new CoopCategories(Guild, x))];
                 return CoopCategories;
             }
         }

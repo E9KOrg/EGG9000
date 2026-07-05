@@ -1,7 +1,7 @@
 ﻿using CsvHelper;
 
-using EGG9000.Bot;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 
 using Newtonsoft.Json;
 
@@ -48,7 +48,7 @@ namespace EGG9000.Common.JsonData {
                         if(int.TryParse(record.Tier, out int tier)) {
                             var researchItem = data.FirstOrDefault(r => r.Tier == tier && r.Name.Equals(record.Name, StringComparison.OrdinalIgnoreCase));
                             if(researchItem != null) {
-                                if(researchItem.EoVPrices == null) researchItem.EoVPrices = new List<double>();
+                                if(researchItem.EoVPrices == null) researchItem.EoVPrices = [];
                                 // Ensure the list is large enough
                                 while(researchItem.EoVPrices.Count < int.Parse(record.Level)) {
                                     researchItem.EoVPrices.Add(0);
@@ -57,7 +57,7 @@ namespace EGG9000.Common.JsonData {
                                 if(existing != null) {
                                     researchItem.EoVPrices[int.Parse(record.Level) - 1] = existing.Cost;
                                     continue;
-                                } 
+                                }
                                 if(record.CostRaw == "") {
                                     researchItem.EoVPrices[int.Parse(record.Level) - 1] = -1;
                                 } else {

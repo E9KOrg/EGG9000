@@ -647,7 +647,7 @@ namespace EGG9000.Bot.Commands {
             var isNum = double.TryParse(
                 numText.EndsWith("k") ? numText[..^1] : numText,
                 out var num);
-            if (isNum && numText.EndsWith("k")) num *= 1000;
+            if(isNum && numText.EndsWith("k")) num *= 1000;
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
@@ -657,7 +657,7 @@ namespace EGG9000.Bot.Commands {
             var floor = SeasonalRule.CsGoalFloor(account.GetGrade());
             var peExample = await ContractSettingsCommands.LatestSeasonPeExample(Db, account);
 
-            if (!isNum || num < 0) {
+            if(!isNum || num < 0) {
                 var errMsg = $"⚠️ `{numText}` not accepted - enter a number (e.g. `{floor:N0}` or `{(floor / 1000):N0}k`)";
                 var embed = ContractSettingsCommands.SeasonalEmbed(dbuser, account, peExample).AddField("ERROR", errMsg).WithColor(Color.Red).Build();
                 var components = new ComponentBuilder()
@@ -673,7 +673,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser.UpdateAccounts();
                 await Db.SaveChangesAsync();
                 var embed = ContractSettingsCommands.SeasonalEmbed(dbuser, account, peExample);
-                if (clamped > num)
+                if(clamped > num)
                     embed.AddField("Adjusted", $"Minimum CS goal for grade {account.GetGrade().ToString().Replace("Grade", "")} is `{floor:N0}`. Set to `{clamped:N0}`.");
                 await modal.UpdateAsync(x => { x.Components = ContractSettingsCommands.GetSeasonalComponents(index, account, dbuser); x.Embed = embed.Build(); });
             }
@@ -844,7 +844,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var reg = dbuser.EggIncAccounts[index];
 
-            reg.Assignment.RewardFilter = component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x)).ToList();
+            reg.Assignment.RewardFilter = [.. component.Data.Values.Select(x => (Ei.RewardType)Enum.Parse(typeof(Ei.RewardType), x))];
             if(reg.Assignment.RewardFilter.Any(x => x == Ei.RewardType.UnknownReward)) {
                 reg.Assignment.RewardFilter = [];
             }

@@ -1,4 +1,5 @@
 using EGG9000.Common.Contracts.Assignment;
+using EGG9000.Common.Contracts.Assignment.Rules;
 using EGG9000.Common.Helpers;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -10,8 +11,9 @@ using G = Ei.Contract.Types.PlayerGrade;
 namespace EGG9000.Test.Assignment {
     [TestClass]
     public class IncludeRuleTests {
-        private static GradeRewardFacts Grade(params Ei.RewardType[] rewards) =>
-            new() { GoalRewards = new List<Ei.RewardType>(rewards) };
+        private static GradeRewardFacts Grade(params Ei.RewardType[] rewards) {
+            return new() { GoalRewards = [.. rewards] };
+        }
 
         // RewardMatch -------------------------------------------------------
 
@@ -19,14 +21,14 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void RewardMatch_EmptyFilter_AlwaysMatches() {
             Assert.IsTrue(RewardMatch.Matches(Grade(Ei.RewardType.Gold), null, 0));
-            Assert.IsTrue(RewardMatch.Matches(Grade(Ei.RewardType.Gold), new List<Ei.RewardType>(), 0));
+            Assert.IsTrue(RewardMatch.Matches(Grade(Ei.RewardType.Gold), [], 0));
         }
 
         [TestMethod]
         [TestCategory("Unit")]
         public void RewardMatch_ArtifactAliasesArtifactCase() {
             var grade = Grade(Ei.RewardType.ArtifactCase);
-            Assert.IsTrue(RewardMatch.Matches(grade, new List<Ei.RewardType> { Ei.RewardType.Artifact }, 0));
+            Assert.IsTrue(RewardMatch.Matches(grade, [Ei.RewardType.Artifact], 0));
         }
 
         [TestMethod]
@@ -51,7 +53,7 @@ namespace EGG9000.Test.Assignment {
         [TestMethod]
         [TestCategory("Unit")]
         public void RewardMatch_NoAlias_NoMatch() {
-            Assert.IsFalse(RewardMatch.Matches(Grade(Ei.RewardType.Cash), new List<Ei.RewardType> { Ei.RewardType.Gold }, 0));
+            Assert.IsFalse(RewardMatch.Matches(Grade(Ei.RewardType.Cash), [Ei.RewardType.Gold], 0));
         }
 
         [TestMethod]
@@ -87,9 +89,9 @@ namespace EGG9000.Test.Assignment {
             var facts = TestFactsBuilder.Account().Grade(G.GradeC).Build();
 
             Assert.AreEqual(RuleOutcome.Exclude,
-                rule.Evaluate(facts, contract, new AssignmentSettings { RewardFilter = new() { Ei.RewardType.Artifact } }));
+                rule.Evaluate(facts, contract, new AssignmentSettings { RewardFilter = [Ei.RewardType.Artifact] }));
             Assert.AreEqual(RuleOutcome.Pass,
-                rule.Evaluate(facts, contract, new AssignmentSettings { RewardFilter = new() { Ei.RewardType.Gold } }));
+                rule.Evaluate(facts, contract, new AssignmentSettings { RewardFilter = [Ei.RewardType.Gold] }));
             Assert.AreEqual(RuleOutcome.Pass,
                 rule.Evaluate(facts, contract, new AssignmentSettings()));
         }
@@ -99,7 +101,7 @@ namespace EGG9000.Test.Assignment {
         public void RewardFilter_PeMatchesNonSeasonal_IgnoredOnSeasonal() {
             var rule = new RewardFilterRule();
             var facts = TestFactsBuilder.Account().Grade(G.GradeC).Build();
-            var peOnly = new AssignmentSettings { RewardFilter = new() { Ei.RewardType.EggsOfProphecy } };
+            var peOnly = new AssignmentSettings { RewardFilter = [Ei.RewardType.EggsOfProphecy] };
 
             // Leggacy (non-seasonal) contract with a PE goal: PE in the filter matches.
             var leggacy = TestFactsBuilder.Contract().Seasonal(false).Grade(G.GradeC, Ei.RewardType.EggsOfProphecy).Build();
@@ -111,7 +113,7 @@ namespace EGG9000.Test.Assignment {
             Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(facts, seasonal, peOnly));
 
             // Mixed filter on a seasonal: PE ignored, remaining entries still filter.
-            var mixed = new AssignmentSettings { RewardFilter = new() { Ei.RewardType.EggsOfProphecy, Ei.RewardType.Artifact } };
+            var mixed = new AssignmentSettings { RewardFilter = [Ei.RewardType.EggsOfProphecy, Ei.RewardType.Artifact] };
             var seasonalNoArtifact = TestFactsBuilder.Contract().Seasonal(true).Grade(G.GradeC, Ei.RewardType.EggsOfProphecy, Ei.RewardType.Gold).Build();
             Assert.AreEqual(RuleOutcome.Exclude, rule.Evaluate(facts, seasonalNoArtifact, mixed));
         }
@@ -128,8 +130,9 @@ namespace EGG9000.Test.Assignment {
 
         // PreviouslyCompletedRule -------------------------------------------
 
-        private static AccountFactsTestBuilder Completed() =>
-            TestFactsBuilder.Account().Grade(G.GradeC).PreviouslyCompleted(true);
+        private static AccountFactsTestBuilder Completed() {
+            return TestFactsBuilder.Account().Grade(G.GradeC).PreviouslyCompleted(true);
+        }
 
         [TestMethod]
         [TestCategory("Unit")]
@@ -210,11 +213,13 @@ namespace EGG9000.Test.Assignment {
 
         // 2 -> 3 branch -----------------------------------------------------
 
-        private static AccountFacts TwoOfThree() =>
-            TestFactsBuilder.Account().Grade(G.GradeC).PreviouslyCompleted(false).CompletedExactlyTwoGoals(true).Build();
+        private static AccountFacts TwoOfThree() {
+            return TestFactsBuilder.Account().Grade(G.GradeC).PreviouslyCompleted(false).CompletedExactlyTwoGoals(true).Build();
+        }
 
-        private static ContractFacts ThreeGoalContract(Ei.RewardType third) =>
-            TestFactsBuilder.Contract().HadTwoRewards(true).Grade(G.GradeC, Ei.RewardType.Gold, Ei.RewardType.Cash, third).Build();
+        private static ContractFacts ThreeGoalContract(Ei.RewardType third) {
+            return TestFactsBuilder.Contract().HadTwoRewards(true).Grade(G.GradeC, Ei.RewardType.Gold, Ei.RewardType.Cash, third).Build();
+        }
 
         [TestMethod]
         [TestCategory("Unit")]
@@ -228,7 +233,7 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void TwoToThree_EnabledEmptyFilter_Passes() {
             var rule = new PreviouslyCompletedRule();
-            var s = new AssignmentSettings { TwoToThree = true, RewardFilter = new() };
+            var s = new AssignmentSettings { TwoToThree = true, RewardFilter = [] };
             Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(TwoOfThree(), ThreeGoalContract(Ei.RewardType.Artifact), s));
         }
 
@@ -236,7 +241,7 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void TwoToThree_EnabledThirdRewardInFilter_Passes() {
             var rule = new PreviouslyCompletedRule();
-            var s = new AssignmentSettings { TwoToThree = true, RewardFilter = new() { Ei.RewardType.Artifact } };
+            var s = new AssignmentSettings { TwoToThree = true, RewardFilter = [Ei.RewardType.Artifact] };
             Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(TwoOfThree(), ThreeGoalContract(Ei.RewardType.Artifact), s));
         }
 
@@ -244,7 +249,7 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void TwoToThree_EnabledThirdRewardNotInFilter_Excludes() {
             var rule = new PreviouslyCompletedRule();
-            var s = new AssignmentSettings { TwoToThree = true, RewardFilter = new() { Ei.RewardType.Cash } };
+            var s = new AssignmentSettings { TwoToThree = true, RewardFilter = [Ei.RewardType.Cash] };
             Assert.AreEqual(RuleOutcome.Exclude, rule.Evaluate(TwoOfThree(), ThreeGoalContract(Ei.RewardType.Artifact), s));
         }
 
@@ -252,7 +257,7 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void TwoToThree_PeInFilter_IgnoredOnSeasonal_HonoredOtherwise() {
             var rule = new PreviouslyCompletedRule();
-            var peOnly = new AssignmentSettings { TwoToThree = true, RewardFilter = new() { Ei.RewardType.EggsOfProphecy } };
+            var peOnly = new AssignmentSettings { TwoToThree = true, RewardFilter = [Ei.RewardType.EggsOfProphecy] };
 
             // Non-seasonal 2->3 whose third reward is PE: PE in the filter matches the last goal.
             var nonSeasonalPeLast = TestFactsBuilder.Contract().Seasonal(false).HadTwoRewards(true)
@@ -266,7 +271,7 @@ namespace EGG9000.Test.Assignment {
             Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(TwoOfThree(), seasonalGoldLast, peOnly));
 
             // Seasonal 2->3 with a mixed filter: PE ignored, remaining entries still checked.
-            var mixed = new AssignmentSettings { TwoToThree = true, RewardFilter = new() { Ei.RewardType.EggsOfProphecy, Ei.RewardType.Artifact } };
+            var mixed = new AssignmentSettings { TwoToThree = true, RewardFilter = [Ei.RewardType.EggsOfProphecy, Ei.RewardType.Artifact] };
             Assert.AreEqual(RuleOutcome.Exclude, rule.Evaluate(TwoOfThree(), seasonalGoldLast, mixed));
         }
     }

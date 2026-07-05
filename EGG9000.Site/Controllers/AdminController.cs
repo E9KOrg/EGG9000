@@ -1,21 +1,17 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Consumers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using EGG9000.Site.Services;
-
 using Ei;
-
 using MassTransit;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -24,9 +20,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-
 using Newtonsoft.Json;
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -37,15 +31,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-
 using static Ei.Contract.Types;
-
 using Contract = EGG9000.Common.Database.Entities.Contract;
 using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
-    public class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
+    public partial class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : Controller {
 
         private readonly ApplicationDbContext _db = db;
@@ -71,7 +63,7 @@ namespace EGG9000.Site.Controllers {
             var limited = false;
             if(demerits.Count > count) {
                 limited = true;
-                demerits = demerits.Take(count).ToList();
+                demerits = [.. demerits.Take(count)];
             }
 
             return View((demerits, dbguild.Name, count, limited));
@@ -187,12 +179,12 @@ namespace EGG9000.Site.Controllers {
 
             return View(new IndexViewModel {
                 Contracts = await _db.Contracts.AsQueryable().OrderByDescending(x => x.Created).Take(10).ToListAsync(),
-                Guilds = _discord.Guilds.Where(x => x.Id == guildId || guild.OverflowServers.Contains(x.Id)).OrderBy(x => x.Id).Select(x => new GuildDetails {
+                Guilds = [.. _discord.Guilds.Where(x => x.Id == guildId || guild.OverflowServers.Contains(x.Id)).OrderBy(x => x.Id).Select(x => new GuildDetails {
                     Name = x.Name,
                     ThreadCount = x.GetInUseThreadCount(),
-                    ActiveCoops = x.ThreadChannels.Where(t => !t.IsArchived && Regex.IsMatch(t.ParentChannel?.Name, @"(-aaa|-aa|-a|-b|-c)$")).Count(c => !c.Name.Contains("🏁") && !c.Name.Contains("🚩")),
-                    FinishedCoops = x.ThreadChannels.Where(t => !t.IsArchived && Regex.IsMatch(t.ParentChannel?.Name, @"(-aaa|-aa|-a|-b|-c)$")).Count(c => c.Name.Contains("🏁") || c.Name.Contains("🚩")),
-                }).ToList(),
+                    ActiveCoops = x.ThreadChannels.Where(t => !t.IsArchived && MyRegex().IsMatch(t.ParentChannel?.Name)).Count(c => !c.Name.Contains("🏁") && !c.Name.Contains("🚩")),
+                    FinishedCoops = x.ThreadChannels.Where(t => !t.IsArchived && MyRegex().IsMatch(t.ParentChannel?.Name)).Count(c => c.Name.Contains("🏁") || c.Name.Contains("🚩")),
+                })],
                 Guild = guild,
                 ContractsToScore = contractsToScore,
                 CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.UtcNow)
@@ -385,10 +377,10 @@ namespace EGG9000.Site.Controllers {
                 Logins = await _db.UserLogins.AsQueryable().ToListAsync(),
                 UserRoles = await _db.UserRoles.AsQueryable().ToListAsync(),
                 Roles = await _db.Roles.AsQueryable().ToListAsync(),
-                DbUsers = (await _db.DBUsers.AsQueryable().Select(x => new {
+                DbUsers = [.. (await _db.DBUsers.AsQueryable().Select(x => new {
                     x.DiscordUsername,
                     x.DiscordId
-                }).ToListAsync()).Select(x => new DBUser { DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername }).ToList()
+                }).ToListAsync()).Select(x => new DBUser { DiscordId = x.DiscordId, DiscordUsername = x.DiscordUsername })]
             });
         }
 
@@ -460,7 +452,7 @@ namespace EGG9000.Site.Controllers {
                 Id = x.Id,
             }).ToListAsync();
 
-            slackers = slackers.Where(x => x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold && y.Date > DateTimeOffset.UtcNow.AddMonths(-4))).ToList();
+            slackers = [.. slackers.Where(x => x.UserCoopXrefs.Any(y => y.RunningScore < scoreThreshold && y.Date > DateTimeOffset.UtcNow.AddMonths(-4)))];
 
 
             var ids = slackers.Select(x => x.Id).ToList();
@@ -792,7 +784,7 @@ namespace EGG9000.Site.Controllers {
                 var customName = customNames.FirstOrDefault(y => y.DiscordId == DiscordId);
                 return new EditUserWithDetails {
                     ApplicationUser = x,
-                    IdentityUserRoles = userRoles.Where(y => y.UserId == x.Id).ToList(),
+                    IdentityUserRoles = [.. userRoles.Where(y => y.UserId == x.Id)],
                     DiscordId = DiscordId,
                     CustomCoopName = customName?.CustomCoopName,
                     ExpireCustomCoopName = customName?.ExpireCustomCoopName
@@ -802,7 +794,7 @@ namespace EGG9000.Site.Controllers {
 
 
             return View(new EditUserModel {
-                Users = editUserList.ToList(),
+                Users = [.. editUserList],
                 Roles = roles,
                 DiscordGuilds = [.. _discord.Guilds],
                 DbGuilds = await _db.Guilds.AsQueryable().ToListAsync()
@@ -868,7 +860,7 @@ namespace EGG9000.Site.Controllers {
         // routes to MyFarms.ViewUser must allow them too - the class policy omits that tier.
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> SearchID([FromQuery] string id) {
-            var discordIDRegex = new Regex(@"^\d+$");
+            var discordIDRegex = MyRegex1();
 
             if(discordIDRegex.IsMatch(id.Trim())) {
                 var userWithDiscordId = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId.ToString() == id);
@@ -892,7 +884,7 @@ namespace EGG9000.Site.Controllers {
 
             id = id.ToLower();
             var matchingUsers = users.Where(x =>
-                (x.DiscordUsername ?? "").ToLower().Contains(id) ||
+                (x.DiscordUsername ?? "").Contains(id, StringComparison.CurrentCultureIgnoreCase) ||
                 (x.Usernames ?? "").ToLower().Split(",").Any(u => u.Contains(id))
             ).ToList();
 
@@ -912,7 +904,7 @@ namespace EGG9000.Site.Controllers {
 
             var coopsWithChannels = coops.Select(c => new CoopWithChannels {
                 Coop = c, MainChannel = coopChannels.FirstOrDefault(x => (x.Id == c.ThreadID && c.ThreadID != 0) || (x.Id == c.DiscordChannelId && c.DiscordChannelId != 0)),
-                ExtraChannels = coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList()
+                ExtraChannels = [.. coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase))]
             }).ToList();
 
             return View(coopsWithChannels.Where(x => x.ExtraChannels.Any()).ToList());
@@ -935,7 +927,7 @@ namespace EGG9000.Site.Controllers {
 
             var coopsWithChannels = coops.Select(c => new CoopWithChannels {
                 Coop = c, MainChannel = coopChannels.FirstOrDefault(x => (x.Id == c.ThreadID && c.ThreadID != 0) || (x.Id == c.DiscordChannelId && c.DiscordChannelId != 0)),
-                ExtraChannels = coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase)).ToList()
+                ExtraChannels = [.. coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase))]
             }).ToList();
 
             foreach(var channel in coopsWithChannels.Where(x => x.ExtraChannels.Any()).SelectMany(x => x.ExtraChannels)) {
@@ -1356,7 +1348,7 @@ music
         public async Task<IActionResult> StandardPermit() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var users = await _db.DBUsers.Where(x => x.GuildId == guildId && !x.TempDisabled).ToListAsync();
-            users = users.Where(x => x.EggIncAccounts.Any(y => y.Backup.PermitLevel == 0)).ToList();
+            users = [.. users.Where(x => x.EggIncAccounts.Any(y => y.Backup.PermitLevel == 0))];
 
             var userids = users.Select(x => x.Id).ToArray();
             ViewBag.Demerits = await _db.Demerit.Where(x => userids.Contains(x.UserId)).ToListAsync();
@@ -1492,7 +1484,7 @@ music
             var overflowServers = _discord.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
 
-            var roleMaps = OverflowSyncing.GetRoleMaps(rolesToSync.ToList(), overflowServers);
+            var roleMaps = OverflowSyncing.GetRoleMaps([.. rolesToSync], overflowServers);
             var output = await OverflowSyncing.HandleCommandPermissionSyncsAsync(guild, mainServer, overflowServers, roleMaps, access_token, _configuration.GetConnectionString("Token"));
 
             return Content(output);
@@ -1531,7 +1523,7 @@ music
 
         // Baseline floor prevents a near-zero-traffic key from flagging as a spike off a tiny denominator
         // (e.g. baseline 2 -> today 10 is technically 5x but not meaningfully abusive).
-        internal static bool ComputeIsSpike(int todayCount, double baselineAverage) {
+        static internal bool ComputeIsSpike(int todayCount, double baselineAverage) {
             var effectiveBaseline = Math.Max(baselineAverage, 50);
             return todayCount > effectiveBaseline * 5;
         }
@@ -1655,5 +1647,10 @@ music
 
             return View(new ApiKeyRequestLogViewModel { KeyLabel = key.Label, Entries = entries });
         }
+
+        [GeneratedRegex(@"(-aaa|-aa|-a|-b|-c)$")]
+        private static partial Regex MyRegex();
+        [GeneratedRegex(@"^\d+$")]
+        private static partial Regex MyRegex1();
     }
 }

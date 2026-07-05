@@ -33,11 +33,11 @@ namespace EGG9000.Test.Assignment {
 
             yield return new("reward filter match",
                 Eligible(), goldContract,
-                new AssignmentSettings { RewardFilter = new() { Ei.RewardType.Gold } }, true);
+                new AssignmentSettings { RewardFilter = [Ei.RewardType.Gold] }, true);
 
             yield return new("reward filter no match",
                 Eligible(), goldContract,
-                new AssignmentSettings { RewardFilter = new() { Ei.RewardType.Artifact } }, false);
+                new AssignmentSettings { RewardFilter = [Ei.RewardType.Artifact] }, false);
 
             yield return new("colleggtible force (missing, enabled)",
                 TestFactsBuilder.Account().Grade(G.GradeC).MissingColleggtible(true).Build(),
@@ -92,7 +92,7 @@ namespace EGG9000.Test.Assignment {
             yield return new("2->3 enabled + third reward matches -> assigned",
                 TestFactsBuilder.Account().Grade(G.GradeC).CompletedExactlyTwoGoals(true).Build(),
                 TestFactsBuilder.Contract().HadTwoRewards(true).Grade(G.GradeC, Ei.RewardType.Gold, Ei.RewardType.Cash, Ei.RewardType.Artifact).Build(),
-                new AssignmentSettings { TwoToThree = true, RewardFilter = new() { Ei.RewardType.Artifact } }, true);
+                new AssignmentSettings { TwoToThree = true, RewardFilter = [Ei.RewardType.Artifact] }, true);
         }
 
         [TestMethod]

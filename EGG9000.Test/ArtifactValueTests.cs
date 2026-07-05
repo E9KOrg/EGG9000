@@ -1,11 +1,8 @@
+using EGG9000.Common.Helpers;
+using EGG9000.Common.JsonData;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
-
-using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EiAfxData;
-using EGG9000.Common.JsonData.EiStatics;
-
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test {
     // Guards that artifact Values come from eiafx-data.json (effect_delta) rather than hand-typed numbers.
@@ -14,12 +11,13 @@ namespace EGG9000.Test {
     [TestClass]
     [TestCategory("Unit")]
     public class ArtifactValueTests {
-        private static Ei.ArtifactSpec Spec(Ei.ArtifactSpec.Types.Name name, int level, int rarity) =>
-            new Ei.ArtifactSpec {
+        private static Ei.ArtifactSpec Spec(Ei.ArtifactSpec.Types.Name name, int level, int rarity) {
+            return new() {
                 Name = name,
                 Level = (Ei.ArtifactSpec.Types.Level)level,
                 Rarity = (Ei.ArtifactSpec.Types.Rarity)rarity
             };
+        }
 
         [TestMethod]
         public void Medallion_T4Legendary_is_2point3_not_2point29() {

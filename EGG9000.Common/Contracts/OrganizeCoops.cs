@@ -79,11 +79,11 @@ namespace EGG9000.Common.Contracts {
                 if(contract.Details.CcOnly) {
                     var coops = groups.Where(x => x.PotentialCoops is not null).SelectMany(x => x.PotentialCoops.Select(y => new { BG = x.BoardingGroup, Coop = y })).ToList();
 
-                    groups = coops.GroupBy(x => new { x.BG, x.Coop.Grade }).Select(x => new PotentialCoopGroup {
+                    groups = [.. coops.GroupBy(x => new { x.BG, x.Coop.Grade }).Select(x => new PotentialCoopGroup {
                         BoardingGroup = x.Key.BG,
                         Grade = x.Key.Grade,
-                        PotentialCoops = x.Select(y => y.Coop).ToList()
-                    }).ToList();
+                        PotentialCoops = [.. x.Select(y => y.Coop)]
+                    })];
                     break;
                 }
             }
@@ -92,7 +92,7 @@ namespace EGG9000.Common.Contracts {
         }
 
         private static List<PotentialCoop> _SortUsersIntoDay1Coops(IEnumerable<UserByAccount> Accounts, int BoardingGroup, Ei.Contract.Types.PlayerGrade Grade, Ei.Contract contract, List<int> includeBG, bool dontMergeDown, bool AllowGuilds, int overrideNumber = 0, ulong roleid = 0) {
-            var matchingAccounts = Accounts.Where(x => x.Account.GetGrade() == Grade || contract.CcOnly );
+            var matchingAccounts = Accounts.Where(x => x.Account.GetGrade() == Grade || contract.CcOnly);
 
             if(roleid > 0) {
                 matchingAccounts = matchingAccounts.Where(x => x.RoleId == roleid);
@@ -160,9 +160,9 @@ namespace EGG9000.Common.Contracts {
 
         // Static helper on OrganizeCoops so both the site controller and the bot can load season data without duplicating the query
         public static async Task<(SeasonInfo contractSeason, List<UserSeasonProgress> seasonProgresses)> LoadContractSeasonData(ApplicationDbContext db, Contract contract, List<DBUser> users) {
-            if (string.IsNullOrEmpty(contract.SeasonId)) return (null, []);
+            if(string.IsNullOrEmpty(contract.SeasonId)) return (null, []);
             var contractSeason = await db.SeasonInfos.FindAsync(contract.SeasonId);
-            if (contractSeason == null) return (null, []);
+            if(contractSeason == null) return (null, []);
             var eggIncIds = users
                 .SelectMany(u => u.EggIncAccounts.Select(a => a.Id))
                 .Where(id => id != null)

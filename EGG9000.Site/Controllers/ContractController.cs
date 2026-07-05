@@ -1,10 +1,8 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using Microsoft.AspNetCore.Authorization;
@@ -146,7 +144,7 @@ namespace EGG9000.Site.Controllers {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
             var userIds = coops.SelectMany(x => x.Users.Select(y => y.DatabaseId)).ToList();
             var useRoles = dbguild.DisableBG;
-            var roles = useRoles ? dbguild.GroupRoles.Split(",") : Array.Empty<string>();
+            var roles = useRoles ? dbguild.GroupRoles.Split(",") : [];
             var users = (await _db.DBUsers.Where(x => userIds.Contains(x.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserByAccount {
                 User = x,
                 Account = y
@@ -332,10 +330,10 @@ namespace EGG9000.Site.Controllers {
             times.Set("Download Guild Users");
             var scoreGridItems = coops.SelectMany(coop => {
                 var contract = contracts.First(x => x.ID == coop.ContractID);
-                var details = new CoopDetails(coop, contract, coop.League, coop.UserCoopsXrefs.SelectMany(xref => {
+                var details = new CoopDetails(coop, contract, coop.League, [.. coop.UserCoopsXrefs.SelectMany(xref => {
                     var user = users.First(u => u.Id == xref.UserId);
                     return user.EggIncAccounts.Select(acc => new UserWithBackup { Account = acc, Backup = acc.Backup, User = xref.User });
-                }).ToList(), customEggs, _discord, coop.LastStatusUpdate);
+                })], customEggs, _discord, coop.LastStatusUpdate);
 
                 return details.CoopParticipants.Where(p => p.DBUser is not null && p.DBUser.GuildId == guildid).Select(p => {
                     var role = groupRoles.Length > 0 ? dbguild.GroupRoles.Split(",").FirstOrDefault(gr => guild.GetUser(p.DBUser.DiscordId)?.Roles.Any(r => r.Id.ToString() == gr) ?? false) : "";

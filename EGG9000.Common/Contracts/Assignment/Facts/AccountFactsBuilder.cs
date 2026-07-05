@@ -1,10 +1,11 @@
+using EGG9000.Common.Contracts.Assignment;
 using EGG9000.Common.Database.Entities;
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EGG9000.Common.Contracts.Assignment {
+namespace EGG9000.Common.Contracts.Assignment.Facts {
     public static class AccountFactsBuilder {
         public static AccountFacts Build(
             DBUser user,
@@ -18,7 +19,7 @@ namespace EGG9000.Common.Contracts.Assignment {
             var backup = account.Backup;
             var grade = account.GetGrade();
             var details = contract.Details;
-            var coops = existingCoops ?? Enumerable.Empty<Coop>();
+            var coops = existingCoops ?? [];
 
             var farmHere = backup?.Farms?.FirstOrDefault(f => f.ContractId == contract.ID);
             var archivedHere = backup?.ArchivedFarms?.FirstOrDefault(f => f.ContractId == contract.ID);

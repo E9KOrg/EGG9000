@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using Microsoft.AspNetCore.Hosting;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.ArtifactImaging;
+using Microsoft.AspNetCore.Hosting;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
@@ -13,6 +9,10 @@ using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 
 namespace EGG9000.Site.Services {
@@ -94,7 +94,7 @@ namespace EGG9000.Site.Services {
         // A single farm's active artifacts as one row of slots, with the same hover targets. Used inline by
         // the Ships & Farms cards in place of the old text list.
         public RenderResult RenderSet(IReadOnlyList<EggIncArtifactInstance> artifacts, bool highlightBest = false) {
-            var slots = artifacts?.Where(a => a is not null).ToList() ?? new List<EggIncArtifactInstance>();
+            var slots = artifacts?.Where(a => a is not null).ToList() ?? [];
             if(slots.Count == 0) return new RenderResult { Error = "No artifacts." };
 
             const int afSize = 100;
@@ -141,7 +141,7 @@ namespace EGG9000.Site.Services {
 
             if(drawStones) {
                 var stoneIndex = 1;
-                foreach(var stone in artifact.Stones ?? new List<EggIncArtifactInstance>()) {
+                foreach(var stone in artifact.Stones ?? []) {
                     var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
                     var stonePath = WWWPath("images", "artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png");
                     if(stonePath is null) continue;
@@ -179,24 +179,30 @@ namespace EGG9000.Site.Services {
             baseImage.Mutate(b => b.DrawImage(textImage, textPosition, 1f));
         }
 
-        private static Color RarityColor(int rarity) => rarity switch {
-            1 => Color.ParseHex("#383834"),
-            2 => Color.ParseHex("#6cb6d9"),
-            3 => Color.ParseHex("#b72de0"),
-            4 => Color.ParseHex("#f2d61b"),
-            _ => Color.ParseHex("#383834")
-        };
+        private static Color RarityColor(int rarity) {
+            return rarity switch {
+                1 => Color.ParseHex("#383834"),
+                2 => Color.ParseHex("#6cb6d9"),
+                3 => Color.ParseHex("#b72de0"),
+                4 => Color.ParseHex("#f2d61b"),
+                _ => Color.ParseHex("#383834")
+            };
+        }
 
         // Pixel rect -> percentage-of-image hotspot.
-        private static ArtifactHotspot MakeHotspot(int x, int y, int w, int h, ArtifactOverlayManifest manifest, string tip) => new() {
-            X = Round(x * 100.0 / manifest.Width),
-            Y = Round(y * 100.0 / manifest.Height),
-            W = Round(w * 100.0 / manifest.Width),
-            H = Round(h * 100.0 / manifest.Height),
-            Tip = tip
-        };
+        private static ArtifactHotspot MakeHotspot(int x, int y, int w, int h, ArtifactOverlayManifest manifest, string tip) {
+            return new() {
+                X = Round(x * 100.0 / manifest.Width),
+                Y = Round(y * 100.0 / manifest.Height),
+                W = Round(w * 100.0 / manifest.Width),
+                H = Round(h * 100.0 / manifest.Height),
+                Tip = tip
+            };
+        }
 
-        private static double Round(double v) => Math.Round(v, 3);
+        private static double Round(double v) {
+            return Math.Round(v, 3);
+        }
 
         private string WWWPath(params string[] parts) {
             var path = _env.WebRootPath;

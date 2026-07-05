@@ -1,9 +1,7 @@
-using System.Collections.Generic;
-
-using EGG9000.Common.Helpers.AfxSets;
 using EGG9000.Common.Helpers;
-
+using EGG9000.Common.Helpers.AfxSets;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Generic;
 
 namespace EGG9000.Test {
     [TestClass]

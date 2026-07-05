@@ -1,5 +1,4 @@
-﻿using EGG9000.Bot.Helpers;
-using EGG9000.Common.Helpers;
+﻿using EGG9000.Common.Helpers;
 
 using Ei;
 
@@ -49,7 +48,7 @@ namespace EGG9000.Common.Database.Entities {
         public List<Ei.RewardType> PingForRewards {
             get {
                 if(!SkipNoArtifacts && !SkipNoPE && !SkipNoPiggyDouble) {
-                    return new List<Ei.RewardType> { Ei.RewardType.UnknownReward };
+                    return [Ei.RewardType.UnknownReward];
                 }
                 var rewards = new List<Ei.RewardType>();
                 if(SkipNoPE)
@@ -159,12 +158,12 @@ namespace EGG9000.Common.Database.Entities {
                         try {
                             _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
                         } catch(MessagePackSerializationException) {
-                            _accounts = new List<EggIncAccount>();
+                            _accounts = [];
                             return _accounts;
                         }
-                        bool needsUpdate = false;
+                        var needsUpdate = false;
                         if(_accounts is null) {
-                            _accounts = new List<EggIncAccount>();
+                            _accounts = [];
                             needsUpdate = true;
                         }
 
@@ -202,7 +201,7 @@ namespace EGG9000.Common.Database.Entities {
                                 // Heal partial v1 blobs: Seasonal (Key 5) and RewardFilter were added in v2,
                                 // so blobs persisted before then deserialize with these as null.
                                 if(account.Assignment.Seasonal is null) { account.Assignment.Seasonal = new(); needsUpdate = true; }
-                                if(account.Assignment.RewardFilter is null) { account.Assignment.RewardFilter = new(); needsUpdate = true; }
+                                if(account.Assignment.RewardFilter is null) { account.Assignment.RewardFilter = []; needsUpdate = true; }
                             }
                             // One-shot repair (must run after BOTH branches above, or the fresh-migration
                             // path leaves PE in the legacy key and this fires later, resurrecting PE after
@@ -225,7 +224,7 @@ namespace EGG9000.Common.Database.Entities {
                     }
                     return _accounts;
                 } catch(MessagePackSerializationException) {
-                    return new List<EggIncAccount>();
+                    return [];
                 } catch(Exception) { throw; }
             }
             set {
@@ -297,7 +296,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public void RemoveID(string id) {
             var eggIncIds = EggIncAccounts;
-            eggIncIds.RemoveAll(x => x.Id.ToLower() == id.ToLower());
+            eggIncIds.RemoveAll(x => x.Id.Equals(id, StringComparison.CurrentCultureIgnoreCase));
             UpdateAccounts();//Force JSON Update
         }
 
@@ -434,7 +433,7 @@ namespace EGG9000.Common.Database.Entities {
         [Key(40)]
         public string AfxSetsImageHash { get; set; } = "";
         [Key(41)]
-        public List<string> AfxSetsImageUrls { get; set; } = new();
+        public List<string> AfxSetsImageUrls { get; set; } = [];
         [Key(42)]
         public SeasonalPeOption SeasonalPeOption { get; set; } = SeasonalPeOption.NotSet;
         [Key(43)]

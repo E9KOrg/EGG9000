@@ -16,7 +16,7 @@ namespace EGG9000.Common.Contracts.Assignment {
 
             if(season is null) return false;
 
-            var progress = (progresses ?? Enumerable.Empty<UserSeasonProgress>())
+            var progress = (progresses ?? [])
                 .FirstOrDefault(p => p.EggIncId == accountId && p.SeasonId == season.Id);
             var seasonGrade = progress != null ? (Ei.Contract.Types.PlayerGrade)progress.StartingGrade : liveGrade;
 
@@ -35,7 +35,7 @@ namespace EGG9000.Common.Contracts.Assignment {
 
             if(season is null) return 0;
 
-            var progress = (progresses ?? Enumerable.Empty<UserSeasonProgress>())
+            var progress = (progresses ?? [])
                 .FirstOrDefault(p => p.EggIncId == accountId && p.SeasonId == season.Id);
             var seasonGrade = progress != null ? (Ei.Contract.Types.PlayerGrade)progress.StartingGrade : liveGrade;
             return season.GetMaxPeCxp(seasonGrade);

@@ -1,5 +1,4 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using System;
@@ -21,7 +20,7 @@ namespace EGG9000.Common.Helpers {
         public CustomArchivedFarms ArchivedFarm { get; set; }
         public DBUser DBUser { get; set; }
         public UInt32 League { get; set; }
-        public EggIncAccount Account { get; set;}
+        public EggIncAccount Account { get; set; }
 
         public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
             if(coopStatus is null)
@@ -109,8 +108,8 @@ namespace EGG9000.Common.Helpers {
             get {
                 if(CoopStatus is not null && CoopStatus.ContributionRate == 0)
                     return CoopStatus.ContributionAmount / Contract.length_seconds;
-                    if(CoopStatus is not null)
-                        return CoopStatus.ContributionRate;
+                if(CoopStatus is not null)
+                    return CoopStatus.ContributionRate;
                 return 0;
             }
         }
@@ -145,11 +144,11 @@ namespace EGG9000.Common.Helpers {
 
         public TimeSpan OfflineTime {
             get {
-                var offlineTime = TimeSpan.Zero;   
+                var offlineTime = TimeSpan.Zero;
                 if(CoopStatus?.FarmInfo is not null && Farm is not null) {
                     var farmInfoTime = 0 - CoopStatus.FarmInfo.Timestamp;
                     var farmTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - Farm.LastStepTime;
-                    offlineTime =  TimeSpan.FromSeconds(Math.Min(farmInfoTime, farmTime));
+                    offlineTime = TimeSpan.FromSeconds(Math.Min(farmInfoTime, farmTime));
                 } else if(CoopStatus?.FarmInfo is not null) {
                     offlineTime = TimeSpan.FromSeconds(0 - CoopStatus.FarmInfo.Timestamp);
                 } else if(Farm is not null) {

@@ -9,8 +9,13 @@ namespace EGG9000.Test.Assignment {
     // the fact under examination. Mirrors the prod Facts/*Builder shapes but takes raw values rather
     // than a DBUser/Backup graph.
     public static class TestFactsBuilder {
-        public static AccountFactsTestBuilder Account() => new();
-        public static ContractFactsTestBuilder Contract() => new();
+        public static AccountFactsTestBuilder Account() {
+            return new();
+        }
+
+        public static ContractFactsTestBuilder Contract() {
+            return new();
+        }
     }
 
     public sealed class AccountFactsTestBuilder {
@@ -52,26 +57,28 @@ namespace EGG9000.Test.Assignment {
         public AccountFactsTestBuilder SeasonalPeCsGoal(double v) { _seasonalPeCsGoal = v; return this; }
         public AccountFactsTestBuilder PreviousScore(double? v) { _previousScore = v; return this; }
 
-        public AccountFacts Build() => new() {
-            AccountId = _accountId,
-            Grade = _grade,
-            HasBackup = _hasBackup,
-            UserDisabled = _userDisabled,
-            OnBreak = _onBreak,
-            HasActiveSubscription = _hasSubscription,
-            SoulEggs = _soulEggs,
-            MaxEggReached = _maxEggReached,
-            AlreadyFarming = _alreadyFarming,
-            AlreadyAssigned = _alreadyAssigned,
-            BoardingGroup = _boardingGroup,
-            CompletedGoalsOnThisContract = _completedGoals,
-            PreviouslyCompleted = _previouslyCompleted,
-            CompletedExactlyTwoGoals = _completedExactlyTwoGoals,
-            MissingColleggtible = _missingColleggtible,
-            MissingSeasonalPe = _missingSeasonalPe,
-            SeasonalPeCsGoal = _seasonalPeCsGoal,
-            PreviousScoreOnThisContract = _previousScore
-        };
+        public AccountFacts Build() {
+            return new() {
+                AccountId = _accountId,
+                Grade = _grade,
+                HasBackup = _hasBackup,
+                UserDisabled = _userDisabled,
+                OnBreak = _onBreak,
+                HasActiveSubscription = _hasSubscription,
+                SoulEggs = _soulEggs,
+                MaxEggReached = _maxEggReached,
+                AlreadyFarming = _alreadyFarming,
+                AlreadyAssigned = _alreadyAssigned,
+                BoardingGroup = _boardingGroup,
+                CompletedGoalsOnThisContract = _completedGoals,
+                PreviouslyCompleted = _previouslyCompleted,
+                CompletedExactlyTwoGoals = _completedExactlyTwoGoals,
+                MissingColleggtible = _missingColleggtible,
+                MissingSeasonalPe = _missingSeasonalPe,
+                SeasonalPeCsGoal = _seasonalPeCsGoal,
+                PreviousScoreOnThisContract = _previousScore
+            };
+        }
     }
 
     public sealed class ContractFactsTestBuilder {
@@ -85,7 +92,7 @@ namespace EGG9000.Test.Assignment {
         private int _egg = 1;
         private string _seasonId = string.Empty;
         private readonly Dictionary<G, GradeRewardFacts> _gradeRewards = new() {
-            [G.GradeC] = new GradeRewardFacts { GoalRewards = new List<Ei.RewardType> { Ei.RewardType.Gold } }
+            [G.GradeC] = new GradeRewardFacts { GoalRewards = [Ei.RewardType.Gold] }
         };
 
         public ContractFactsTestBuilder ContractId(string id) { _contractId = id; return this; }
@@ -110,23 +117,25 @@ namespace EGG9000.Test.Assignment {
                 _gradeRewards.Clear();
                 _gradeOverridden = true;
             }
-            _gradeRewards[grade] = new GradeRewardFacts { GoalRewards = new List<Ei.RewardType>(rewards) };
+            _gradeRewards[grade] = new GradeRewardFacts { GoalRewards = [.. rewards] };
             return this;
         }
 
         private bool _gradeOverridden;
 
-        public ContractFacts Build() => new() {
-            ContractId = _contractId,
-            IsLegacy = _isLegacy,
-            IsSeasonal = _isSeasonal,
-            IsUltra = _isUltra,
-            IsColleggtible = _isColleggtible,
-            ColleggtibleEggId = _colleggtibleEggId,
-            HadTwoRewards = _hadTwoRewards,
-            Egg = _egg,
-            SeasonId = _seasonId,
-            GradeRewards = _gradeRewards
-        };
+        public ContractFacts Build() {
+            return new() {
+                ContractId = _contractId,
+                IsLegacy = _isLegacy,
+                IsSeasonal = _isSeasonal,
+                IsUltra = _isUltra,
+                IsColleggtible = _isColleggtible,
+                ColleggtibleEggId = _colleggtibleEggId,
+                HadTwoRewards = _hadTwoRewards,
+                Egg = _egg,
+                SeasonId = _seasonId,
+                GradeRewards = _gradeRewards
+            };
+        }
     }
 }

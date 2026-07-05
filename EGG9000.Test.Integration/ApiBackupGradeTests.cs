@@ -1,8 +1,8 @@
-using System.Linq;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Linq;
 
 namespace EGG9000.Test.Integration;
 
@@ -10,7 +10,11 @@ namespace EGG9000.Test.Integration;
 [TestCategory("Network")]
 public class ApiBackupGradeTests {
 
-    private static string Eid => EggIncApi.UserId;
+    private static string Eid {
+        get {
+            return EggIncApi.UserId;
+        }
+    }
 
     [ClassInitialize]
     public static void InitSalt(TestContext _) {

@@ -1,5 +1,5 @@
 ﻿using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EiAfxData;
+using EGG9000.Common.JsonData;
 
 using Ei;
 
@@ -48,7 +48,7 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public List<int> levelMissionRequirements { get; set; }
         public int capacityDEPRECATED { get; set; }
 
-        public Spaceship shipEnum { 
+        public Spaceship shipEnum {
             get {
                 if(Enum.TryParse<Spaceship>(ship, ignoreCase: true, out var parsedEnum)) return parsedEnum;
 
@@ -116,12 +116,12 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
             Instance.craftingLevelMultipliers = Instance.craftingLevelInfos.ToDictionary(info => Instance.craftingLevelInfos.IndexOf(info), info => info.rarityMult);
 
             long runningSum = 0;
-            Instance.craftingLevelXpThresholds = Instance.craftingLevelInfos
+            Instance.craftingLevelXpThresholds = [.. Instance.craftingLevelInfos
                 .Select(level => {
                     runningSum += level.xpRequired;
                     return runningSum;
                 })
-                .Prepend(0).Take(30).ToList();
+                .Prepend(0).Take(30)];
 
             return Instance;
         }

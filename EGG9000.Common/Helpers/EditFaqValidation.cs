@@ -3,7 +3,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace EGG9000.Common.Helpers {
-    public static class EditFaqValidation {
+    public static partial class EditFaqValidation {
         public static List<string> ParseKeywords(string csv) =>
             string.IsNullOrWhiteSpace(csv)
                 ? []
@@ -18,8 +18,11 @@ namespace EGG9000.Common.Helpers {
         public static (string Value, string Error) NormalizeColor(string raw) {
             raw = raw?.Trim() ?? "";
             if(raw.Length == 0) return ("", null);
-            if(!Regex.IsMatch(raw, "^#?[0-9a-fA-F]{6}$")) return (null, $"`{raw}` is not a 6-digit hex color (e.g. `d43500`).");
+            if(!MyRegex().IsMatch(raw)) return (null, $"`{raw}` is not a 6-digit hex color (e.g. `d43500`).");
             return (raw.Replace("#", "").ToLowerInvariant(), null);
         }
+
+        [GeneratedRegex("^#?[0-9a-fA-F]{6}$")]
+        private static partial Regex MyRegex();
     }
 }

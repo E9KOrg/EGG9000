@@ -19,12 +19,12 @@ namespace EGG9000.Common.Database.Entities {
 
         public static SeasonInfo FromProto(ContractSeasonInfo proto) {
             var goals = new Dictionary<int, List<SeasonPeGoal>>();
-            foreach (var gs in proto.GradeGoals) {
+            foreach(var gs in proto.GradeGoals) {
                 var peGoals = gs.Goals
                     .Where(g => g.RewardType == RewardType.EggsOfProphecy)
                     .Select(g => new SeasonPeGoal { Cxp = g.Cxp, PeAmount = (int)Math.Round(g.RewardAmount) })
                     .ToList();
-                if (peGoals.Count > 0)
+                if(peGoals.Count > 0)
                     goals[(int)gs.Grade] = peGoals;
             }
             return new SeasonInfo {
@@ -44,13 +44,13 @@ namespace EGG9000.Common.Database.Entities {
 
         // Season goals are set based on the starting grade, so even if player is demoted or promoted during the season, the goals will stay at what starting grade was.
         public int GetPeEarned(Ei.Contract.Types.PlayerGrade grade, double totalCxp) {
-            if (!Goals.TryGetValue((int)grade, out var gradeGoals))
+            if(!Goals.TryGetValue((int)grade, out var gradeGoals))
                 return 0;
             return gradeGoals.Where(g => totalCxp >= g.Cxp).Sum(g => g.PeAmount);
         }
 
         public int GetMaxPe(Ei.Contract.Types.PlayerGrade grade) {
-            if (!Goals.TryGetValue((int)grade, out var gradeGoals))
+            if(!Goals.TryGetValue((int)grade, out var gradeGoals))
                 return 0;
             return gradeGoals.Sum(g => g.PeAmount);
         }
@@ -58,7 +58,7 @@ namespace EGG9000.Common.Database.Entities {
         // CS (season Cxp) at which the grade earns all of its PE - the highest PE-goal Cxp. 0 when the
         // grade has no PE goals.
         public double GetMaxPeCxp(Ei.Contract.Types.PlayerGrade grade) {
-            if (!Goals.TryGetValue((int)grade, out var gradeGoals) || gradeGoals.Count == 0)
+            if(!Goals.TryGetValue((int)grade, out var gradeGoals) || gradeGoals.Count == 0)
                 return 0;
             return gradeGoals.Max(g => g.Cxp);
         }

@@ -1,4 +1,6 @@
-namespace EGG9000.Common.Contracts.Assignment {
+using EGG9000.Common.Contracts.Assignment;
+
+namespace EGG9000.Common.Contracts.Assignment.Rules {
     public interface IAssignmentRule {
         AssignmentRuleId Id { get; }
         RuleTier Tier { get; }

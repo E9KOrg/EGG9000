@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public static class RoleToggle {
         public enum RoleAction { None, Add, Remove }
 

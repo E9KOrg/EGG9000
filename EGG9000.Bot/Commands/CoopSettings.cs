@@ -2,11 +2,10 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
-using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Interactions;
-using EGG9000.Common.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -57,7 +56,7 @@ namespace EGG9000.Bot.Commands {
             await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
 
-        public static MessageProperties MainMenu(CoopSetting coopSetting, string prefix ,string title, bool coopOnly, bool mcs, ApplicationDbContext db, DBUser dbuser) {
+        public static MessageProperties MainMenu(CoopSetting coopSetting, string prefix, string title, bool coopOnly, bool mcs, ApplicationDbContext db, DBUser dbuser) {
             var props = new MessageProperties();
 
             var eBuilder = new EmbedBuilder()

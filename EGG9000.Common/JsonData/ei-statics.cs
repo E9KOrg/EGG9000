@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 
-namespace EGG9000.Common.JsonData.EiStatics {
+namespace EGG9000.Common.JsonData {
 
     public class EggIncEgg {
         public int id { get; set; }
         public string name { get; set; }
         public string emoji { get; set; }
         public string imageUrlEnder { get; set; }
-        public string image { 
+        public string image {
             get {
                 if(imageUrlEnder.StartsWith("http"))
                     return imageUrlEnder;
@@ -20,7 +20,7 @@ namespace EGG9000.Common.JsonData.EiStatics {
         public double requiredFarmValue { get; set; }
     }
 
-    public class  EggIncBoost {
+    public class EggIncBoost {
         public string id { get; set; }
         public string name { get; set; }
         public string typeString { get; set; }
@@ -32,7 +32,7 @@ namespace EGG9000.Common.JsonData.EiStatics {
             }
         }
         public string emoji { get; set; }
-        public int timeMinutesInt {  get; set; }
+        public int timeMinutesInt { get; set; }
         public TimeSpan timeMinutes {
             get {
                 return TimeSpan.FromMinutes(timeMinutesInt);
@@ -40,7 +40,7 @@ namespace EGG9000.Common.JsonData.EiStatics {
         }
         public int value { get; set; }
         public int? costGoldenEggs { get; set; }
-        public int? costTokens {  get; set; }
+        public int? costTokens { get; set; }
     }
 
     public enum EggIncBoostTypeEnum {

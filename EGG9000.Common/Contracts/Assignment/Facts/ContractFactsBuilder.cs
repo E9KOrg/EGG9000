@@ -1,9 +1,10 @@
+using EGG9000.Common.Contracts.Assignment;
 using EGG9000.Common.Database.Entities;
 
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EGG9000.Common.Contracts.Assignment {
+namespace EGG9000.Common.Contracts.Assignment.Facts {
     public static class ContractFactsBuilder {
         // season is non-null only when the contract belongs to a PE season (mirrors the legacy
         // "contractSeason != null" gate that decides whether seasonal-PE logic runs at all).

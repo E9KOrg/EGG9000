@@ -3,10 +3,11 @@ using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
-using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Interactions;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 
 using Humanizer;
@@ -25,7 +26,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 
@@ -114,8 +115,7 @@ namespace EGG9000.Bot.Commands {
         private static Color HealthColor(double h) {
             h = Math.Clamp(h, 0, 1);
             int r, g;
-            if(h >= 0.5) { r = (int)Math.Round((1 - h) * 2 * 220); g = 200; }
-            else { r = 220; g = (int)Math.Round(h * 2 * 200); }
+            if(h >= 0.5) { r = (int)Math.Round((1 - h) * 2 * 220); g = 200; } else { r = 220; g = (int)Math.Round(h * 2 * 200); }
             return new Color(Math.Clamp(r, 0, 255), Math.Clamp(g, 0, 255), 0);
         }
 
@@ -129,7 +129,11 @@ namespace EGG9000.Bot.Commands {
             int Latency, int Guilds, int QHigh, int QLow, int QHighW, int QLowW,
             double RuntimeHealth, double DiscordHealth, double ProcessHealth, double DbHealth,
             long StartedUnix, long NowUnix) {
-            public double Worst => Math.Min(Math.Min(RuntimeHealth, DiscordHealth), Math.Min(ProcessHealth, DbHealth));
+            public double Worst {
+                get {
+                    return Math.Min(Math.Min(RuntimeHealth, DiscordHealth), Math.Min(ProcessHealth, DbHealth));
+                }
+            }
         }
 
         private static async Task<SysLoadSnapshot> GatherSysLoad(ApplicationDbContext db, DiscordSocketClient client, IDiscordQueue queue) {

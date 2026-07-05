@@ -1,36 +1,27 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
+using EGG9000.Common.Coops;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EiStatics;
-using EGG9000.Common.Coops;
 using EGG9000.Common.Helpers.AfxSets;
+using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.JsonData;
 using EGG9000.Common.Services;
-
 using Ei;
-
 using Humanizer;
-
 using MassTransit.Testing;
 using MassTransit.Util;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using Newtonsoft.Json;
-
 using Polly;
-
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -40,13 +31,12 @@ using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated.Coops {
-    public class ThreadsCoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<ThreadsCoopStatusUpdater>(interval, delay, provider) {
+    public partial class ThreadsCoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<ThreadsCoopStatusUpdater>(interval, delay, provider) {
 #if DEBUG
         private static readonly TimeSpan delay = TimeSpan.FromMinutes(0);
         private static readonly TimeSpan interval = TimeSpan.FromMinutes(20);
@@ -55,7 +45,7 @@ namespace EGG9000.Bot.Automated.Coops {
         private static readonly TimeSpan interval = TimeSpan.FromMinutes(15);
 #endif
         private readonly Dictionary<ulong, SocketTextChannel> _demeritChannels = [];
-        private static Random rand = new Random();
+        private static readonly Random rand = new();
         public class UserX {
             public SocketGuildUser SocketGuildUser { get; set; }
             public Guid DBUserId { get; set; }
@@ -212,7 +202,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
-                var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).Distinct().ToList() : coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).Distinct().ToList();
+                var coopDiscordUsers = coopThread is SocketTextChannel channel ? channel.Users.ToList().Select(x => (IGuildUser)x).Select(u => u.Id).Distinct().ToList() : [.. coop.UserCoopsXrefs.Where(u => u.AddedToChannel).Select(u => u.User.DiscordId).Distinct()];
 
 
                 timings.Set("GetStatus");
@@ -386,7 +376,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 foreach(var user in usersWithStatus) {
                     if(user.Backup != null) {
                         var awayTime = Research.GetTotalSiloCapacity(user.Backup);
-                        var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId == coop.Name.ToLower());
+                        var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase));
                         if(farm != null) {
                             _bugSnag.Breadcrumbs.Leave($"User: {user.DiscordUser?.Id}, {user.Backup?.EggIncId}");
                             user.FarmStats = farm.WithStats(user.Backup, coop, customEggs, contract: coop.Contract);
@@ -550,7 +540,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var pingsLeft = usersNeedingChannelPermissions.Distinct().Select(id => $"<@{id}>").ToList() ?? [];
 
                 if(!coop.RolesAddedToThread) {
-                List<ulong> roleMembersCaught = [];
+                    List<ulong> roleMembersCaught = [];
                     try {
                         (await coopThread.GetParentChannelAsync())?.Category?.PermissionOverwrites?
                             .Where(p => p.Permissions.ViewChannel == PermValue.Allow && p.TargetType == PermissionTarget.Role).ToList()
@@ -700,7 +690,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                                 .ThenInclude(c => c.Contract)
                                             .FirstOrDefaultAsync(
                                                 x => x.User.DiscordId == discordUser.Id &&
-                                                x.Coop.Name.ToLower() == farm.CoopId.ToLower(),
+                                                x.Coop.Name.Equals(farm.CoopId, StringComparison.CurrentCultureIgnoreCase),
                                                 cancellationToken: CancellationToken.None
                                             );
                                         if(otherContractXref != null) {
@@ -768,16 +758,16 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 timings.Set(5.54);
                 if(_client.GetChannelAsync(GuildChannelType.CallStaffChannel, guild) != null) {
-                    lastMessage += $"\n</callstaff:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "callstaff")?.Id ?? 0}> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
+                    lastMessage += $"\n</callstaff:{slashCommands.FirstOrDefault(c => c.Name.Equals("callstaff", StringComparison.CurrentCultureIgnoreCase))?.Id ?? 0}> Use this command if you joined a co-op for the wrong contract, or have other questions or concerns";
                 }
-                lastMessage += $"\n</coopsettings:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "coopsettings")?.Id ?? 0}> Receive DM pings for various events in the co-op";
-                lastMessage += $"\n</fixfullcooperror:{slashCommands.FirstOrDefault(c => c.Name.ToLower() == "fixfullcooperror")?.Id ?? 0}> If you get the error co-op is full, try running this command to free up the space.";
+                lastMessage += $"\n</coopsettings:{slashCommands.FirstOrDefault(c => c.Name.Equals("coopsettings", StringComparison.CurrentCultureIgnoreCase))?.Id ?? 0}> Receive DM pings for various events in the co-op";
+                lastMessage += $"\n</fixfullcooperror:{slashCommands.FirstOrDefault(c => c.Name.Equals("fixfullcooperror", StringComparison.CurrentCultureIgnoreCase))?.Id ?? 0}> If you get the error co-op is full, try running this command to free up the space.";
 
                 timings.Set(5.6);
 
                 var userWithDifferentGrade = usersWithStatus.FirstOrDefault(x => x.Backup is not null && x.Backup.Farms.Any(y => y.CoopId is not null && y.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase) && (uint)y.Grade != coop.League));
                 if(!coop.FinishedOrFailed() && userWithDifferentGrade is not null) {
-                    var farm = userWithDifferentGrade.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.ToLower() == coop.Name.ToLower());
+                    var farm = userWithDifferentGrade.Backup.Farms.FirstOrDefault(x => x.CoopId is not null && x.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase));
                     lastMessage += $" Warning! Looks like this co-op is the wrong grade and is actually {farm.Grade}";
                 }
 ;
@@ -788,7 +778,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var afCheaterChannel = ChannelHelper.DetermineChannelType(dbGuild, guild, GuildChannelType.CheaterThread);
                 if(afCheaterChannel != null && !status.AllGoalsAchieved) {
                     foreach(var u in usersWithStatus.Where(u => u.Status is not null && u.Status.TimeCheatDetected && u.Xref is not null && !u.Xref.TimeCheatReported).ToList()) {
-                        var account = u.User?.EggIncAccounts?.FirstOrDefault(a => a.Id.ToLower() == u.Backup?.EggIncId.ToLower());
+                        var account = u.User?.EggIncAccounts?.FirstOrDefault(a => a.Id.Equals(u.Backup?.EggIncId.ToLower(), StringComparison.CurrentCultureIgnoreCase));
                         if(account is null || account.TimeCheatsMarkedClean) continue;
                         await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread,
                             new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.ThreadID}> (`{coop.Name}`)" }
@@ -1158,7 +1148,7 @@ namespace EGG9000.Bot.Automated.Coops {
             sw.Restart();
             var times = new List<long>();
 
-            msgs = msgs.Where(x => x != "").ToList();
+            msgs = [.. msgs.Where(x => x != "")];
 
             msgs.Insert(0, "@@@EMBED");
 
@@ -1311,8 +1301,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 }
 
                 return new List<FixedWidthCell> {
-                    new(Truncate((everyoneJoined || x.DBUser is null ? "" : x.CoopStatus is not null ? "✅" : "❌") + (x.DBUser is null ? "👽" : "") + Regex.Replace(x.CoopStatus?.UserName ?? x.Backup?.UserName, @"\p{Cs}", ""), 11)),
-                    new(Truncate(Regex.Replace(x.DiscordUser?.GetCleanName() ?? "", @"\p{Cs}", ""), 11)),
+                    new(Truncate((everyoneJoined || x.DBUser is null ? "" : x.CoopStatus is not null ? "✅" : "❌") + (x.DBUser is null ? "👽" : "") + MyRegex().Replace(x.CoopStatus?.UserName ?? x.Backup?.UserName, ""), 11)),
+                    new(Truncate(MyRegex().Replace(x.DiscordUser?.GetCleanName() ?? "", ""), 11)),
                     new(x.EarningsBonus.ToEggString(), CellAlignment.Right),
                     new(x.EggsShipped.ToEggString(), CellAlignment.Right),
                     new($"{(x.Rate * 3600).ToEggString()}/h", CellAlignment.Right),
@@ -1407,7 +1397,7 @@ namespace EGG9000.Bot.Automated.Coops {
             } else if(coop.LastUpdateToChannel is null || coop.LastUpdateToChannel < DateTimeOffset.UtcNow.AddHours(-4)) {
                 statusTask = policy.Execute(async () => await EggIncApi.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
             } else {
-                var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList(); 
+                var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList();
                 statusTask = policy.Execute(async () => await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, _logger: _logger, cancellationToken: cancellationToken));
             }
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
@@ -1415,7 +1405,7 @@ namespace EGG9000.Bot.Automated.Coops {
             await Task.WhenAll(statusTask, messageTask);
             if(statusTask.Result is null) {
                 _logger.LogWarning("Status task for {coop} is null, first time {first}", coop.Name, !coop.UserCoopsXrefs.Any(x => x.JoinedCoop));
-            } 
+            }
 
             return new StatusResponse {
                 Status = statusTask.Result,
@@ -1719,10 +1709,10 @@ namespace EGG9000.Bot.Automated.Coops {
 
         private static int LevenshteinDistance(string a, string b) {
             var d = new int[a.Length + 1, b.Length + 1];
-            for(int i = 0; i <= a.Length; i++) d[i, 0] = i;
-            for(int j = 0; j <= b.Length; j++) d[0, j] = j;
-            for(int i = 1; i <= a.Length; i++) {
-                for(int j = 1; j <= b.Length; j++) {
+            for(var i = 0; i <= a.Length; i++) d[i, 0] = i;
+            for(var j = 0; j <= b.Length; j++) d[0, j] = j;
+            for(var i = 1; i <= a.Length; i++) {
+                for(var j = 1; j <= b.Length; j++) {
                     var cost = a[i - 1] == b[j - 1] ? 0 : 1;
                     d[i, j] = Math.Min(Math.Min(d[i - 1, j] + 1, d[i, j - 1] + 1), d[i - 1, j - 1] + cost);
                 }
@@ -1732,7 +1722,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public bool CheckForCreator(Coop coop, CoopDetails coopDetails) {
             if(String.IsNullOrEmpty(coop.CreatorID)) {
-                var creator = coopDetails.CoopParticipants.FirstOrDefault(x => x.Backup is not null && x.Backup.Farms.Any(y => y.Creator && y.CoopId == coop.Name.ToLower() && y.ContractId == coop.ContractID));
+                var creator = coopDetails.CoopParticipants.FirstOrDefault(x => x.Backup is not null && x.Backup.Farms.Any(y => y.Creator && y.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase) && y.ContractId == coop.ContractID));
                 if(creator != null) {
                     coop.CreatorID = creator.EggIncId;
                     return true;
@@ -1740,5 +1730,8 @@ namespace EGG9000.Bot.Automated.Coops {
             }
             return false;
         }
+
+        [GeneratedRegex(@"\p{Cs}")]
+        private static partial Regex MyRegex();
     }
 }

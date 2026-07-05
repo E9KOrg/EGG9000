@@ -2,7 +2,6 @@ using Discord;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Commands;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -176,7 +175,7 @@ namespace EGG9000.Bot.Services {
 
             var croppedImage = EIIDScreenShots.CropScreenShot(image);
             var eiid = EIIDScreenShots.ReadText(croppedImage);
-            var eiidMatch = Regex.Match(eiid, @"EI\d{16}");
+            var eiidMatch = MyRegex().Match(eiid);
 
             if(!eiidMatch.Success) {
                 await message.Channel.SendMessageAsync(
@@ -252,9 +251,9 @@ namespace EGG9000.Bot.Services {
                     SocketApplicationCommand discordCommand;
                     try {
                         discordCommand = (await socketGuild.GetCachedApplicationCommands())
-                            .FirstOrDefault(x => x.Type == ApplicationCommandType.Slash && x.Name.ToLower() == topLevelName);
+                            .FirstOrDefault(x => x.Type == ApplicationCommandType.Slash && x.Name.Equals(topLevelName, StringComparison.CurrentCultureIgnoreCase));
                         discordCommand ??= (await _discord.GetCachedApplicationCommands())
-                            .FirstOrDefault(x => x.Type == ApplicationCommandType.Slash && x.Name.ToLower() == topLevelName);
+                            .FirstOrDefault(x => x.Type == ApplicationCommandType.Slash && x.Name.Equals(topLevelName, StringComparison.CurrentCultureIgnoreCase));
                     } catch(Exception ex) { _logger.LogError("Caught exception in HandleMessageReceived (INT-2):\n {exception}", ex); return; }
 
                     if(discordCommand != null) {
@@ -285,5 +284,7 @@ namespace EGG9000.Bot.Services {
 
         [GeneratedRegex(@"^\/(\w+)(?:\s+(\w+))?")]
         private static partial Regex CommandRegex();
+        [GeneratedRegex(@"EI\d{16}")]
+        private static partial Regex MyRegex();
     }
 }

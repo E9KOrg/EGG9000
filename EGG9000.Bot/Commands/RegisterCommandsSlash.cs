@@ -1,37 +1,30 @@
 using Bugsnag;
-
 using Discord;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
-
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
-
 using MassTransit.Initializers;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Commands.DiscordEnums.AutoCompleteHandlers;
+using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
-    public static class RegisterCommandsSlash {
+    public static partial class RegisterCommandsSlash {
 
         public static async Task _RemoveID(SocketInteraction command, ApplicationDbContext db, string eggincid, ulong userid) {
             await command.DeferAsync();
@@ -191,7 +184,7 @@ namespace EGG9000.Bot.Commands {
         public static async Task RegisterAccountAsync(IMessageChannel channel, System.Func<System.Action<MessageProperties>, Task> reply, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger, System.Func<Task> onComplete = null, bool isStaff = false) {
             eggincid = eggincid.ToUpper();
 
-            if(!Regex.IsMatch(eggincid, @"^EI\d{16}$")) {
+            if(!MyRegex().IsMatch(eggincid)) {
                 await reply(m => { m.Content = ""; m.Embed = EmbedError("Your EggInc ID must start with `EI` followed by 16 numbers. To find your ID, go to Settings -> Privacy & Data -> Copy button next to the EID near the bottom in the Egg Inc app."); });
                 return;
             }
@@ -203,7 +196,7 @@ namespace EGG9000.Bot.Commands {
 
             try {
                 var bannedUsers = db.DBUsers.Where(x => x.Banned).ToList().SelectMany(u => u.EggIncAccounts).ToList();
-                if(bannedUsers.Any(e => e.Id.ToUpper() == eggincid)) {
+                if(bannedUsers.Any(e => e.Id.Equals(eggincid, StringComparison.CurrentCultureIgnoreCase))) {
                     var bannedUserThread = guildObj.ChannelDetails.FirstOrDefault(x => x.ChannelType == GuildChannelType.BannedUserThread);
                     if(bannedUserThread is not null) {
                         var thread = guild.GetThreadChannel(bannedUserThread.Id);
@@ -237,7 +230,7 @@ namespace EGG9000.Bot.Commands {
             var cachedContractsRa = await db.CachedEiContractsAsync();
             var backup = new CustomBackup(firstContactResponse.Backup, cachedContractsRa);
             if(backup?.Farms == null || backup.Farms.Count == 0) {
-                var id = new Regex(@"\d+").Match(eggincid).Value;
+                var id = MyRegex1().Match(eggincid).Value;
                 if(eggincid.StartsWith("E1")) {
                     id = id[1..];
                 }
@@ -292,7 +285,7 @@ namespace EGG9000.Bot.Commands {
 
             var earningsBonus = dbuser.EggIncAccounts.Max(x => x.Backup.EarningsBonus);
 
-            var registeredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
+            var registeredRole = guild.Roles.FirstOrDefault(x => x.Name.Contains("registered", StringComparison.CurrentCultureIgnoreCase));
             if(registeredRole is not null && !socketGuildUser.RoleIds.Any(x => x == registeredRole.Id)) {
                 await socketGuildUser.AddRoleAsync(registeredRole);
             }
@@ -380,6 +373,10 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
+        [GeneratedRegex(@"^EI\d{16}$")]
+        private static partial Regex MyRegex();
+        [GeneratedRegex(@"\d+")]
+        private static partial Regex MyRegex1();
     }
 
     public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger) : EGG9000.Bot.Interactions.E9KModuleBase(dbFactory) {
@@ -490,7 +487,7 @@ namespace EGG9000.Bot.Commands {
             var command = Context.Interaction;
             await command.RespondAsyncGettingMessage("Cleaning...");
             var channel = (SocketTextChannel)command.Channel;
-            if(channel.Name.ToLower().Contains("welcome")) {
+            if(channel.Name.Contains("welcome", StringComparison.CurrentCultureIgnoreCase)) {
                 var guild = client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == command.Channel.Id));
                 await guild.PruneUsersAsync(10);
 
