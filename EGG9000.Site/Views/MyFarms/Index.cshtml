@@ -841,6 +841,8 @@
                             if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
                             const otherMatchWrap = container.querySelector('.cs-redoothermatch-wrap-' + accountIndex);
                             if (otherMatchWrap) otherMatchWrap.style.display = (value === '4') ? '' : 'none';
+                            const excludeSeasonalWrap = container.querySelector('.cs-excludeseasonal-wrap-' + accountIndex);
+                            if (excludeSeasonalWrap) excludeSeasonalWrap.style.display = (value === '0' || value === '3') ? 'none' : '';
                         }
                         saveContractSetting(container, accountIndex, field, value, () => {
                             if (el.type === 'checkbox') el.checked = (before === 'true');

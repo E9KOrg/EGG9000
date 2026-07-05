@@ -26,26 +26,38 @@ namespace EGG9000.Test.Assignment {
 
         [TestMethod]
         [TestCategory("Unit")]
-        public void AlwaysAssign_ExcludeSeasonal_PreviouslyCompleted_Excludes() {
+        public void AlwaysAssign_PreviouslyCompleted_FallsThrough() {
             var c = TestFactsBuilder.Contract().Seasonal(true).Build();
             var f = TestFactsBuilder.Account().PreviouslyCompleted(true).Build();
-            var s = new AssignmentSettings {
-                Seasonal = new SeasonalRule { Mode = SeasonalMode.AlwaysAssign },
-                Redo = new RedoRule { Mode = RedoLeggacyOption.No, ExcludeSeasonal = true }
-            };
-            Assert.AreEqual(RuleOutcome.Exclude, new SeasonalContractsRule().Evaluate(f, c, s));
+            var s = new AssignmentSettings { Seasonal = new SeasonalRule { Mode = SeasonalMode.AlwaysAssign } };
+            Assert.AreEqual(RuleOutcome.NotApplicable, new SeasonalContractsRule().Evaluate(f, c, s));
         }
 
         [TestMethod]
         [TestCategory("Unit")]
-        public void AlwaysAssign_ExcludeSeasonal_NotCompleted_StillForces() {
+        public void AlwaysAssign_NotCompleted_StillForces() {
             var c = TestFactsBuilder.Contract().Seasonal(true).Build();
             var f = TestFactsBuilder.Account().PreviouslyCompleted(false).Build();
-            var s = new AssignmentSettings {
-                Seasonal = new SeasonalRule { Mode = SeasonalMode.AlwaysAssign },
-                Redo = new RedoRule { Mode = RedoLeggacyOption.No, ExcludeSeasonal = true }
-            };
+            var s = new AssignmentSettings { Seasonal = new SeasonalRule { Mode = SeasonalMode.AlwaysAssign } };
             Assert.AreEqual(RuleOutcome.ForceInclude, new SeasonalContractsRule().Evaluate(f, c, s));
+        }
+
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void UntilPeEarned_PreviouslyCompleted_FallsThroughEvenIfPeMissing() {
+            var c = TestFactsBuilder.Contract().Seasonal(true).Build();
+            var f = TestFactsBuilder.Account().PreviouslyCompleted(true).MissingSeasonalPe(true).Build();
+            Assert.AreEqual(RuleOutcome.NotApplicable,
+                new SeasonalContractsRule().Evaluate(f, c, With(SeasonalMode.UntilPeEarned)));
+        }
+
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void UntilCsGoal_PreviouslyCompleted_FallsThroughEvenIfBelowGoal() {
+            var c = TestFactsBuilder.Contract().Seasonal(true).Build();
+            var f = TestFactsBuilder.Account().PreviouslyCompleted(true).PreviousScore(0).Build();
+            Assert.AreEqual(RuleOutcome.NotApplicable,
+                new SeasonalContractsRule().Evaluate(f, c, With(SeasonalMode.UntilCsGoal, goal: 5000)));
         }
 
         [TestMethod]

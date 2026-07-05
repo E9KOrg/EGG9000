@@ -8,19 +8,20 @@ namespace EGG9000.Common.Contracts.Assignment {
         public bool AppliesTo(ContractFacts c) => c.IsSeasonal;
         public RuleOutcome Evaluate(AccountFacts f, ContractFacts c, AssignmentSettings s) {
             var r = s.Seasonal ?? new SeasonalRule();
-            var redo = s.Redo ?? new RedoRule();
+            // NotApplicable falls through to the Include tier's PreviouslyCompletedRule, which already
+            // owns ExcludeSeasonal + redo-mode logic for completed contracts.
+            var alreadyCompleted = f.PreviouslyCompleted || f.CompletedExactlyTwoGoals;
             switch(r.Mode) {
                 case SeasonalMode.AlwaysAssign:
-                    // Skip-seasonal-replays carve-out: Force tier short-circuits before the Include tier's
-                    // PreviouslyCompletedRule ever runs, so that carve-out must be honored here too, else
-                    // AlwaysAssign force-includes previously-completed seasonal contracts unconditionally.
-                    if(redo.ExcludeSeasonal && (f.PreviouslyCompleted || f.CompletedExactlyTwoGoals)) return RuleOutcome.Exclude;
+                    if(alreadyCompleted) return RuleOutcome.NotApplicable;
                     return RuleOutcome.ForceInclude;
                 case SeasonalMode.UntilPeEarned:
+                    if(alreadyCompleted) return RuleOutcome.NotApplicable;
                     if(f.MissingSeasonalPe) return RuleOutcome.ForceInclude;
                     if(f.SiblingMatchProvisionalInclude) return RuleOutcome.ForceInclude;
                     return r.RewardFilterAfter ? RuleOutcome.NotApplicable : RuleOutcome.Exclude;
                 case SeasonalMode.UntilCsGoal:
+                    if(alreadyCompleted) return RuleOutcome.NotApplicable;
                     // Force-assign until the user's CS goal, never below the grade floor, and never below
                     // the season's PE-CS goal (so a goal under the PE threshold cannot skip earning the PE).
                     var goal = System.Math.Max(r.EffectiveCsGoal(f.Grade), f.SeasonalPeCsGoal);

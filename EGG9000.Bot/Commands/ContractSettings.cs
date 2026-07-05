@@ -88,8 +88,11 @@ namespace EGG9000.Bot.Commands {
 
             var rewards = account.Assignment.RewardFilter.Any() ? string.Join(", ", account.Assignment.RewardFilter.Select(x => rewardDict[x])) : "All";
 
+            var skipSeasonalReplaysLine = account.Assignment.Redo.Mode != RedoLeggacyOption.NotSet && account.Assignment.Redo.Mode != RedoLeggacyOption.No
+                ? $"\nSkip Seasonal Replays: {(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")}"
+                : "";
             eBuilder.AddField("__Assignment Rules__",
-                $"Rewards Filter: {rewards}\nColleggtibles: {(colleggtibleOn ? "Yes" : "No")}\nSeasonal Contracts: {SeasonalSummary(account)}\nRedo: {redoSummary}\nSkip Seasonal Replays: {(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")}\n2 -> 3: {(account.Assignment.TwoToThree ? "Yes" : "No")}");
+                $"Rewards Filter: {rewards}\nColleggtibles: {(colleggtibleOn ? "Yes" : "No")}\nSeasonal Contracts: {SeasonalSummary(account)}\nRedo: {redoSummary}{skipSeasonalReplaysLine}\n2 -> 3: {(account.Assignment.TwoToThree ? "Yes" : "No")}");
 
             var placementLines = new List<string> { $"Break: {MCSBreakMessage(account)}" };
             if(!dbguild.DisableBG) {
@@ -169,9 +172,11 @@ namespace EGG9000.Bot.Commands {
                 _ => "No (Will still be assigned to incomplete leggacies)"
             };
             var content = "This option allows you to determine which Leggacy contracts you will redo, when they are offered in-game. The \"other account matches\" option also applies to Seasonal contracts, forcing this account in whenever a sibling account is force-assigned by the seasonal filter.\n\n**NOTE:** You will **always** be assigned to incomplete Leggacy contracts, so long as they match your rewards filter.";
-            return MenuEmbedTemplate("Redo Leggacies Menu", content, account, dbuser)
-                .AddField("Redo Completed Leggacies", redoText)
-                .AddField("Skip Seasonal Replays", account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF");
+            var builder = MenuEmbedTemplate("Redo Leggacies Menu", content, account, dbuser)
+                .AddField("Redo Completed Leggacies", redoText);
+            if(account.Assignment.Redo.Mode != RedoLeggacyOption.NotSet && account.Assignment.Redo.Mode != RedoLeggacyOption.No)
+                builder.AddField("Skip Seasonal Replays", $"{(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")} (also applies to seasonal contracts you've already completed)");
+            return builder;
         }
 
         public static List<SelectMenuOptionBuilder> GetRedoLeggacyOptions(EggIncAccount account, DBUser dbuser) {
@@ -196,7 +201,9 @@ namespace EGG9000.Bot.Commands {
                 builder.WithButton("Change CS Threshold", $"RLThreshModal:{index},{dbuser.DiscordId}");
             }
 
-            builder.WithButton($"Skip Seasonal Replays: {(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")}", $"MCSExcludeSeasonal:{index},{dbuser.DiscordId}");
+            if(account.Assignment.Redo.Mode != RedoLeggacyOption.NotSet && account.Assignment.Redo.Mode != RedoLeggacyOption.No) {
+                builder.WithButton($"Skip Seasonal Replays: {(account.Assignment.Redo.ExcludeSeasonal ? "ON" : "OFF")}", $"MCSExcludeSeasonal:{index},{dbuser.DiscordId}");
+            }
             builder.WithButton("Return", $"MCSMenu:{index},{dbuser.DiscordId}", ButtonStyle.Secondary);
             return builder.Build();
         }
@@ -215,7 +222,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         public static EmbedBuilder SeasonalEmbed(DBUser dbuser, EggIncAccount account, double? latestSeasonPeExample = null) {
-            var content = "Seasonal Contracts are always assigned to you. Choose how long you should keep being assigned to them.";
+            var content = "Force-assigns seasonal contracts you haven't completed yet (e.g. you missed a season's PE). Choose how long you should keep being force-assigned. Already-completed seasonal contracts are governed by Redo Completed Leggacies instead.";
             var builder = MenuEmbedTemplate("Seasonal Contracts Menu", content, account, dbuser).AddField("Current Setting", SeasonalSummary(account));
 
             var note = "If your CS goal is below the season's PE goal, it will not be used - you stay assigned until you earn the season PE.";

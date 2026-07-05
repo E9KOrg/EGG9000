@@ -66,6 +66,9 @@
 
             <div class="form-group" style="margin-top:18px;">
                 <label for="cs-seasonalmode-@index">Seasonal Contracts</label>
+                <p style="font-size:0.82em; color:grey; margin:2px 0 6px;">
+                    Force-assigns seasonal contracts you haven't completed yet (e.g. you missed a season's PE). Already-completed seasonal contracts are governed by Redo Completed Leggacies below instead.
+                </p>
                 <select class="form-control cs-input" data-field="seasonalMode" id="cs-seasonalmode-@index" @dis>
                     @opt(0, seasonalMode, "Always assign")
                     @opt(1, seasonalMode, "Assign until PE earned")
@@ -137,15 +140,17 @@
                         Also applies to Seasonal contracts: forces this account in whenever a sibling account (same boarding group) is force-assigned by the Seasonal Contracts filter above.
                     </p>
                 </div>
-            </div>
 
-            <div class="form-check cs-check" style="margin-top:18px;">
-                <input class="form-check-input cs-input" type="checkbox" data-field="excludeSeasonal"
-                       id="cs-excludeseasonal-@index" @(s.Redo.ExcludeSeasonal ? "checked" : "") @dis />
-                <label class="form-check-label" for="cs-excludeseasonal-@index">Skip seasonal replays</label>
-                <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
-                    Skip assignment of seasonal contracts if you already have a score from a previous co-op.
-                </p>
+                <div class="cs-dependent cs-excludeseasonal-wrap-@index" style="margin-top:6px; @(redoMode == (int)RedoLeggacyOption.NotSet || redoMode == (int)RedoLeggacyOption.No ? "display:none;" : "")">
+                    <div class="form-check cs-check">
+                        <input class="form-check-input cs-input" type="checkbox" data-field="excludeSeasonal"
+                               id="cs-excludeseasonal-@index" @(s.Redo.ExcludeSeasonal ? "checked" : "") @dis />
+                        <label class="form-check-label" for="cs-excludeseasonal-@index">Skip seasonal replays</label>
+                        <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
+                            Redo Completed Leggacies also applies to seasonal contracts you already completed. Enable this to leave those alone instead.
+                        </p>
+                    </div>
+                </div>
             </div>
 
             <div class="form-check cs-check" style="margin-top:10px;">
