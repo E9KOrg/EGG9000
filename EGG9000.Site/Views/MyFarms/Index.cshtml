@@ -429,6 +429,9 @@
                         <li class="nav-item">
                             <a class="nav-link" data-bs-toggle="tab" href="#ebhistory@(index)" role="tab" aria-selected="false">EB Stats</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#virtuestats@(index)" role="tab" aria-selected="false">Virtue History</a>
+                        </li>
                     }
                 }
                 <li class="nav-item">
@@ -551,6 +554,11 @@
                         <div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
                             @{
                                 await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts, Model.SeasonPEByEggIncId.GetValueOrDefault(backup.EggIncId, (Earned: 0, Max: 0)), Model.MissingSeasonalPEByEggIncId.GetValueOrDefault(backup.EggIncId, new List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe>())));
+                            }
+                        </div>
+                        <div class="tab-pane" id="virtuestats@(index)" role="tabpanel">
+                            @{
+                                await Html.RenderPartialAsync("-VirtueStats", (backup, snapshots, isAdmin));
                             }
                         </div>
                     }
