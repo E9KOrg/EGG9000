@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Testcontainers.PostgreSql;
 
 namespace EGG9000.Test.Integration;
@@ -7,9 +6,12 @@ namespace EGG9000.Test.Integration;
 public static class PostgresFixture {
     private static PostgreSqlContainer? _container;
 
-    public static string ConnectionString =>
-        _container?.GetConnectionString()
+    public static string ConnectionString {
+        get {
+            return _container?.GetConnectionString()
         ?? throw new InvalidOperationException("Postgres container not started.");
+        }
+    }
 
     [AssemblyInitialize]
     public static async Task AssemblyInit(TestContext _) {
@@ -18,12 +20,12 @@ public static class PostgresFixture {
         // removed both the parameterless builder and UntilPortIsAvailable.
         _container = new PostgreSqlBuilder("postgres:16-alpine")
             .Build();
-        await _container.StartAsync();
+        await _container.StartAsync(_.CancellationToken);
     }
 
     [AssemblyCleanup]
     public static async Task AssemblyCleanup() {
-        if (_container is not null) {
+        if(_container is not null) {
             await _container.DisposeAsync();
         }
     }

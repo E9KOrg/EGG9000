@@ -26,7 +26,7 @@ namespace EGG9000.Common.Database.Entities {
             Price = e.Price;
             AssetType = e.AssetType;
             Json = JsonConvert.SerializeObject(e);
-                
+
         }
     }
 }

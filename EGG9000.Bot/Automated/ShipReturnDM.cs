@@ -1,11 +1,9 @@
-﻿using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -13,8 +11,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Database.Entities.DBUser;
+using static EGG9000.Common.Helpers.DiscordHelpersExt;
 
 namespace EGG9000.Bot.Automated {
     public class ShipReturnDM(IServiceProvider provider) : _UpdaterBase<ShipReturnDM>(TimeSpan.FromSeconds(15), TimeSpan.Zero, provider) {
@@ -152,7 +150,7 @@ namespace EGG9000.Bot.Automated {
                     // second DM (the "returns soon" then "has returned" double-send). Once the return is
                     // >5 min old it is dropped here and Run() stale-skips any regenerated copy.
                     var staleReturnUnix = DateTimeOffset.UtcNow.AddMinutes(-5).ToUnixTimeSeconds();
-                    user.ShipDMs = currentShipDMs.Where(x => x.DMTime > DateTimeOffset.UtcNow || x.ShipReturnTime > staleReturnUnix).ToList();
+                    user.ShipDMs = [.. currentShipDMs.Where(x => x.DMTime > DateTimeOffset.UtcNow || x.ShipReturnTime > staleReturnUnix)];
                     var NextShipReturnDMDue = currentShipDMs.Where(x => !x.Sent && x.ShipReturnTime > staleReturnUnix).OrderBy(x => x.DMTime).FirstOrDefault()?.DMTime;
 
                     if(NextShipReturnDMDue != user.NextShipReturnDMDue) {

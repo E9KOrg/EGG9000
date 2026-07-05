@@ -22,8 +22,7 @@ public static class BotHostFactory {
     public static void ConfigureServices(HostBuilderContext hostContext, IServiceCollection services) {
         var logger = NLog.LogManager.GetCurrentClassLogger();
         logger.Log(NLog.LogLevel.Info, "ConfigureServices Start");
-        try
-        {
+        try {
             var serviceProvider = services.BuildServiceProvider();
             StaticLoggerFactory.Initialize(serviceProvider.GetRequiredService<ILoggerFactory>());
 
@@ -45,8 +44,7 @@ public static class BotHostFactory {
                 "ConnectionStrings:DefaultConnection",
                 "db_connection_string");
 
-            if (string.IsNullOrEmpty(connectionString))
-            {
+            if(string.IsNullOrEmpty(connectionString)) {
                 throw new InvalidOperationException(
                     "Connection string 'DefaultConnection' not found. " +
                     "Ensure it's set in: " +
@@ -78,21 +76,15 @@ public static class BotHostFactory {
             services.AddSingleton<Words>();
             services.AddSingleton<BotLogger>();
 
-#if RELEASE
-            var release = true;
-#else
-            var release = false;
-#endif
-
-#if DEBUG
-            services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("0")));
-
-            var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
-            if(serviceCustomize is not null && !release) {
-                var method = serviceCustomize.GetMethod("ConfigureServices");
-                method.Invoke(null, [hostContext, services]);
+            var release = BuildConfig.IsRelease;
+            if(!release) {
+                services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("0")));
+                var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
+                if(serviceCustomize is not null) {
+                    var method = serviceCustomize.GetMethod("ConfigureServices");
+                    method.Invoke(null, [hostContext, services]);
+                }
             }
-#else
             if(release) {
                 logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
 
@@ -170,6 +162,13 @@ public static class BotHostFactory {
 
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
+            services.AddSingleton(provider => new Discord.Interactions.InteractionService(
+                provider.GetRequiredService<DiscordHostedService>().Gateway,
+                new Discord.Interactions.InteractionServiceConfig {
+                    DefaultRunMode = Discord.Interactions.RunMode.Sync,
+                    UseCompiledLambda = true
+                }));
+            services.AddHostedService<InteractionRoutingService>();
 
             services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             services.AddHostedService<LeaderboardUpdater>();
@@ -198,25 +197,24 @@ public static class BotHostFactory {
             services.AddHostedService<RefreshNasaApod>();
             services.AddHostedService<UpdateBackups>();
             services.AddHostedService<CleanAutomationLogs>();
+            services.AddHostedService<CleanApiKeyRequestLogs>();
             services.AddHostedService<RankupMessageSeeder>();
 
             services.AddSingleton<CoopsBeingCreatedService>();
             services.AddSingleton<JobService>();
             services.AddHostedService(provider => provider.GetService<JobService>());
 
-            services.AddHostedService<CommandService>();
+            services.AddHostedService<MessageHandlerService>();
             services.AddHostedService<DiscordUserService>();
             services.AddHostedService<UserGrades>();
 
             // Publishes a runtime snapshot over the bus every 15s; the site re-exposes it as bot_*
             // gauges on its /metrics for cross-scope reporting.
             services.AddHostedService<BotMetricsPublisher>();
-#endif
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");
             throw;
-        }
-        finally {
+        } finally {
             NLog.LogManager.Shutdown();
         }
     }

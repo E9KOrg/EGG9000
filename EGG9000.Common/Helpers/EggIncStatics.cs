@@ -1,7 +1,6 @@
-﻿using EGG9000.Bot;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.JsonData.EiStatics;
+using EGG9000.Common.JsonData;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -12,8 +11,8 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
-    public static class EggIncStatics {
-        
+    public static partial class EggIncStatics {
+
         private static readonly string CustomEggsKey = "CustomEggsCache";
         public static async Task<List<DBCustomEgg>> GetCustomEggsAsync(this ApplicationDbContext db) {
             if(!db._cache.TryGetValue(CustomEggsKey, out List<DBCustomEgg> customEggs)) {
@@ -26,7 +25,7 @@ namespace EGG9000.Common.Helpers {
         public static void InvalidateCustomEggs(this IMemoryCache _cache) {
             _cache.Set(CustomEggsKey, new List<DBCustomEgg>(), TimeSpan.FromSeconds(1));
         }
-        
+
         public static EggIncEgg GetEggByContract(Contract contract, List<DBCustomEgg> customEggs) {
             return GetEggById(contract.Details.Egg, contract, customEggs);
         }
@@ -36,7 +35,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static EggIncEgg GetEggById(int id, Contract contract, List<DBCustomEgg> customEggs) {
-           try {
+            try {
                 if(id == 200) {
                     var customEgg = customEggs?.FirstOrDefault(ce => ce.Identifier == (contract?.Details?.CustomEggId ?? "INVALID"));
                     return new EggIncEgg {
@@ -49,12 +48,12 @@ namespace EGG9000.Common.Helpers {
                 }
             } catch(Exception) {
                 return null;
-            }  
+            }
         }
 
         private static string ToStartCase(string input) {
-            var reg1 = new Regex(@"_");
-            var reg2 = new Regex(@"(?: |\b)(\w)");
+            var reg1 = MyRegex();
+            var reg2 = MyRegex1();
             input = reg1.Replace(input, " ");
             input = reg2.Replace(input, match => match.Value.ToUpper());
             return input;
@@ -66,11 +65,11 @@ namespace EGG9000.Common.Helpers {
             } catch(Exception) {
                 return null;
             }
-            
+
         }
 
         public static string GetReward(Ei.Contract.Types.Goal goal) {
-            switch (goal.RewardType) {
+            switch(goal.RewardType) {
                 case Ei.RewardType.EggsOfProphecy:
                     return $"<:Egg_of_Prophecy:669981330477547580> {goal.RewardAmount}";
                 case Ei.RewardType.PiggyFill:
@@ -78,7 +77,7 @@ namespace EGG9000.Common.Helpers {
                 case Ei.RewardType.Gold:
                     return $"<:Egg_Golden:692439755798872075>  {goal.RewardAmount.ToEggString()}";
                 case Ei.RewardType.EpicResearchItem:
-                    var researchItem = (JsonData.EIEpicResearch.EiEpicResearch.Get().epicResearchItems.AsQueryable().FirstOrDefault(x => x.id == goal.RewardSubType.ToLower()));
+                    var researchItem = (EiEpicResearch.Get().epicResearchItems.AsQueryable().FirstOrDefault(x => x.id.Equals(goal.RewardSubType, StringComparison.CurrentCultureIgnoreCase)));
                     var goldenEggRefund = (int)(researchItem?.Costs?.Last() * goal?.RewardAmount);
                     var goldenEggRefundString = $" (<:Golden_Egg_GE:692439755798872075> {(goldenEggRefund >= 1000 ? (goldenEggRefund / 1000).ToString() + 'K' : goldenEggRefund)})";
                     return $"{researchItem?.title ?? ToStartCase(goal.RewardSubType)} +{goal.RewardAmount}{(goldenEggRefund == default ? "" : goldenEggRefundString)}";
@@ -111,5 +110,10 @@ namespace EGG9000.Common.Helpers {
             }
 
         }
+
+        [GeneratedRegex(@"_")]
+        private static partial Regex MyRegex();
+        [GeneratedRegex(@"(?: |\b)(\w)")]
+        private static partial Regex MyRegex1();
     }
 }

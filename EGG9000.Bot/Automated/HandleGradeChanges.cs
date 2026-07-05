@@ -1,6 +1,6 @@
 ﻿using Cronos;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Database;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using Ei;
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +23,7 @@ namespace EGG9000.Bot.Automated {
                 StillAlive();
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, token) => {
                     try {
-                        foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
+                        foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Contract.Types.PlayerGrade.GradeUnset)) {
                             var r = await EggIncApi.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
                             if(r is null) {
                                 _logger.LogWarning("Null response for {user} ({account})", user.DiscordUsername, account.Id);

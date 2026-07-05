@@ -1,10 +1,8 @@
+using EGG9000.Common.JsonData;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
 using System.Threading;
-
-using EGG9000.Common.JsonData;
-
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test {
     [TestClass]
@@ -17,7 +15,7 @@ namespace EGG9000.Test {
             var a = res.Value;
             var b = res.Value;
             Assert.IsNotNull(a);
-            Assert.IsTrue(a.Count > 0, "expected non-empty list");
+            Assert.IsNotEmpty(a, "expected non-empty list");
             Assert.AreSame(a, b, "value should be cached");
         }
 
@@ -32,22 +30,22 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void All_data_classes_load() {
-            Assert.IsTrue(EGG9000.Common.JsonData.ArtifactEmoji.Get().Count > 0);
-            Assert.IsTrue(EGG9000.Common.JsonData.EIEpicResearch.EiEpicResearch.Get().epicResearchItems.Count > 0);
-            Assert.IsTrue(EGG9000.Common.JsonData.EiStatics.Root.Get().eggIncEggs.Count > 0);
-            Assert.IsTrue(EGG9000.Common.JsonData.EiResearch.Get().Count > 0);
-            Assert.IsTrue(EGG9000.Common.JsonData.EiAfxData.EiAfxDataRoot.Get().artifact_families.Count > 0);
+            Assert.IsNotEmpty(ArtifactEmoji.Get());
+            Assert.IsNotEmpty(EiEpicResearch.Get().epicResearchItems);
+            Assert.IsNotEmpty(Root.Get().eggIncEggs);
+            Assert.IsNotEmpty(EiResearch.Get());
+            Assert.IsNotEmpty(EiAfxDataRoot.Get().artifact_families);
 
-            var afx = EGG9000.Common.JsonData.EiAfxConfig.Root.Get();
-            Assert.IsTrue(afx.craftingLevelXpThresholds.Count > 0, "post-process populated XP thresholds");
-            Assert.IsTrue(afx.baseCraftingCoefficients.Count > 0, "post-process populated coefficients");
+            var afx = Common.JsonData.EiAfxConfig.Root.Get();
+            Assert.IsNotEmpty(afx.craftingLevelXpThresholds, "post-process populated XP thresholds");
+            Assert.IsNotEmpty(afx.baseCraftingCoefficients, "post-process populated coefficients");
         }
 
         [TestMethod]
         public void Missing_resource_throws_clear_message() {
             var res = EmbeddedResource.Json<List<EmojiRow>>("does-not-exist-xyz.json");
             var ex = Assert.ThrowsExactly<InvalidOperationException>(() => _ = res.Value);
-            Assert.IsTrue(ex.Message.Contains("does-not-exist-xyz.json"), "message should name the missing suffix");
+            Assert.Contains("does-not-exist-xyz.json", ex.Message, "message should name the missing suffix");
         }
     }
 }

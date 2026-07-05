@@ -1,14 +1,13 @@
 ﻿using Bugsnag;
 
 using Discord;
-using Discord.Net.Rest;
-using Discord.Net.WebSockets;
 using Discord.Rest;
 using Discord.WebSocket;
 
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 
 using Humanizer;
 
@@ -51,7 +50,7 @@ namespace EGG9000.Common.Services {
         private static readonly ConcurrentDictionary<ulong, SemaphoreSlim> _serverSemaphores = new();
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
 
-        // The gateway socket client, for use by CommandService and extension methods
+        // The gateway socket client, for use by command modules and extension methods
         public DiscordSocketClient Gateway => _gateway;
 
         // Forwarding properties so _UpdaterBase and background jobs (_client.Guilds, _client.GetGuild etc.) work unchanged
@@ -72,9 +71,11 @@ namespace EGG9000.Common.Services {
         public Task<IChannel> GetChannelAsync(ulong id) => (_gateway as IDiscordClient).GetChannelAsync(id);
 
         public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) {
-#if DEBUG
-            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-#endif
+            if(BuildConfig.IsDebug) {
+#pragma warning disable SYSLIB0014
+                ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+#pragma warning restore SYSLIB0014
+            }
 
             _configuration = Configuration;
             _provider = provider;
@@ -159,7 +160,7 @@ namespace EGG9000.Common.Services {
 
         public static readonly string DBGuildsKey = "DBGuildsCache";
 
-        private readonly SemaphoreSlim _dbGuildsKeySemaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _dbGuildsKeySemaphore = new(1, 1);
         private async Task<Guild> GetDbGuild(SocketGuild guild) {
             await _dbGuildsKeySemaphore.WaitAsync();
             try {
@@ -178,19 +179,19 @@ namespace EGG9000.Common.Services {
         public async Task<List<SocketCategoryChannel>> GetAllCoopCategories(SocketGuild guild) {
             var dbguild = await GetDbGuild(guild);
             if(guild.Id == dbguild.Id) {
-                return dbguild.CoopCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null).ToList();
+                return [.. dbguild.CoopCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null)];
             } else {
-                var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => (x.Name.ToLower().Contains("coops") || x.Name.ToLower().Contains("co-ops")) && !x.Name.ToLower().Contains("finished") && !x.Name.ToLower().Contains("failed")).OrderBy(x => x.Position);
-                return categories.Where(x => x is not null).ToList();
+                var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => (x.Name.Contains("coops", StringComparison.CurrentCultureIgnoreCase) || x.Name.ToLower().Contains("co-ops")) && !x.Name.Contains("finished", StringComparison.CurrentCultureIgnoreCase) && !x.Name.Contains("failed", StringComparison.CurrentCultureIgnoreCase)).OrderBy(x => x.Position);
+                return [.. categories.Where(x => x is not null)];
             }
         }
         public async Task<List<SocketCategoryChannel>> GetAllFinishedCategories(SocketGuild guild) {
             var dbguild = await GetDbGuild(guild);
             if(guild.Id == dbguild.Id) {
-                return dbguild.FinishedCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null).ToList();
+                return [.. dbguild.FinishedCategories.Split(",").Select(x => guild.CategoryChannels.FirstOrDefault(y => y.Id.ToString() == x)).Where(x => x is not null)];
             } else {
-                var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => x.Name.ToLower().Contains("finished") && x.Name.ToLower().Contains("coops")).OrderBy(x => x.Position);
-                return categories.Where(x => x is not null).ToList();
+                var categories = guild.CategoryChannels.Where(x => x.Name != null).Where(x => x.Name.Contains("finished", StringComparison.CurrentCultureIgnoreCase) && x.Name.ToLower().Contains("coops")).OrderBy(x => x.Position);
+                return [.. categories.Where(x => x is not null)];
             }
         }
 
@@ -244,7 +245,7 @@ namespace EGG9000.Common.Services {
 
 
 
-    public static class DiscordExtensions {
+    public static partial class DiscordExtensions {
         public static async Task SendDMToKendrome(this DiscordSocketClient _discord, string message) {
             var kendromeUser = _discord.GetUser(248865520756064257);
             if(kendromeUser is null) return;
@@ -258,7 +259,7 @@ namespace EGG9000.Common.Services {
         }
 
         public static List<IChannel> GetInUseChannels(this SocketGuild guild, SocketGuildChannel category = null) {
-            return guild.Channels.Where(c =>
+            return [.. guild.Channels.Where(c =>
                 (c.GetChannelType() == ChannelType.Category ||
                 c.GetChannelType() == ChannelType.Text ||
                 c.GetChannelType() == ChannelType.Voice ||
@@ -273,7 +274,7 @@ namespace EGG9000.Common.Services {
                         (c as SocketTextChannel)?.Category == category
                     )
                 )
-            ).Select(c => c as IChannel).ToList();
+            ).Select(c => c as IChannel)];
         }
 
         public static int GetInUseChannelCount(this SocketGuild guild, SocketGuildChannel category = null) {
@@ -281,10 +282,10 @@ namespace EGG9000.Common.Services {
         }
 
         public static List<SocketThreadChannel> GetInUseThreads(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
-            return guild.ThreadChannels.Where(t =>
+            return [.. guild.ThreadChannels.Where(t =>
                 !t.IsArchived &&
                 (t.ParentChannel == parentChannel || parentChannel == null)
-            ).ToList();
+            )];
         }
 
         public static int GetInUseThreadCount(this SocketGuild guild, SocketGuildChannel parentChannel = null) {
@@ -358,7 +359,7 @@ namespace EGG9000.Common.Services {
             ];
 
             foreach(var sg in guilds) {
-                var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName().ToLower()) && Regex.IsMatch(c.Name, @"(-aaa|-aa|-a|-b|-c)$"));
+                var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName(), StringComparison.CurrentCultureIgnoreCase) && MyRegex().IsMatch(c.Name));
 
                 // Safety measure - there should never be more than 5 channels in the same guild,
                 // so if this happens, the pattern matching failed.
@@ -374,7 +375,7 @@ namespace EGG9000.Common.Services {
             }
         }
 
-        private readonly static MemoryCache commandCache = new(new MemoryCacheOptions());
+        private static readonly MemoryCache commandCache = new(new MemoryCacheOptions());
 
         private static string GetCommandCacheKey(this SocketGuild guild) { return $"CommandCache{guild.Id}"; }
 
@@ -398,10 +399,10 @@ namespace EGG9000.Common.Services {
             var fixedSlashCommandName = slashCommandName.ToLower().Trim();
             var command = (await guild.GetCachedApplicationCommands())
                 .ToList().Where(c => c.Type == ApplicationCommandType.Slash)
-                .FirstOrDefault(c => c.Name.ToLower() == fixedSlashCommandName);
+                .FirstOrDefault(c => c.Name.Equals(fixedSlashCommandName, StringComparison.CurrentCultureIgnoreCase));
             command ??= (await discord.GetCachedApplicationCommands())
                 .ToList().Where(c => c.Type == ApplicationCommandType.Slash)
-                .FirstOrDefault(c => c.Name.ToLower() == fixedSlashCommandName);
+                .FirstOrDefault(c => c.Name.Equals(fixedSlashCommandName, StringComparison.CurrentCultureIgnoreCase));
 
             if(command == null) return $"`/{fixedSlashCommandName}`";
             else return $"</{fixedSlashCommandName}:{command.Id}>";
@@ -409,7 +410,7 @@ namespace EGG9000.Common.Services {
 
         public static string GetE9KName(this Contract contract, bool toLower = true) {
             if(contract is null || string.IsNullOrEmpty(contract.Name)) return "unknown-contract";
-            return Regex.Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "[^a-zA-Z0-9-]", "");
+            return MyRegex1().Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "");
         }
 
         public static async Task<SocketTextChannel> GetParentChannelAsync(this IThreadChannel threadChannel) {
@@ -474,5 +475,10 @@ namespace EGG9000.Common.Services {
 
             return newAppEmote ?? emoteToReplace ?? null;
         }
+
+        [GeneratedRegex(@"(-aaa|-aa|-a|-b|-c)$")]
+        private static partial Regex MyRegex();
+        [GeneratedRegex("[^a-zA-Z0-9-]")]
+        private static partial Regex MyRegex1();
     }
 }

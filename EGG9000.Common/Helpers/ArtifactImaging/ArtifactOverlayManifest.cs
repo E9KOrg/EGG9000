@@ -10,7 +10,7 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
         // boxes on the client; the hotspots themselves are already normalised.
         public int Width { get; set; }
         public int Height { get; set; }
-        public List<ArtifactHotspot> Hotspots { get; set; } = new();
+        public List<ArtifactHotspot> Hotspots { get; set; } = [];
     }
 
     // One hover target: the full cell of an artifact. Its tooltip lists the artifact plus any slotted

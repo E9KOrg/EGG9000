@@ -1,16 +1,13 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+using System;
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     /// <inheritdoc />
-    public partial class DemeritAdminUserIdNull : Migration
-    {
+    public partial class DemeritAdminUserIdNull : Migration {
         /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
+        protected override void Up(MigrationBuilder migrationBuilder) {
             migrationBuilder.AlterColumn<Guid>(
                 name: "AdminUserId",
                 table: "Demerit",
@@ -21,8 +18,7 @@ namespace EGG9000.Common.Migrations
         }
 
         /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
+        protected override void Down(MigrationBuilder migrationBuilder) {
             migrationBuilder.AlterColumn<Guid>(
                 name: "AdminUserId",
                 table: "Demerit",

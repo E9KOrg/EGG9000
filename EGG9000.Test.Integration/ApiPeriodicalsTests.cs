@@ -1,5 +1,4 @@
 using EGG9000.Common.EggIncAPI;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test.Integration;
 

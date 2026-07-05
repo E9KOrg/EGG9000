@@ -1,18 +1,12 @@
 ﻿using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData.EIEpicResearch;
+using EGG9000.Common.JsonData;
 using EGG9000.Site.Services;
-
 using Ei;
-
 using Humanizer;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,22 +14,19 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-
 using Event = EGG9000.Common.Database.Entities.Event;
-using System.Collections.Frozen;
-using EGG9000.Common.JsonData;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         RoleManager<IdentityRole> roleManager, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache,
-        IServiceScopeFactory scopeFactory, EGG9000.Site.Services.ArtifactImageRenderer artifactRenderer) : Controller {
+        IServiceScopeFactory scopeFactory, ArtifactImageRenderer artifactRenderer) : Controller {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -46,7 +37,7 @@ namespace EGG9000.Site.Controllers {
         private readonly IMemoryCache _cache = cache;
         private readonly DatabaseCache _databaseCache = databaseCache;
         private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
-        private readonly EGG9000.Site.Services.ArtifactImageRenderer _artifactRenderer = artifactRenderer;
+        private readonly ArtifactImageRenderer _artifactRenderer = artifactRenderer;
 
         public async Task<IActionResult> Index() {
             var sw = new Stopwatch();
@@ -112,6 +103,14 @@ namespace EGG9000.Site.Controllers {
             var seasonInfos = (await _db.SeasonInfos.ToListAsync())
                 .Where(x => x.StartTime <= DateTimeOffset.UtcNow)
                 .ToList();
+
+            // Latest started season's PE-CS goal per grade, shown as an example in the seasonal CS-goal
+            // setting (the real floor is applied per-account at assignment; this is illustrative only).
+            var latestSeason = seasonInfos.OrderByDescending(x => x.StartTime).FirstOrDefault();
+            ViewBag.LatestSeasonPeCxpByGrade = latestSeason is null
+                ? []
+                : Enum.GetValues<Ei.Contract.Types.PlayerGrade>()
+                    .ToDictionary(g => g, g => latestSeason.GetMaxPeCxp(g));
             var seasonPEByEggIncId = new Dictionary<string, (int Earned, int Max)>();
             var missingSeasonalPEByEggIncId = new Dictionary<string, List<MissingSeasonalPe>>();
             foreach(var account in user.EggIncAccounts.DistinctBy(a => a.Id)) {
@@ -132,7 +131,7 @@ namespace EGG9000.Site.Controllers {
                         missing.Add(new MissingSeasonalPe(info.Name, totalCxp, goal.Cxp, goal.PeAmount, info.StartTime));
                 }
                 seasonPEByEggIncId[id] = (Earned: earned, Max: max);
-                missingSeasonalPEByEggIncId[id] = missing.OrderBy(m => m.StartTime).ToList();
+                missingSeasonalPEByEggIncId[id] = [.. missing.OrderBy(m => m.StartTime)];
             }
 
             var dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
@@ -267,7 +266,7 @@ namespace EGG9000.Site.Controllers {
                 }
             }
 
-            var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
+            var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == FarmType.Contract).Select(f => f.ContractId)).ToList();
             ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => contractIDs.Contains(x.ID)).ToListAsync();
 
             var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.UtcNow).FirstOrDefaultAsync();
@@ -321,6 +320,100 @@ namespace EGG9000.Site.Controllers {
             return Ok();
         }
 
+        public record SaveContractSettingModel {
+            public int AccountIndex { get; set; }
+            public string Field { get; set; }
+            public string Value { get; set; }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SaveContractSetting([FromBody] SaveContractSettingModel m) {
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            if(m.AccountIndex < 0 || m.AccountIndex >= dbuser.EggIncAccounts.Count) return BadRequest();
+
+            var account = dbuser.EggIncAccounts[m.AccountIndex];
+            var s = account.Assignment ??= new Common.Contracts.Assignment.AssignmentSettings();
+            var result = Common.Contracts.Assignment.ContractSettingField.Apply(s, m.Field, m.Value);
+            if(result.Status != Common.Contracts.Assignment.ContractSettingApplyStatus.Ok) return BadRequest(result.Status.ToString());
+
+            // Anti-dodge: the seasonal CS goal can never be below the grade floor (same as the Discord
+            // path). The per-season PE-CS floor is applied at assignment, not here. Echo the effective
+            // value back so the client can reflect any clamp.
+            double? effectiveCsGoal = null;
+            if(m.Field == "seasonalCsGoal") {
+                s.Seasonal.CsGoal = s.Seasonal.EffectiveCsGoal(account.GetGrade());
+                effectiveCsGoal = s.Seasonal.CsGoal;
+            }
+
+            dbuser.UpdateAccounts();
+            await _db.SaveChangesAsync();
+            return Ok(new { effectiveCsGoal });
+        }
+
+        public record TestAssignmentModel {
+            public int AccountIndex { get; set; }
+            public string ContractId { get; set; }
+            // Simulates a sibling account being assigned, for previewing RedoLeggacyOption.YesOtherAccountMatch
+            // (normally only resolved by AssignmentEvaluator.EvaluateUser's two-pass, multi-account run).
+            public bool SimulateSiblingAssigned { get; set; }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> TestAssignment([FromBody] TestAssignmentModel m) {
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+
+            if(m.AccountIndex < 0 || m.AccountIndex >= dbuser.EggIncAccounts.Count) return BadRequest();
+            var account = dbuser.EggIncAccounts[m.AccountIndex];
+
+            var contract = await _db.Contracts.FirstOrDefaultAsync(x => x.ID == m.ContractId);
+            if(contract is null) return NotFound();
+
+            var (season, seasonProgresses) = await Common.Contracts.OrganizeCoops.LoadContractSeasonData(_db, contract, [dbuser]);
+
+            var latest = await _db.UserCsHistoryEntries
+                .Where(h => h.EggIncId == account.Id && h.ContractIdentifier == contract.ID)
+                .OrderByDescending(h => h.Created)
+                .FirstOrDefaultAsync();
+
+            var contractFacts = Common.Contracts.Assignment.Facts.ContractFactsBuilder.Build(contract, season);
+            var accountFacts = Common.Contracts.Assignment.Facts.AccountFactsBuilder.Build(dbuser, account, contract, [], latest, season, seasonProgresses);
+
+            // Only means anything under YesOtherAccountMatch; on any other redo mode nothing reads the flag.
+            var siblingMatchApplies = m.SimulateSiblingAssigned
+                && (account.Assignment?.Redo?.Mode ?? RedoLeggacyOption.NotSet) == RedoLeggacyOption.YesOtherAccountMatch;
+            if(siblingMatchApplies) accountFacts.SiblingMatchProvisionalInclude = true;
+
+            var dbGuild = _db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
+            var decision = Common.Contracts.Assignment.AssignmentEvaluator.Evaluate(accountFacts, contractFacts, account.Assignment, dbGuild?.RuleOverrides, dbGuild?.DisableBG ?? false, verbose: true);
+
+            return Ok(new {
+                assigned = decision.Assigned,
+                diagnostics = new {
+                    isSeasonal = contractFacts.IsSeasonal,
+                    isLegacy = contractFacts.IsLegacy,
+                    isUltra = contractFacts.IsUltra,
+                    isColleggtible = contractFacts.IsColleggtible,
+                    missingSeasonalPe = accountFacts.MissingSeasonalPe,
+                    missingColleggtible = accountFacts.MissingColleggtible,
+                    previouslyCompleted = accountFacts.PreviouslyCompleted,
+                    previousScore = accountFacts.PreviousScoreOnThisContract,
+                    filtersDisabled = dbGuild?.DisableBG ?? false,
+                    siblingMatchSimulated = siblingMatchApplies
+                },
+                results = decision.Results.Select(r => new {
+                    rule = r.Rule.ToString(),
+                    tier = r.Tier.ToString(),
+                    outcome = r.Outcome.ToString(),
+                    reason = r.Reason
+                })
+            });
+        }
+
         public async Task<IActionResult> Roles() {
             var roles = await _userManager.GetRolesAsync(await _userManager.GetUserAsync(User));
             return Json(roles);
@@ -341,7 +434,7 @@ namespace EGG9000.Site.Controllers {
                     .Where(f =>
                         f.PEPossible > 0 && f.PEGained < f.PEPossible
                     )
-                    .Select(f => contracts.FirstOrDefault(c => c.ID == f.ContractId.ToLower()))
+                    .Select(f => contracts.FirstOrDefault(c => c.ID.Equals(f.ContractId, StringComparison.CurrentCultureIgnoreCase)))
                     .Concat(contracts.Where(c => c.Details.GetPossiblePE() > 0 && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
                     .Where(x => x is not null)
                     .ToList()

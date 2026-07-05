@@ -43,5 +43,15 @@ namespace EGG9000.Test {
             var account = AccountWith(G.GradeAa, DateTimeOffset.FromUnixTimeSeconds(OldAccept), G.GradeAaa, NewAccept);
             Assert.AreEqual(G.GradeAaa, account.GetGrade());
         }
+
+        [TestMethod]
+        public void Lower_grade_contract_does_not_demote_last_grade() {
+            // Grade-pull case: an AAA player joins a lower-grade (AA) all-grade coop for a guildie.
+            // That AA contract is the most recent one accepted, but joining down is not a demotion -
+            // the backup contract grade is only a fallback and must not override the authoritative
+            // LastGrade downward. GetGrade must stay AAA.
+            var account = AccountWith(G.GradeAaa, DateTimeOffset.FromUnixTimeSeconds(OldAccept), G.GradeAa, NewAccept);
+            Assert.AreEqual(G.GradeAaa, account.GetGrade());
+        }
     }
 }

@@ -3,10 +3,8 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public class LockoutModel : PageModel
-    {
-        public void OnGet()
-        {
+    public class LockoutModel : PageModel {
+        public void OnGet() {
 
         }
     }

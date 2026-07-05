@@ -17,7 +17,7 @@ namespace EGG9000.Common.Database.Entities {
         public string Skip { get; set; }
         public ContractStatus Status { get; set; }
 
-        [Column] 
+        [Column]
         private bool Elite { get; set; }
         public bool HasScores { get; set; }
 

@@ -26,11 +26,11 @@ namespace EGG9000.Bot.Services {
                       .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                       .Select(x =>
                         new Job {
-                            Name = x.Name, 
-                            MethodInfo = x,  
-                            Details = x.GetCustomAttribute<JobAttribute>(), 
-                            Parameters = x.GetParameters(), 
-                            DeclaringType = x.DeclaringType, 
+                            Name = x.Name,
+                            MethodInfo = x,
+                            Details = x.GetCustomAttribute<JobAttribute>(),
+                            Parameters = x.GetParameters(),
+                            DeclaringType = x.DeclaringType,
                             NextRun = GetNextRun(x.GetCustomAttribute<JobAttribute>().Cron)
                         })];
 
@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Services {
                         job.NextRun = GetNextRun(job.Details.Cron);
                         _logger.LogInformation("Running Job {jobDeclareType}.{jobName}, Current time: {currentTime}, next run at {nextRun}",
                             job.DeclaringType.Name, job.Name, $"{DateTimeOffset.UtcNow:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
-                        
+
                         _ = Task.Run(async () => {
                             job.Running = true;
                             var timer = System.Diagnostics.Stopwatch.StartNew();
@@ -70,7 +70,7 @@ namespace EGG9000.Bot.Services {
                         nextJob.DeclaringType.Name, nextJob.Name, delay.TotalSeconds, delay.TotalSeconds);
                     await Task.Delay((int)delay.TotalMilliseconds, cancellationToken);
                 } else {
-                      _logger.LogTrace($"No jobs found, delaying for 1 second");
+                    _logger.LogTrace($"No jobs found, delaying for 1 second");
                     await Task.Delay(1000, cancellationToken);
                 }
 

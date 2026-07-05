@@ -1,27 +1,23 @@
 ﻿
 using Discord;
 using Discord.WebSocket;
-using EGG9000.Bot;
 using EGG9000.Bot.Commands;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-
+using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Linq;
-using System.Security.Principal;
 using System.Threading;
 using System.Threading.Tasks;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using static System.Collections.Specialized.BitVector32;
 
-namespace EGG9000.Common.Services {
+namespace EGG9000.Bot.Services {
 
     public class DiscordUserService(DiscordHostedService discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) : IHostedService {
 
@@ -30,11 +26,7 @@ namespace EGG9000.Common.Services {
         private readonly IServiceProvider _provider = provider;
         private readonly ILogger<DiscordUserService> _logger = logger;
 
-#if DEV9002 || DEBUG
-        private static readonly bool _debug = true;
-#else
-        private static readonly bool _debug = false;
-#endif
+        private static readonly bool _debug = BuildConfig.IsDev9002 || BuildConfig.IsDebug;
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _discord.Gateway.UserJoined += Client_UserJoined;

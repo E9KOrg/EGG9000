@@ -5,8 +5,8 @@ using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace EGG9000.Bot {
-    public static class ArgumentsHelper {
+namespace EGG9000.Common.Helpers {
+    public static partial class ArgumentsHelper {
 
         public static readonly List<KeyValuePair<int, string>> bignums = [
             new(0, ""),
@@ -103,10 +103,10 @@ namespace EGG9000.Bot {
             var outString = new StringBuilder();
 
             // Calculate the number of digits before the decimal point
-            int digitsBeforeDecimal = (int)Math.Floor(Math.Log10(number)) + 1;
+            var digitsBeforeDecimal = (int)Math.Floor(Math.Log10(number)) + 1;
 
             // Calculate the number of decimal places required
-            int decimalPlaces = Math.Max(0, numberOfDigits - digitsBeforeDecimal);
+            var decimalPlaces = Math.Max(0, numberOfDigits - digitsBeforeDecimal);
 
             // Using custom format specifier to specify the total number of digits including decimal places
             outString.Append(number.ToString($"0.{new string('0', decimalPlaces)}"));
@@ -143,7 +143,7 @@ namespace EGG9000.Bot {
         }
 
         public static double NumberFromStringDouble(string arg) {
-            var regex = new Regex(@"([\d\.]+)(\w*)");
+            var regex = MyRegex();
             var match = regex.Match(arg);
             if(match.Success) {
                 var size = match.Groups[2].Value;
@@ -162,6 +162,9 @@ namespace EGG9000.Bot {
             }
             throw new UnableToParseNumberExecption();
         }
+
+        [GeneratedRegex(@"([\d\.]+)(\w*)")]
+        private static partial Regex MyRegex();
     }
     public class UnableToParseNumberExecption : Exception {
 

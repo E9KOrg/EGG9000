@@ -1,10 +1,9 @@
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using System;
 using System.Collections;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace EGG9000.Common.Database {
     // Npgsql 'timestamp with time zone' rejects any DateTimeOffset whose offset is not UTC.
@@ -27,7 +26,7 @@ namespace EGG9000.Common.Database {
                     return dto.ToUniversalTime();
                 // Npgsql array/list params (e.g. WHERE x = ANY(@p)). Mutate in place; same instant.
                 case IList list when value is not byte[] and not string:
-                    for(int i = 0; i < list.Count; i++)
+                    for(var i = 0; i < list.Count; i++)
                         if(list[i] is DateTimeOffset element && element.Offset != TimeSpan.Zero)
                             list[i] = element.ToUniversalTime();
                     return list;

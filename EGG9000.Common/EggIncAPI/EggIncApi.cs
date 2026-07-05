@@ -114,7 +114,7 @@ namespace EGG9000.Common.EggIncAPI {
 
         private static int _saltWarned;
         private static void WarnSaltUnavailableOnce(string path) {
-            if(System.Threading.Interlocked.Exchange(ref _saltWarned, 1) == 0) {
+            if(Interlocked.Exchange(ref _saltWarned, 1) == 0) {
                 Console.Error.WriteLine(
                     $"[EggIncAPI] Salt not configured; authenticated endpoint '{path}' is disabled and will return no data. " +
                     "Set the 'egg_inc_api_salt' Docker secret or the 'ConnectionStrings:ApiSalt' configuration key to enable it.");

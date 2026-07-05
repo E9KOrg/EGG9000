@@ -1,0 +1,94 @@
+@model EGG9000.Site.Controllers.AdminController.ApiKeysViewModel
+@{
+    ViewData["Title"] = "API Keys";
+}
+
+<h2>API Keys</h2>
+<p>API keys let external tools fetch leaderboard data as JSON. Each key is guild-scoped and read-only. The raw key is shown <strong>once</strong> when created - copy it immediately.</p>
+
+@if (Model.NewRawKey != null) {
+    <div class="alert alert-success" role="alert">
+        <strong>New key created.</strong> Copy it now - it will not be shown again.<br />
+        <code>@Model.NewRawKey</code>
+    </div>
+}
+
+@if (User.IsInRole("Admin") && Model.UnrecognizedAttempts7Days > 0) {
+    <div class="alert alert-warning" role="alert">
+        <strong>@Model.UnrecognizedAttempts7Days</strong> requests in the last 7 days used an API key that matched nothing on file (across all guilds).
+    </div>
+}
+
+<h4>Existing Keys</h4>
+@if (!Model.Keys.Any()) {
+    <p>No keys yet.</p>
+} else {
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Label</th>
+                <th>Created</th>
+                <th>Expires</th>
+                <th>Status</th>
+                <th>Today</th>
+                <th>Last 7 days</th>
+                <th>Unique IPs (7d)</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var key in Model.Keys) {
+                var usage = Model.KeyUsage[key.Id];
+                <tr>
+                    <td>
+                        @key.Label
+                        @if (usage.IsSpike) {
+                            <span class="badge bg-danger" title="Today's usage is more than 5x this key's trailing baseline">Spike</span>
+                        }
+                    </td>
+                    <td>@key.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                    <td>@(key.ExpiresAt.HasValue ? key.ExpiresAt.Value.ToString("yyyy-MM-dd") : "Never")</td>
+                    <td>
+                        @if (key.Revoked) {
+                            <span class="badge bg-danger">Revoked</span>
+                        } else if (key.ExpiresAt.HasValue && key.ExpiresAt < DateTimeOffset.UtcNow) {
+                            <span class="badge bg-warning text-dark">Expired</span>
+                        } else {
+                            <span class="badge bg-success">Active</span>
+                        }
+                    </td>
+                    <td>@usage.RequestsToday</td>
+                    <td>@usage.RequestsLast7Days</td>
+                    <td>@usage.UniqueIps7Days</td>
+                    <td>
+                        <a href="/Admin/ApiKeyRequestLog?apiKeyId=@key.Id&guildId=@Model.GuildId" class="btn btn-sm btn-outline-secondary">View log</a>
+                        @if (!key.Revoked) {
+                            <form method="post" action="/Admin/RevokeApiKey?id=@key.Id&guildId=@Model.GuildId" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-sm btn-danger"
+                                        onclick="return confirm('Revoke key &quot;@key.Label&quot;? This cannot be undone.')">
+                                    Revoke
+                                </button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<h4>Create New Key</h4>
+<form method="post" action="/Admin/CreateApiKey">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@Model.GuildId" />
+    <div class="mb-3">
+        <label for="label" class="form-label">Label</label>
+        <input type="text" class="form-control" id="label" name="label" required maxlength="100" placeholder="e.g. Stats Dashboard" />
+    </div>
+    <div class="mb-3">
+        <label for="expiresAt" class="form-label">Expiry date (optional)</label>
+        <input type="date" class="form-control" id="expiresAt" name="expiresAt" />
+    </div>
+    <button type="submit" class="btn btn-primary">Generate Key</button>
+</form>

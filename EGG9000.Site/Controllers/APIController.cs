@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.AfxSets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +8,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
@@ -18,26 +18,58 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using EGG9000.Common.Helpers;
-using EGG9000.Common.Helpers.AfxSets;
 using static EGG9000.Common.Helpers.ArtifactHelpers;
 
 namespace EGG9000.Site.Controllers {
 
     [AllowAnonymous]
-    public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env, EGG9000.Site.Services.ArtifactImageRenderer renderer) : Controller {
+    public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env, Services.ArtifactImageRenderer renderer) : Controller {
         private readonly ApplicationDbContext _db = db;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
         private readonly IServiceProvider _provider = provider;
         private readonly ILogger<APIController> _logger = logger;
         private readonly IWebHostEnvironment _env = env;
-        private readonly EGG9000.Site.Services.ArtifactImageRenderer _renderer = renderer;
+        private readonly Services.ArtifactImageRenderer _renderer = renderer;
+
+        private void DrawArtifactCell(Image<Rgba32> canvas, EggIncArtifactInstance inst, int cellX, int rowY, AfxSetsCreatorConfig config) {
+            var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
+            var afName = inst.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
+            var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? inst.Tier + 1 : inst.Tier);
+
+            var bg = inst.Rarity switch {
+                1 => Color.ParseHex("#383834"),
+                2 => Color.ParseHex("#6cb6d9"),
+                3 => Color.ParseHex("#b72de0"),
+                4 => Color.ParseHex("#f2d61b"),
+                _ => Color.ParseHex("#383834")
+            };
+
+            var afImagePath = GetWWWRelativePath(["images/artifacts", afName, $"{afName}_{afTier}.png"]);
+            if(afImagePath == null) return;
+            using var afImage = Image.Load(afImagePath);
+            afImage.Mutate(i => i.Resize(new Size(config.AFSize, config.AFSize)));
+
+            using var background = BackgroundImage(bg, config.AFSize, config.AFCornerRadius);
+            background.Mutate(i => i.DrawImage(afImage, new Point(0, 0), 1f));
+            canvas.Mutate(b => b.DrawImage(background, new Point(cellX, rowY), 1f));
+
+            var stoneIndex = 1;
+            foreach(var stone in inst.Stones ?? []) {
+                var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
+                var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
+                if(stonePath == null) continue;
+                using var stoneImage = Image.Load(stonePath);
+                stoneImage.Mutate(i => i.Resize(new Size(config.StoneSize, config.StoneSize), true));
+                canvas.Mutate(b => b.DrawImage(stoneImage, new Point(cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5)), 1f));
+                stoneIndex++;
+            }
+        }
 
         private string GetWWWRelativePath(List<string> relativePathJoins) {
             var imageDur = _env.WebRootPath;
             // If there are additional path segments, combine them with the root path
             if(relativePathJoins != null && relativePathJoins.Count > 0) {
-                imageDur = System.IO.Path.Combine(imageDur, System.IO.Path.Combine([.. relativePathJoins]));
+                imageDur = Path.Combine(imageDur, Path.Combine([.. relativePathJoins]));
             }
             // Return the final path
             return System.IO.File.Exists(imageDur) ? imageDur : null;
@@ -46,11 +78,9 @@ namespace EGG9000.Site.Controllers {
         [HttpPost]
         [Route("api/generateeventimage")]
         public IActionResult GenerateEventImage([FromHeader] string authenticationKey, [FromBody] Event customEvent) {
-#if RELEASE
-            if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) {
+            if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) {
                 return NotFound();
             }
-#endif 
             var imagePath = GetWWWRelativePath([
                 "images/events",
                 $"event_{customEvent.Type.ToLowerInvariant().Replace("-", "_")}.png"
@@ -126,9 +156,7 @@ namespace EGG9000.Site.Controllers {
         [HttpPost]
         [Route("api/generateinventoryb64")]
         public async Task<IActionResult> GenerateInventoryB64([FromHeader] string authenticationKey, [FromBody] InventoryAPIObject userObject) {
-#if RELEASE
-             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) return NotFound();
-#endif
+            if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) return NotFound();
             var user = await _db.DBUsers.FirstOrDefaultAsync(u => u.EIDs.Contains(userObject.EID));
             if(user == null) {
                 return BadRequest(new { message = $"User with EID {userObject.EID} was not found." });
@@ -149,9 +177,7 @@ namespace EGG9000.Site.Controllers {
         [HttpPost]
         [Route("api/generateafxsetsb64")]
         public async Task<IActionResult> GenerateAfxSetsB64([FromHeader] string authenticationKey, [FromBody] AfxSetsAPIObject userObject) {
-#if RELEASE
-             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) return NotFound();
-#endif
+            if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) return NotFound();
             if(userObject is null || string.IsNullOrWhiteSpace(userObject.EID) || userObject.Config is null) return BadRequest(new { message = "Invalid request body." });
 
             var user = await _db.DBUsers.FirstOrDefaultAsync(u => u.EIDs.Contains(userObject.EID));
@@ -203,40 +229,8 @@ namespace EGG9000.Site.Controllers {
                     }
 
                     for(var c = 0; c < set.Count && c < config.SlotsPerRow; c++) {
-                        var inst = set[c];
                         var cellX = config.LabelWidth + config.Padding * (c + 1) + c * config.AFSize;
-
-                        var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
-                        var afName = inst.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
-                        var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? inst.Tier + 1 : inst.Tier);
-
-                        var bg = inst.Rarity switch {
-                            1 => Color.ParseHex("#383834"),
-                            2 => Color.ParseHex("#6cb6d9"),
-                            3 => Color.ParseHex("#b72de0"),
-                            4 => Color.ParseHex("#f2d61b"),
-                            _ => Color.ParseHex("#383834")
-                        };
-
-                        var afImagePath = GetWWWRelativePath(["images/artifacts", afName, $"{afName}_{afTier}.png"]);
-                        if(afImagePath == null) continue;
-                        using var afImage = Image.Load(afImagePath);
-                        afImage.Mutate(i => i.Resize(new Size(config.AFSize, config.AFSize)));
-
-                        using var background = BackgroundImage(bg, config.AFSize, config.AFCornerRadius);
-                        background.Mutate(i => i.DrawImage(afImage, new Point(0, 0), 1f));
-                        pageImage.Mutate(b => b.DrawImage(background, new Point(cellX, rowY), 1f));
-
-                        var stoneIndex = 1;
-                        foreach(var stone in inst.Stones ?? []) {
-                            var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
-                            var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
-                            if(stonePath == null) continue;
-                            using var stoneImage = Image.Load(stonePath);
-                            stoneImage.Mutate(i => i.Resize(new Size(config.StoneSize, config.StoneSize), true));
-                            pageImage.Mutate(b => b.DrawImage(stoneImage, new Point(cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5)), 1f));
-                            stoneIndex++;
-                        }
+                        DrawArtifactCell(pageImage, set[c], cellX, rowY, config);
                     }
                 }
 
@@ -246,6 +240,46 @@ namespace EGG9000.Site.Controllers {
             }
 
             return Ok(new AfxSetsB64Response { Pages = pages });
+        }
+
+        [HttpPost]
+        [Route("api/generateartifactsetb64")]
+        public IActionResult GenerateArtifactSetB64([FromHeader] string authenticationKey, [FromBody] ArtifactSetRenderRequest request) {
+            if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) return NotFound();
+            if(request?.Artifacts is null || request.Artifacts.Count == 0) return BadRequest(new { message = "No artifacts provided." });
+
+            var config = request.Config ?? new AfxSetsCreatorConfig(100);
+            if(!config.IsValid(out var configError)) return BadRequest(new { message = configError });
+
+            var fontFilePath = GetWWWRelativePath(["Always Together.otf"]);
+            if(fontFilePath == null) return BadRequest(new { message = "`Always Together.otf` could not be found." });
+            var font = new FontCollection().Add(fontFilePath).CreateFont(config.TextFontSize, FontStyle.Bold);
+
+            var width = config.LabelWidth + (config.SlotsPerRow * config.AFSize) + (config.Padding * (config.SlotsPerRow + 1));
+            var height = config.AFSize + config.Padding * 2;
+            using var pageImage = new Image<Rgba32>(width, height);
+            pageImage.Mutate(x => x.Fill(Color.ParseHex("#242422")));
+
+            var rowY = config.Padding;
+            var label = request.Label ?? "Best Set";
+            var maxLabelPx = config.LabelWidth - config.Padding;
+            if(TextMeasurer.MeasureSize(label, new TextOptions(font)).Width > maxLabelPx) {
+                while(label.Length > 1 && TextMeasurer.MeasureSize(label + "…", new TextOptions(font)).Width > maxLabelPx)
+                    label = label[..^1];
+                label += "…";
+            }
+            pageImage.Mutate(x => x.DrawText(label, font, Color.White, new PointF(config.Padding, rowY + config.AFSize / 2f - config.TextFontSize / 2f)));
+
+            for(var c = 0; c < request.Artifacts.Count && c < config.SlotsPerRow; c++) {
+                var inst = request.Artifacts[c];
+                if(inst is null) continue;
+                var cellX = config.LabelWidth + config.Padding * (c + 1) + c * config.AFSize;
+                DrawArtifactCell(pageImage, inst, cellX, rowY, config);
+            }
+
+            using var ms = new MemoryStream();
+            pageImage.Save(ms, new JpegEncoder());
+            return Ok(new ArtifactSetRenderResponse { Page = Convert.ToBase64String(ms.ToArray()) });
         }
     }
 }

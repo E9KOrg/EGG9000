@@ -11,35 +11,29 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Areas.Identity.Pages.Account {
     [AllowAnonymous]
-    public abstract class ResendEmailConfirmationModel(UserManager<ApplicationUser> userManager, IEmailSender emailSender) : PageModel
-    {
+    public abstract class ResendEmailConfirmationModel(UserManager<ApplicationUser> userManager, IEmailSender emailSender) : PageModel {
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly IEmailSender _emailSender = emailSender;
 
         [BindProperty]
         public InputModel Input { get; set; }
 
-        public class InputModel
-        {
+        public class InputModel {
             [Required]
             [EmailAddress]
             public string Email { get; set; }
         }
 
-        public void OnGet()
-        {
+        public void OnGet() {
         }
 
-        public async Task<IActionResult> OnPostAsync()
-        {
-            if (!ModelState.IsValid)
-            {
+        public async Task<IActionResult> OnPostAsync() {
+            if(!ModelState.IsValid) {
                 return Page();
             }
 
             var user = await _userManager.FindByEmailAsync(Input.Email);
-            if (user == null)
-            {
+            if(user == null) {
                 ModelState.AddModelError(string.Empty, "Verification email sent. Please check your email.");
                 return Page();
             }

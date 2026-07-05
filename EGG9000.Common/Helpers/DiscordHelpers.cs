@@ -2,16 +2,14 @@ using Discord;
 using Discord.Net;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Helpers;
+using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
@@ -23,15 +21,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Prefarm;
 
-namespace EGG9000.Bot.Helpers {
-    public static class DiscordHelpersExt {
+namespace EGG9000.Common.Helpers {
+    public static partial class DiscordHelpersExt {
         public static string GetName(this IGuildUser user) {
             return string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
         }
 
         public static string GetCleanName(this IGuildUser user) {
             var name = string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
-            var ebrgx = new Regex(@"\(.+?\)");
+            var ebrgx = MyRegex();
             name = ebrgx.Replace(name, "").Trim();
 
             return name;
@@ -65,7 +63,7 @@ namespace EGG9000.Bot.Helpers {
                 await dmChannel.SendMessageAsync(message);
             } catch(HttpException ex) {
                 result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
-            } catch (Exception) {
+            } catch(Exception) {
                 return DMResult.DiscordError;
             }
             if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
@@ -131,8 +129,11 @@ namespace EGG9000.Bot.Helpers {
             } else {
                 return await channel.SendMessageAsync(text, isTTS, embed, options, allowedMentions, messageReference, components, stickers, embeds, flags, poll);
             }
-            
+
         }
+
+        [GeneratedRegex(@"\(.+?\)")]
+        private static partial Regex MyRegex();
     }
     public class DiscordHelpers {
         public static async Task<List<(Ei.Contract.Types.PlayerGrade, SocketRole)>> GetGradeRoles(DiscordHostedService _client, SocketGuild guild) {
@@ -155,17 +156,17 @@ namespace EGG9000.Bot.Helpers {
                     dbUser.showEB = false;
                 }
 
-                var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
-                var guildRegisteredRole = guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("registered"));
+                var registeredRole = discordUser.Roles.FirstOrDefault(x => x.Name.Contains("registered", StringComparison.CurrentCultureIgnoreCase));
+                var guildRegisteredRole = guild.Roles.FirstOrDefault(x => x.Name.Contains("registered", StringComparison.CurrentCultureIgnoreCase));
                 if(registeredRole == null && guildRegisteredRole is not null) {
                     await discordUser.AddRoleAsync(guildRegisteredRole);
                 }
 
-                var existingRole = discordUser.Roles.FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
+                var existingRole = discordUser.Roles.FirstOrDefault(x => x.Name.Contains("FARMER", StringComparison.CurrentCultureIgnoreCase));
 
                 var role = await SetRole(guild, discordUser, higherEB.Backup.EarningsBonus, dbUser);
 
-                await CheckSiloResearch(guild, discordUser, dbUser.EggIncAccounts.Select(y => y.Backup).ToList());
+                await CheckSiloResearch(guild, discordUser, [.. dbUser.EggIncAccounts.Select(y => y.Backup)]);
                 await CheckHatchlingRole(guild, discordUser, dbUser);
                 await CheckFreshEggsRole(guild, discordUser, dbUser);
                 await CheckBG(_client, guild, discordUser, dbUser);
@@ -205,14 +206,14 @@ namespace EGG9000.Bot.Helpers {
                 }
 
                 return role;
-            }catch(Exception e) {
-                logger?.LogError(e + $" Userid: {discordUser?.Id} {discordUser?.DisplayName}","", null);
+            } catch(Exception e) {
+                logger?.LogError(e + $" Userid: {discordUser?.Id} {discordUser?.DisplayName}", "", null);
                 return null;
             }
         }
 
         private static async Task CheckSiloResearch(SocketGuild Guild, IGuildUser DiscordUser, List<CustomBackup> backups) {
-            var needSiloERRole = Guild.Roles.FirstOrDefault(x => x.Name.ToLower() == "needssiloepicresearch");
+            var needSiloERRole = Guild.Roles.FirstOrDefault(x => x.Name.Equals("needssiloepicresearch", StringComparison.CurrentCultureIgnoreCase));
             if(needSiloERRole is null) return;
 
             var needsResearch = backups.Any(backup => {
@@ -307,7 +308,7 @@ namespace EGG9000.Bot.Helpers {
         }
 
         private static async Task CheckHatchlingRole(SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
-            var hatchlingRole = Guild.Roles.FirstOrDefault(x => x.Name.ToLower().Contains("hatchling"));
+            var hatchlingRole = Guild.Roles.FirstOrDefault(x => x.Name.Contains("hatchling", StringComparison.CurrentCultureIgnoreCase));
             if(hatchlingRole is null) return;
             var needsRole = user.Registered > DateTimeOffset.UtcNow.AddDays(-21);
             await RoleToggle.ApplyAsync(DiscordUser, hatchlingRole, needsRole);
@@ -383,7 +384,7 @@ namespace EGG9000.Bot.Helpers {
         }
 
         private static async Task<SocketRole> SetRole(SocketGuild guild, IGuildUser DiscordUser, double EarningsBonus, DBUser dbUser) {
-            var currentRole = DiscordUser.RoleIds.Select(y => guild.Roles.FirstOrDefault(z => z.Id == y)).Where(x => x is not null).FirstOrDefault(x => x.Name.ToUpper().Contains("FARMER"));
+            var currentRole = DiscordUser.RoleIds.Select(y => guild.Roles.FirstOrDefault(z => z.Id == y)).Where(x => x is not null).FirstOrDefault(x => x.Name.Contains("FARMER", StringComparison.CurrentCultureIgnoreCase));
             var rolename = currentRole?.Name;
             var prefix = SIPrefix.GetPrefixFromEB(EarningsBonus);
             var newRoleName = prefix.Rank;

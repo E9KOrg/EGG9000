@@ -3,18 +3,18 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test.Integration;
 
 [TestClass]
 [TestCategory("Integration")]
 public class DepartedMemberPurgeTests {
-    private static DbContextOptions<ApplicationDbContext> Options() =>
-        new DbContextOptionsBuilder<ApplicationDbContext>()
+    private static DbContextOptions<ApplicationDbContext> Options() {
+        return new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(PostgresFixture.ConnectionString, o => o.MigrationsAssembly("EGG9000.Common"))
             .ConfigureWarnings(w => w.Ignore(RelationalEventId.PendingModelChangesWarning))
             .Options;
+    }
 
     [TestMethod]
     [DataRow(0, 0, false)]   // nobody missing -> never a spike
@@ -30,7 +30,7 @@ public class DepartedMemberPurgeTests {
     [TestMethod]
     public async Task PendingAssignmentPurgeFilter_SelectsOnlyActiveUnjoinedThisGuild() {
         await using var ctx = new ApplicationDbContext(Options());
-        await ctx.Database.MigrateAsync();
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
 
         var now = DateTimeOffset.UtcNow;
         var userId = Guid.NewGuid();
@@ -54,32 +54,38 @@ public class DepartedMemberPurgeTests {
             NewXref(userId, expired.Id, joinedCoop: false),
             NewXref(userId, full.Id, joinedCoop: false));
 
-        await ctx.SaveChangesAsync();
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
 
         var matched = await ctx.UserCoopXrefs
             .Where(ManageOverflow.PendingAssignmentPurgeFilter([userId], guildId, now))
             .Select(x => x.CoopId)
-            .ToListAsync();
+            .ToListAsync(TestContext!.CancellationToken);
 
         CollectionAssert.AreEquivalent(new[] { match.Id }, matched,
             "Only the active, unjoined, same-guild assignment should be selected for purge.");
     }
 
-    private static Coop NewCoop(ulong guildId, CoopStatusEnum status, DateTimeOffset ends) => new() {
-        Id = Guid.NewGuid(),
-        ContractID = "test-contract",
-        GuildId = guildId,
-        Status = status,
-        CoopEnds = ends,
-        Created = DateTimeOffset.UtcNow,
-        CreatorID = "real"
-    };
+    private static Coop NewCoop(ulong guildId, CoopStatusEnum status, DateTimeOffset ends) {
+        return new() {
+            Id = Guid.NewGuid(),
+            ContractID = "test-contract",
+            GuildId = guildId,
+            Status = status,
+            CoopEnds = ends,
+            Created = DateTimeOffset.UtcNow,
+            CreatorID = "real"
+        };
+    }
 
-    private static UserCoopXref NewXref(Guid userId, Guid coopId, bool joinedCoop) => new() {
-        UserId = userId,
-        CoopId = coopId,
-        JoinedCoop = joinedCoop,
-        EggIncId = "EI0000000000000000",
-        CreatedOn = DateTimeOffset.UtcNow
-    };
+    private static UserCoopXref NewXref(Guid userId, Guid coopId, bool joinedCoop) {
+        return new() {
+            UserId = userId,
+            CoopId = coopId,
+            JoinedCoop = joinedCoop,
+            EggIncId = "EI0000000000000000",
+            CreatedOn = DateTimeOffset.UtcNow
+        };
+    }
+
+    public TestContext? TestContext { get; set; }
 }

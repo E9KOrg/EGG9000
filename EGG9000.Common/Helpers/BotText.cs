@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public class BotText {
         public static List<string> SleepingMessages {
             get {
-                return new List<string> {
+                return [
 "Time to wake up @name! You're sleeping.",
 "Rise n' shine @name, it's time to grind!",
 "Feeling drowsy, @name?",
@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Helpers {
 "I thought humans were efficient, turns out I'm wrong. @name",
 "A member of your co - op has been MIA for a while now, we need more eggs. Anyone seen @name around?",
 "Heard of the Pokémon Snorlax, Drowzee or Slaking? They got nothing on you, @name."
-                };
+                ];
             }
         }
 

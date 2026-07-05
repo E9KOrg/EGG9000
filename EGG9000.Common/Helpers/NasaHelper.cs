@@ -1,4 +1,5 @@
 ﻿using Discord;
+using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
@@ -7,14 +8,13 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Common.Helpers.ChannelHelper;
 using static EGG9000.Common.Database.Entities.NasaApod;
+using static EGG9000.Common.Helpers.Discord.ChannelHelper;
 
 namespace EGG9000.Common.Helpers;
 
@@ -81,7 +81,7 @@ public static partial class NasaHelper {
     }
 
     public static async Task<GuildNasaApodDetails> GetNasaApodCache(this ApplicationDbContext db, Guild guild) {
-        if (!db._cache.TryGetValue(guild.GetNASACacheKey(), out GuildNasaApodDetails cache)) {
+        if(!db._cache.TryGetValue(guild.GetNASACacheKey(), out GuildNasaApodDetails cache)) {
             var recentPostedCandidates = await db.NasaApods
                 .Where(a => a._postedToBytes != null)
                 .OrderByDescending(a => a.DateString)
@@ -118,9 +118,9 @@ public static partial class NasaHelper {
     }
 
     public static async Task<string> GetExplanationOrEmpty(Guid postGuid, ApplicationDbContext db) {
-        if (!db._cache.TryGetValue(postGuid.GetApodExplanationKey(), out string explanation)) {
+        if(!db._cache.TryGetValue(postGuid.GetApodExplanationKey(), out string explanation)) {
             var apod = await db.NasaApods.FirstOrDefaultAsync(a => a.ID == postGuid);
-            if (apod is null) return string.Empty;
+            if(apod is null) return string.Empty;
             explanation = apod.Explanation;
             db._cache.Set(postGuid.GetApodExplanationKey(), explanation, TimeSpan.FromDays(7));
         }
@@ -165,12 +165,12 @@ public static partial class NasaHelper {
 
     public static async Task<bool> TrySendNasaAPOD(this GuildNasaApodDetails details, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
         var customMessage = await apod.GetCustomMessage(db, logger);
-        if (customMessage is null) {
+        if(customMessage is null) {
             logger.LogWarning("Failed to get Custom Message for APOD ID: {apodId}", apod.ID);
             return false;
         }
         var sentMessage = await DetermineAndSend(client.Gateway, details.Guild, GuildChannelType.NasaApod, customMessage, logger);
-        if (sentMessage != null) {
+        if(sentMessage != null) {
             apod.PostedToEntries = [
                 .. apod.PostedToEntries,
                 new PostedToEntry {
@@ -186,7 +186,7 @@ public static partial class NasaHelper {
         return sentMessage != null;
     }
 
-    public static async Task<bool> TrySendLatestNasaAPODAdHoc(this FauxCommand command, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
+    public static async Task<bool> TrySendLatestNasaAPODAdHoc(this SocketInteraction command, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
         var customMessage = await apod.GetCustomMessage(db, logger);
         if(customMessage is null) {
             logger.LogWarning("Failed to get Custom Message for APOD ID: {apodId}", apod.ID);
@@ -221,7 +221,7 @@ public static partial class NasaHelper {
             await contentStream.ReadExactlyAsync(contentBuffer, cancellationToken);
             streamContentString = System.Text.Encoding.UTF8.GetString(contentBuffer);
             return JsonConvert.DeserializeObject<NasaApod>(streamContentString);
-        } catch (HttpRequestException ex) {
+        } catch(HttpRequestException ex) {
             logger.LogError("HTTP request error ({statusCode}) while fetching NASA APOD: {message}", ex.StatusCode, ex.Message);
             return null;
         } catch(JsonSerializationException ex) {

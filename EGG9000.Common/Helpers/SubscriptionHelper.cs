@@ -1,8 +1,8 @@
 using Discord;
 using Discord.WebSocket;
 
-using EGG9000.Bot.Common.Helpers;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers.Discord;
 
 using Ei;
 
@@ -61,7 +61,7 @@ namespace EGG9000.Common.Helpers {
 #nullable disable
             if(roleId == default || dbUser is null || dbUser.EggIncAccounts?.Count == 0 || user is null)
                 return false;
-            var needsRole = dbUser.EggIncAccounts.Any(y => y.SubscriptionLevel == (pro ? UserSubscriptionInfo.Types.Level.Pro : UserSubscriptionInfo.Types.Level.Standard) && (y.HasActiveSubscription() ));
+            var needsRole = dbUser.EggIncAccounts.Any(y => y.SubscriptionLevel == (pro ? UserSubscriptionInfo.Types.Level.Pro : UserSubscriptionInfo.Types.Level.Standard) && (y.HasActiveSubscription()));
             var hasRole = user?.RoleIds?.Any(x => x == roleId) ?? false;
             var changed = false;
             if(hasRole && !needsRole) {

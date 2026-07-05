@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Server.IISIntegration;
-
-using SixLabors.Fonts;
+﻿using SixLabors.Fonts;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing.Processing;
 using SixLabors.ImageSharp.PixelFormats;
@@ -9,16 +7,14 @@ using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class EIIDScreenShots {
-        static double MinRedPercent = 0.30;
-        static double MinWhitePercent = 0.50;
+        private static readonly double MinRedPercent = 0.30;
+        private static readonly double MinWhitePercent = 0.50;
 
         public static Image<Rgba32> CropScreenShot(Image image) {
-            var rgbaImage = image.CloneAs<SixLabors.ImageSharp.PixelFormats.Rgba32>();
+            var rgbaImage = image.CloneAs<Rgba32>();
 
             var rows = new ImageRowStats[image.Height];
             for(var y = 0; y < image.Height; y++) {
@@ -207,7 +203,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static List<(Image<Rgba32>, char)> generatedImages = null;
-        private static Object thisLock = new Object();
+        private static readonly Object thisLock = new();
 
 
         public static string ReadText(Image<Rgba32> image) {
@@ -331,9 +327,9 @@ namespace EGG9000.Common.Helpers {
                 chars.Add((i % 10).ToString()[0]);
             }
 
-            var eiid = "EI" + new String(chars.ToArray());
+            var eiid = "EI" + new String([.. chars]);
 
-            generatedImages = new List<(Image<Rgba32>, char)>();
+            generatedImages = [];
             FontCollection collection = new();
             FontFamily family = collection.Add("Fonts/always together.otf");
             Font font = family.CreateFont((float)(100), FontStyle.Italic);

@@ -2,7 +2,7 @@
 
 using System.Collections.Generic;
 
-namespace EGG9000.Common.JsonData.EIEpicResearch {
+namespace EGG9000.Common.JsonData {
 
     public class EpicResearchItem {
         public int order { get; set; }

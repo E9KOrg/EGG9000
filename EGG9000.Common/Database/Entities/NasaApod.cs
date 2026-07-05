@@ -16,7 +16,7 @@ public class NasaApod {
     [System.ComponentModel.DataAnnotations.Key]
     public Guid ID {
         get {
-            if (_idCache == Guid.Empty) {
+            if(_idCache == Guid.Empty) {
                 var inputBytes = Encoding.UTF8.GetBytes($"{Url}|{Title}");
                 var hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
                 _idCache = new Guid([.. hashBytes.Take(16)]);
@@ -102,7 +102,7 @@ public class NasaApod {
     [NotMapped]
     public string BestUrl {
         get {
-            if (_bestUrlCache == string.Empty) {
+            if(_bestUrlCache == string.Empty) {
                 _bestUrlCache = string.IsNullOrEmpty(HdUrl) ? Url : HdUrl;
             }
             return _bestUrlCache;
@@ -114,7 +114,7 @@ public class NasaApod {
     [NotMapped]
     public DateTimeOffset Date {
         get {
-            if (_dateCache == DateTimeOffset.MinValue) {
+            if(_dateCache == DateTimeOffset.MinValue) {
                 _dateCache = DateTimeOffset.ParseExact(DateString, "yyyy-MM-dd", CultureInfo.InvariantCulture);
             }
             return _dateCache;

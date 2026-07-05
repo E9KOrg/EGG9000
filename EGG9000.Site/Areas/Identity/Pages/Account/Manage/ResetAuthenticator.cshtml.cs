@@ -8,31 +8,26 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
     public class ResetAuthenticatorModel(
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        ILogger<ResetAuthenticatorModel> logger) : PageModel
-    {
-        UserManager<ApplicationUser> _userManager = userManager;
+        ILogger<ResetAuthenticatorModel> logger) : PageModel {
+        private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
-        ILogger<ResetAuthenticatorModel> _logger = logger;
+        private readonly ILogger<ResetAuthenticatorModel> _logger = logger;
 
         [TempData]
         public string StatusMessage { get; set; }
 
-        public async Task<IActionResult> OnGet()
-        {
+        public async Task<IActionResult> OnGet() {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
+            if(user == null) {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 
             return Page();
         }
 
-        public async Task<IActionResult> OnPostAsync()
-        {
+        public async Task<IActionResult> OnPostAsync() {
             var user = await _userManager.GetUserAsync(User);
-            if (user == null)
-            {
+            if(user == null) {
                 return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
             }
 

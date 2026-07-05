@@ -2,14 +2,11 @@
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     /// <inheritdoc />
-    public partial class MoveDarkModeFromDbUserToApplicationUser : Migration
-    {
+    public partial class MoveDarkModeFromDbUserToApplicationUser : Migration {
         /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
+        protected override void Up(MigrationBuilder migrationBuilder) {
             migrationBuilder.DropColumn(
                 name: "DarkMode",
                 table: "Users");
@@ -23,8 +20,7 @@ namespace EGG9000.Common.Migrations
         }
 
         /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
+        protected override void Down(MigrationBuilder migrationBuilder) {
             migrationBuilder.DropColumn(
                 name: "DarkMode",
                 table: "AspNetUsers");

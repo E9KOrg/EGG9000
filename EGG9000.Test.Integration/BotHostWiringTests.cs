@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test.Integration;
 
@@ -48,6 +47,6 @@ public class BotHostWiringTests {
             "ApplicationDbContext factory should be registered.");
 
         var hostedServices = services.Where(d => d.ServiceType == typeof(IHostedService)).ToList();
-        Assert.IsTrue(hostedServices.Count > 0, "Bot should register hosted services.");
+        Assert.IsNotEmpty(hostedServices, "Bot should register hosted services.");
     }
 }
