@@ -3,6 +3,7 @@ using System;
 using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260703024523_AddApiKeyRequestLogging")]
+    partial class AddApiKeyRequestLogging
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -82,9 +85,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<Guid?>("ApiKeyId")
                         .HasColumnType("uuid");
-
-                    b.Property<string>("Endpoint")
-                        .HasColumnType("text");
 
                     b.Property<decimal?>("GuildId")
                         .HasColumnType("numeric(20,0)");

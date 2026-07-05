@@ -8,11 +8,13 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
 using EGG9000.Common.Services;
+using EGG9000.Site.Auth;
 using EGG9000.Site.Data;
 using EGG9000.Site.Services;
 
 using MassTransit;
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -221,7 +223,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.LoginPath = $"/Identity/Account/Login";
         options.LogoutPath = $"/Identity/Account/Logout";
         options.AccessDeniedPath = $"/Identity/Account/AccessDenied";
-    });
+    }).AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationHandler.SchemeName, null);
 
 
 

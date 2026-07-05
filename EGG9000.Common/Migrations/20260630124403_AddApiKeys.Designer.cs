@@ -3,6 +3,7 @@ using System;
 using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260630124403_AddApiKeys")]
+    partial class AddApiKeys
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -53,56 +56,10 @@ namespace EGG9000.Common.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("KeyHash")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("IX_ApiKeys_KeyHash");
 
                     b.ToTable("ApiKeys");
-                });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApiKeyDailyUsage", b =>
-                {
-                    b.Property<Guid>("ApiKeyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("Date")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("RequestCount")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ApiKeyId", "Date");
-
-                    b.ToTable("ApiKeyDailyUsages");
-                });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApiKeyRequestLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("ApiKeyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Endpoint")
-                        .HasColumnType("text");
-
-                    b.Property<decimal?>("GuildId")
-                        .HasColumnType("numeric(20,0)");
-
-                    b.Property<string>("IpAddress")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("Success")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset>("Timestamp")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ApiKeyId", "Timestamp");
-
-                    b.ToTable("ApiKeyRequestLogs");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.ApplicationUser", b =>
