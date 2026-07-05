@@ -204,8 +204,8 @@ namespace EGG9000.Site.Services {
 
         private string WWWPath(params string[] parts) {
             var path = _env.WebRootPath;
-            if(parts is { Length: > 0 }) path = System.IO.Path.Combine(path, System.IO.Path.Combine(parts));
-            return System.IO.File.Exists(path) ? path : null;
+            if(parts is { Length: > 0 }) path = Path.Combine(path, Path.Combine(parts));
+            return File.Exists(path) ? path : null;
         }
     }
 }

@@ -224,7 +224,7 @@ namespace EGG9000.Bot.Commands.Informational {
             var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
             stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "_You have enough <:Golden_Egg_GE:692439755798872075>!_" : "_You do not have enough <:Golden_Egg_GE:692439755798872075>!_");
 
-            var baseCraftingCoefficients = EGG9000.Common.JsonData.EiAfxConfig.Root.Get().baseCraftingCoefficients;
+            var baseCraftingCoefficients = Common.JsonData.EiAfxConfig.Root.Get().baseCraftingCoefficients;
             var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.Equals(requestedArtifact.name, StringComparison.CurrentCultureIgnoreCase) && a.Key.Tier == (int)quality);
             if(!coefficientPair.Equals(default(KeyValuePair<EggIncArtifactInstance, List<double>>))) {
                 var secondStringBuilder = new StringBuilder();
@@ -294,7 +294,7 @@ namespace EGG9000.Bot.Commands.Informational {
 
         private static Dictionary<Rarity, List<double>> GetCraftPercentages(uint numCrafted, uint craftingLevel, List<double> baseRates) {
             var numCraftedScalar = Math.Min(1.0, (double)(numCrafted / 400.0));
-            var craftingScalar = EGG9000.Common.JsonData.EiAfxConfig.Root.Get().craftingLevelMultipliers[(int)craftingLevel - 1];
+            var craftingScalar = Common.JsonData.EiAfxConfig.Root.Get().craftingLevelMultipliers[(int)craftingLevel - 1];
 
             var baseRareRate = baseRates[0];
             var baseEpicRate = baseRates[1];

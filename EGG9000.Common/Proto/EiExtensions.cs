@@ -97,7 +97,7 @@ namespace Ei {
         }
 
         public int GetPossiblePE() {
-            return (int)((GradeSpecs?.FirstOrDefault()?.Goals ?? GoalSets?.FirstOrDefault()?.Goals ?? Goals).FirstOrDefault(x => x.RewardType == Ei.RewardType.EggsOfProphecy)?.RewardAmount ?? 0);
+            return (int)((GradeSpecs?.FirstOrDefault()?.Goals ?? GoalSets?.FirstOrDefault()?.Goals ?? Goals).FirstOrDefault(x => x.RewardType == RewardType.EggsOfProphecy)?.RewardAmount ?? 0);
         }
     }
 

@@ -69,7 +69,7 @@ namespace EGG9000.Site.Controllers {
             var imageDur = _env.WebRootPath;
             // If there are additional path segments, combine them with the root path
             if(relativePathJoins != null && relativePathJoins.Count > 0) {
-                imageDur = System.IO.Path.Combine(imageDur, System.IO.Path.Combine([.. relativePathJoins]));
+                imageDur = Path.Combine(imageDur, Path.Combine([.. relativePathJoins]));
             }
             // Return the final path
             return System.IO.File.Exists(imageDur) ? imageDur : null;
@@ -78,11 +78,9 @@ namespace EGG9000.Site.Controllers {
         [HttpPost]
         [Route("api/generateeventimage")]
         public IActionResult GenerateEventImage([FromHeader] string authenticationKey, [FromBody] Event customEvent) {
-#if RELEASE
-            if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) {
+            if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) {
                 return NotFound();
             }
-#endif 
             var imagePath = GetWWWRelativePath([
                 "images/events",
                 $"event_{customEvent.Type.ToLowerInvariant().Replace("-", "_")}.png"
@@ -158,9 +156,7 @@ namespace EGG9000.Site.Controllers {
         [HttpPost]
         [Route("api/generateinventoryb64")]
         public async Task<IActionResult> GenerateInventoryB64([FromHeader] string authenticationKey, [FromBody] InventoryAPIObject userObject) {
-#if RELEASE
-             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) return NotFound();
-#endif
+            if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) return NotFound();
             var user = await _db.DBUsers.FirstOrDefaultAsync(u => u.EIDs.Contains(userObject.EID));
             if(user == null) {
                 return BadRequest(new { message = $"User with EID {userObject.EID} was not found." });
@@ -181,9 +177,7 @@ namespace EGG9000.Site.Controllers {
         [HttpPost]
         [Route("api/generateafxsetsb64")]
         public async Task<IActionResult> GenerateAfxSetsB64([FromHeader] string authenticationKey, [FromBody] AfxSetsAPIObject userObject) {
-#if RELEASE
-             if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) return NotFound();
-#endif
+            if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) return NotFound();
             if(userObject is null || string.IsNullOrWhiteSpace(userObject.EID) || userObject.Config is null) return BadRequest(new { message = "Invalid request body." });
 
             var user = await _db.DBUsers.FirstOrDefaultAsync(u => u.EIDs.Contains(userObject.EID));
@@ -251,9 +245,7 @@ namespace EGG9000.Site.Controllers {
         [HttpPost]
         [Route("api/generateartifactsetb64")]
         public IActionResult GenerateArtifactSetB64([FromHeader] string authenticationKey, [FromBody] ArtifactSetRenderRequest request) {
-#if RELEASE
-            if(string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken) return NotFound();
-#endif
+            if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) return NotFound();
             if(request?.Artifacts is null || request.Artifacts.Count == 0) return BadRequest(new { message = "No artifacts provided." });
 
             var config = request.Config ?? new AfxSetsCreatorConfig(100);

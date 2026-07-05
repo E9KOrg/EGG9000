@@ -2,6 +2,7 @@ using Bugsnag.AspNet.Core;
 
 using Discord;
 using Discord.WebSocket;
+using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
@@ -21,6 +22,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,14 +36,15 @@ using Prometheus;
 
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
 
 
-var logger = NLog.LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
-NLog.GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}");
-NLog.GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Site");
+var logger = LogManager.Setup().LoadConfigurationFromAppSettings().GetCurrentClassLogger();
+GlobalDiagnosticsContext.Set("CustomMachineName", $"{Environment.MachineName}");
+GlobalDiagnosticsContext.Set("CustomAppName", $"EGG9000.Site");
 logger.Debug("init main");
 
 var builder = WebApplication.CreateBuilder(args);
@@ -53,17 +56,15 @@ ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
 
-#if RELEASE
-// Apply pending migrations on startup. Production only - dev runs against the live DB and must
-// stay manual. Single shared ApplicationDbContext; EF takes an advisory lock so the bot and site
-// applying concurrently serialize safely.
-using (var migrateScope = app.Services.CreateScope())
-{
+if(BuildConfig.IsRelease) {
+    // Apply pending migrations on startup. Production only - dev runs against the live DB and must
+    // stay manual. Single shared ApplicationDbContext; EF takes an advisory lock so the bot and site
+    // applying concurrently serialize safely.
+    using var migrateScope = app.Services.CreateScope();
     var migrateFactory = migrateScope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
     using var migrateCtx = migrateFactory.CreateDbContext();
     migrateCtx.Database.Migrate();
 }
-#endif
 
 // Ensure the read-only staff role exists. Site roles are granted by hand in the admin Permissions UI,
 // so the IdentityRole row must be present before an admin can assign it. Idempotent: creates only when
@@ -254,67 +255,66 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         AlwaysDownloadUsers = true
     };
     var client = new DiscordSocketClient(config);
-    client.LoginAsync(Discord.TokenType.Bot, Configuration.GetConnectionString("Token")).Wait();
+    client.LoginAsync(TokenType.Bot, Configuration.GetConnectionString("Token")).Wait();
     client.StartAsync().Wait();
     services.AddSingleton(client);
 
 
-#if RELEASE
-    services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);
-    services.AddResponseCompression(options => {
-        options.Providers.Add<GzipCompressionProvider>();
-        options.EnableForHttps = true;
-    });
+    if(BuildConfig.IsRelease) {
+        services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.Optimal);
+        services.AddResponseCompression(options => {
+            options.Providers.Add<GzipCompressionProvider>();
+            options.EnableForHttps = true;
+        });
 
-
-    var bugsnagConfig = new Bugsnag.Configuration(Configuration.GetConnectionString("BugSnagApiKey"));
-    var bs = new Bugsnag.Client(bugsnagConfig);
-    services.AddSingleton<Bugsnag.IClient>(bs);
-    // Test Bugsnag is working
-    if(bs != null) {
-        try {
-            bs.Notify(new Exception("Bugsnag test - startup successful"));
-            logger.Log(NLog.LogLevel.Info, "Bugsnag test notification sent");
-        } catch(Exception ex) {
-            logger.Log(NLog.LogLevel.Error, ex, "Failed to send Bugsnag test notification");
+        var bugsnagConfig = new Bugsnag.Configuration(Configuration.GetConnectionString("BugSnagApiKey"));
+        var bs = new Bugsnag.Client(bugsnagConfig);
+        services.AddSingleton<Bugsnag.IClient>(bs);
+        // Test Bugsnag is working
+        if(bs != null) {
+            try {
+                bs.Notify(new Exception("Bugsnag test - startup successful"));
+                logger.Log(NLog.LogLevel.Info, "Bugsnag test notification sent");
+            } catch(Exception ex) {
+                logger.Log(NLog.LogLevel.Error, ex, "Failed to send Bugsnag test notification");
+            }
         }
+
+        services.AddOptions<RabbitMqTransportOptions>().Configure(options => {
+            var host = Configuration.GetConnectionString("RabbitMQServer")?.Split("|");
+            if(host.Length > 1) {
+                options.Host = host[0];
+                options.User = host[1];
+                options.Pass = host[2];
+            }
+        });
+
+        // Re-exposes bot runtime snapshots (received below) as bot_* gauges on /metrics.
+        services.AddSingleton<EGG9000.Site.Services.BotMetricsExporter>();
+
+        services.AddMassTransit(x => {
+            x.AddConsumer<ExpireCacheConsumer>();
+            // Per-instance temporary queue so a version update fans out to every running process
+            // instead of being load-balanced across a shared queue.
+            x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
+            // Same broadcast pattern: every site instance applies every bot metrics snapshot.
+            x.AddConsumer<EGG9000.Site.Consumers.BotMetricsSnapshotConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
+            var host = Configuration.GetConnectionString("RabbitMQServer");
+            if(string.IsNullOrEmpty(host)) {
+                x.UsingInMemory((context, cfg) => {
+                    cfg.ConfigureEndpoints(context);
+                    cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
+                });
+            } else {
+                x.UsingRabbitMq((context, cfg) => {
+                    cfg.ConfigureEndpoints(context);
+                });
+            }
+        });
+    } else {
+        services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
+        services.AddBugsnag();
     }
-
-    services.AddOptions<RabbitMqTransportOptions>().Configure(options => {
-        var host = Configuration.GetConnectionString("RabbitMQServer")?.Split("|");
-        if(host.Length > 1) {
-            options.Host = host[0];
-            options.User = host[1];
-            options.Pass = host[2];
-        }
-    });
-
-    // Re-exposes bot runtime snapshots (received below) as bot_* gauges on /metrics.
-    services.AddSingleton<EGG9000.Site.Services.BotMetricsExporter>();
-
-    services.AddMassTransit(x => {
-        x.AddConsumer<ExpireCacheConsumer>();
-        // Per-instance temporary queue so a version update fans out to every running process
-        // instead of being load-balanced across a shared queue.
-        x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
-        // Same broadcast pattern: every site instance applies every bot metrics snapshot.
-        x.AddConsumer<EGG9000.Site.Consumers.BotMetricsSnapshotConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
-        var host = Configuration.GetConnectionString("RabbitMQServer");
-        if(string.IsNullOrEmpty(host)) {
-            x.UsingInMemory((context, cfg) => {
-                cfg.ConfigureEndpoints(context);
-                cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
-            });
-        } else {
-            x.UsingRabbitMq((context, cfg) => {
-                cfg.ConfigureEndpoints(context);
-            });
-        }
-    });
-#else
-    services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
-    services.AddBugsnag();
-#endif
 
     services.AddDatabaseDeveloperPageExceptionFilter();
 }

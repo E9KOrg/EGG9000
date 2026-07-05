@@ -34,17 +34,17 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void ShouldMarkSentOnSuccess() {
-            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Common.Helpers.DiscordHelpersExt.DMResult.Success));
+            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(DiscordHelpersExt.DMResult.Success));
         }
 
         [TestMethod]
         public void ShouldMarkSentWhenBlocked() {
-            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Common.Helpers.DiscordHelpersExt.DMResult.CannotSendToUser));
+            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(DiscordHelpersExt.DMResult.CannotSendToUser));
         }
 
         [TestMethod]
         public void ShouldNotMarkSentOnTransientError() {
-            Assert.IsFalse(ShipReturnDmBuilder.ShouldMarkSent(EGG9000.Common.Helpers.DiscordHelpersExt.DMResult.DiscordError));
+            Assert.IsFalse(ShipReturnDmBuilder.ShouldMarkSent(DiscordHelpersExt.DMResult.DiscordError));
         }
 
         [TestMethod]

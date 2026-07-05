@@ -399,13 +399,11 @@ namespace EGG9000.Bot.Automated.Coops {
             var categories = (await _client.GetAllCoopCategories(OverflowSocketGuild))?.Select(x => new CoopCategories(OverflowSocketGuild, x)).ToList() ?? [];
             var category = categories?.OrderBy(x => x.DiscordCategory.Position)?.FirstOrDefault(x => x.CurrentCount < 50);
 
-#if DEV9002
-            if(category == null) {
+            if(BuildConfig.IsDev9002 && category == null) {
                 var newCategory = await OverflowSocketGuild.CreateCategoryChannelAsync("Coops");
                 categories = (await _client.GetAllCoopCategories(OverflowSocketGuild)).Select(x => new CoopCategories(OverflowSocketGuild, x)).ToList();
                 category = categories.OrderBy(x => x.DiscordCategory.Position).FirstOrDefault(x => x.CurrentCount < 50);
             }
-#endif
             if(category == null) {
                 _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
                 return null;

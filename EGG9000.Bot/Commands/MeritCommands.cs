@@ -69,13 +69,13 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("addmerit", "Add merit to user(s)")]
-        [DefaultMemberPermissions(Discord.GuildPermission.ModerateMembers)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.ChickenTender)]
+        [DefaultMemberPermissions(GuildPermission.ModerateMembers)]
+        [Interactions.StaffOnly(Interactions.StaffTier.ChickenTender)]
         public async Task AddMerit(
             [Summary("reason", "Merit Reason")] string reason,
             [Summary("users", "Mention one or more users (e.g. @a @b) or paste IDs")] string usersInput) {
             await Context.Interaction.RespondAsyncGettingMessage("Adding Merits");
-            var users = EGG9000.Bot.Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
+            var users = Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
             if(users.Length == 0) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs."); });
                 return;
@@ -97,8 +97,8 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("removemerit", "Remove merit from user")]
-        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
         public async Task RemoveMerit([Summary("user", "user")] SocketGuildUser user) {
             try {
                 var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
@@ -122,8 +122,8 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("meritsforuser", "List merits for user")]
-        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
         public async Task MeritsForUser([Summary("targetuser", "targetUser")] SocketGuildUser targetUser) {
             try {
                 var user = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);

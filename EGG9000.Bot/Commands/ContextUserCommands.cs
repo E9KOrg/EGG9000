@@ -16,21 +16,21 @@ namespace EGG9000.Bot.Commands {
 
         [UserCommand("Userstatus")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
         public async Task Userstatus(SocketGuildUser target) {
             await UserStatusCommands._userstatus(Context.Interaction, Db, _client, _logger, target, true, false);
         }
 
         [UserCommand("Contract Settings")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
         public async Task ContractSettings(SocketGuildUser target) {
             await ContractSettingsCommands.OpenContractSettings(Context.Interaction, Db, target);
         }
 
         [UserCommand("Rockets Tracker")]
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
         public async Task RocketsTrackerLinks(SocketGuildUser target) {
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == target.Id);
             if(dbUser == null) {

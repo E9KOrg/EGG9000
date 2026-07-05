@@ -20,11 +20,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public partial class AdminGroupModule {
         private static bool IsPalaceGuild(Guild g) {
-#if DEV9002
-            return g.DiscordSeverId == 1108127105088241746;
-#else
-            return g.DiscordSeverId == 656455567858073601;
-#endif
+            return g.DiscordSeverId == KnownGuilds.Palace;
         }
 
         private static List<string> KeywordsOf(FAQTopic t) {

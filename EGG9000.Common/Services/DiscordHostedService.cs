@@ -7,6 +7,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 
 using Humanizer;
 
@@ -70,11 +71,11 @@ namespace EGG9000.Common.Services {
         public Task<IChannel> GetChannelAsync(ulong id) => (_gateway as IDiscordClient).GetChannelAsync(id);
 
         public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) {
-#if DEBUG
+            if(BuildConfig.IsDebug) {
 #pragma warning disable SYSLIB0014
-            ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+                ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
 #pragma warning restore SYSLIB0014
-#endif
+            }
 
             _configuration = Configuration;
             _provider = provider;

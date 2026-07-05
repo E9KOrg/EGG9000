@@ -41,9 +41,10 @@ namespace EGG9000.Site.Controllers {
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
         private readonly DatabaseCache _databaseCache = databaseCache;
 
-#if DEBUG || DEV9002
         [AllowAnonymous]
         public async Task<IActionResult> DebugLogin([FromQuery] string id) {
+            if(!BuildConfig.IsDebug && !BuildConfig.IsDev9002) return NotFound();
+
             var a = await _db.UserLogins.FirstOrDefaultAsync(x => x.ProviderKey == id);
             var user = await _userManager.Users.FirstAsync(x => x.Id == a.UserId);
             var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(id));
@@ -57,7 +58,6 @@ namespace EGG9000.Site.Controllers {
             ]);
             return Redirect("/");
         }
-#endif
         [AllowAnonymous]
         public async Task<IActionResult> Alive() {
             var contract = await _db.Contracts.FirstAsync();
@@ -797,7 +797,7 @@ namespace EGG9000.Site.Controllers {
             model.GoalDetails = [.. goals.Select(goal => {
                 var detail = new GoalDetails {
                     Goal = goal,
-                    TimeLeft = Prefarm.GetTimeRemainingValue(goal.TargetAmount, model.CoopStatus.Contributors.Sum(c => c.ContributionRate), model.CoopStatus.TotalAmount),
+                    TimeLeft = GetTimeRemainingValue(goal.TargetAmount, model.CoopStatus.Contributors.Sum(c => c.ContributionRate), model.CoopStatus.TotalAmount),
                     Progress = model.CoopStatus.TotalAmount / goal.TargetAmount
                 };
                 if(detail.TimeLeft.TotalSeconds < 0) {

@@ -48,17 +48,17 @@ namespace EGG9000.Common.Database.Entities {
         public List<RewardType> PingForRewards {
             get {
                 if(!SkipNoArtifacts && !SkipNoPE && !SkipNoPiggyDouble) {
-                    return [Ei.RewardType.UnknownReward];
+                    return [RewardType.UnknownReward];
                 }
                 var rewards = new List<RewardType>();
                 if(SkipNoPE)
-                    rewards.Add(Ei.RewardType.EggsOfProphecy);
+                    rewards.Add(RewardType.EggsOfProphecy);
                 if(SkipNoArtifacts) {
-                    rewards.Add(Ei.RewardType.Artifact);
-                    rewards.Add(Ei.RewardType.ArtifactCase);
+                    rewards.Add(RewardType.Artifact);
+                    rewards.Add(RewardType.ArtifactCase);
                 }
                 if(SkipNoPiggyDouble)
-                    rewards.Add(Ei.RewardType.PiggyMultiplier);
+                    rewards.Add(RewardType.PiggyMultiplier);
                 return rewards;
             }
         }
@@ -211,10 +211,10 @@ namespace EGG9000.Common.Database.Entities {
                             // PE from the legacy key so this can never fire again, nothing writes that
                             // key anymore.
                             if(account.LeggacyAutoRegisterRewards is { Count: > 0 }
-                                && account.LeggacyAutoRegisterRewards.Contains(Ei.RewardType.EggsOfProphecy)) {
-                                if(!account.Assignment.RewardFilter.Contains(Ei.RewardType.EggsOfProphecy))
-                                    account.Assignment.RewardFilter.Add(Ei.RewardType.EggsOfProphecy);
-                                account.LeggacyAutoRegisterRewards.Remove(Ei.RewardType.EggsOfProphecy);
+                                && account.LeggacyAutoRegisterRewards.Contains(RewardType.EggsOfProphecy)) {
+                                if(!account.Assignment.RewardFilter.Contains(RewardType.EggsOfProphecy))
+                                    account.Assignment.RewardFilter.Add(RewardType.EggsOfProphecy);
+                                account.LeggacyAutoRegisterRewards.Remove(RewardType.EggsOfProphecy);
                                 needsUpdate = true;
                             }
                         });

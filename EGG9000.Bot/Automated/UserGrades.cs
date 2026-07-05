@@ -18,14 +18,11 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             var users = await _db.DBUsers.Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
+            if(BuildConfig.IsDebug) {
+                users = [.. users.Where(x => x.DiscordUsername.StartsWith("heimdallr"))];
+            }
 
-
-#if DEBUG
             var throttler = new SemaphoreSlim(8);
-            users = [.. users.Where(x => x.DiscordUsername.StartsWith("heimdallr"))];
-#else
-            var throttler = new SemaphoreSlim(8);
-#endif
             var tasks = new List<Task>();
 
             Random.Shared.Shuffle(CollectionsMarshal.AsSpan(users));

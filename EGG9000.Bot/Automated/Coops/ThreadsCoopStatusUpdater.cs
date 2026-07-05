@@ -35,13 +35,8 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated.Coops {
     public partial class ThreadsCoopStatusUpdater(IServiceProvider provider) : _UpdaterBase<ThreadsCoopStatusUpdater>(interval, delay, provider) {
-#if DEBUG
-        private static readonly TimeSpan delay = TimeSpan.FromMinutes(0);
-        private static readonly TimeSpan interval = TimeSpan.FromMinutes(20);
-#else
-        private static readonly TimeSpan delay = TimeSpan.FromMinutes(2);
-        private static readonly TimeSpan interval = TimeSpan.FromMinutes(15);
-#endif
+        private static readonly TimeSpan delay = BuildConfig.IsDebug ? TimeSpan.FromMinutes(0) : TimeSpan.FromMinutes(2);
+        private static readonly TimeSpan interval = BuildConfig.IsDebug ? TimeSpan.FromMinutes(20) : TimeSpan.FromMinutes(15);
         private readonly Dictionary<ulong, SocketTextChannel> _demeritChannels = [];
         private static readonly Random rand = new();
         public class UserX {
@@ -65,9 +60,9 @@ namespace EGG9000.Bot.Automated.Coops {
             var users = (await _db.DBUsers.Where(x => x.GuildId > 0 || activeCoopUserIds.Contains(x.Id)).AsQueryable().ToListAsync(CancellationToken.None)).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
             var dbguilds = await _db.Guilds.AsNoTracking().ToListAsync(CancellationToken.None);
 
-#if DEBUG
-            coops = [.. coops.Where(x => x.LastUpdateToChannel is null)];
-#endif
+            if(BuildConfig.IsDebug) {
+                coops = [.. coops.Where(x => x.LastUpdateToChannel is null)];
+            }
 
 
             var completedCoops = 0;
@@ -244,7 +239,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var joinResponse = await EggIncApi.Post<JoinCoopResponse, JoinCoopRequest>(new JoinCoopRequest {
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
-                        UserId = coop.CreatorID, ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
+                        UserId = coop.CreatorID, ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
                     }, coop.CreatorID, false);
 
 
@@ -269,7 +264,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
                         PlayerIdentifier = coop.CreatorID,
-                        Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
+                        Reason = KickPlayerCoopRequest.Types.Reason.Private,
                         RequestingUserId = coop.CreatorID
                     }, coop.CreatorID);
                 }
@@ -309,7 +304,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 //** Handle creation account not being kicked from co-op
                 if(coopDetails.CoopParticipants.Any(x => x.Account?.Id == EggIncApi.UserId) && !coop.FinishedOrFailedOrExpired()) {
-                    var success = await EggIncApi.Send(new KickPlayerCoopRequest { Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = EggIncApi.ClientVersion, ContractIdentifier = coop.ContractID, CoopIdentifier = coop.Name, PlayerIdentifier = EggIncApi.UserId, RequestingUserId = EggIncApi.UserId, Rinfo = EggIncApi.GetInfo(EggIncApi.UserId) }, EggIncApi.UserId);
+                    var success = await EggIncApi.Send(new KickPlayerCoopRequest { Reason = KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = EggIncApi.ClientVersion, ContractIdentifier = coop.ContractID, CoopIdentifier = coop.Name, PlayerIdentifier = EggIncApi.UserId, RequestingUserId = EggIncApi.UserId, Rinfo = EggIncApi.GetInfo(EggIncApi.UserId) }, EggIncApi.UserId);
                     _logger.LogInformation("Attempted to kick co-op creator to free up spot for {co-op}, it returned {status}", coop.Name, success.ToString());
                 }
 
@@ -671,7 +666,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     _queue.EnqueueLow(() => coopThread.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, it looks like your game thinks you have joined the co-op but the game's servers don't see you in the co-op. Please check with the other members of the co-op to verify they don't see you, if they don't then you will need to restart the contract and join again. After you do make sure the bot can see you in the co-op."));
                                     userFarmDetails.Xref.OutsideCoop = true;
                                     await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
-                                } else if(farm.CoopId.Length > 0 && farm.FarmType == Ei.FarmType.Contract) {
+                                } else if(farm.CoopId.Length > 0 && farm.FarmType == FarmType.Contract) {
                                     // This should always happen so that no matter what, we're only sending one message
                                     userFarmDetails.Xref.OutsideCoop = true;
 
@@ -1223,7 +1218,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                         _logger.LogWarning("JsonReaderException when pinning message in coop {coop}", coop.Name);
                                     }
                                 }
-                            } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.MissingPermissions) {
+                            } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == DiscordErrorCode.MissingPermissions) {
                                 _logger.LogWarning("Missing permissions to update message in coop {coop}", coop.Name);
                             } catch(Exception e) {
                                 _logger.LogError(e, "Error updating messages");
@@ -1253,7 +1248,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             try {
                                 var messages = await capturedCoopChannelForDelete.GetMessagesAsync().FlattenAsync();
                                 await capturedCoopChannelForDelete.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
-                            } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.UnknownMessage) { }
+                            } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == DiscordErrorCode.UnknownMessage) { }
                         });
                     }
 

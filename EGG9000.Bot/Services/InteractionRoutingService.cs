@@ -65,7 +65,7 @@ namespace EGG9000.Bot.Services {
                 if(interaction is SocketAutocompleteInteraction)
                     _logger.LogDebug("Autocomplete for {command} by {username}", CommandName(interaction), interaction.User?.Username);
                 else {
-                    EGG9000.Common.Services.RuntimeMetrics.AddCommands();
+                    RuntimeMetrics.AddCommands();
                     _logger.LogInformation("Running command {command} for user: {username}", CommandName(interaction), interaction.User?.Username);
                 }
                 var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -73,7 +73,7 @@ namespace EGG9000.Bot.Services {
                     await _interactions.ExecuteCommandAsync(ctx, _provider);
                 } catch(Exception e) {
                     Failures.Inc();
-                    EGG9000.Common.Services.RuntimeMetrics.AddCommandFailures();
+                    RuntimeMetrics.AddCommandFailures();
                     _logger.LogError(e, "Interaction {command} threw", CommandName(interaction));
                     _bugsnag.Notify(e);
                 } finally {
@@ -88,7 +88,7 @@ namespace EGG9000.Bot.Services {
         private async Task OnExecuted(ICommandInfo info, IInteractionContext ctx, IResult result) {
             if(result.IsSuccess) return;
             Failures.Inc();
-            EGG9000.Common.Services.RuntimeMetrics.AddCommandFailures();
+            RuntimeMetrics.AddCommandFailures();
             var interaction = ctx.Interaction;
             Embed embed;
             if(result is ExecuteResult er && er.Exception is not null) {

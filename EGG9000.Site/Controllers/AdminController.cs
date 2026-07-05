@@ -575,7 +575,7 @@ namespace EGG9000.Site.Controllers {
             });
 
             var topXrefs = allTopXrefs.Where(x => x != null).OrderByDescending(x => x.Score).Take(10).ToList();
-            var topEachGrade = allTopXrefs.Where(x => x != null).GroupBy(x => x.Grade).Where(g => g.Key <= Ei.Contract.Types.PlayerGrade.GradeA).Select(g => g.OrderByDescending(u => u.Score).First()).ToList();
+            var topEachGrade = allTopXrefs.Where(x => x != null).GroupBy(x => x.Grade).Where(g => g.Key <= PlayerGrade.GradeA).Select(g => g.OrderByDescending(u => u.Score).First()).ToList();
             var usersForRole = topXrefs.Union(topEachGrade);
 
             foreach(var topxref in usersForRole) {
@@ -1589,7 +1589,7 @@ music
             // Generate a cryptographically random 32-byte key, prefix with "egg_".
             var rawBytes = RandomNumberGenerator.GetBytes(32);
             var rawKey = "egg_" + Convert.ToBase64String(rawBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-            var hash = Convert.ToHexString(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();
 
             DateTimeOffset? expires = null;
             if(!string.IsNullOrWhiteSpace(expiresAt) && DateTimeOffset.TryParse(expiresAt, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsedExpiry))

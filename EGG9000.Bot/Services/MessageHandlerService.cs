@@ -86,11 +86,7 @@ namespace EGG9000.Bot.Services {
             var croppedImage = EIIDScreenShots.CropScreenShot(image);
             var eiid = EIIDScreenShots.ReadText(croppedImage);
 
-#if RELEASE
-            ulong destThreadId = 1294422983904985098;
-#else
-            ulong destThreadId = 1294422767713652801;
-#endif
+            var destThreadId = BuildConfig.IsRelease ? 1294422983904985098UL : 1294422767713652801UL;
 
             var destinationThread = _discord.GetChannel(destThreadId) as SocketThreadChannel;
 
@@ -147,11 +143,9 @@ namespace EGG9000.Bot.Services {
             if(message.Channel.Id != 1293725293403574313) return; // 1293725293403574313 = Admin testing command channel on DEV server
             if(message.Reference == null || message.Reference.MessageId.Value == default || message.Channel.Id != message.Reference.ChannelId) return;
 
-#if RELEASE
-            var welcomeChannel = await _discord.GetChannelAsync(GuildChannelType.Welcome, guild);
-#else
-            var welcomeChannel = _discord.GetChannel(message.Reference.ChannelId) as SocketTextChannel;
-#endif
+            var welcomeChannel = BuildConfig.IsRelease
+                ? await _discord.GetChannelAsync(GuildChannelType.Welcome, guild)
+                : _discord.GetChannel(message.Reference.ChannelId) as SocketTextChannel;
 
             if(welcomeChannel == null || welcomeChannel.Id != message.Channel.Id) return;
 

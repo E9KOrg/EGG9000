@@ -46,11 +46,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static async Task<Guild> GetPalaceGuildAsync(this ApplicationDbContext db) {
-#if DEV9002
-            return await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
-#else
-            return await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
-#endif
+            return await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == (BuildConfig.IsDev9002 ? KnownGuilds.Dev : KnownGuilds.Palace));
         }
 
         public static async Task<List<RankupMessage>> QueryApplicableAsync(this ApplicationDbContext db, Guild guild) {

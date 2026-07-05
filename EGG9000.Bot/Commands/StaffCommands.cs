@@ -70,20 +70,17 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("clearcustomeggs", "Clear ALL custom eggs from the DB, and remove Emoji.")]
         [StaffOnly(StaffTier.Admin)]
-        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
         public async Task ClearCustomEggs() {
             await Context.Interaction.DeferAsync();
 
             var customEggs = await Db.GetCustomEggsAsync();
 
             foreach(var egg in customEggs) {
-#if DEV9002 || DEBUG
-                // DEV9K Overflow Server
-                var emojiServer = _client.GetGuild(1130233910966620290);
-#else
-                // Cluckingham Overflow 4
-                var emojiServer = _client.GetGuild(1147264073659064420);
-#endif
+                // DEV9K Overflow Server in dev/debug, Cluckingham Overflow 4 in release
+                var emojiServer = (BuildConfig.IsDev9002 || BuildConfig.IsDebug)
+                    ? _client.GetGuild(1130233910966620290)
+                    : _client.GetGuild(1147264073659064420);
                 if(emojiServer != null) {
                     var emote = await emojiServer.GetEmoteAsync(egg.EmojiId);
                     await emojiServer.DeleteEmoteAsync(emote);
@@ -99,7 +96,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("as", "Log a Message")]
         [StaffOnly(StaffTier.Admin)]
-        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
+        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
         public async Task AS([Summary("message")] string message, [Summary("channel")] SocketChannel channel = null, [Summary("replyto", "Message ID to reply to")] string replyto = null) {
             try {
                 if(channel == null) {
@@ -117,7 +114,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("disable", "Disable user, user will not be assigned to co-ops until re-enabled")]
         [StaffOnly(StaffTier.FarmHand)]
-        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
+        [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
         public async Task Disable([Summary("user")] SocketUser user) {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -437,7 +434,7 @@ namespace EGG9000.Bot.Commands {
             await Db.Database.ExecuteSqlRawAsync("SELECT 1");
             var pingMs = sw.ElapsedMilliseconds;
 
-            var proc = System.Diagnostics.Process.GetCurrentProcess();
+            var proc = Process.GetCurrentProcess();
             var workingMb = proc.WorkingSet64 / 1_048_576.0;
             var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
 

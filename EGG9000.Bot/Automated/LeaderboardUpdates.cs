@@ -56,10 +56,6 @@ namespace EGG9000.Bot.Automated {
 
                 var userQuery = _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled);
 
-#if DEBUG
-#endif
-
-
                 var dbusers = await userQuery.ToListAsync(CancellationToken.None);
                 timings.Set("dbusers");
                 if(cancellationToken.IsCancellationRequested)

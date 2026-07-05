@@ -28,11 +28,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static async Task<List<FAQTopic>> QueryFAQTopicsAsync(this ApplicationDbContext db, Guild guild, bool withStaffPerms, string keyword) {
-#if DEV9002
-            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
-#else
-            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
-#endif
+            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == (BuildConfig.IsDev9002 ? KnownGuilds.Dev : KnownGuilds.Palace));
             var faqTopics = await db.GetFAQTopicsAsync(palaceGuild) ?? [];
             faqTopics = [.. faqTopics.Where(f => f.PalaceFAQAppliesToGuild(guild) &&
                 (!f.StaffOnly || withStaffPerms)

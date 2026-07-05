@@ -44,8 +44,8 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 while(allCoops.Count > 0 && coops.Count < 20) {
                     foreach(var guildID in guildIDs) {
-                        if(allCoops.Any(x => x.GuildId == guildID && x.League < (uint)Ei.Contract.Types.PlayerGrade.GradeAaa)) {
-                            var lowgradeCoop = allCoops.FirstOrDefault(x => x.GuildId == guildID && x.League < (uint)Ei.Contract.Types.PlayerGrade.GradeAaa);
+                        if(allCoops.Any(x => x.GuildId == guildID && x.League < (uint)PlayerGrade.GradeAaa)) {
+                            var lowgradeCoop = allCoops.FirstOrDefault(x => x.GuildId == guildID && x.League < (uint)PlayerGrade.GradeAaa);
                             if(lowgradeCoop != null) {
                                 coops.Add(lowgradeCoop);
                                 allCoops.Remove(lowgradeCoop);

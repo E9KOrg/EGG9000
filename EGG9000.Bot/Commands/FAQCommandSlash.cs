@@ -246,7 +246,7 @@ namespace EGG9000.Bot.Commands {
 
     public partial class AdminModule {
         [SlashCommand("faq", "Lookup brief explanations of key topics/templates")]
-        [CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public Task FAQ([Summary("query", "Topic or keyword")][MaxLength(MAX_KEYWORD_LENGTH)] string query, [Summary("respondto", "Which message to respond to")] string respondto = "") {
             return FAQCommandSlash._faq(Context.Interaction, Db, client, query, true, respondto, _logger);
         }

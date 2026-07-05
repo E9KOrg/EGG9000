@@ -34,11 +34,7 @@ namespace EGG9000.Bot.Automated {
 
         public const int MIN_HOURS_TO_CREATE_COOPS = 8;
 
-#if DEV9002 || DEBUG
-        private static readonly bool _debug = true;
-#else
-        private static readonly bool _debug = false;
-#endif
+        private static readonly bool _debug = BuildConfig.IsDev9002 || BuildConfig.IsDebug;
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();

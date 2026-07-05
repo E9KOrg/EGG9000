@@ -16,11 +16,7 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Automated {
     public class ArtifactCheaters(IServiceProvider provider) : _UpdaterBase<ArtifactCheaters>(interval, delay, provider) {
         private static readonly TimeSpan delay = TimeSpan.FromMinutes(0);
-#if DEBUG
-        private static readonly TimeSpan interval = TimeSpan.FromMinutes(1);
-#else
-        public static readonly TimeSpan interval = TimeSpan.FromMinutes(30);
-#endif
+        private static readonly TimeSpan interval = BuildConfig.IsDebug ? TimeSpan.FromMinutes(1) : TimeSpan.FromMinutes(30);
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             await RunFairnessScores(sendMessages: true, returnScoreSet: false, cancellationToken);
@@ -83,11 +79,9 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     var identifier = string.IsNullOrEmpty(outlier.Backup?.UserName) ? (string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name) : outlier.Backup.UserName;
-#if DEV9002
-                    var message = $"User `<@{user.DiscordId}>` may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
-#else
-                    var message = $"User <@{user.DiscordId}> may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
-#endif
+                    var message = BuildConfig.IsDev9002
+                        ? $"User `<@{user.DiscordId}>` may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`"
+                        : $"User <@{user.DiscordId}> may be cheating - the account `{identifier}` has `{outlierScore}` Crafting XP compared to the average of `{averageXp}`";
 
                     var response = await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread, new() { Text = message });
 
@@ -159,11 +153,9 @@ namespace EGG9000.Bot.Automated {
                     if(doesCheaterChannelExist is null) continue;
 
                     var identifier = string.IsNullOrEmpty(outlier.Backup?.UserName) ? (string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name) : outlier.Backup.UserName;
-#if DEV9002
-                    var message = $"User `<@{user.DiscordId}>` may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
-#else
-                    var message = $"User <@{user.DiscordId}> may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
-#endif
+                    var message = BuildConfig.IsDev9002
+                        ? $"User `<@{user.DiscordId}>` may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`"
+                        : $"User <@{user.DiscordId}> may be using cheated artifacts - the account `{identifier}` has an AFS of `{outlierScore}` compared to the average of `{averageScore}`";
 
                     var (B64, Config) = await ArtifactHelpers.InventoryB64(outlier);
                     if(string.IsNullOrEmpty(B64) || B64.StartsWith("$ERROR$:")) {

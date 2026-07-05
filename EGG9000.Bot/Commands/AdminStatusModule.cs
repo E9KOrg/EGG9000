@@ -30,17 +30,13 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var stats = serviceProvider.GetRequiredService<CoopStatsCache>();
 
-#if DEBUG
-            var buildConfig = "Debug";
-#elif DEV9001
-            var buildConfig = "DEV9001";
-#elif DEV9002
-            var buildConfig = "DEV9002";
-#elif RELEASE
-            var buildConfig = "Release";
-#else
-            var buildConfig = "Unknown";
-#endif
+            var buildConfig = BuildConfig.Current switch {
+                BuildConfiguration.Debug => "Debug",
+                BuildConfiguration.Dev9001 => "DEV9001",
+                BuildConfiguration.Dev9002 => "DEV9002",
+                BuildConfiguration.Release => "Release",
+                _ => "Unknown"
+            };
 
             var proc = Process.GetCurrentProcess();
             var uptime = (DateTime.Now - proc.StartTime).Humanize();
@@ -53,7 +49,7 @@ namespace EGG9000.Bot.Commands {
             var pingMs = sw.ElapsedMilliseconds;
 
             var trackerEntries = Db.ChangeTracker.Entries().ToList();
-            var pending = trackerEntries.Count(e => e.State is Microsoft.EntityFrameworkCore.EntityState.Added or Microsoft.EntityFrameworkCore.EntityState.Modified or Microsoft.EntityFrameworkCore.EntityState.Deleted);
+            var pending = trackerEntries.Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
 
             var workingMb = proc.WorkingSet64 / 1_048_576.0;
             var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
@@ -137,7 +133,7 @@ namespace EGG9000.Bot.Commands {
             var workingMb = proc.WorkingSet64 / 1_048_576.0;
             var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
             var cacheCount = db._cache is MemoryCache mc ? mc.Count : -1;
-            var pending = db.ChangeTracker.Entries().Count(e => e.State is Microsoft.EntityFrameworkCore.EntityState.Added or Microsoft.EntityFrameworkCore.EntityState.Modified or Microsoft.EntityFrameworkCore.EntityState.Deleted);
+            var pending = db.ChangeTracker.Entries().Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
             var tracked = db.ChangeTracker.Entries().Count();
 
             var activeCoops = await db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.UtcNow);

@@ -92,10 +92,9 @@ namespace EGG9000.Bot.Commands.Informational {
                 SeasonCS = y.Backup?.SeasonCS ?? 0
             })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).ToList();
 
-#if DEV9002
-#else
-            accounts = [.. accounts.Where(x => x.Account.Active)];
-#endif
+            if(!BuildConfig.IsDev9002) {
+                accounts = [.. accounts.Where(x => x.Account.Active)];
+            }
             var unit = "";
             switch(parameter) {
                 case ChasingParameters.EB:

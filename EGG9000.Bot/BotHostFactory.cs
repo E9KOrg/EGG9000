@@ -1,12 +1,20 @@
+using Bugsnag.AspNet.Core;
+using EGG9000.Bot.Automated;
+using EGG9000.Bot.Automated.Coops;
+using EGG9000.Bot.Services;
+using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Mocks;
 using EGG9000.Common.Services;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Reflection;
 
 namespace EGG9000.Bot;
 
@@ -68,21 +76,15 @@ public static class BotHostFactory {
             services.AddSingleton<Words>();
             services.AddSingleton<BotLogger>();
 
-#if RELEASE
-            var release = true;
-#else
-            var release = false;
-#endif
-
-#if DEBUG
-            services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("0")));
-
-            var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
-            if(serviceCustomize is not null && !release) {
-                var method = serviceCustomize.GetMethod("ConfigureServices");
-                method.Invoke(null, [hostContext, services]);
+            var release = BuildConfig.IsRelease;
+            if(!release) {
+                services.AddSingleton<Bugsnag.IClient>(new Bugsnag.Client(new Bugsnag.Configuration("0")));
+                var serviceCustomize = Type.GetType("EGG9000.Bot.ServiceCustomize");
+                if(serviceCustomize is not null) {
+                    var method = serviceCustomize.GetMethod("ConfigureServices");
+                    method.Invoke(null, [hostContext, services]);
+                }
             }
-#else
             if(release) {
                 logger.Log(NLog.LogLevel.Info, "RUNNING IN RELEASE");
 
@@ -209,7 +211,6 @@ public static class BotHostFactory {
             // Publishes a runtime snapshot over the bus every 15s; the site re-exposes it as bot_*
             // gauges on its /metrics for cross-scope reporting.
             services.AddHostedService<BotMetricsPublisher>();
-#endif
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");
             throw;

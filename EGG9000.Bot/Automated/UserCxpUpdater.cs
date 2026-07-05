@@ -2,6 +2,7 @@
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
+using EGG9000.Common.Helpers;
 using Ei;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,20 +15,16 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Automated {
     public class UserCXPUpdater(IServiceProvider provider) : _UpdaterBase<UserCXPUpdater>(_runTime, provider) {
-#if DEBUG
-        private static readonly CronExpression _runTime = CronExpression.Parse("* * * * *");
-#else
-        private static readonly CronExpression _runTime = CronExpression.Parse("0 9 * * MON,WED,FRI");
-#endif
+        private static readonly CronExpression _runTime = BuildConfig.IsDebug
+            ? CronExpression.Parse("* * * * *")
+            : CronExpression.Parse("0 9 * * MON,WED,FRI");
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             //Get a list of all users that are a part of a guild
-#if DEBUG
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 273621777119313921).ToListAsync(CancellationToken.None);
-#else
-            var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync(CancellationToken.None);
-#endif
+            var users = BuildConfig.IsDebug
+                ? await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 273621777119313921).ToListAsync(CancellationToken.None)
+                : await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync(CancellationToken.None);
 
             //Loop through each user in the DB
             var chunkSize = 25;

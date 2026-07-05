@@ -30,13 +30,13 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void All_data_classes_load() {
-            Assert.IsNotEmpty(EGG9000.Common.JsonData.ArtifactEmoji.Get());
-            Assert.IsNotEmpty(EGG9000.Common.JsonData.EiEpicResearch.Get().epicResearchItems);
-            Assert.IsNotEmpty(EGG9000.Common.JsonData.Root.Get().eggIncEggs);
-            Assert.IsNotEmpty(EGG9000.Common.JsonData.EiResearch.Get());
-            Assert.IsNotEmpty(EGG9000.Common.JsonData.EiAfxDataRoot.Get().artifact_families);
+            Assert.IsNotEmpty(ArtifactEmoji.Get());
+            Assert.IsNotEmpty(EiEpicResearch.Get().epicResearchItems);
+            Assert.IsNotEmpty(Root.Get().eggIncEggs);
+            Assert.IsNotEmpty(EiResearch.Get());
+            Assert.IsNotEmpty(EiAfxDataRoot.Get().artifact_families);
 
-            var afx = EGG9000.Common.JsonData.EiAfxConfig.Root.Get();
+            var afx = Common.JsonData.EiAfxConfig.Root.Get();
             Assert.IsNotEmpty(afx.craftingLevelXpThresholds, "post-process populated XP thresholds");
             Assert.IsNotEmpty(afx.baseCraftingCoefficients, "post-process populated coefficients");
         }

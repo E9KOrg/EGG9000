@@ -19,8 +19,8 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     [Group("b", "Ban management commands")]
-    [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-    [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+    [DefaultMemberPermissions(GuildPermission.ManageChannels)]
+    [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
     public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
@@ -94,14 +94,14 @@ namespace EGG9000.Bot.Commands {
 
     public partial class AdminGroupModule {
         [SlashCommand("kick", "Kick user(s) with DM")]
-        [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
+        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
+        [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
         public async Task Kick(
             [Summary("users", "Mention one or more users (e.g. @a @b @c) or paste IDs")] string usersInput,
             [Summary("reason", "reason")] string reason,
             [Summary("banaccount", "banaccount")] bool banaccount = false) {
             await Context.Interaction.DeferAsync();
-            var users = EGG9000.Bot.Interactions.UserParams.ParseUsers(usersInput, _client.Gateway, out var missing);
+            var users = Interactions.UserParams.ParseUsers(usersInput, _client.Gateway, out var missing);
             if(users.Length == 0) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs."); });
                 return;

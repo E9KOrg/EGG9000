@@ -15,7 +15,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("newcoopcode", "Generate a new co-op code, a channel will be created for the co-op")]
         [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
         public async Task NewCoopCode() {
             await Context.Interaction.DeferAsync();
             var words = new Words();
@@ -34,7 +34,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("deletecoop", "Delete co-op channel from discord and database ")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.Admin)]
+        [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
         public async Task DeleteCoop() {
             await Context.Interaction.DeferAsync();
             var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id);

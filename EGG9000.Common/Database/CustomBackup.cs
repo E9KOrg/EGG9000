@@ -36,12 +36,12 @@ namespace EGG9000.Common.Database {
         public (PlayerGrade Grade, DateTimeOffset Accepted) GetMostRecentContractGrade() {
             var graded = new List<(double time, PlayerGrade grade)>();
             if(Farms is not null)
-                graded.AddRange(Farms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
+                graded.AddRange(Farms.Where(x => x.Grade != PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
             if(ArchivedFarms is not null)
-                graded.AddRange(ArchivedFarms.Where(x => x.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
+                graded.AddRange(ArchivedFarms.Where(x => x.Grade != PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
             var latest = graded.OrderByDescending(x => x.time).FirstOrDefault();
-            if(latest.grade == Ei.Contract.Types.PlayerGrade.GradeUnset)
-                return (Ei.Contract.Types.PlayerGrade.GradeUnset, DateTimeOffset.MinValue);
+            if(latest.grade == PlayerGrade.GradeUnset)
+                return (PlayerGrade.GradeUnset, DateTimeOffset.MinValue);
             return (latest.grade, DateTimeOffset.FromUnixTimeSeconds((long)latest.time));
         }
         [Key(5)]
@@ -395,7 +395,7 @@ namespace EGG9000.Common.Database {
                     return artifact;
                 })
             );
-            ArtifactSets = EGG9000.Common.Helpers.AfxSets.AfxSetsBuilder.BuildSetsPreservingEmpty(afxSetsProjected);
+            ArtifactSets = Helpers.AfxSets.AfxSetsBuilder.BuildSetsPreservingEmpty(afxSetsProjected);
 
             ArtifactHall.AddRange(backup.ArtifactsDb.ArtifactStatus.Where(a =>
                 !backup.ArtifactsDb.InventoryItems.Any(x => a.Spec.Name == x.Artifact.Spec.Name &&

@@ -375,8 +375,8 @@ namespace EGG9000.Common.Helpers {
                 .Select(g => g.OrderByDescending(a => a.Rarity).ThenByDescending(a => a.Tier).First())
                 .ToList();
 
-            var deflectors = byFamily.Where(a => a.Boost == EGG9000.Common.JsonData.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
-            var others = byFamily.Where(a => a.Boost != EGG9000.Common.JsonData.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+            var deflectors = byFamily.Where(a => a.Boost == JsonData.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+            var others = byFamily.Where(a => a.Boost != JsonData.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
 
             var set = new List<EggIncArtifactInstance>();
             if(withDeflector && deflectors.Count > 0) set.Add(deflectors[0]);

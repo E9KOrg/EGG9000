@@ -26,11 +26,7 @@ namespace EGG9000.Bot.Services {
         private readonly IServiceProvider _provider = provider;
         private readonly ILogger<DiscordUserService> _logger = logger;
 
-#if DEV9002 || DEBUG
-        private static readonly bool _debug = true;
-#else
-        private static readonly bool _debug = false;
-#endif
+        private static readonly bool _debug = BuildConfig.IsDev9002 || BuildConfig.IsDebug;
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _discord.Gateway.UserJoined += Client_UserJoined;

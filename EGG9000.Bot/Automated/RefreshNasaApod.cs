@@ -20,8 +20,8 @@ public class RefreshNasaApod(IServiceProvider provider) : _UpdaterBase<RefreshNa
         _logger.LogInformation("Starting...");
         var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        var dbNeedsUpdate = await NasaHelper.FetchNewAPOD(_db, _logger, cancellationToken);
-        var latestPost = await NasaHelper.GetLatestApod(_db);
+        var dbNeedsUpdate = await FetchNewAPOD(_db, _logger, cancellationToken);
+        var latestPost = await GetLatestApod(_db);
         if(latestPost is null) {
             _logger.LogWarning("No latest post after refreshing.");
             return;

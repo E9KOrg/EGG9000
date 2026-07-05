@@ -28,14 +28,15 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, string eventType) {
-#if DEV9002
-            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
-#else
-            var palaceGuild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
-            if(palaceGuild == null) {
+            Guild palaceGuild;
+            if(BuildConfig.IsDev9002) {
                 palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
+            } else {
+                palaceGuild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
+                if(palaceGuild == null) {
+                    palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
+                }
             }
-#endif
             var gCustomizations = await db.GetCustomizationsAsync(dbguild);
             var pCustomizations = await db.GetCustomizationsAsync(palaceGuild);
 
@@ -66,11 +67,7 @@ namespace EGG9000.Common.Helpers {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("authenticationKey", SecretsHelper.BotToken);
 
-#if RELEASE
-            var baseUrl = "https://egg9000.com";
-#else
-            var baseUrl = "https://localhost:44314";
-#endif
+            var baseUrl = BuildConfig.IsRelease ? "https://egg9000.com" : "https://localhost:44314";
 
             var apiUrl = $"{baseUrl}/api/generateeventimage";
             var jsonContent = JsonSerializer.Serialize(customEvent);

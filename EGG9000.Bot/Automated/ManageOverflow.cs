@@ -99,12 +99,6 @@ namespace EGG9000.Bot.Automated {
                 await HandleRoleSyncs(guild, mainServer, overflowServers, cancellationToken);
                 _client.Gateway.RoleUpdated += _client_RoleUpdated;
 
-#if DEBUG
-#pragma warning disable CS0162 // Unreachable code detected
-                _ = 1;
-#pragma warning restore CS0162 // Unreachable code detected
-#endif
-
 
                 const ulong overflowRoleID = 775547850134257675;
                 const ulong registeredRoleID = 794713762396897280;

@@ -109,7 +109,7 @@ namespace EGG9000.Site.Controllers {
             var latestSeason = seasonInfos.OrderByDescending(x => x.StartTime).FirstOrDefault();
             ViewBag.LatestSeasonPeCxpByGrade = latestSeason is null
                 ? []
-                : System.Enum.GetValues<Ei.Contract.Types.PlayerGrade>()
+                : Enum.GetValues<Ei.Contract.Types.PlayerGrade>()
                     .ToDictionary(g => g, g => latestSeason.GetMaxPeCxp(g));
             var seasonPEByEggIncId = new Dictionary<string, (int Earned, int Max)>();
             var missingSeasonalPEByEggIncId = new Dictionary<string, List<MissingSeasonalPe>>();
@@ -266,7 +266,7 @@ namespace EGG9000.Site.Controllers {
                 }
             }
 
-            var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == Ei.FarmType.Contract).Select(f => f.ContractId)).ToList();
+            var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == FarmType.Contract).Select(f => f.ContractId)).ToList();
             ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => contractIDs.Contains(x.ID)).ToListAsync();
 
             var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.UtcNow).FirstOrDefaultAsync();
@@ -385,7 +385,7 @@ namespace EGG9000.Site.Controllers {
 
             // Only means anything under YesOtherAccountMatch; on any other redo mode nothing reads the flag.
             var siblingMatchApplies = m.SimulateSiblingAssigned
-                && (account.Assignment?.Redo?.Mode ?? Common.Helpers.RedoLeggacyOption.NotSet) == Common.Helpers.RedoLeggacyOption.YesOtherAccountMatch;
+                && (account.Assignment?.Redo?.Mode ?? RedoLeggacyOption.NotSet) == RedoLeggacyOption.YesOtherAccountMatch;
             if(siblingMatchApplies) accountFacts.SiblingMatchProvisionalInclude = true;
 
             var dbGuild = _db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);

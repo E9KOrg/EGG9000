@@ -664,7 +664,7 @@ namespace EGG9000.Bot.Commands {
                 await modal.UpdateAsync(x => { x.Content = null; x.Components = components; x.Embed = embed; });
             } else {
                 // Anti-dodge: clamp to the grade floor so the seasonal force doesn't clear on first run.
-                var clamped = System.Math.Max(num, floor);
+                var clamped = Math.Max(num, floor);
                 account.Assignment.Seasonal ??= new SeasonalRule();
                 account.Assignment.Seasonal.CsGoal = clamped;
                 dbuser.UpdateAccounts();

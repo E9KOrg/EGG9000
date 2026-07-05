@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 var factory = services.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
                 await using var db = await factory.CreateDbContextAsync();
                 dbguilds = await db.Guilds.ToListAsync();
-                cache.Set("dbguilds", dbguilds, System.TimeSpan.FromHours(1));
+                cache.Set("dbguilds", dbguilds, TimeSpan.FromHours(1));
             }
             return dbguilds;
         }

@@ -242,7 +242,7 @@ namespace EGG9000.Bot.Commands {
 
     public partial class AdminModule {
         [SlashCommand("tempcustomcoopname", "Adds a temporary name to be used for co-op naming")]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
         public async Task TempCustomCoopName([Summary("customname")] string customName, [Summary("timespan")] string timespan, [Summary("user")] SocketGuildUser user) {
             DateTimeOffset expireTime;
             try {
@@ -264,8 +264,8 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("renamecoop", "Rename a co-op channel to mistype")]
-        [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.FarmHand)]
+        [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+        [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
         public async Task RenameCoop([Summary("correctcoopname")] string correctcoopname) {
             await Context.Interaction.DeferAsync();
             var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
@@ -281,8 +281,8 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
-        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+        [DefaultMemberPermissions(GuildPermission.ManageChannels)]
+        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
         public async Task UpdateChannel() {
             var command = Context.Interaction;
             await command.DeferAsync(ephemeral: true);
@@ -313,14 +313,14 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("temprole", "Adds a temporary role for users that last a specific amount of time")]
-        [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
-        [Interactions.StaffOnly(EGG9000.Bot.Interactions.StaffTier.CluckingCoordinator)]
+        [DefaultMemberPermissions(GuildPermission.ManageChannels)]
+        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
         public async Task TempRole(
             [Summary("role")] SocketRole role,
             [Summary("timespan")] string timespan,
             [Summary("reason")] string reason,
             [Summary("users", "Mention one or more users (e.g. @a @b) or paste IDs")] string usersInput) {
-            var users = EGG9000.Bot.Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
+            var users = Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
             if(users.Length == 0) {
                 await Context.Interaction.RespondAsyncGettingMessage("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs.");
                 return;

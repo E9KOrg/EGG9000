@@ -3,11 +3,7 @@ namespace EGG9000.Common.Helpers {
     // Swapping a raw literal for one of these consts is value-preserving in every build config.
     public static class KnownGuilds {
         // The Palace home guild. Under the DEV9002 config the bot points at the dev guild instead.
-#if DEV9002
-        public const ulong Palace = 1108127105088241746;
-#else
-        public const ulong Palace = 656455567858073601;
-#endif
+        public static readonly ulong Palace = BuildConfig.IsDev9002 ? 1108127105088241746UL : 656455567858073601UL;
 
         // The dev/test guild, used explicitly as a fallback even outside DEV9002.
         public const ulong Dev = 1108127105088241746;

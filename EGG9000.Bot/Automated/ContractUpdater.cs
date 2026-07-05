@@ -222,17 +222,18 @@ namespace EGG9000.Bot.Automated {
                     await channel.DeleteMessagesBatchAsync(nonBotMessages);
                 }
 
-#if DEV9002
-                var findSpotButton = new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build();
-#else
-                var bgsLaunched = dbGuild.DisableBG || (DateTimeOffset.UtcNow > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18));
-                var coopButtonEligible = guildContract.Contract.GoodUntil > DateTimeOffset.UtcNow && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS);
-                var findSpotButton = coopButtonEligible
-                    ? (bgsLaunched
-                        ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build()
-                        : new ComponentBuilder().WithButton("Find my Coop", customId: $"FindMyCoop").Build())
-                    : null;
-#endif
+                MessageComponent findSpotButton;
+                if(BuildConfig.IsDev9002) {
+                    findSpotButton = new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build();
+                } else {
+                    var bgsLaunched = dbGuild.DisableBG || (DateTimeOffset.UtcNow > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18));
+                    var coopButtonEligible = guildContract.Contract.GoodUntil > DateTimeOffset.UtcNow && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS);
+                    findSpotButton = coopButtonEligible
+                        ? (bgsLaunched
+                            ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build()
+                            : new ComponentBuilder().WithButton("Find my Coop", customId: $"FindMyCoop").Build())
+                        : null;
+                }
 
                 existingMessages = [.. existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt)];
 
