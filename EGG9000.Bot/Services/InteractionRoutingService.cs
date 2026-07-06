@@ -38,6 +38,37 @@ namespace EGG9000.Bot.Services {
             // correct replacement under Discord.NET's InteractionService, which doesn't support
             // that partition without breaking [Group] attribution across mixed DM/non-DM modules).
             await _interactions.RegisterCommandsGloballyAsync();
+
+            await PurgeStaleGuildCommandsAsync();
+        }
+
+        // This app only ever registers commands globally, so any guild-scoped command is a leftover
+        // from an older deploy (e.g. the pre-InteractionService /addmerit with user1..user10 params)
+        // shadowing the current global command of the same name. Self-heal by deleting them, guarded
+        // against wiping something unexpected: skip and log loudly instead of deleting past a sane cap.
+        private const int MaxStaleGuildCommandsPerGuild = 25;
+
+        private async Task PurgeStaleGuildCommandsAsync() {
+            foreach(var guild in _discord.Gateway.Guilds) {
+                try {
+                    var staleCommands = await guild.GetApplicationCommandsAsync();
+                    if(staleCommands.Count == 0) continue;
+
+                    if(staleCommands.Count > MaxStaleGuildCommandsPerGuild) {
+                        _logger.LogWarning("Guild {guildId} has {count} guild-scoped commands, above the {cap} sanity cap - skipping auto-purge, check manually.",
+                            guild.Id, staleCommands.Count, MaxStaleGuildCommandsPerGuild);
+                        continue;
+                    }
+
+                    foreach(var command in staleCommands) {
+                        _logger.LogWarning("Deleting stale guild-scoped command /{name} in guild {guildId}", command.Name, guild.Id);
+                        await command.DeleteAsync();
+                    }
+                } catch(Exception e) {
+                    _logger.LogError(e, "Failed purging stale guild-scoped commands for guild {guildId}", guild.Id);
+                    _bugsnag.Notify(e);
+                }
+            }
         }
 
         public Task StopAsync(CancellationToken cancellationToken) {

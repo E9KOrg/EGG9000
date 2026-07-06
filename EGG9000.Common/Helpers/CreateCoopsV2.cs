@@ -25,9 +25,6 @@ namespace EGG9000.Common.Helpers {
         public const int OverflowMaxThreads = 995;
 
         public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbGuild, uint Group, bool allowAllGrades) {
-            var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-
             string creatorId = null;
 
             if(EggIncApi.CoopCreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
@@ -47,6 +44,8 @@ namespace EGG9000.Common.Helpers {
                     creatorId = account.Account.Id;
                 }
             }
+
+            var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             var secondsRemaining = Math.Max(contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
             var coopEnds = DateTimeOffset.UtcNow.AddSeconds(secondsRemaining);

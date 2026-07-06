@@ -203,18 +203,38 @@ namespace EGG9000.Site.Controllers {
             scoring.AddRange(results);
         }
 
-        // Refreshes each account's backup from the Egg Inc API in its own DI scope and persists it, so the next
-        // page load renders current data without this request blocking on the network / backup processing.
+        // Refreshes each account's backup from the Egg Inc API and persists it, so the next page load renders
+        // current data without this request blocking on the network / backup processing. DB scopes are kept
+        // short and closed while the Egg Inc API calls are in flight, so a slow API doesn't hold a pooled
+        // Postgres connection open for the whole round-trip.
         private void RefreshBackupsInBackground(ulong discordId) {
             _ = Task.Run(async () => {
                 try {
+                    FrozenSet<Ei.Contract> cachedContracts;
+                    List<EGG9000.Common.Database.Entities.EggIncAccount> probeAccounts;
+                    using(var lookupScope = _scopeFactory.CreateScope()) {
+                        var lookupDb = lookupScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                        cachedContracts = await lookupDb.CachedEiContractsAsync();
+                        var lookupUser = await lookupDb.DBUsers.AsNoTracking().FirstOrDefaultAsync(x => x.DiscordId == discordId);
+                        if(lookupUser is null) return;
+                        probeAccounts = lookupUser.EggIncAccounts;
+                    }
+
+                    // Backups are network-only + per-account in memory. Fetch on unattached account objects,
+                    // concurrently, without holding a DB connection for the duration of the Egg Inc API calls.
+                    var refreshedBackups = await Task.WhenAll(probeAccounts.Select(async account => {
+                        await AccountRefresh.RefreshBackupAsync(account, cachedContracts, _logger);
+                        return (account.Id, account.Backup);
+                    }));
+
                     using var scope = _scopeFactory.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                     var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discordId);
                     if(user is null) return;
-                    var cachedContracts = await db.CachedEiContractsAsync();
-                    // Backups are network-only + per-account in memory, so fetch them concurrently.
-                    await Task.WhenAll(user.EggIncAccounts.Select(account => AccountRefresh.RefreshBackupAsync(account, cachedContracts, _logger)));
+                    foreach(var account in user.EggIncAccounts) {
+                        var refreshed = refreshedBackups.FirstOrDefault(x => x.Id == account.Id);
+                        if(refreshed.Backup is not null) account.Backup = refreshed.Backup;
+                    }
                     // Extras stage DB writes, so run them sequentially against the single context.
                     foreach(var account in user.EggIncAccounts)
                         await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger);
