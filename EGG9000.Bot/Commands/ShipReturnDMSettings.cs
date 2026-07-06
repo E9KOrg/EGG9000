@@ -107,11 +107,11 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ModalInteraction("SRDFueledTime:*", ignoreGroupNames: true)]
-        public async Task SRDFueledTime(string data) {
+        public async Task SRDFueledTime(string data, MinutesInputModal form) {
             var modal = (SocketModal)Context.Interaction;
 
             await modal.DeferAsync();
-            var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
+            var minsText = form.Mins;
             var isNum = int.TryParse(minsText, out var mins);
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
@@ -141,11 +141,11 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ModalInteraction("SRDNotFueledTime:*", ignoreGroupNames: true)]
-        public async Task SRDNotFueledTime(string data) {
+        public async Task SRDNotFueledTime(string data, MinutesInputModal form) {
             var modal = (SocketModal)Context.Interaction;
 
             await modal.DeferAsync();
-            var minsText = modal.Data.Components.First(x => x.CustomId == "mins").Value;
+            var minsText = form.Mins;
             var isNum = int.TryParse(minsText, out var mins);
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
@@ -170,5 +170,14 @@ namespace EGG9000.Bot.Commands {
         private static Modal GetModal(string title, string modalid, string inputDescrption, string inputValue, string inputName) {
             return new ModalBuilder().WithTitleSafe(title).WithCustomId(modalid).AddTextInputSafe(label: inputDescrption, value: inputValue, customId: inputName, required: true).Build();
         }
+    }
+
+    public class MinutesInputModal : IModal {
+        public string Title => "Enter Number of Minutes";
+
+        [InputLabel("Number of Minutes")]
+        [ModalTextInput("mins")]
+        [RequiredInput(true)]
+        public string Mins { get; set; }
     }
 }
