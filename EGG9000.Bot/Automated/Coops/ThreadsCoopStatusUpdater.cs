@@ -369,7 +369,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 foreach(var user in usersWithStatus) {
                     if(user.Backup != null) {
                         var awayTime = Research.GetTotalSiloCapacity(user.Backup);
-                        var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase));
+                        var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId != null && x.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase));
                         if(farm != null) {
                             _bugSnag.Breadcrumbs.Leave($"User: {user.DiscordUser?.Id}, {user.Backup?.EggIncId}");
                             user.FarmStats = farm.WithStats(user.Backup, coop, customEggs, contract: coop.Contract);

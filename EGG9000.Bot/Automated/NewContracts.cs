@@ -87,7 +87,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 // If any eggs were previously "un-released" (didn't have a GuildContract in the db)
-                var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.Equals("customegg", StringComparison.CurrentCultureIgnoreCase)).ToListAsync(cancellationToken))
+                var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.ToLower() == "customegg").ToListAsync(cancellationToken))
                     .Select(x => x.Details.CustomEggId.ToLower()).Distinct();
                 var newlyReleasedEggs = dbCustomEggs.Where(de => !de.Released && dbContractEggs.Contains(de.Identifier.ToLower()));
                 if(newlyReleasedEggs.Any()) {
