@@ -40,6 +40,9 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
 
+            // GetPeriodicalsAsync is network-only; release the pooled connection while it's in flight
+            // instead of holding it open-but-idle. EF reopens it lazily on the next _db access below.
+            await _db.Database.CloseConnectionAsync();
             var contractsResponse = await EggIncApi.GetPeriodicalsAsync();
 
             if(contractsResponse == null) {
@@ -342,6 +345,9 @@ namespace EGG9000.Bot.Automated {
                 _logger.LogInformation("{guild} BG{bg}, Grade {grade}, Count {count} for Contract {contract}", guild.Name, group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2), contract.Name);
                 var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 1);
 
+                // CreateCoopsV2.Start opens its own short-lived scope per coop; this outer _db is unused
+                // during the parallel batch, so release its pooled connection instead of holding it open.
+                await _db.Database.CloseConnectionAsync();
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
                     try {
                         await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _provider, dbguild, (uint)skipbg + 1, contract.cc_only);

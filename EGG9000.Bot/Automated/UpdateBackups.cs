@@ -41,6 +41,12 @@ namespace EGG9000.Bot.Automated {
             var discoveredContractDefs = new System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract>();
             var knownContractIds = cachedContracts.Select(c => c.Identifier).ToHashSet();
 
+            // UpdateUser is network-only (EggIncApi calls, in-memory mutation of tracked entities) and
+            // never touches _db, so release the pooled connection for the whole parallel phase instead
+            // of holding it open-but-idle across up to 8 concurrent EggIncApi round-trips. EF reopens it
+            // lazily on the next _db access (SaveChangesAsync below).
+            await _db.Database.CloseConnectionAsync();
+
             foreach(var user in usersToCheck) {
                 await throttler.WaitAsync(cancellationToken);
                 tasks.Add(Task.Run(async () => {
