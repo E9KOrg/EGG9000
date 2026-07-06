@@ -129,8 +129,8 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("enable", "Re-enable user")]
-        [StaffOnly(StaffTier.Admin)]
-        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
+        [StaffOnly(StaffTier.CluckingCoordinator)]
+        [DefaultMemberPermissions(GuildPermission.ManageChannels)]
         public async Task Enable([Summary("user")] SocketUser user) {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
