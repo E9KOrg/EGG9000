@@ -127,6 +127,22 @@ namespace EGG9000.Bot.Commands {
 
             await Context.Interaction.RespondAsyncGettingMessage($"{user.Mention} is disabled.");
         }
+
+        [SlashCommand("enable", "Re-enable user")]
+        [StaffOnly(StaffTier.Admin)]
+        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
+        public async Task Enable([Summary("user")] SocketUser user) {
+            var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
+            if(dbuser == null) {
+                await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to locate DBUser entry for <@{user.Id}>"));
+                return;
+            }
+
+            dbuser.TempDisabled = false;
+            await Db.SaveChangesAsync();
+
+            await Context.Interaction.RespondAsyncGettingMessage($"{user.Mention} is enabled.");
+        }
     }
 
     public partial class AdminModule {
