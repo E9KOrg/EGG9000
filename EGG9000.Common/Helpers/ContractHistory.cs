@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace EGG9000.Common.Helpers {
     public class ContractScoring {
-        public static List<UserContractScore> GetContractScores(List<Coop> coops, Contract contract, ILogger logger) {
+        public static List<UserContractScore> GetContractScores(List<Coop> coops, DBContract contract, ILogger logger) {
             logger.LogInformation("Calculating scores for {contract}", contract.Name);
             var histories = new List<UserContractScore>();
             var skipped = 0;

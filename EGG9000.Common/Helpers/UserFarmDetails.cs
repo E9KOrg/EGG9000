@@ -15,14 +15,14 @@ namespace EGG9000.Common.Helpers {
         public CustomBackup Backup { get; set; }
         public CustomFarmStats FarmStats { get; set; }
         public CustomFarm Farm { get; set; }
-        public Contract Contract { get; set; }
+        public DBContract Contract { get; set; }
         public SocketGuildUser DiscordUser { get; set; }
         public CustomArchivedFarms ArchivedFarm { get; set; }
         public DBUser DBUser { get; set; }
         public UInt32 League { get; set; }
         public EggIncAccount Account { get; set; }
 
-        public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, Contract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
+        public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
             if(coopStatus is null)
                 throw new ArgumentNullException(null, "coopStatus");
             Xref = xref;
@@ -43,7 +43,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(Coop coop, UserCoopXref xref, Contract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
+        public UserFarmDetails(Coop coop, UserCoopXref xref, DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
             if(xref is null)
                 throw new ArgumentNullException(null, "xref");
             if(userWithbackup is null)
@@ -66,7 +66,7 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(Contract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
+        public UserFarmDetails(DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
             if(userWithbackup is null)
                 throw new ArgumentNullException(null, "userWithBackup");
             if(userWithbackup.Backup is null)

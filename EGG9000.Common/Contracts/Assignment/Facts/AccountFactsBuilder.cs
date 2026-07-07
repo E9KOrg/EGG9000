@@ -9,7 +9,7 @@ namespace EGG9000.Common.Contracts.Assignment.Facts {
         public static AccountFacts Build(
             DBUser user,
             EggIncAccount account,
-            Contract contract,
+            DBContract contract,
             IEnumerable<Coop> existingCoops,
             UserCsHistoryEntry latestHistory,
             SeasonInfo season,

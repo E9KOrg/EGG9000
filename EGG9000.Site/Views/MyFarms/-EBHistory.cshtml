@@ -1,4 +1,4 @@
-@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs, List<Contract> contracts, (int Earned, int Max) peFromSeasons, List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe> missingSeasonalPEs)
+@model (CustomBackup backup, List<UserSnapShot> snapshots, bool isAdmin, Dictionary<string, List<EGG9000.Common.Database.Entities.DBContract>> uncompletePEs, List<DBContract> contracts, (int Earned, int Max) peFromSeasons, List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe> missingSeasonalPEs)
 @{
     double merValue(double se, double pe) =>
         (se > 0 && double.IsFinite(se)) ? (91.0 * Math.Log10(se / 1e18) + 200.0 - pe) / 10.0 : 0.0;

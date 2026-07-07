@@ -687,7 +687,7 @@ namespace EGG9000.Common.Database {
         public bool isVirtueEgg { get { return (int)EggType >= 50 && (int)EggType <= 54; } }
 
         private CustomFarmStats _stats = null;
-        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, List<DBCustomEgg> customEggs, double? ignoreBuff = null, Contract contract = null) {
+        public CustomFarmStats WithStats(CustomBackup backup, Coop coop, List<DBCustomEgg> customEggs, double? ignoreBuff = null, DBContract contract = null) {
             if(_stats == null) {
                 var eggLayingBuff = 1.0;
                 if(coop != null && coop.LastStatusUpdate is not null) {

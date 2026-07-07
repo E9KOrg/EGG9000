@@ -2,7 +2,7 @@
 @model List<EGG9000.Site.Controllers.AdminController.Slacker>
 
 @{
-	List<Contract> contracts = ViewBag.Contracts;
+	List<DBContract> contracts = ViewBag.Contracts;
 
 	var contractIDs = contracts.OrderByDescending(x => x.GoodUntil).Select(x => x.ID);
 	contractIDs = contractIDs.Where(c => Model.Any(s => s.UserCoopXrefs.Any(x => c == x.ContractID && x.Score.HasValue))).ToList();
