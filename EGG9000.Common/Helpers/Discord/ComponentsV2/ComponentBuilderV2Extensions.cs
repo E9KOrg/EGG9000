@@ -1,8 +1,10 @@
 namespace Discord {
-    // Extends Discord.NET's ComponentBuilderV2 and ContainerBuilder with convenience overloads,
+    // Extends Discord.NET's ComponentBuilderV2 and ContainerBuilder with convenience overloads.
     // Discord.NET already provides ComponentContainerExtensions with generic WithTextDisplay,
-    // WithSeparator, WithActionRow, etc. This file adds higher level shorthands for sections
-    // and static factories for common one-liner responses.
+    // WithSeparator, WithActionRow, WithSection(container, content, accessory, ...) etc - only add
+    // shorthands here that aren't already covered generically. For EmbedHelpers-equivalent
+    // Success/Error/Warning/etc variants, see ComponentsV2EmbedHelpers. For length/count safety,
+    // see ComponentsV2Safe.
     //
     // Usage:
     //   await interaction.RespondAsync(
@@ -19,11 +21,8 @@ namespace Discord {
     //           .Build(),
     //       flags: MessageFlags.ComponentsV2);
     //
-    //   ComponentBuilderV2Extensions.ErrorV2("Coop not found.");
-    //   ComponentBuilderV2Extensions.SuccessV2("Joined successfully!");
-    //
-    //   Note: MessageFlags.ComponentsV2 is required; once set, normal text and embeds are ignored.
-
+    //   Note: MessageFlags.ComponentsV2 is required; once set, normal text and embeds are ignored,
+    //   and Discord will not allow it to be unset on a later edit of the same message.
 
     public static class ComponentBuilderV2Extensions {
         public static T WithHeader<T>(this T container, string title, string accountLine = null) where T : class, IComponentContainer, IStaticComponentContainer {
@@ -47,19 +46,5 @@ namespace Discord {
             container.AddComponent(section);
             return container;
         }
-
-        public static MessageComponent ErrorV2(string text) =>
-            new ComponentBuilderV2()
-                .AddComponent(new ContainerBuilder()
-                    .WithAccentColor(Color.Red)
-                    .WithTextDisplay($"**Error**\n{text}"))
-                .Build();
-
-        public static MessageComponent SuccessV2(string text) =>
-            new ComponentBuilderV2()
-                .AddComponent(new ContainerBuilder()
-                    .WithAccentColor(Color.Green)
-                    .WithTextDisplay($"**Success**\n{text}"))
-                .Build();
     }
 }

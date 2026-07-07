@@ -29,11 +29,6 @@ namespace EGG9000.Bot.Commands {
             return new EmbedBuilder().WithTitle(title).WithDescription(userText + description);
         }
 
-        private static ContainerBuilder NewMenuContainer(string title, EggIncAccount account, DBUser dbuser, Color? accent = null) {
-            var accountLine = dbuser.EggIncAccounts.Count > 1 ? $"For Account {account.Backup?.UserName ?? "[unnamed]"} {account.Backup?.EarningsBonus.ToEggString()}" : null;
-            return new ContainerBuilder().WithAccentColor(accent ?? Color.Blue).WithHeader(title, accountLine);
-        }
-
         public static readonly TimeSpan TimeZoneOffset = TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow);
         private static readonly DateTimeOffset StaticToday = DateTimeOffset.UtcNow;
         public static readonly List<(int bg, long time)> BoardingGroupTimes = [
