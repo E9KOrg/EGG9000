@@ -113,7 +113,7 @@ namespace EGG9000.Common.Services {
                         RuntimeMetrics.AddDiscordOps();
                     } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.UnknownMessage) {
                         _logger.LogDebug("DiscordQueue: message no longer exists (10008), skipping");
-                    } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.MissingPermissions) {
+                    } catch(Discord.Net.HttpException httpEx) when((int)httpEx.DiscordCode == 50013) {
                         var reqType = httpEx.Request?.GetType();
                         var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
                         var method = reqType?.GetProperty("Method", flags)?.GetValue(httpEx.Request) as string;
