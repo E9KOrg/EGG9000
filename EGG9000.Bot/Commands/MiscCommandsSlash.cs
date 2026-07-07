@@ -25,6 +25,9 @@ namespace EGG9000.Bot.Commands {
         private readonly ContractUpdater _contractUpdater = contractUpdater;
         private readonly ILogger<MiscModule> _logger = logger;
 
+#if !RELEASE
+        // EID screenshot recognition is undecided (keep it around, but dev-only) until we settle on
+        // whether to continue down this path - see HandleTestOCR in MessageHandlerService.
         [SlashCommand("starttestprocess", "Start EID screenshot recognition process.")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task StartTestProcess() {
@@ -41,6 +44,7 @@ namespace EGG9000.Bot.Commands {
                 embed: EmbedSuccess("Please reply (a real Discord Reply - hit the Reply button) to this message with an **uncropped screenshot of your Privacy & Data tab**.")
             );
         }
+#endif
 
         [SlashCommand("trackeb", "Track your EB since the last time you ran this command")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]

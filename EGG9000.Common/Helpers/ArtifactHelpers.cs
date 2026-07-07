@@ -17,7 +17,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -116,11 +115,120 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public static string GetArtifactFairnessScoreString(List<ArtifactCount> ArtifactHall) {
-            return (ArtifactHall is null || ArtifactHall.Count == 0) ? "0 (null artifact hall)" : GetArtifactFairnessScore(ArtifactHall).ToString("E");
+        private class ShipsSentByLevel {
+            public Dictionary<(Spaceship, DurationType, uint), int> ShipCounts { get; private set; }
+
+            public ShipsSentByLevel(Ei.Backup backup) {
+                ShipCounts = [];
+
+                if(backup?.ArtifactsDb?.MissionArchive is not null) {
+                    foreach(var mission in backup.ArtifactsDb.MissionArchive) {
+                        var key = (mission.Ship, mission.DurationType, mission.Level);
+                        if(ShipCounts.ContainsKey(key)) {
+                            ShipCounts[key]++;
+                        } else {
+                            ShipCounts[key] = 1;
+                        }
+                    }
+                }
+            }
+
+            public int GetShipsCount(Spaceship shipType, DurationType durationType, uint level) {
+                var key = (shipType, durationType, level);
+                return ShipCounts.TryGetValue(key, out var count) ? count : 0;
+            }
         }
 
-        public static BigInteger GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {
+        public static (int lastShipTypeCount, int secondToLastShipTypeCount) GetCompletedShipsOfDuration(EggIncAccount account, DurationType duration) {
+            var maxShipLevels = MissionHelpers.MaxShipLevels.ToList();
+            var lastShipType = maxShipLevels[^1].Key;
+            var secondToLastShipType = maxShipLevels[^2].Key;
+
+            var shipsForLastType = account.Backup.ShipsSent
+                .Where(x => x.ship == lastShipType && x.type == duration)
+                .Sum(x => x.count);
+            var exploringShipsLastType = account.Backup.SpaceMissions
+                .Where(x => x.Ship == lastShipType && x.Status == Status.Exploring && x.Duration == duration)
+                .Count();
+            var resultLastType = shipsForLastType - exploringShipsLastType;
+
+            var shipsForSecondToLastType = account.Backup.ShipsSent
+                .Where(x => x.ship == secondToLastShipType && x.type == duration)
+                .Sum(x => x.count);
+            var exploringShipsSecondToLastType = account.Backup.SpaceMissions
+                .Where(x => x.Ship == secondToLastShipType && x.Status == Status.Exploring && x.Duration == duration)
+                .Count();
+            var resultSecondToLastType = shipsForSecondToLastType - exploringShipsSecondToLastType;
+
+            return (resultLastType, resultSecondToLastType);
+        }
+
+        public record LegendaryLuckResult(double ExpectedLeggies, int LegCount, uint PossibleCraftCount, double LLC, int LLCPercent);
+
+        // Legendary Luck Coefficient: how many legendaries an account "should" have given its actual
+        // ship launches (by ship/duration/level, weighted against Menno's crowd-sourced drop rates) and
+        // its crafting history (simulated per-craft odds from crafting XP/level at the time of each
+        // craft). LLC = owned - expected; large positive LLC without a matching launch/craft history is
+        // the cheat signal, unlike the raw fairness score which just measures rare-artifact ownership.
+        public static LegendaryLuckResult GetLegendaryLuckCoefficient(EggIncAccount account, Ei.Backup freshBackup, List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> shipCoefficientTable) {
+            var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
+            var shipsSent = new ShipsSentByLevel(freshBackup);
+
+            var sumOfRatios = 0.0;
+            foreach(var (ship, type, dropRates) in shipCoefficientTable) {
+                var rateIndex = 0;
+                foreach(var rate in dropRates) {
+                    if(rate == 0.0) {
+                        rateIndex++;
+                        continue;
+                    }
+                    sumOfRatios += shipsSent.GetShipsCount(ship, type, (uint)rateIndex) / rate;
+                    rateIndex++;
+                }
+            }
+
+            var afHall = account.Backup.ArtifactHall;
+            var newLLCSum = 0.0;
+            foreach(var craftType in baseCraftingCoefficients.Where(c => c.Value[2] != 0)) {
+
+                //Don't account for Lunar totems in LLC calc, re: sync with Menno data
+                if(craftType.Key.Artifact == "Lunar Totem" && craftType.Key.Tier == 4) continue;
+
+                //Get the number of crafts that have been performed for this artifact
+                var numCrafted = (double)(afHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Tier == craftType.Key.Tier && a.Artifact.Artifact == craftType.Key.Artifact)?.NumberCrafted ?? 0.0);
+                if(numCrafted == 0) continue;
+                var assumedXpPerCraft = account.Backup.CraftingXP / numCrafted;
+                for(var i = 0; i < numCrafted; i++) {
+
+                    var craftingCountCoefficient = Math.Min(1.0, (double)(i / 400.0));
+                    var fixedCraftingCountCoefficient = 1.0 - craftingCountCoefficient * 0.3; //Where these numbers come from, I have no idea
+
+                    var baseLegRate = craftType.Value[2];
+
+                    var simulatedCraftingLevel = GetCraftingLevel(assumedXpPerCraft * i);
+                    var simulatedMultiplier = Root.Get().craftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
+
+                    var simulatedRate = Math.Max(10.0, baseLegRate / simulatedMultiplier);
+                    var simulatedRatio = 1.0 / simulatedRate;
+
+                    var simulatedThreshold = Math.Pow(simulatedRatio, fixedCraftingCountCoefficient);
+                    var ceilingedThreshold = Math.Min(0.1, simulatedThreshold);
+
+                    newLLCSum += ceilingedThreshold;
+                }
+            }
+
+            var craftCount = GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
+            var legCount = GetLegendaryArtifactCount(account.Backup.ArtifactHall, llcCount: true);
+
+            var newExpectedLeggies = newLLCSum + sumOfRatios;
+            var newLLC = Math.Round(legCount - newExpectedLeggies, 2);
+            var newLLCPercent = newExpectedLeggies != 0 ? (int)Math.Round((legCount * 100 / newExpectedLeggies) - 100) : 0;
+
+            return new LegendaryLuckResult(newExpectedLeggies, legCount, craftCount, newLLC, newLLCPercent);
+        }
+
+        public static double GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {
             if(ArtifactHall is null || ArtifactHall.Count == 0) return 0;
             // Collapse duplicate rows for the same artifact instance before scoring. A real hall has one
             // row per distinct artifact; stray duplicates (from a corrupted/legacy backup) would otherwise
@@ -128,8 +236,13 @@ namespace EGG9000.Common.Helpers {
             var collapsed = ArtifactHall
                 .Where(a => a.Artifact is not null)
                 .GroupBy(a => a.Artifact)
-                .Select(g => (Artifact: g.Key, Count: g.Sum(x => x.Count)));
-            return (BigInteger)collapsed.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
+                .Select(g => (Artifact: g.Key, Count: g.Sum(x => (long)x.Count)));
+            // Log-dampen the per-artifact cost and scale linearly (not exponentially) by rarity. The old
+            // Math.Pow(fairness, rarity+1) blew up on any T4/legendary stack - a single legit Book of Basan
+            // or Tachyon Deflector legendary craft could outweigh an entire common inventory, flagging
+            // endgame players who did nothing wrong. Log+linear keeps rarity ordering (legendary still
+            // scores higher than common) without the runaway magnitude.
+            return collapsed.Sum(a => Math.Log(GetFairness(a.Artifact)[a.Artifact.Tier - 1] + 1) * (a.Artifact.Rarity + 1) * a.Count);
         }
 
         public static int GetAFOrder(string AF) {
