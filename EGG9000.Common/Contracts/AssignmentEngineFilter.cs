@@ -13,7 +13,7 @@ namespace EGG9000.Common.Contracts {
         public static void ApplyFilters(
             List<UserByAccount> accounts,
             List<(string reason, UserByAccount account)> excluded,
-            Contract contract,
+            DBContract contract,
             List<Coop> existingCoops,
             Guild dbGuild,
             SeasonInfo contractSeason,

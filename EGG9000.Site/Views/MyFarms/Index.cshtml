@@ -9,7 +9,7 @@
 @{
     ViewData["Title"] = "Index";
 
-    List<Contract> contracts = Model.Contracts;
+    List<DBContract> contracts = Model.Contracts;
 
     List<UserSnapShot> snapshots = Model.SnapShots;
 
@@ -17,7 +17,7 @@
 
     List<EpicResearchItem> epicResearchConfig = Model.EpicResearchConfig;
 
-    Dictionary<string, List<EGG9000.Common.Database.Entities.Contract>> uncompletePEs = Model.UncompletedPEContracts;
+    Dictionary<string, List<EGG9000.Common.Database.Entities.DBContract>> uncompletePEs = Model.UncompletedPEContracts;
 
     List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = Model.Scoring;
     Guild dbguild = Model.DBGuild;

@@ -65,7 +65,7 @@ namespace EGG9000.Common.Database.Entities {
         public CoopStatusEnum Status { get; set; }
         public bool PseudoExpired { get; set; } = false;
 
-        public Contract Contract { get; set; }
+        public DBContract Contract { get; set; }
         public List<UserCoopXref> UserCoopsXrefs { get; set; }
 
         public byte[] _StatusCompressed { get; set; }

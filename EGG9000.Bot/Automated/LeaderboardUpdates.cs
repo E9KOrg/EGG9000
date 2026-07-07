@@ -223,7 +223,7 @@ namespace EGG9000.Bot.Automated {
 
         }
 
-        private async Task PostOverallLeaderboard(SocketGuild guild, List<LeaderboardUser> lUsers, List<Contract> recentContracts, ApplicationDbContext _db) {
+        private async Task PostOverallLeaderboard(SocketGuild guild, List<LeaderboardUser> lUsers, List<DBContract> recentContracts, ApplicationDbContext _db) {
             var channel = await _client.GetChannelAsync(GuildChannelType.Leaderboard, guild);
             if(channel == null)
                 return;

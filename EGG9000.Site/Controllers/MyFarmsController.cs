@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Event = EGG9000.Common.Database.Entities.Event;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
@@ -248,7 +247,7 @@ namespace EGG9000.Site.Controllers {
 
         public record MyFarmsModel(
             DBUser User,
-            List<Common.Database.Entities.Contract> Contracts,
+            List<Common.Database.Entities.DBContract> Contracts,
             List<Demerit> Demerits,
             List<Merit> Merits,
             /*List<Backup> RawBackups*/
@@ -258,7 +257,7 @@ namespace EGG9000.Site.Controllers {
             List<EpicResearchItem> EpicResearchConfig,
             List<(string EggIncId, MyContracts MyContracts)> Scoring,
             Guild DBGuild,
-            Dictionary<string, List<Common.Database.Entities.Contract>> UncompletedPEContracts,
+            Dictionary<string, List<Common.Database.Entities.DBContract>> UncompletedPEContracts,
             List<DBCustomEgg> CustomEggs,
             bool IsSelf,
             FrozenSet<Ei.Contract> CachedContracts,
@@ -300,7 +299,7 @@ namespace EGG9000.Site.Controllers {
 
         public class EarningsBoostCalculatorModel {
             public CustomBackup Backup { get; set; }
-            public Event Event { get; set; }
+            public DBEvent Event { get; set; }
             public List<DBCustomEgg> CustomEggs { get; set; }
         }
 
@@ -447,7 +446,7 @@ namespace EGG9000.Site.Controllers {
             return RedirectToLocalReferer();
         }
 
-        public Dictionary<string, List<Common.Database.Entities.Contract>> GetUncompletedPEContracts(DBUser user, List<Common.Database.Entities.Contract> contracts) {
+        public Dictionary<string, List<Common.Database.Entities.DBContract>> GetUncompletedPEContracts(DBUser user, List<Common.Database.Entities.DBContract> contracts) {
             return user.EggIncAccounts.ToDictionary(
                 account => account.Id,
                 account => account.Backup.ArchivedFarms
