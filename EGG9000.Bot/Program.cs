@@ -11,13 +11,18 @@ using System;
 
 // Set up logger before anything else
 var logger = LogManager.Setup().GetCurrentClassLogger();
-logger.Log(NLog.LogLevel.Info, "Main Start");
 
 try {
-    var machineName = BuildConfig.IsDebug ? $"{Environment.MachineName}_debug" : Environment.MachineName;
+    var tempConfig = new ConfigurationBuilder()
+        .AddEnvironmentVariables()
+        .AddUserSecrets<Program>(optional: true) // Optional for Docker scenarios
+        .Build();
+    var botColor = tempConfig.GetValue<string>("BOT_COLOR");
+    logger.Log(NLog.LogLevel.Info, $"BotColor = {botColor}");
+    var machineName = BuildConfig.IsDebug ? $"{Environment.MachineName}_debug" : !string.IsNullOrEmpty(botColor) ? $"{Environment.MachineName}_{botColor}" : Environment.MachineName;
     GlobalDiagnosticsContext.Set("CustomMachineName", machineName);
     GlobalDiagnosticsContext.Set("CustomAppName", "EGG9000.Bot");
-    logger.Log(NLog.LogLevel.Info, "CustomMachineName = " + machineName);
+    logger.Log(NLog.LogLevel.Info, "Main Start");
 
     var host = Host.CreateDefaultBuilder(args)
         .ConfigureLogging(logging => {
