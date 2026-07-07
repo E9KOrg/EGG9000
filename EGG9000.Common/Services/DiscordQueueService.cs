@@ -6,14 +6,16 @@ using Microsoft.Extensions.Options;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Services {
     public class DiscordQueueService(IOptionsMonitor<DiscordQueueOptions> optsMon, ILogger<DiscordQueueService> logger, IClient bugsnag) : IDiscordQueue, IHostedService {
-        private record QueueItem(Func<Task> Operation);
+        private record QueueItem(Func<Task> Operation, string Caller);
 
         private readonly Channel<QueueItem> _high = Channel.CreateUnbounded<QueueItem>(new() { SingleReader = false });
         private readonly Channel<QueueItem> _low = Channel.CreateUnbounded<QueueItem>(new() { SingleReader = false });
@@ -69,20 +71,30 @@ namespace EGG9000.Common.Services {
             await Task.WhenAll(allWorkerTasks).WaitAsync(cancellationToken);
         }
 
-        public void EnqueueHigh(Func<Task> operation) {
-            if(!_high.Writer.TryWrite(new QueueItem(operation)))
+        public void EnqueueHigh(Func<Task> operation, string tag = null,
+                [CallerMemberName] string member = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0) {
+            if(!_high.Writer.TryWrite(new QueueItem(operation, BuildCallerTag(tag, member, file, line))))
                 _logger.LogWarning("DiscordQueue HIGH dropped item - service is stopped");
         }
 
-        public void EnqueueLow(Func<Task> operation) {
-            if(!_low.Writer.TryWrite(new QueueItem(operation)))
+        public void EnqueueLow(Func<Task> operation, string tag = null,
+                [CallerMemberName] string member = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0) {
+            if(!_low.Writer.TryWrite(new QueueItem(operation, BuildCallerTag(tag, member, file, line))))
                 _logger.LogWarning("DiscordQueue LOW dropped item - service is stopped");
         }
 
-        public Task<T> EnqueueHighAsync<T>(Func<Task<T>> operation, CancellationToken ct = default) => EnqueueWithResult(_high, operation, ct);
-        public Task<T> EnqueueLowAsync<T>(Func<Task<T>> operation, CancellationToken ct = default) => EnqueueWithResult(_low, operation, ct);
+        public Task<T> EnqueueHighAsync<T>(Func<Task<T>> operation, CancellationToken ct = default, string tag = null,
+                [CallerMemberName] string member = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
+            => EnqueueWithResult(_high, operation, ct, BuildCallerTag(tag, member, file, line));
 
-        private Task<T> EnqueueWithResult<T>(Channel<QueueItem> channel, Func<Task<T>> operation, CancellationToken ct) {
+        public Task<T> EnqueueLowAsync<T>(Func<Task<T>> operation, CancellationToken ct = default, string tag = null,
+                [CallerMemberName] string member = "", [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
+            => EnqueueWithResult(_low, operation, ct, BuildCallerTag(tag, member, file, line));
+
+        private static string BuildCallerTag(string tag, string member, string file, int line)
+            => tag ?? $"{Path.GetFileNameWithoutExtension(file)}.{member}:{line}";
+
+        private Task<T> EnqueueWithResult<T>(Channel<QueueItem> channel, Func<Task<T>> operation, CancellationToken ct, string caller) {
             var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
             var reg = ct.Register(static s => ((TaskCompletionSource<T>)s!).TrySetCanceled(), tcs);
             tcs.Task.ContinueWith(_ => reg.Dispose(), TaskScheduler.Default);
@@ -92,7 +104,7 @@ namespace EGG9000.Common.Services {
                 } catch(Exception ex) {
                     tcs.TrySetException(ex);
                 }
-            }))) {
+            }, caller))) {
                 reg.Dispose();
                 tcs.TrySetException(new InvalidOperationException("DiscordQueueService is stopped; cannot enqueue."));
             }
@@ -112,25 +124,25 @@ namespace EGG9000.Common.Services {
                         await item.Operation();
                         RuntimeMetrics.AddDiscordOps();
                     } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == Discord.DiscordErrorCode.UnknownMessage) {
-                        _logger.LogDebug("DiscordQueue: message no longer exists (10008), skipping");
+                        _logger.LogDebug("DiscordQueue [{caller}]: message no longer exists (10008), skipping", item.Caller);
                     } catch(Discord.Net.HttpException httpEx) when((int)httpEx.DiscordCode == 50013) {
                         var reqType = httpEx.Request?.GetType();
                         var flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
                         var method = reqType?.GetProperty("Method", flags)?.GetValue(httpEx.Request) as string;
                         var endpoint = reqType?.GetProperty("Endpoint", flags)?.GetValue(httpEx.Request) as string;
-                        _logger.LogWarning("DiscordQueue: missing permissions (50013) on {method} {endpoint}", method ?? "?", endpoint ?? "unknown");
+                        _logger.LogWarning("DiscordQueue [{caller}]: missing permissions (50013) on {method} {endpoint}", item.Caller, method ?? "?", endpoint ?? "unknown");
                     } catch(TimeoutException) {
-                        _logger.LogWarning("DiscordQueue: operation timed out, retrying in 1s");
+                        _logger.LogWarning("DiscordQueue [{caller}]: operation timed out, retrying in 1s", item.Caller);
                         try {
                             await Task.Delay(1000, ct);
                             await item.Operation();
                         } catch(Exception retryEx) {
-                            _logger.LogError(retryEx, "DiscordQueue retry also failed");
-                            _bugsnag?.Notify(retryEx);
+                            _logger.LogError(retryEx, "DiscordQueue [{caller}]: retry also failed", item.Caller);
+                            _bugsnag?.Notify(retryEx, report => report.Event.Metadata.Add("DiscordQueue", new { caller = item.Caller }));
                         }
                     } catch(Exception ex) {
-                        _logger.LogError(ex, "DiscordQueue worker error");
-                        _bugsnag?.Notify(ex);
+                        _logger.LogError(ex, "DiscordQueue [{caller}]: worker error", item.Caller);
+                        _bugsnag?.Notify(ex, report => report.Event.Metadata.Add("DiscordQueue", new { caller = item.Caller }));
                     }
                     if(pauseMs > 0 && !ct.IsCancellationRequested)
                         await Task.Delay(pauseMs, ct);
