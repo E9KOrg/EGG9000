@@ -60,17 +60,17 @@ namespace EGG9000.Bot.Services {
                     _bugsnag.Notify(e);
                     _logger.LogError(e, "Error running job");
                 }
-                var nextJob = _jobs.Where(x => !x.Running).OrderBy(x => x.NextRun).FirstOrDefault();
+                var nextJob = _jobs.OrderBy(x => x.NextRun).FirstOrDefault();
                 if(nextJob != null) {
                     var delay = (nextJob.NextRun - DateTimeOffset.UtcNow) + TimeSpan.FromMilliseconds(10);
                     if(delay < TimeSpan.Zero) {
                         delay = TimeSpan.FromSeconds(1);
                     }
-                    _logger.LogTrace("Next job {jobDeclareType}.{jobName} in {delaySeconds} seconds, delaying for {delaySeconds} seconds",
+                    _logger.LogInformation("Next job {jobDeclareType}.{jobName} in {delaySeconds} seconds, delaying for {delaySeconds} seconds",
                         nextJob.DeclaringType.Name, nextJob.Name, delay.TotalSeconds, delay.TotalSeconds);
                     await Task.Delay((int)delay.TotalMilliseconds, cancellationToken);
                 } else {
-                    _logger.LogTrace($"No jobs found, delaying for 1 second");
+                    _logger.LogInformation("No jobs found, delaying for 1 second");
                     await Task.Delay(1000, cancellationToken);
                 }
 

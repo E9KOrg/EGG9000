@@ -27,9 +27,14 @@ namespace EGG9000.Bot.Automated {
             var guilds = await _db.Guilds.ToListAsync();
             var guildIDs = guilds.Select(x => x.Id).ToHashSet();
 
-            var usersToCheck = await _db.DBUsers.Where(x => guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(75).ToListAsync();
+            var usersToCheck = await _db.DBUsers.Where(x => !x.StaleBackup && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(75).ToListAsync();
             var longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
             _logger.LogInformation($"Longest backup check ago: {(DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2)}");
+
+
+            
+            var staleUsersToCheck = await _db.DBUsers.Where(x => x.StaleBackup && x.LastBackupCheck < DateTimeOffset.UtcNow.AddDays(-1) && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(5).ToListAsync();
+            usersToCheck.AddRange(staleUsersToCheck);
 
 
             times.Set("Fetched DB Users");
@@ -40,6 +45,12 @@ namespace EGG9000.Bot.Automated {
             var tasks = new List<Task>();
             var discoveredContractDefs = new System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract>();
             var knownContractIds = cachedContracts.Select(c => c.Identifier).ToHashSet();
+
+            // UpdateUser is network-only (EggIncApi calls, in-memory mutation of tracked entities) and
+            // never touches _db, so release the pooled connection for the whole parallel phase instead
+            // of holding it open-but-idle across up to 8 concurrent EggIncApi round-trips. EF reopens it
+            // lazily on the next _db access (SaveChangesAsync below).
+            await _db.Database.CloseConnectionAsync();
 
             foreach(var user in usersToCheck) {
                 await throttler.WaitAsync(cancellationToken);
@@ -131,7 +142,7 @@ namespace EGG9000.Bot.Automated {
                     // Backup setter auto-syncs account.SubscriptionLevel and account.SubscriptionEnds
                     account.Backup = backup;
 
-                    if(firstContact.Backup.SubInfo is null) {
+                    if(firstContact.Backup.SubInfo is null && account.Backup.GetLastBackupDateTime() > new DateTimeOffset(2026,6,11,0,0,0,DateTimeOffset.UtcNow.Offset)) {
                         _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API. Last backup: {account.Backup?.GetLastBackupDateTime()}");
                         var (subscription, subError) = await EggIncApi.GetUserSubscription(backup.EggIncId);
                         if(subscription is null) {
@@ -159,6 +170,11 @@ namespace EGG9000.Bot.Automated {
                 }
 
             }
+            var isStale = user.EggIncAccounts.All(x => x.Backup is null || x.Backup.GetLastBackupDateTime() < DateTimeOffset.UtcNow.AddDays(-7));
+            if(isStale != user.StaleBackup) {
+                _logger.LogInformation($"User {user.DiscordUsername} backup stale status changed to {isStale}");
+            }
+            user.StaleBackup = isStale;
             user.LastBackupCheck = DateTimeOffset.UtcNow;
         }
     }

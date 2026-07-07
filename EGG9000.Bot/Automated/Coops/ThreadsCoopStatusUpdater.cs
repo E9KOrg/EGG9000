@@ -200,6 +200,12 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 timings.Set("GetStatus");
 
+                // GetStatus and the EggIncApi calls further below (join/kick retry, creator-still-in
+                // check) are network-only stretches with no _db access in between. Release the pooled
+                // connection for their duration instead of holding it open-but-idle; EF reopens it
+                // lazily on the next _db access (GetCustomEggsAsync below).
+                await _db.Database.CloseConnectionAsync();
+
                 var statusReponse = new StatusResponse();
                 try {
                     statusReponse = await GetStatus(coop, coopThread, cancellationToken);

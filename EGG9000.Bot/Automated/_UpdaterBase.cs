@@ -115,7 +115,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public async Task WaitOnCoopsBeingCreated(CancellationToken cancellationToken) {
-            while(_coopsBeingCreatedService.AreCoopsBeingCreated()) {
+            while(_coopsBeingCreatedService?.AreCoopsBeingCreated() ?? false) {
                 _logger.LogTrace("Waiting on coops being created...");
                 await Task.Delay(60000, cancellationToken);
             }

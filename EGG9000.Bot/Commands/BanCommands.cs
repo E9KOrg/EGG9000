@@ -92,7 +92,12 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public partial class AdminGroupModule {
+    // Flat (non-grouped) command. Was a top-level /kick before the Discord.NET migration and was
+    // incorrectly nested under /admin in that migration - kept flat here to preserve the
+    // pre-migration command name.
+    public class KickModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordHostedService _client = client;
+
         [SlashCommand("kick", "Kick user(s) with DM")]
         [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
         [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
@@ -137,7 +142,7 @@ namespace EGG9000.Bot.Commands {
                 var canBan = banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers);
 
                 try {
-                    var execDiscordUser = (targetUser as SocketGuildUser);
+                    var execDiscordUser = guild.GetUser(targetUser.Id);
                     if(execDiscordUser is null) {
                         if(users.Length > 1) {
                             exceptionList.Add(targetUser.Id);

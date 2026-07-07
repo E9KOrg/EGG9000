@@ -37,6 +37,9 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+            // CheckShells and GetPeriodicalsAsync are network-only; release the pooled connection while
+            // they're in flight instead of holding it open-but-idle. EF reopens it lazily on next _db access.
+            await _db.Database.CloseConnectionAsync();
             await CheckShells(_db);
 
             var response = await EggIncApi.GetPeriodicalsAsync();

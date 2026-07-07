@@ -2,6 +2,8 @@
 
 using Ei;
 
+using MassTransit;
+
 using MessagePack;
 
 using Microsoft.EntityFrameworkCore;
@@ -83,6 +85,7 @@ namespace EGG9000.Common.Database.Entities {
         public byte[] _coopSettingByte { get; set; }
         public DateTimeOffset? NextBreakExpire { get; set; }
         public DateTimeOffset? LastBackupCheck { get; set; }
+        public bool StaleBackup { get; set; } = false;
 
         [NotMapped]
         private CoopSetting _coopSetting { get; set; }

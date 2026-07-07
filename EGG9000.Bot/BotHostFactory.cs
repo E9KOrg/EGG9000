@@ -83,6 +83,7 @@ public static class BotHostFactory {
                 if(serviceCustomize is not null) {
                     var method = serviceCustomize.GetMethod("ConfigureServices");
                     method.Invoke(null, [hostContext, services]);
+                    return; // Skip the rest of the configuration in Debug if ServiceCustomize.ConfigureServices exists
                 }
             }
             if(release) {

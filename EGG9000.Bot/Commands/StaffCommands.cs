@@ -51,18 +51,6 @@ namespace EGG9000.Bot.Commands {
             public DBUser User { get; set; }
         }
 
-        static async internal Task _afs(SocketInteraction command, ApplicationDbContext db, SocketGuildUser discUser, bool showInChannel) {
-            await command.DeferAsync(ephemeral: !showInChannel);
-            var user = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discUser.Id);
-
-            var sb = new StringBuilder();
-
-            foreach(var account in user.EggIncAccounts.Where(a => a.Backup is not null).ToList()) {
-                sb.Append($"For {account.Backup?.UserName ?? "(No Name)"}: {ArtifactHelpers.GetArtifactFairnessScoreString(account.Backup.ArtifactHall)}\n");
-            }
-
-            await command.RespondAsyncGettingMessage(sb.ToString(), ephemeral: !showInChannel);
-        }
     }
 
     public class StaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : E9KModuleBase(dbFactory) {
@@ -146,11 +134,6 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class AdminModule {
-
-        [SlashCommand("afs", "Determine a user's artifact fairness score")]
-        public Task AFS([Summary("user")] SocketGuildUser user, [Summary("showinchannel")] bool ShowInChannel = false) {
-            return StaffCommands._afs(Context.Interaction, Db, user, ShowInChannel);
-        }
 
         [SlashCommand("selectroleusers", "Select X random users with Y role")]
         [StaffOnly(StaffTier.FarmHand)]

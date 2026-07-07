@@ -1,6 +1,9 @@
 using Discord;
 using Discord.Interactions;
+using Discord.Rest;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -27,6 +30,7 @@ namespace EGG9000.Bot.Services {
 
         public async Task StartAsync(CancellationToken cancellationToken) {
             await _interactions.AddModulesAsync(Assembly.GetExecutingAssembly(), _provider);
+            await RemoveModulesDisallowedForCurrentBuildConfigAsync();
             _interactions.SlashCommandExecuted += (i, c, r) => OnExecuted(i, c, r);
             _interactions.ComponentCommandExecuted += (i, c, r) => OnExecuted(i, c, r);
             _interactions.ModalCommandExecuted += (i, c, r) => OnExecuted(i, c, r);
@@ -42,11 +46,24 @@ namespace EGG9000.Bot.Services {
             await PurgeStaleGuildCommandsAsync();
         }
 
+        // [BuildConfigOnly] modules were just discovered/tracked in-memory by AddModulesAsync above;
+        // pull the disallowed ones back out before RegisterCommandsGloballyAsync so they never reach
+        // Discord's slash picker outside their allowed configs (no #if - see BuildConfig.cs).
+        private async Task RemoveModulesDisallowedForCurrentBuildConfigAsync() {
+            var disallowedTypes = Assembly.GetExecutingAssembly().GetTypes()
+                .Where(t => t.GetCustomAttribute<BuildConfigOnlyAttribute>() is { AllowsCurrent: false });
+
+            foreach(var type in disallowedTypes) {
+                var removed = await _interactions.RemoveModuleAsync(type);
+                if(removed) _logger.LogInformation("Skipping registration of {module} - not allowed in {config}", type.Name, BuildConfig.Current);
+            }
+        }
+
         // This app only ever registers commands globally, so any guild-scoped command is a leftover
         // from an older deploy (e.g. the pre-InteractionService /addmerit with user1..user10 params)
         // shadowing the current global command of the same name. Self-heal by deleting them, guarded
         // against wiping something unexpected: skip and log loudly instead of deleting past a sane cap.
-        private const int MaxStaleGuildCommandsPerGuild = 25;
+        private const int MaxStaleGuildCommandsPerGuild = 90;
 
         private async Task PurgeStaleGuildCommandsAsync() {
             foreach(var guild in _discord.Gateway.Guilds) {
@@ -60,7 +77,12 @@ namespace EGG9000.Bot.Services {
                         continue;
                     }
 
+                    // RestGuildCommand (not SocketApplicationCommand) is what exposes GetCommandPermission,
+                    // so fetch the REST view of this guild's commands once and match by ID before deleting.
+                    var restCommands = await _discord.Gateway.Rest.GetGuildApplicationCommands(guild.Id);
                     foreach(var command in staleCommands) {
+                        var restCommand = restCommands.FirstOrDefault(c => c.Id == command.Id);
+                        if(restCommand is not null) await LogCommandPermissionsAsync(guild, restCommand);
                         _logger.LogWarning("Deleting stale guild-scoped command /{name} in guild {guildId}", command.Name, guild.Id);
                         await command.DeleteAsync();
                     }
@@ -68,6 +90,22 @@ namespace EGG9000.Bot.Services {
                     _logger.LogError(e, "Failed purging stale guild-scoped commands for guild {guildId}", guild.Id);
                     _bugsnag.Notify(e);
                 }
+            }
+        }
+
+        // Best-effort snapshot so a permission wipe from the delete above can be manually replayed from
+        // logs. Discord has no API to restore permissions after the command itself is gone, so this is
+        // the only recovery path - not persisted anywhere structured on purpose, this is a safety net for
+        // an operation that should be rare, not a feature to build workflows on top of.
+        private async Task LogCommandPermissionsAsync(SocketGuild guild, RestGuildCommand command) {
+            try {
+                var permissions = await command.GetCommandPermission();
+                if(permissions?.Permissions is { Count: > 0 }) {
+                    var summary = string.Join(", ", permissions.Permissions.Select(p => $"{p.TargetType}:{p.TargetId}={p.Permission}"));
+                    _logger.LogWarning("Permission overrides for /{name} in guild {guildId} before delete: {permissions}", command.Name, guild.Id, summary);
+                }
+            } catch(Exception e) {
+                _logger.LogWarning(e, "Could not fetch permission overrides for /{name} in guild {guildId} before delete", command.Name, guild.Id);
             }
         }
 
