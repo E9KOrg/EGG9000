@@ -10,3 +10,4 @@ using System.Diagnostics.CodeAnalysis;
 [assembly: SuppressMessage("Performance", "CA1873:Avoid potentially expensive logging", Justification = "Stlyistic choice")]
 [assembly: SuppressMessage("Performance", "CA1873:Avoid potentially expensive logging", Justification = "Stlyistic choice")]
 [assembly: SuppressMessage("Style", "IDE0022:Use block body for method", Justification = "Stlyistic choice")]
+[assembly: SuppressMessage("Style", "IDE0025:Use block body for property", Justification = "Stlyistic choice")]

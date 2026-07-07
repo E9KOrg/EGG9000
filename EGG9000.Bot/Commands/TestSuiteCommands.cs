@@ -1,4 +1,3 @@
-#if !RELEASE
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
@@ -7,6 +6,7 @@ using EGG9000.Bot.Automated;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
@@ -22,10 +22,11 @@ using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    // DEV-only test harness. Whole file is `#if !RELEASE` so these never register on prod.
+    // DEV-only test harness - registration is skipped outside Debug/DEV9001/DEV9002 by InteractionRoutingService
     [Group("test", "DEV test harness")]
     [DefaultMemberPermissions(GuildPermission.Administrator)]
     [StaffOnly(StaffTier.Admin)]
+    [BuildConfigOnly(BuildConfiguration.Debug, BuildConfiguration.Dev9001, BuildConfiguration.Dev9002)]
     public class TestModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client, CoopStatsCache stats, IServiceProvider serviceProvider) : E9KModuleBase(dbFactory) {
         public const string SeedPrefix = "TESTSEED-";
 
@@ -199,4 +200,3 @@ namespace EGG9000.Bot.Commands {
 
     }
 }
-#endif

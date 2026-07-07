@@ -2,6 +2,8 @@ using Discord;
 using Discord.Interactions;
 using Discord.Rest;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
+using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -28,6 +30,7 @@ namespace EGG9000.Bot.Services {
 
         public async Task StartAsync(CancellationToken cancellationToken) {
             await _interactions.AddModulesAsync(Assembly.GetExecutingAssembly(), _provider);
+            await RemoveModulesDisallowedForCurrentBuildConfigAsync();
             _interactions.SlashCommandExecuted += (i, c, r) => OnExecuted(i, c, r);
             _interactions.ComponentCommandExecuted += (i, c, r) => OnExecuted(i, c, r);
             _interactions.ModalCommandExecuted += (i, c, r) => OnExecuted(i, c, r);
@@ -41,6 +44,19 @@ namespace EGG9000.Bot.Services {
             await _interactions.RegisterCommandsGloballyAsync();
 
             await PurgeStaleGuildCommandsAsync();
+        }
+
+        // [BuildConfigOnly] modules were just discovered/tracked in-memory by AddModulesAsync above;
+        // pull the disallowed ones back out before RegisterCommandsGloballyAsync so they never reach
+        // Discord's slash picker outside their allowed configs (no #if - see BuildConfig.cs).
+        private async Task RemoveModulesDisallowedForCurrentBuildConfigAsync() {
+            var disallowedTypes = Assembly.GetExecutingAssembly().GetTypes()
+                .Where(t => t.GetCustomAttribute<BuildConfigOnlyAttribute>() is { AllowsCurrent: false });
+
+            foreach(var type in disallowedTypes) {
+                var removed = await _interactions.RemoveModuleAsync(type);
+                if(removed) _logger.LogInformation("Skipping registration of {module} - not allowed in {config}", type.Name, BuildConfig.Current);
+            }
         }
 
         // This app only ever registers commands globally, so any guild-scoped command is a leftover
