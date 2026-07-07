@@ -26,6 +26,11 @@ namespace Discord {
 
 
     public static class ComponentBuilderV2Extensions {
+        public static T WithHeader<T>(this T container, string title, string accountLine = null) where T : class, IComponentContainer, IStaticComponentContainer {
+            var header = accountLine is null ? $"# {title}" : $"# {title}\n{accountLine}";
+            return container.WithTextDisplay(header);
+        }
+
         public static T WithSection<T>(this T container, string text, string? thumbnailUrl = null) where T : IComponentContainer {
             var section = new SectionBuilder();
             section.AddComponent(new TextDisplayBuilder(text));
