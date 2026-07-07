@@ -111,14 +111,13 @@ namespace EGG9000.Bot.Automated {
 
                     // GuildId can be stale when a user leaves Discord without being unassigned, which
                     // makes warning loops (MER cheater, break-coop, promotions) ping ex-members. When the
-                    // roster is complete (DownloadUsersAsync above), drop users no longer in guild.Users.
+                    // roster is complete, drop users no longer in guild.Users.
                     var memberIds = guild.HasAllMembers ? guild.Users.Select(u => u.Id).ToHashSet() : null;
                     var users = lUsers
                         .Where(x => x.User.GuildId == guild.Id && (memberIds is null || memberIds.Contains(x.User.DiscordId)))
                         .ToList();
                     var guildContracts = await _db.GuildContracts.Where(gc => gc.GuildID == dbguild.Id).ToListAsync(CancellationToken.None);
 
-                    //Handle users who are on break, and doing coops
                     var breakCoopsChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.BreakCoopLog);
                     if(breakCoopsChannel is not null) {
                         _logger.LogInformation("Handling on-break coop warnings for {guild}", guild.Name);
@@ -161,8 +160,7 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
 
-                    //Handle users with suspiciously high Mystical Egg Ratios
-                    const int adjustedMerThreshold = 12; //Pre-determined to be a good threshold.
+                    const int adjustedMerThreshold = 12;
                     var cheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.CheaterThread);
                     if(cheaterChannel is not null) {
                         _logger.LogInformation("Handling MER cheaters for {guild}", guild.Name);
@@ -187,7 +185,6 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
 
-                    //Handle promotions
                     _logger.LogInformation("Handling promotions for {guild}", guild.Name);
 
                     foreach(var userAccounts in users.GroupBy(x => x.User.Id)) {

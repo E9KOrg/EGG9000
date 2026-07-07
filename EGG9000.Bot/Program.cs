@@ -9,7 +9,6 @@ using NLog;
 using NLog.Web;
 using System;
 
-// Set up logger before anything else
 var logger = LogManager.Setup().GetCurrentClassLogger();
 
 try {

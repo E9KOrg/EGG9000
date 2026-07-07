@@ -3,10 +3,8 @@ using EGG9000.Common.Helpers;
 namespace EGG9000.Common.Consumers {
     /// <summary>
     /// Periodic runtime snapshot published by the bot and consumed by the site, which re-exposes the
-    /// values as <c>bot_*</c> Prometheus gauges on its (auth-gated) <c>/metrics</c> endpoint. Lets the
-    /// site report cross-scope: its own <c>dotnet_*</c>/<c>process_*</c> counters plus the bot's. All
-    /// values are absolute (cumulative counters are sent as their running total). Carries the bus
-    /// control secret like the other control messages.
+    /// values as <c>bot_*</c> Prometheus gauges on its (auth-gated) <c>/metrics</c> endpoint. All values
+    /// are absolute; cumulative counters are sent as their running total.
     /// </summary>
     public class BotMetricsSnapshotMessage {
         public long TimestampUnix { get; set; }

@@ -19,7 +19,7 @@ namespace EGG9000.Common.Contracts.Assignment {
         public PermanentRewardRule Get(PermanentRewardKind kind) =>
             ForceRules?.FirstOrDefault(r => r.Kind == kind) ?? new PermanentRewardRule { Kind = kind, Mode = ForceMode.NotSet };
 
-        // Upserts a force rule. Get returns a detached default for reads; writes must land in the list.
+        // Get returns a detached default for reads; writes must land in the list.
         public void SetForce(PermanentRewardKind kind, ForceMode mode, double? csFloor = null) {
             ForceRules ??= [];
             var rule = ForceRules.FirstOrDefault(r => r.Kind == kind);
@@ -69,7 +69,6 @@ namespace EGG9000.Common.Contracts.Assignment {
             _ => 5_000
         };
 
-        // The CS goal actually applied for this grade: never below the grade floor.
         public double EffectiveCsGoal(Ei.Contract.Types.PlayerGrade grade) =>
             System.Math.Max(CsGoal, CsGoalFloor(grade));
     }

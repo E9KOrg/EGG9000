@@ -120,7 +120,6 @@ namespace EGG9000.Bot.Services {
             if(dbguild == null) {
                 dbguild = guilds.FirstOrDefault(x => x.OverflowServers.Any(y => y == user.Guild.Id));
                 if(dbguild != null) {
-                    //Handle Overflow Role
                     var mainServer = _discord.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                     var overflowServers = _discord.Guilds.Where(x => dbguild.OverflowServers.Contains(x.Id));
                     const ulong overflowRoleID = 775547850134257675;
@@ -132,7 +131,6 @@ namespace EGG9000.Bot.Services {
                         await mainServer.Users.First(u => u.Id == user.Id).RemoveRoleAsync(overflowRoleID);
                     }
 
-                    //Handle assigned co-ops
                     try {
                         var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
                         foreach(var xref in xrefs) {

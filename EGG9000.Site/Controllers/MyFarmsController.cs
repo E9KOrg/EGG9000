@@ -159,7 +159,7 @@ namespace EGG9000.Site.Controllers {
 
 
             Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId));
+            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId));
         }
 
         // Lazily renders the artifact-inventory image plus its hover-target manifest for one account. The
@@ -250,7 +250,6 @@ namespace EGG9000.Site.Controllers {
             List<Common.Database.Entities.DBContract> Contracts,
             List<Demerit> Demerits,
             List<Merit> Merits,
-            /*List<Backup> RawBackups*/
             List<UserSnapShot> SnapShots,
             List<UserCoopXref> UnjoinedCoops,
             List<Coop> JoinedCoops,
@@ -273,7 +272,7 @@ namespace EGG9000.Site.Controllers {
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
-            //Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
+            // Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
             var cachedContracts = await _db.CachedEiContractsAsync();
             var freshBackups = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
                 var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, cachedContracts);

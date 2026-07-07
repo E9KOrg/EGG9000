@@ -78,7 +78,6 @@ namespace EGG9000.Common.Helpers {
                 if(!response.IsSuccessStatusCode) return null;
 
                 var contentType = response.Content.Headers.ContentType?.MediaType;
-                // Check if the response contains an image
                 if(contentType?.StartsWith("image/") != true) return null;
 
                 var imageBytes = await response.Content.ReadAsByteArrayAsync();

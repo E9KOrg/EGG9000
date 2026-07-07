@@ -62,8 +62,8 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 var users = allusers
                     .Where(
                         x => x.GuildId == guild.Id && (
-                            (x.DiscordUsername?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||  //Match discord username
-                            (x.Usernames?.Contains(query) ?? false) //Or match egg inc username
+                            (x.DiscordUsername?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                            (x.Usernames?.Contains(query) ?? false)
                         )
                     )
                     .Take(10);
@@ -102,12 +102,11 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                     return [];
                 }
 
-                //Filter users by current search
                 var users = string.IsNullOrWhiteSpace((string)arg.Data.Current.Value) ?
                     coop.UserCoopsXrefs :
                     coop.UserCoopsXrefs.Where(x =>
-                        x.User.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase) || //Match discord username
-                        x.User.Usernames.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase) //Or match egg inc username
+                        x.User.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase) ||
+                        x.User.Usernames.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)
                     );
 
                 var accounts = users.SelectMany(x => x.User.EggIncAccounts.Where(a => eidsIn.Contains(a.Id)).Select(y => new { User = x.User, Account = y }));
@@ -174,9 +173,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
         #endregion
 
         #region ContractAutoCompletes
-        /*
-         *  Clone of ContractAutoComplete with no limitation on who can select Ultra coops
-         */
+        // Clone of ContractAutoComplete with no limitation on who can select Ultra coops.
         public class StaffContractAutoComplete(IDbContextFactory<ApplicationDbContext> dbFactory) : AutocompleteHandler {
             private readonly IDbContextFactory<ApplicationDbContext> _dbFactory = dbFactory;
 
@@ -184,7 +181,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 await using var db = await _dbFactory.CreateDbContextAsync();
                 var contracts = await db.Contracts.Where(x => x.MaxUsers > 1 && x.GoodUntil > DateTimeOffset.UtcNow.AddDays(-14)).Select(x => new { x.ID, x.Name }).ToListAsync();
                 var stringArg = (string)arg.Data.Current.Value;
-                if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = [.. contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg))]; //Filter by name
+                if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = [.. contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg))];
                 return [.. contracts.DistinctBy(x => x.Name).ToList().Select(c => new AutocompleteResult(c.Name, c.ID))];
             }
 
@@ -212,9 +209,8 @@ namespace EGG9000.Bot.Commands.CommonTypes {
 
                 var contracts = db.Contracts.Where(x => x.MaxUsers > 1 && (hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.UtcNow) : (x.GoodUntil > DateTimeOffset.UtcNow && !x.cc_only))).ToList();
                 var stringArg = (string)arg.Data.Current.Value;
-                if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = [.. contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg))]; //Filter by name
+                if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = [.. contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg))];
                 if(guild is not null && !guild.DisableBG && !isStaff) {
-                    //Limit contracts to those that have had longer than 16 hours to launch (i.e. all three boarding groups)
                     contracts = [.. contracts.Where(x => (DateTimeOffset.UtcNow - x.Created).TotalHours > 17)];
                 }
 
@@ -240,7 +236,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Channel.Id);
 
                 if(coop is null || coop.League == 0) {
-                    return []; //Command only works in a co-op channel and where grade is known.
+                    return [];
                 }
 
                 return [.. Enumerable.Range(1, 5)

@@ -10,9 +10,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Site.Consumers {
     /// <summary>
-    /// Applies bot runtime snapshots to <see cref="BotMetricsExporter"/> so they surface on the
-    /// site's /metrics. Validates the bus control secret like the other control consumers. Bound to a
-    /// per-instance temporary queue (broadcast) so every site process gets every snapshot.
+    /// Bound to a per-instance temporary queue (broadcast) so every site process gets every snapshot.
     /// </summary>
     public class BotMetricsSnapshotConsumer(BotMetricsExporter exporter, ILogger<BotMetricsSnapshotConsumer> logger) : IConsumer<BotMetricsSnapshotMessage> {
         private readonly BotMetricsExporter _exporter = exporter;

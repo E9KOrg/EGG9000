@@ -6,9 +6,9 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace EGG9000.Common.Database.Entities {
     [Table("Contracts")]
     public class DBContract {
-        public string ID { get; set; }  //identifier
-        public string Name { get; set; } //name
-        public string Description { get; set; } //description
+        public string ID { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
         public DateTimeOffset GoodUntil { get; set; } //expiration_time
         public string egg { get; set; }
         public string goals { get; set; }
@@ -68,7 +68,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public List<Ei.Contract.Types.Goal> GoalsDetail => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(goals);
 
-        // Derived from the proto rather than a DB column so leggacy re-runs of old seasonal contracts keep the original season ID
+        // Derived from the proto rather than a DB column so legacy re-runs of old seasonal contracts keep the original season ID
         [NotMapped]
         public string SeasonId => string.IsNullOrEmpty(Details?.SeasonId) ? null : Details.SeasonId;
 

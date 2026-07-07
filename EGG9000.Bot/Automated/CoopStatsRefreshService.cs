@@ -151,7 +151,7 @@ namespace EGG9000.Bot.Automated {
 
                 var current = existing.Embeds.FirstOrDefault(e => e.Author?.Name == MarkerAuthor);
                 if(StatsBody(current?.Description) == StatsBody(embed.Description) && current?.Title == embed.Title)
-                    return; // stats body unchanged (ignoring timestamp), skip edit
+                    return;
 
                 var capturedExisting = existing;
                 _queue.EnqueueLow(() => capturedExisting.ModifyAsync(m => m.Embed = embed));

@@ -382,7 +382,7 @@ namespace EGG9000.Bot.Commands {
             var dayDifferential = (currentDtOffset - DateTimeOffset.UtcNow).Days;
             if(dayDifferential >= 60) return currentDtOffset;
             else {
-                if(dayDifferential + daysToAdd >= 60) daysToAdd = 60 - dayDifferential; //Cap to 60 days
+                if(dayDifferential + daysToAdd >= 60) daysToAdd = 60 - dayDifferential;
                 return currentDtOffset.AddDays(daysToAdd);
             }
         }
@@ -526,7 +526,6 @@ namespace EGG9000.Bot.Commands {
             var numText = form.Num?.ToLower();
             //Parse to double so that we can handle things like "25.2k"
             var isNum = double.TryParse((numText.Last() == 'k' ? numText.Remove(numText.Length - 1) : numText), out var num);
-            //If there was a k, multiply by 1000
             if(isNum && (numText.Last() == 'k')) num *= 1000;
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;

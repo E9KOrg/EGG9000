@@ -71,7 +71,6 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
-                // If any eggs had their modifiers or icons changed
                 var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && !ce.Equals(e)));
                 if(updatedCustomEggs.Any()) {
                     foreach(var updatedEgg in updatedCustomEggs) {
@@ -88,7 +87,6 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
-                // If any eggs were previously "un-released" (didn't have a GuildContract in the db)
                 var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.ToLower() == "customegg").ToListAsync(cancellationToken))
                     .Select(x => x.Details.CustomEggId.ToLower()).Distinct();
                 var newlyReleasedEggs = dbCustomEggs.Where(de => !de.Released && dbContractEggs.Contains(de.Identifier.ToLower()));
@@ -118,7 +116,8 @@ namespace EGG9000.Bot.Automated {
                     var json = JsonConvert.SerializeObject(contractResponse);
 
                     if(contract == null) {
-                        // Kevin being bad causing problems - Fallback leggacy detection
+                        // The API sometimes omits the leggacy flag on an actual Kevin update; fall back
+                        // to detecting it by response diff instead of trusting the flag alone.
                         if(!contractResponse.Leggacy) {
                             _logger.LogWarning("Contract {contractid} is not marked as leggacy, checking if it is actually new or if it's just a Kevin update without the flag", contractResponse.Identifier);
                             contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
@@ -180,7 +179,7 @@ namespace EGG9000.Bot.Automated {
                     await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
                 }
 
-                // Upsert all season definitions (self-heals past seasons)
+                // Self-heals past seasons that were missed or changed.
                 var (seasonInfos, seasonInfosError) = await EggIncApi.GetSeasonInfosAsync();
                 if(seasonInfos == null) {
                     _logger.LogWarning("Failed to fetch season infos: {error}", seasonInfosError);
@@ -279,7 +278,6 @@ namespace EGG9000.Bot.Automated {
                 _db.GuildContracts.Add(guildContract);
                 await _db.SaveChangesAsync();
 
-                //Ping non-ultra members who have "Ping on Ultra contract I don't have" turned on
                 if(contract.cc_only) {
                     var pingableUsers = await _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
                     pingableUsers = [.. pingableUsers.Where(u => u.EggIncAccounts.Any(a => !a.HasActiveSubscription()

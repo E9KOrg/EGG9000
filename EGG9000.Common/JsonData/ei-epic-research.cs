@@ -13,15 +13,13 @@ namespace EGG9000.Common.JsonData {
         public List<int> _overrideCosts { get; set; }
         public List<int> Costs {
             get {
-                if(_overrideCosts?.Count > 0) { //Items that don't follow the forumla (fuel tank)
+                if(_overrideCosts?.Count > 0) { //Items that don't follow the formula (fuel tank)
                     return _overrideCosts;
-                } else if(_numLevels == 1) { //Used for one-time-purchase items (hyperloop)
+                } else if(_numLevels == 1) { //One-time-purchase items (hyperloop)
                     return [_firstCost];
-                } else { // All other ER
+                } else {
                     var _costs = new List<int>();
                     for(var level = 1; level <= _numLevels; level++) {
-                        // Calculate cost for the current level using the formula:
-                        // firstCost + [(level - 1) * (lastCost - firstCost)] / (levels - 1)
                         _costs.Add(
                             _firstCost + (int)((level - 1) * (double)(_lastCost - _firstCost) / (_numLevels - 1))
                         );

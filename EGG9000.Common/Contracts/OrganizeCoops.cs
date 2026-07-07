@@ -20,18 +20,16 @@ namespace EGG9000.Common.Contracts {
                 await guild.DownloadUsersAsync();
             }
 
-            //Start compiling a list of all eligible accounts
             var accounts = users
             .SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
                 Account = a,
                 User = u,
                 UserCsHistoryEntry = userCsHistoryEntries.Where(x => x.EggIncId == a.Id).MaxBy(x => x.Created),
-                //If it's an ultra contract, use UG (UltraGroup), else, use BG (Group)
                 Group = a.GetGroup(contract.Details.CcOnly),
                 RoleId = dbGuild is not null && dbGuild.DisableBG ? guild.GetUser(u.DiscordId)?.Roles.FirstOrDefault(x => dbGuild.GroupRoles.Contains(x.Id.ToString()))?.Id ?? 0 : 0
             })).ToList();
 
-            // Assignment via the rule engine (Assignment/). Filters `accounts` in place to the keep-set.
+            // Rule engine (Assignment/) filters `accounts` in place to the keep-set.
             AssignmentEngineFilter.ApplyFilters(accounts, excluded, contract, existingCoops, dbGuild, contractSeason, seasonProgresses);
 
 
@@ -128,20 +126,15 @@ namespace EGG9000.Common.Contracts {
                     coop.Grade = contract.CcOnly ? Ei.Contract.Types.PlayerGrade.GradeAaa : user.Account.GetGrade();
                 }
 
-                //Remove user from group so they don't get added to another coop
                 highestEBGroup.Value.Remove(user);
 
-                //Look through all groups to find other accounts for this user
                 var otherAccounts = ebGroups.SelectMany(x => x.Value.Where(y => y.User.Id == user.User.Id).Select(y => new { Group = x, Account = y })).ToList();
                 if(otherAccounts.Count > 0) {
-                    //Find out how many other accounts we can add to this coop
                     while(coop.Users.Count + otherAccounts.Count > contract.MaxCoopSize && otherAccounts.Count > 0) {
                         otherAccounts.RemoveAt(otherAccounts.Count - 1);
                     }
                     foreach(var otherAccount in otherAccounts) {
                         coop.Users.Add(otherAccount.Account);
-
-                        //Remove user from group so they don't get added to another coop
                         otherAccount.Group.Value.Remove(otherAccount.Account);
                     }
                 }
@@ -156,7 +149,7 @@ namespace EGG9000.Common.Contracts {
             return coops;
         }
 
-        // Static helper on OrganizeCoops so both the site controller and the bot can load season data without duplicating the query
+        // Shared by the site controller and the bot so neither duplicates the query.
         public static async Task<(SeasonInfo contractSeason, List<UserSeasonProgress> seasonProgresses)> LoadContractSeasonData(ApplicationDbContext db, DBContract contract, List<DBUser> users) {
             if(string.IsNullOrEmpty(contract.SeasonId)) return (null, []);
             var contractSeason = await db.SeasonInfos.FindAsync(contract.SeasonId);

@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Commands {
 
             var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
             await command.RespondWithFilesAsyncGettingMessage([image], text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
-            var response = await command.GetOriginalResponseAsync(); // Get the response to edit it
+            var response = await command.GetOriginalResponseAsync();
             var baseUrl = response.Embeds.First().Image.ToString();
             var imageUrl = TrimImageUrl(baseUrl);
             await command.ModifyOriginalResponseAsync(x => {
@@ -174,8 +174,6 @@ namespace EGG9000.Bot.Commands {
             return string.IsNullOrEmpty(url) ? "" : ArtifactCommands.TrimImageUrl(url);
         }
 
-        // Renders a single page on the Site, swaps in the new attachment, and refreshes the
-        // full-resolution link. Used by the page + set-select component handlers.
         private static async Task RenderAfxPage(SocketMessageComponent component, DBUser user, EggIncAccount account, int accountIndex, List<List<EggIncArtifactInstance>> sets, int pageCount, int page, Embed detailEmbed) {
             await component.DeferAsync();
             var (pages, _) = await AfxSetsRender.AfxSetsB64(account, page);

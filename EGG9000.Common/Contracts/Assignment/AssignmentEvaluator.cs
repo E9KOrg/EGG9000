@@ -59,7 +59,6 @@ namespace EGG9000.Common.Contracts.Assignment {
                 .Select(a => (a.facts, a.settings, decision: Evaluate(a.facts, contract, a.settings, forbidden, filtersDisabled)))
                 .ToList();
 
-            // Resolve sibling matches for YesOtherAccountMatch accounts, then re-evaluate them.
             var final = new List<(AccountFacts, AssignmentDecision)>();
             foreach(var entry in provisional) {
                 var mode = (entry.settings?.Redo ?? new RedoRule()).Mode;
@@ -114,7 +113,6 @@ namespace EGG9000.Common.Contracts.Assignment {
             AssignmentRuleId.SeasonalContracts, AssignmentRuleId.RewardFilter
         ];
 
-        // Returns true if the rule is skipped. In verbose mode the skip is recorded with a reason.
         private static bool SkipRecorded(List<RuleResult> results, IAssignmentRule rule, ContractFacts contract, IReadOnlySet<AssignmentRuleId> forbidden, bool filtersDisabled, bool verbose) {
             if(forbidden != null && forbidden.Contains(rule.Id)) {
                 if(verbose) results.Add(new RuleResult(rule.Id, rule.Tier, RuleOutcome.NotApplicable, $"{Label(rule.Id)}: disabled by server"));

@@ -23,7 +23,6 @@ namespace EGG9000.Bot.Commands {
                 When = DateTimeOffset.UtcNow,
                 AdminUserId = adminid,
                 UserId = user.Id,
-                //Id = Guid.NewGuid(),
                 Reason = reason
             };
             db.Merit.Add(merit);

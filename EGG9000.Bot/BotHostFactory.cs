@@ -38,7 +38,6 @@ public static class BotHostFactory {
 
             SecretsHelper.Initialize(hostContext.Configuration);
 
-            // Get connection string - supports both Docker secrets and local development
             var connectionString = SecretsHelper.GetConfigOrSecret(
                 hostContext.Configuration,
                 "ConnectionStrings:DefaultConnection",
@@ -83,7 +82,7 @@ public static class BotHostFactory {
                 if(serviceCustomize is not null) {
                     var method = serviceCustomize.GetMethod("ConfigureServices");
                     method.Invoke(null, [hostContext, services]);
-                    return; // Skip the rest of the configuration in Debug if ServiceCustomize.ConfigureServices exists
+                    return;
                 }
             }
             if(release) {
@@ -98,7 +97,6 @@ public static class BotHostFactory {
 
                 var bs = new Bugsnag.Client(bugsnagConfig);
 
-                // Register as singleton for background services
                 services.AddSingleton<Bugsnag.IClient>(bs);
 
                 services.AddBugsnag(options => {

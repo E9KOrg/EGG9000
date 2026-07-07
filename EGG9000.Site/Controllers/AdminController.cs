@@ -1453,7 +1453,6 @@ music
         public async Task<IActionResult> DiscordReturn() {
             string code = Request.Query["code"];
 
-            // Get Access Token from authorization code by making an HTTP POST request
             var url = "https://discordapp.com/api/oauth2/token";
             var parameters = $"client_id={_configuration.GetConnectionString("ClientId")}&client_secret={_configuration.GetConnectionString("ClientSecret")}&grant_type=authorization_code&code={code}&redirect_uri={Url.ActionLink("DiscordReturn")}";
 
@@ -1584,7 +1583,6 @@ music
             var guildId = id ?? GetGuildID();
             if(!VerifyId(guildId)) return NotFound();
 
-            // Generate a cryptographically random 32-byte key, prefix with "egg_".
             var rawBytes = RandomNumberGenerator.GetBytes(32);
             var rawKey = "egg_" + Convert.ToBase64String(rawBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();

@@ -41,8 +41,6 @@ namespace EGG9000.Bot.Automated {
 
         private readonly CronExpression _cronExpression;
         private DateTimeOffset _nextRunFromCron;
-        /*private readonly DateTimeOffset _firstRunDue;
-        private DateTimeOffset _updaterInitiated;*/
 
         public TimeSpan UpdateInterval;
         private readonly TimeSpan _delayedStart;

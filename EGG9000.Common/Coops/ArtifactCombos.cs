@@ -125,13 +125,6 @@ with(stoneCombo),                         stone
             if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.HabCapacity)) {
                 keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.HabCapacity));
             }
-            //if(farm.Artifacts.Any(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates) && withTachyon) {
-            //    keepArtifacts.Add(farm.Artifacts.First(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates));
-            //} else if(withTachyon) {
-            //    var tachyon = available.Where(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates).MaxBy(x => x.Artifact.Value);
-            //    if(tachyon is not null)
-            //        keepArtifacts.Add(tachyon.Artifact);
-            //}
 
             var artifacts = available
                 .Where(x => !keepArtifacts.Any(y => y.Artifact == x.Artifact.Artifact))
@@ -195,13 +188,11 @@ with(stoneCombo),                         stone
 
             var currentSet = current.Artifacts;
             var againstSet = against.Artifacts;
-            // check for equivalent artifacts in both sets
             foreach(var artifact in currentSet) {
                 var matchingArtifact = againstSet.FirstOrDefault(x => x.Artifact.Equals(artifact.Artifact));
 
                 if(matchingArtifact != null) {
                     similarity++;
-                    // test for similarity between shipping and egg laying between artifact sets
                     if(artifact.Shipping == matchingArtifact.Shipping) {
                         similarity += Math.Max(artifact.Artifact.Stones.Count, 1);
                     } else similarity--;
@@ -214,7 +205,6 @@ with(stoneCombo),                         stone
                         } else similarity--;
                     }
                 } else {
-                    //If a matching artifact cannot be found, very hurtful
                     similarity -= 2;
                 }
             }
@@ -223,7 +213,6 @@ with(stoneCombo),                         stone
 
         public static bool CheckSet(ArtifactSet set, bool withTachyon) {
             var hasDeflector = set.Artifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
-            // "With Deflector" requires one; "No Deflector" forbids it. Either way the choice is explicit.
             return withTachyon ? hasDeflector : !hasDeflector;
         }
 

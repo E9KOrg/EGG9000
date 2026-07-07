@@ -34,7 +34,6 @@ namespace EGG9000.Test {
             };
         }
 
-        // Minimal stub - returns a default AuthenticationSchemeOptions for any scheme name.
         private class StubOptionsMonitor : IOptionsMonitor<AuthenticationSchemeOptions> {
             public AuthenticationSchemeOptions CurrentValue {
                 get {

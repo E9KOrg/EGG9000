@@ -39,6 +39,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: dotnet test EGG9000.Test -c Release --filter "TestCategory=Unit" --logger "trx;LogFileName=unit.trx" --results-directory TestResults
+      - run: dotnet test EGG9000.Analyzers.Test -c Release --logger "trx;LogFileName=analyzers.trx" --results-directory TestResults
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:

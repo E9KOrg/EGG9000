@@ -42,7 +42,6 @@ namespace EGG9000.Test {
             backup.Farms.Add(new Ei.Backup.Types.Simulation());
             var bytes = backup.ToByteArray();
 
-            // No corruption here - just prove nested traversal doesn't damage a clean nested message.
             var sanitized = ProtobufUtf8Sanitizer.Sanitize(bytes);
             var reparsed = Ei.Backup.Parser.ParseFrom(sanitized);
             Assert.AreEqual(1, reparsed.Farms.Count);

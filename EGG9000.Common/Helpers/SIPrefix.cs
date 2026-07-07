@@ -72,9 +72,6 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        /// <summary>
-        /// Returns the list of valid farmer role names (Farmer I through Infinifarmer), sourced from RankRegistry.
-        /// </summary>
         public static List<string> GetAllFarmerRoles() {
             return [.. RankRegistry.All.Select(r => r.RoleName)];
         }

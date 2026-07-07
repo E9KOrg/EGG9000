@@ -191,7 +191,6 @@ namespace EGG9000.Common.Database.Entities {
                                 account.LastGrade = backupGrade;
                                 needsUpdate = true;
                             }
-                            //Sync account's Device ID from backup
                             if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
                                 account.DeviceID = account.Backup.DeviceId;
                             }
@@ -273,7 +272,7 @@ namespace EGG9000.Common.Database.Entities {
                 update = true;
             }
             if(update) {
-                UpdateAccounts();//Force JSON Update
+                UpdateAccounts();
             }
         }
 
@@ -294,13 +293,13 @@ namespace EGG9000.Common.Database.Entities {
         public void AddName(string Name, CustomBackup backup, string Id = null) {
             var eggIncIds = EggIncAccounts;
             eggIncIds.Add(new EggIncAccount { Id = Id, Backup = backup });
-            UpdateAccounts();//Force JSON Update
+            UpdateAccounts();
         }
 
         public void RemoveID(string id) {
             var eggIncIds = EggIncAccounts;
             eggIncIds.RemoveAll(x => x.Id.Equals(id, StringComparison.CurrentCultureIgnoreCase));
-            UpdateAccounts();//Force JSON Update
+            UpdateAccounts();
         }
 
 
@@ -364,7 +363,7 @@ namespace EGG9000.Common.Database.Entities {
         [Key(5)]
         public byte Group { get; set; }
         [Key(6)]
-        public bool bool2 { get; set; } //Not being user
+        public bool bool2 { get; set; } //Not being used
         [Key(7)]
         public bool RedoLeggacy { get; set; }
         [Key(8)]
@@ -416,9 +415,7 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset BreakSetTime { get; set; } = DateTimeOffset.MaxValue;
         [Key(30)]
         public bool BreakCoopWarningSent { get; set; } = false;
-        /*
-         * [Key(31)] and [Key(31)] currently in progress of development.
-         */
+        // Key(31) and Key(32) reserved: in-progress fields not yet committed to this shape.
         [Key(33)]
         public bool CraftingWarningSent { get; set; } = false;
         [Key(34)]

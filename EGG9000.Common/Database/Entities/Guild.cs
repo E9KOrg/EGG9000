@@ -270,8 +270,6 @@ namespace EGG9000.Common.Database.Entities {
         BannedUserThread = 36,
         [Description("/TC/Optional: Where potential cheaters will be outed.")]
         CheaterThread = 37,
-        /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
-        UnobtainedUltraChannel = 38*/
         [Description("/TC/Optional: Where changes in players' ULTRA status will be logged")]
         UltraLog = 39,
         [Description("/TC/Optional: Where players who join coops while on break will be logged")]
@@ -282,8 +280,6 @@ namespace EGG9000.Common.Database.Entities {
         StandardPermitRole = 42,
         [Description("/R/Role for users that have the Pro Permit (must be paired with Standard Permit role)")]
         ProPermitRole = 43,
-        /*[Description("/R/Users with this role will be added to all coop threads")]
-        AllCoopsRole = 44*/
         [Description("/TC/Optional: Where NASA Astronomy Pictures of the Day (APOD) will be posted")]
         NasaApod = 46,
         [Description("/TC/Optional: Bot Log, gives status updates when the bot detects new contract and launches boarding groups")]

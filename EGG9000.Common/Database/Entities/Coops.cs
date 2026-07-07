@@ -43,7 +43,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool AnyLeague { get; set; }
         public bool SuccessfullyStarted { get; set; }
 
-        public ulong DiscordChannelId { get; set; } // V2 - Comment out
+        public ulong DiscordChannelId { get; set; }
         public ulong GuildId { get; set; }
         public ulong OverflowGuildId { get; set; }
         public string UpdateMessagesId { get; set; }
@@ -51,8 +51,8 @@ namespace EGG9000.Common.Database.Entities {
         public string CreatorID { get; set; }
         public DateTimeOffset? LastUpdateToChannel { get; set; }
         public DateTimeOffset? WarningForDeleteChannel { get; set; }
-        public bool DeletedChannel { get; set; } // V2 - Comment out
-        public uint FindChannelErrors { get; set; } = 0; // V2 - Comment out
+        public bool DeletedChannel { get; set; }
+        public uint FindChannelErrors { get; set; } = 0;
         public ulong Group { get; set; }
         public bool AddedFromBackup { get; set; } = false;
 

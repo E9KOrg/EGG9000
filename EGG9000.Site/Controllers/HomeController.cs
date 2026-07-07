@@ -397,7 +397,6 @@ namespace EGG9000.Site.Controllers {
 
 
                 var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow));
-                // Snapshots from 16th @ Midnight (after event is over)
 
                 var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
                 timings.Set("preEggDaySnapshots");
@@ -411,8 +410,6 @@ namespace EGG9000.Site.Controllers {
                     postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date >= eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
                 }
                 timings.Set("postEggDaySnapshots");
-                // Snapshots from 14th @ Midnight (before event started)
-
 
                 results = [.. postEggDaySnapshots.Select(x => {
                     var user = accounts.First(y => y.Account.Id == x.EggIncID);
@@ -596,13 +593,11 @@ namespace EGG9000.Site.Controllers {
             var allEbData = new List<Tuple<double, string>>();
 
             foreach(var u in leaderboard) {
-                // Add all users data.
                 allEbData.Add(new Tuple<double, string>(
                     u.Backup.EarningsBonus,
                     SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
                     ));
 
-                // Add logged in users data.
                 if(u.User.Id == user.Id) {
                     myEbsWithRole.Add(new Tuple<double, string>(
                         u.Backup.EarningsBonus,
@@ -636,13 +631,11 @@ namespace EGG9000.Site.Controllers {
             var allGrades = new List<int> { 0, 1, 2, 3, 4, 5 };
 
             foreach(var u in leaderboard) {
-                // Add all users data.
                 allGradeData.Add(new(
                     (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
                     u?.Backup?.TotalCS ?? 0
                 ));
 
-                // Add logged in users data.
                 if(u.User.Id == user.Id) {
                     myGradeData.Add(new(
                         (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
@@ -669,7 +662,7 @@ namespace EGG9000.Site.Controllers {
             await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
 
             var leaderboard = await _getLeaderboard(user.GuildId);
-            leaderboard = [.. leaderboard.Where(x => x.TotalCraftingXP > 0)]; //Ignore 0-xp accounts
+            leaderboard = [.. leaderboard.Where(x => x.TotalCraftingXP > 0)];
 
             var myCraftingData = new List<Tuple<int, double>>();
             var myAccountNames = new List<string>();
@@ -677,13 +670,11 @@ namespace EGG9000.Site.Controllers {
             var allCraftingLevels = Enumerable.Range(1, 31).ToList();
 
             foreach(var u in leaderboard) {
-                // Add all users data.
                 allCraftingData.Add(new(
                     (int)u?.Account?.Backup.GetCraftingLevel(),
                     (double)(u?.Account?.Backup?.CraftingXP)
                 ));
 
-                // Add logged in users data.
                 if(u.User.Id == user.Id) {
                     myCraftingData.Add(new(
                         (int)u?.Account?.Backup.GetCraftingLevel(),
