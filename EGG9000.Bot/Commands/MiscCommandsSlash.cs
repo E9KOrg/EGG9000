@@ -280,38 +280,6 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Co-op renamed to {correctcoopname}");
         }
 
-        [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
-        [DefaultMemberPermissions(GuildPermission.ManageChannels)]
-        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
-        public async Task UpdateChannel() {
-            var command = Context.Interaction;
-            await command.DeferAsync(ephemeral: true);
-            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
-            if(targetCoop != null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
-                var guild = gateway.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
-                var users = await Db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
-                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
-                var parentGuild = gateway.Guilds.First(x => x.Id == dbguild.Id);
-                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, [.. users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x }))], dbguild, default);
-
-                await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
-                return;
-            }
-
-            var targetGuildContract = await Db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
-            if(targetGuildContract != null) {
-                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating contract...");
-                var guild = gateway.Guilds.First(x => x.Id == targetGuildContract.GuildID);
-                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
-                await contractUpdater.UpdateContractChannel(Db, targetGuildContract, guild, dbguild, command);
-                await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
-                return;
-            }
-
-            await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in contract or co-op channels"));
-        }
-
         [SlashCommand("temprole", "Adds a temporary role for users that last a specific amount of time")]
         [DefaultMemberPermissions(GuildPermission.ManageChannels)]
         [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
@@ -358,6 +326,43 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
 
             await Context.Interaction.ModifyOriginalResponseAsync(m => m.Content = $"Added the role {role.Emoji} {role.Name} to the following {"user".ToQuantity(users.Length, ShowQuantityAs.None)} {string.Join(", ", users.Select(x => x.Mention))} until <t:{expireTime.ToUnixTimeSeconds()}:f> for the reason: {reason}");
+        }
+    }
+
+    // Flat (non-grouped) command. Was a top-level /updatechannel before the Discord.NET migration
+    // and was incorrectly nested under /a in that migration - kept flat here to preserve the
+    // pre-migration command name.
+    [DefaultMemberPermissions(GuildPermission.ManageChannels)]
+    [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
+    public class UpdateChannelModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater) : Interactions.E9KModuleBase(dbFactory) {
+        [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
+        public async Task UpdateChannel() {
+            var command = Context.Interaction;
+            await command.DeferAsync(ephemeral: true);
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            if(targetCoop != null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
+                var guild = gateway.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
+                var users = await Db.DBUsers.AsQueryable().Where(x => x.UserCoopXrefs.Any(y => y.CoopId == targetCoop.Id)).ToListAsync();
+                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == targetCoop.GuildId);
+                var parentGuild = gateway.Guilds.First(x => x.Id == dbguild.Id);
+                await coopStatusUpdaterThreads.ProcessCoop(targetCoop.Id, guild, parentGuild, [.. users.SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x }))], dbguild, default);
+
+                await command.ModifyOriginalResponseAsync(m => m.Content = "Co-op Updated");
+                return;
+            }
+
+            var targetGuildContract = await Db.GuildContracts.Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.DiscordChannelId == command.Channel.Id);
+            if(targetGuildContract != null) {
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Updating contract...");
+                var guild = gateway.Guilds.First(x => x.Id == targetGuildContract.GuildID);
+                var dbguild = await Db.Guilds.AsQueryable().FirstAsync(x => x.Id == guild.Id);
+                await contractUpdater.UpdateContractChannel(Db, targetGuildContract, guild, dbguild, command);
+                await command.ModifyOriginalResponseAsync(x => x.Content = "Content Updated");
+                return;
+            }
+
+            await command.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in contract or co-op channels"));
         }
     }
 }

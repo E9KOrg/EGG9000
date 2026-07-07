@@ -242,8 +242,9 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
         // Trusted proxy subnet(s) come from TRUSTED_PROXY_NETWORKS (comma-separated CIDR). Forwarded
         // headers from any other source IP are ignored. Falls back to the prior hardcoded value when
-        // unset so an un-updated deploy keeps its old behavior instead of trusting nothing.
-        var trustedNetworks = Configuration["TRUSTED_PROXY_NETWORKS"] ?? "192.168.0.0/24";
+        // unset or blank so an un-updated deploy keeps its old behavior instead of trusting nothing.
+        var trustedNetworks = Configuration["TRUSTED_PROXY_NETWORKS"];
+        if(string.IsNullOrWhiteSpace(trustedNetworks)) trustedNetworks = "192.168.0.0/24";
         foreach(var cidr in trustedNetworks.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
             options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(cidr));
         }
@@ -267,7 +268,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
             options.EnableForHttps = true;
         });
 
-        var bugsnagConfig = new Bugsnag.Configuration(Configuration.GetConnectionString("BugSnagApiKey"));
+        var bugsnagKey = SecretsHelper.GetConfigOrSecret(Configuration, "ConnectionStrings:BugSnagApiKey", "bugsnag_api_key");
+        var bugsnagConfig = new Bugsnag.Configuration(bugsnagKey);
         var bs = new Bugsnag.Client(bugsnagConfig);
         services.AddSingleton<Bugsnag.IClient>(bs);
         // Test Bugsnag is working

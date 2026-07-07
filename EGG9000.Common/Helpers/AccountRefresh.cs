@@ -46,15 +46,33 @@ namespace EGG9000.Common.Helpers {
         // Caller persists the account blob and calls SaveChanges. Returns whether the account blob was
         // mutated (grade changed or PromotionTime re-stamped) and therefore needs persisting.
         public static async Task<bool> ApplyExtrasAsync(DBUser user, EggIncAccount account, ApplicationDbContext db, ILogger logger, CancellationToken cancellationToken = default) {
+            var info = await FetchExtrasAsync(user, account, logger);
+            if(info is null) return false;
+
+            var mutated = ApplyExtras(user, account, info, logger);
+            await UpsertSeasonProgress(account.Id, info.SeasonProgress, db, cancellationToken);
+            return mutated;
+        }
+
+        // Network-only half of ApplyExtrasAsync. Callers that need to avoid holding a DB connection
+        // open across the Egg Inc API call (e.g. batch jobs) can call this first, then ApplyExtras +
+        // UpsertSeasonProgress against a short-lived scope once the network round-trip is done.
+        public static async Task<Ei.ContractPlayerInfo> FetchExtrasAsync(DBUser user, EggIncAccount account, ILogger logger) {
             var (info, error) = await EggIncApi.GetContractPlayerInfo(account.Id);
             if(info is null) {
                 logger.LogWarning("No response getting grade for user {User} ({Account}): {Error}", user.DiscordUsername, account.Name, error);
-                return false;
+                return null;
             }
             if(info.Status != Ei.ContractPlayerInfo.Types.Status.Complete) {
                 logger.LogTrace("Skipping non-final grade ({Status}) for user {User} ({Account})", info.Status, user.DiscordUsername, account.Name);
-                return false;
+                return null;
             }
+            return info;
+        }
+
+        // DB-free half of ApplyExtrasAsync: applies grade + CS changes to the in-memory account blob.
+        // Caller still owes UpsertSeasonProgress(account.Id, info.SeasonProgress, db, ...) + persist.
+        public static bool ApplyExtras(DBUser user, EggIncAccount account, Ei.ContractPlayerInfo info, ILogger logger) {
             var csChanged = account.Backup is not null && (account.Backup.TotalCS != info.TotalCxp || account.Backup.SeasonCS != info.SeasonCxp);
             if(csChanged) {
                 account.Backup.TotalCS = info.TotalCxp;
@@ -85,11 +103,10 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            await UpsertSeasonProgress(account.Id, info.SeasonProgress, db, cancellationToken);
             return mutated;
         }
 
-        private static async Task UpsertSeasonProgress(string eggIncId, IEnumerable<Ei.ContractPlayerInfo.Types.SeasonProgress> seasonProgress, ApplicationDbContext db, CancellationToken cancellationToken) {
+        public static async Task UpsertSeasonProgress(string eggIncId, IEnumerable<Ei.ContractPlayerInfo.Types.SeasonProgress> seasonProgress, ApplicationDbContext db, CancellationToken cancellationToken) {
             var rows = seasonProgress.Where(sp => !string.IsNullOrEmpty(sp.SeasonId)).ToList();
             if(rows.Count == 0)
                 return;
