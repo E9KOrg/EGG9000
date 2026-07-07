@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.Hosting;
@@ -60,7 +61,12 @@ namespace EGG9000.Bot.Services {
                         continue;
                     }
 
+                    // RestGuildCommand (not SocketApplicationCommand) is what exposes GetCommandPermission,
+                    // so fetch the REST view of this guild's commands once and match by ID before deleting.
+                    var restCommands = await _discord.Gateway.Rest.GetGuildApplicationCommands(guild.Id);
                     foreach(var command in staleCommands) {
+                        var restCommand = restCommands.FirstOrDefault(c => c.Id == command.Id);
+                        if(restCommand is not null) await LogCommandPermissionsAsync(guild, restCommand);
                         _logger.LogWarning("Deleting stale guild-scoped command /{name} in guild {guildId}", command.Name, guild.Id);
                         await command.DeleteAsync();
                     }
@@ -68,6 +74,22 @@ namespace EGG9000.Bot.Services {
                     _logger.LogError(e, "Failed purging stale guild-scoped commands for guild {guildId}", guild.Id);
                     _bugsnag.Notify(e);
                 }
+            }
+        }
+
+        // Best-effort snapshot so a permission wipe from the delete above can be manually replayed from
+        // logs. Discord has no API to restore permissions after the command itself is gone, so this is
+        // the only recovery path - not persisted anywhere structured on purpose, this is a safety net for
+        // an operation that should be rare, not a feature to build workflows on top of.
+        private async Task LogCommandPermissionsAsync(SocketGuild guild, RestGuildCommand command) {
+            try {
+                var permissions = await command.GetCommandPermission();
+                if(permissions?.Permissions is { Count: > 0 }) {
+                    var summary = string.Join(", ", permissions.Permissions.Select(p => $"{p.TargetType}:{p.TargetId}={p.Permission}"));
+                    _logger.LogWarning("Permission overrides for /{name} in guild {guildId} before delete: {permissions}", command.Name, guild.Id, summary);
+                }
+            } catch(Exception e) {
+                _logger.LogWarning(e, "Could not fetch permission overrides for /{name} in guild {guildId} before delete", command.Name, guild.Id);
             }
         }
 
