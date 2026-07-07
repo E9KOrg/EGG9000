@@ -139,7 +139,11 @@ namespace EGG9000.Bot.Automated {
                                 continue;
                             }
 
-                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.Equals(breakCooper.Farm.CoopId, StringComparison.CurrentCultureIgnoreCase) && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId), CancellationToken.None);
+                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(
+                                c =>
+                                    EF.Functions.ILike(c.Name, breakCooper.Farm.CoopId) &&
+                                    (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId),
+                                CancellationToken.None);
                             var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.Equals(breakCooper.Farm.ContractId, StringComparison.CurrentCultureIgnoreCase));
                             var username = breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")}" +
@@ -223,7 +227,7 @@ namespace EGG9000.Bot.Automated {
 
         }
 
-        private async Task PostOverallLeaderboard(SocketGuild guild, List<LeaderboardUser> lUsers, List<Contract> recentContracts, ApplicationDbContext _db) {
+        private async Task PostOverallLeaderboard(SocketGuild guild, List<LeaderboardUser> lUsers, List<DBContract> recentContracts, ApplicationDbContext _db) {
             var channel = await _client.GetChannelAsync(GuildChannelType.Leaderboard, guild);
             if(channel == null)
                 return;

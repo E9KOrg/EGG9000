@@ -77,7 +77,7 @@ namespace EGG9000.Site.Controllers {
 
         [HttpPost]
         [Route("api/generateeventimage")]
-        public IActionResult GenerateEventImage([FromHeader] string authenticationKey, [FromBody] Event customEvent) {
+        public IActionResult GenerateEventImage([FromHeader] string authenticationKey, [FromBody] DBEvent customEvent) {
             if(BuildConfig.IsRelease && (string.IsNullOrEmpty(authenticationKey) || authenticationKey != SecretsHelper.BotToken)) {
                 return NotFound();
             }

@@ -521,9 +521,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ModalInteraction("RlThreshUpdate:*", ignoreGroupNames: true)]
-        public async Task RlThreshUpdate(string data) {
+        public async Task RlThreshUpdate(string data, NumberInputModal form) {
             var modal = (SocketModal)Context.Interaction;
-            var numText = modal.Data.Components.FirstOrDefault(c => c.CustomId == "num")?.Value.ToLower();
+            var numText = form.Num?.ToLower();
             //Parse to double so that we can handle things like "25.2k"
             var isNum = double.TryParse((numText.Last() == 'k' ? numText.Remove(numText.Length - 1) : numText), out var num);
             //If there was a k, multiply by 1000
@@ -638,9 +638,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ModalInteraction("SeasonalPeThreshUpdate:*", ignoreGroupNames: true)]
-        public async Task SeasonalPeThreshUpdate(string data) {
+        public async Task SeasonalPeThreshUpdate(string data, NumberInputModal form) {
             var modal = (SocketModal)Context.Interaction;
-            var numText = modal.Data.Components.FirstOrDefault(c => c.CustomId == "num")?.Value.ToLower().Replace(",", "");
+            var numText = form.Num?.ToLower().Replace(",", "");
             var isNum = double.TryParse(
                 numText.EndsWith("k") ? numText[..^1] : numText,
                 out var num);
@@ -881,9 +881,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ModalInteraction("MCSGuildUpdate:*", ignoreGroupNames: true)]
-        public async Task MCSGuildUpdate(string data) {
+        public async Task MCSGuildUpdate(string data, GuildNameModal form) {
             var modal = (SocketModal)Context.Interaction;
-            var name = modal.Data.Components.FirstOrDefault(c => c.CustomId == "name")?.Value;
+            var name = form.Name;
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
             var index = int.Parse(data.Split(",")[0]);
@@ -902,6 +902,24 @@ namespace EGG9000.Bot.Commands {
                 await modal.UpdateAsync(x => { x.Content = mainMenu.Content.GetValueOrDefault(null); x.Components = mainMenu.Components.GetValueOrDefault(); x.Embed = mainMenu.Embed.GetValueOrDefault(null); });
             }
         }
+    }
+
+    public class GuildNameModal : IModal {
+        public string Title => "Enter Guild Name";
+
+        [InputLabel("Enter Guild Name (leave blank for none)")]
+        [ModalTextInput("name")]
+        [RequiredInput(false)]
+        public string Name { get; set; }
+    }
+
+    public class NumberInputModal : IModal {
+        public string Title => "Enter a Number";
+
+        [InputLabel("Number")]
+        [ModalTextInput("num")]
+        [RequiredInput(true)]
+        public string Num { get; set; }
     }
 
     public partial class AdminModule {

@@ -90,30 +90,6 @@ namespace EGG9000.Bot.Commands.Informational {
             public double LegendaryDropRate { get; set; } = legendaryDropRate;
         }
 
-        private class ShipsSent {
-            public Dictionary<(Spaceship, DurationType, uint), int> ShipCounts { get; private set; }
-
-            public ShipsSent(Backup backup) {
-                ShipCounts = [];
-
-                if(backup?.ArtifactsDb?.MissionArchive is not null) {
-                    foreach(var mission in backup.ArtifactsDb.MissionArchive) {
-                        var key = (mission.Ship, mission.DurationType, mission.Level);
-                        if(ShipCounts.ContainsKey(key)) {
-                            ShipCounts[key]++;
-                        } else {
-                            ShipCounts[key] = 1;
-                        }
-                    }
-                }
-            }
-
-            public int GetShipsCount(Spaceship shipType, DurationType durationType, uint level) {
-                var key = (shipType, durationType, level);
-                return ShipCounts.TryGetValue(key, out var count) ? count : 0;
-            }
-        }
-
         [SlashCommand("llc", "Calculate your Legendary Luck Coefficient (LLC)")]
         public async Task Llc() {
             await Context.Interaction.DeferAsync();
@@ -138,30 +114,6 @@ namespace EGG9000.Bot.Commands.Informational {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
-        public static (int, int) GetCompledShipsOfDuration(EggIncAccount account, DurationType duration) {
-            var maxShipLevels = MissionHelpers.MaxShipLevels.ToList();
-            var lastShipType = maxShipLevels[^1].Key;
-            var secondToLastShipType = maxShipLevels[^2].Key;
-
-            var shipsForLastType = account.Backup.ShipsSent
-                .Where(x => x.ship == lastShipType && x.type == duration)
-                .Sum(x => x.count);
-            var exploringShipsLastType = account.Backup.SpaceMissions
-                .Where(x => x.Ship == lastShipType && x.Status == Status.Exploring && x.Duration == duration)
-                .Count();
-            var resultLastType = shipsForLastType - exploringShipsLastType;
-
-            var shipsForSecondToLastType = account.Backup.ShipsSent
-                .Where(x => x.ship == secondToLastShipType && x.type == duration)
-                .Sum(x => x.count);
-            var exploringShipsSecondToLastType = account.Backup.SpaceMissions
-                .Where(x => x.Ship == secondToLastShipType && x.Status == Status.Exploring && x.Duration == duration)
-                .Count();
-            var resultSecondToLastType = shipsForSecondToLastType - exploringShipsSecondToLastType;
-
-            return (resultLastType, resultSecondToLastType);
-        }
-
         private static async Task<Embed> LLCCalculate(EggIncAccount account, string userName, IMemoryCache _cache, ILogger _logger) {
             var backup = await EggIncApi.FirstContact(account.Id);
 
@@ -170,77 +122,26 @@ namespace EGG9000.Bot.Commands.Informational {
             }
 
             var shipCoefficientTable = await GetShipDataTable(_cache, _logger);
-            var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
 
             //Catch the case where the cache is invalidated, and the API returns an error
             if(shipCoefficientTable is null) {
                 return EmbedError($"Ship coefficients were not cached, and Menno's API did not respond to refresh them. Please try again later.");
             }
 
-            var shipsSent = new ShipsSent(backup.Backup);
+            var llc = GetLegendaryLuckCoefficient(account, backup.Backup, shipCoefficientTable);
 
-            var sumOfRatios = 0.0;
-            foreach(var (ship, type, dropRates) in shipCoefficientTable) {
-                var rateIndex = 0;
-                foreach(var rate in dropRates) {
-                    if(rate == 0.0) {
-                        rateIndex++;
-                        continue;
-                    }
-                    sumOfRatios += shipsSent.GetShipsCount(ship, type, (uint)rateIndex) / rate;
-                    rateIndex++;
-                }
-            }
+            var (linerEpicCount, henEpicCount) = GetCompletedShipsOfDuration(account, DurationType.Epic);
+            var (linerLongCount, henLongCount) = GetCompletedShipsOfDuration(account, DurationType.Long);
+            var (linerShortCount, henShortCount) = GetCompletedShipsOfDuration(account, DurationType.Short);
 
-            var afHall = account.Backup.ArtifactHall;
-            var newLLCSum = 0.0;
-            foreach(var craftType in baseCraftingCoefficients.Where(c => c.Value[2] != 0)) {
-
-                //Don't account for Lunar totems in LLC calc, re: sync with Menno data
-                if(craftType.Key.Artifact == "Lunar Totem" && craftType.Key.Tier == 4) continue;
-
-                //Get the number of crafts that have been performed for this artifact
-                var numCrafted = (double)(afHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Tier == craftType.Key.Tier && a.Artifact.Artifact == craftType.Key.Artifact)?.NumberCrafted ?? 0.0);
-                if(numCrafted == 0) continue;
-                var assumedXpPerCraft = account.Backup.CraftingXP / numCrafted;
-                for(var i = 0; i < numCrafted; i++) {
-
-                    var craftingCountCoefficient = Math.Min(1.0, (double)(i / 400.0));
-                    var fixedCraftingCountCoefficient = 1.0 - craftingCountCoefficient * 0.3; //Where these numbers come from, I have no idea
-
-                    var baseLegRate = craftType.Value[2];
-
-                    var simulatedCraftingLevel = GetCraftingLevel(assumedXpPerCraft * i);
-                    var simulatedMultiplier = Root.Get().craftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
-
-                    var simulatedRate = Math.Max(10.0, baseLegRate / simulatedMultiplier);
-                    var simulatedRatio = 1.0 / simulatedRate;
-
-                    var simulatedThreshold = Math.Pow(simulatedRatio, fixedCraftingCountCoefficient);
-                    var ceilingedThreshold = Math.Min(0.1, simulatedThreshold);
-
-                    newLLCSum += ceilingedThreshold;
-                }
-            }
-
-            var (linerEpicCount, henEpicCount) = GetCompledShipsOfDuration(account, DurationType.Epic);
-            var (linerLongCount, henLongCount) = GetCompledShipsOfDuration(account, DurationType.Long);
-            var (linerShortCount, henShortCount) = GetCompledShipsOfDuration(account, DurationType.Short);
-
-            var craftCount = GetTotalCraftWithLegendaryPossibility(account.Backup.ArtifactHall);
-            var legCount = GetLegendaryArtifactCount(account.Backup.ArtifactHall, llcCount: true);
-
-            var newExpectedLeggies = newLLCSum + sumOfRatios;
-            var newLLC = Math.Round(legCount - newExpectedLeggies, 2);
-            var newLLCPercent = newExpectedLeggies != 0 ? (int)Math.Round((legCount * 100 / newExpectedLeggies) - 100) : 0;
-            var newDisplayPercent = newLLCPercent == int.MinValue ? "-∞" : $"{newLLCPercent}%";
-            var description = $"\n:tools: **Possible <:leggy:1113516502516248636> crafts** `{craftCount}`" +
+            var newDisplayPercent = llc.LLCPercent == int.MinValue ? "-∞" : $"{llc.LLCPercent}%";
+            var description = $"\n:tools: **Possible <:leggy:1113516502516248636> crafts** `{llc.PossibleCraftCount}`" +
                 $"\n<:Henerprise:801748924146384906> **Henerprises** `{henEpicCount}` extended / `{henLongCount}` standard / `{henShortCount}` short" +
                 $"\n<:Atreggies:1215022229826314380> **Atreggies** `{linerEpicCount}` extended / `{linerLongCount}` standard / `{linerShortCount}` short" +
-                $"\n<:leggy:1113516502516248636> **Legendaries** `{Math.Round(newExpectedLeggies, 2)}` expected / `{legCount}` acquired";
+                $"\n<:leggy:1113516502516248636> **Legendaries** `{Math.Round(llc.ExpectedLeggies, 2)}` expected / `{llc.LegCount}` acquired";
 
             return new EmbedBuilder()
-                .WithTitle($"`{newLLC:f2}` (`{newDisplayPercent}`)")
+                .WithTitle($"`{llc.LLC:f2}` (`{newDisplayPercent}`)")
                 .WithColor(Color.DarkBlue)
                 .WithDescription(description)
                 .WithAuthor(new EmbedAuthorBuilder()

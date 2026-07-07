@@ -39,11 +39,11 @@ namespace EGG9000.Site.Controllers {
 
 
 
-        private async Task<((List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded), Contract)> _GetGroups(ulong GuildId, string contractid, int skipbg, Guild dbguild, SocketGuild guild, int count) {
-            Contract contract;
+        private async Task<((List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded), DBContract)> _GetGroups(ulong GuildId, string contractid, int skipbg, Guild dbguild, SocketGuild guild, int count) {
+            DBContract contract;
 
             if(string.IsNullOrWhiteSpace(contractid) || contractid == "test") {
-                contract = new Contract();
+                contract = new DBContract();
                 var eicontract = new Ei.Contract();
                 foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                     var gradeSpec = new Ei.Contract.Types.GradeSpec {
@@ -58,7 +58,7 @@ namespace EGG9000.Site.Controllers {
                 eicontract.Egg = Ei.Egg.Edible;
                 contract.OverwriteDetails(eicontract);
             } else if(contractid == "sub") {
-                contract = new Contract();
+                contract = new DBContract();
                 var eicontract = new Ei.Contract();
                 foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                     var gradeSpec = new Ei.Contract.Types.GradeSpec {

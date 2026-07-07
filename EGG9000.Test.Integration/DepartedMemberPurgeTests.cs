@@ -38,7 +38,7 @@ public class DepartedMemberPurgeTests {
         const ulong otherGuildId = 999_000_002;
 
         ctx.DBUsers.Add(new DBUser { Id = userId, DiscordId = 999_111_001, GuildId = 0, DiscordUsername = "departed" });
-        ctx.Contracts.Add(new Contract { ID = "test-contract", Created = now });
+        ctx.Contracts.Add(new DBContract { ID = "test-contract", Created = now });
 
         var match = NewCoop(guildId, CoopStatusEnum.WaitingOnAssigned, now.AddDays(1));
         var joined = NewCoop(guildId, CoopStatusEnum.WaitingOnAssigned, now.AddDays(1));

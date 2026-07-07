@@ -101,7 +101,7 @@ namespace EGG9000.Common.Database {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionKeyContext {
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<Guild> Guilds { get; set; }
-        public DbSet<Contract> Contracts { get; set; }
+        public DbSet<DBContract> Contracts { get; set; }
         public DbSet<Coop> Coops { get; set; }
         public DbSet<DBUser> DBUsers { get; set; }
         public DbSet<UserCoopXref> UserCoopXrefs { get; set; }
@@ -109,7 +109,7 @@ namespace EGG9000.Common.Database {
         public DbSet<GuildContract> GuildContracts { get; set; }
         public DbSet<Demerit> Demerit { get; set; }
         public DbSet<Merit> Merit { get; set; }
-        public DbSet<Event> Events { get; set; }
+        public DbSet<DBEvent> Events { get; set; }
         public DbSet<EventCustomization> EventCustomizations { get; set; }
         public DbSet<Donation> Donations { get; set; }
         public DbSet<DBCustomEgg> CustomEggs { get; set; }
@@ -176,7 +176,7 @@ namespace EGG9000.Common.Database {
             if(missing.Count == 0) return 0;
 
             foreach(var def in missing) {
-                Contracts.Add(new Contract {
+                Contracts.Add(new DBContract {
                     ID = def.Identifier,
                     Created = DateTimeOffset.UtcNow,
                     Description = def.Description,

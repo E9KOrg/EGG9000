@@ -23,8 +23,7 @@ namespace EGG9000.Bot.Commands {
 
             var gitVersion = string.Empty;
 
-            using(var stream = Assembly.GetExecutingAssembly()
-                    .GetManifestResourceStream("EGG9000.Bot.version.txt"))
+            using(var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EGG9000.Bot.version.txt"))
             using(var reader = new StreamReader(stream)) {
                 gitVersion = reader.ReadToEnd();
             }
@@ -43,7 +42,7 @@ namespace EGG9000.Bot.Commands {
             if(emailStart > 0) author = author[..emailStart].Trim();
 
             var branchLine = string.IsNullOrEmpty(branch) ? string.Empty : $"\n**Branch:**\t{branch}";
-            var response = $"___Running commit:___\n**Hash:**\t[{commitHash}]({repoUrl}/commit/{commitHash}){branchLine}" +
+            var response = $"___Running commit:___\n**Hash:**\t[{commitHash}](<{repoUrl}/commit/{commitHash}>){branchLine}" +
                 $"\n**Author**:\t{author}\n**Message**:\t{commitMessage}\n**Timestamp:**\t<t:{commitTimestamp}:R>";
 
             _logger.LogInformation($"Responding to ping...");

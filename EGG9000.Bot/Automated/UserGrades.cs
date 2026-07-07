@@ -31,12 +31,19 @@ namespace EGG9000.Bot.Automated {
                 tasks.Add(Task.Run(async () => {
                     foreach(var account in user.EggIncAccounts) {
                         try {
+                            // Network call first, with no DB scope held open across the round-trip.
+                            var info = await AccountRefresh.FetchExtrasAsync(user, account, _logger);
+
                             using var scope = _provider.CreateScope();
                             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-                            if(await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger, CancellationToken.None)) {
-                                await db.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
-                                    .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
+                            if(info is not null) {
+                                var mutated = AccountRefresh.ApplyExtras(user, account, info, _logger);
+                                await AccountRefresh.UpsertSeasonProgress(account.Id, info.SeasonProgress, db, CancellationToken.None);
+                                if(mutated) {
+                                    await db.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
+                                        .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
+                                }
                             }
                             await db.SaveChangesAsync(CancellationToken.None);
                         } catch(Exception ex) {

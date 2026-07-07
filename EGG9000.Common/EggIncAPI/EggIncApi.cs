@@ -125,7 +125,7 @@ namespace EGG9000.Common.EggIncAPI {
         // create_coop / update_coop_status / coop_status_bot). Without an explicit timeout HttpClient
         // waits the full 100s default, holding throttle permits and pool threads, which starves
         // command handling. Cap it well above the <2s a healthy call takes so real calls are unaffected.
-        private const int DefaultApiTimeoutSeconds = 15;
+        private const int DefaultApiTimeoutSeconds = 30;
 
         private static HttpClient NewClient(bool http2 = false) {
             var handler = new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };

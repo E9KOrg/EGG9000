@@ -1,8 +1,8 @@
 @using EGG9000.Common.Database.Entities
-@model (EggIncAccount account, int index, List<Contract> contracts)
+@model (EggIncAccount account, int index, List<DBContract> contracts)
 @{
     var index = Model.index;
-    var contracts = (Model.contracts ?? new List<Contract>()).OrderByDescending(c => c.Created).ToList();
+    var contracts = (Model.contracts ?? new List<DBContract>()).OrderByDescending(c => c.Created).ToList();
 }
 
 <div class="test-assignment" data-account-index="@index" style="margin-top:20px;">
