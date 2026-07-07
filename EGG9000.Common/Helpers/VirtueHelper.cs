@@ -1,17 +1,13 @@
 ﻿using EGG9000.Common.Database;
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public class VirtueHelper {
-        public static double[] thresholds = new[] { 0, 50e6, 1e9, 10e9, 70e9, 500e9, 2e12, 7e12, 20e12, 60e12, 150e12, 500e12,
+        public static double[] thresholds = [ 0, 50e6, 1e9, 10e9, 70e9, 500e9, 2e12, 7e12, 20e12, 60e12, 150e12, 500e12,
 
         1.5e15, 4e15, 10e15,25e15,50e15,100e15
-        };
+        ];
 
         public static VirtueEggStats EggStats(CustomBackup backup, Ei.Egg egg) {
             return EggStats(backup.VirtueEggsDelivered[(int)egg - 50]);
@@ -88,8 +84,8 @@ namespace EGG9000.Common.Helpers {
 
             var secondsSinceBackup = (DateTimeOffset.UtcNow - lastBackupTime).TotalSeconds;
 
-            var timeTillShippingFull = capacityGrowthRate == 0 ? TimeSpan.MaxValue : TimeSpan.FromSeconds(Math.Max(0,shippingCapcityLeft / capacityGrowthRate - secondsSinceBackup));
-            var timeTillHabsFull = totalihr == 0 ? TimeSpan.MaxValue : TimeSpan.FromSeconds(Math.Max(0,(maxChickens - currentChickens) / totalihr - secondsSinceBackup));
+            var timeTillShippingFull = capacityGrowthRate == 0 ? TimeSpan.MaxValue : TimeSpan.FromSeconds(Math.Max(0, shippingCapcityLeft / capacityGrowthRate - secondsSinceBackup));
+            var timeTillHabsFull = totalihr == 0 ? TimeSpan.MaxValue : TimeSpan.FromSeconds(Math.Max(0, (maxChickens - currentChickens) / totalihr - secondsSinceBackup));
 
             return (timeTillHabsFull, timeTillShippingFull);
         }

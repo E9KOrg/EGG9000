@@ -1,16 +1,16 @@
-﻿using EGG9000.Common.Database.Entities;
-using EGG9000.Common.Database;
+﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using System.IO;
-using SixLabors.ImageSharp;
+using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
 using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace EGG9000.Common.Helpers {
     public static class EventHelpers {
@@ -23,19 +23,20 @@ namespace EGG9000.Common.Helpers {
             return customizations;
         }
 
-        public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, Event customEvent) {
+        public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, DBEvent customEvent) {
             return await db.GetCustomizationAsync(dbguild, customEvent.Type);
         }
 
         public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, string eventType) {
-#if DEV9002
-            var palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
-#else
-            var palaceGuild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
-            if(palaceGuild == null) {
+            Guild palaceGuild;
+            if(BuildConfig.IsDev9002) {
                 palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
+            } else {
+                palaceGuild = await db.Guilds.AsQueryable().FirstOrDefaultAsync(x => x.DiscordSeverId == KnownGuilds.Palace);
+                if(palaceGuild == null) {
+                    palaceGuild = await db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == KnownGuilds.Dev);
+                }
             }
-#endif
             var gCustomizations = await db.GetCustomizationsAsync(dbguild);
             var pCustomizations = await db.GetCustomizationsAsync(palaceGuild);
 
@@ -52,7 +53,7 @@ namespace EGG9000.Common.Helpers {
             return "EventCustomizationCache:" + g.Id.ToString();
         }
 
-        public static async Task <Image> GetEventImageAsync(this ApplicationDbContext db, Event customEvent) {
+        public static async Task<Image> GetEventImageAsync(this ApplicationDbContext db, DBEvent customEvent) {
             var eventKey = $"{customEvent.Type.ToLowerInvariant()}-U:{customEvent.CcOnly}";
             if(!db._cache.TryGetValue(eventKey, out Image image)) {
                 image = await GenerateEventImageAsync(customEvent);
@@ -62,15 +63,11 @@ namespace EGG9000.Common.Helpers {
             return image;
         }
 
-        private static async Task<Image> GenerateEventImageAsync(Event customEvent) {
+        private static async Task<Image> GenerateEventImageAsync(DBEvent customEvent) {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("authenticationKey", SecretsHelper.BotToken);
 
-#if RELEASE
-            var baseUrl = "https://egg9000.com";
-#else
-            var baseUrl = "https://localhost:44314";
-#endif
+            var baseUrl = BuildConfig.IsRelease ? "https://egg9000.com" : "https://localhost:44314";
 
             var apiUrl = $"{baseUrl}/api/generateeventimage";
             var jsonContent = JsonSerializer.Serialize(customEvent);

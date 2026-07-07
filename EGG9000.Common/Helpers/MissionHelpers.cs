@@ -9,9 +9,9 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Common.Helpers {
     public static class MissionHelpers {
 
-        public static readonly Dictionary<Spaceship, uint> MaxShipLevels 
+        public static readonly Dictionary<Spaceship, uint> MaxShipLevels
             = Root.Get().missionParameters.ToDictionary(
-                mp => mp.shipEnum, 
+                mp => mp.shipEnum,
                 mp => (uint)mp.levelMissionRequirements.Count
             );
 
@@ -63,7 +63,7 @@ namespace EGG9000.Common.Helpers {
             //ER only applies to Quintillion and above
             if(erScalar < 0 || ship < Spaceship.MilleniumChicken) erScalar = 0;
             var shipTimes = ShipBaseTimesMinutes[ship];
-            return shipTimes.ContainsKey(duration) ? 
+            return shipTimes.ContainsKey(duration) ?
                 (int)(ShipBaseTimesMinutes[ship][duration] * ((double)number / 3) * (double)(1 - (.01 * erScalar))) //Div by 3 for 3 ship slots
                 : 0;
         }

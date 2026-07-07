@@ -1,11 +1,11 @@
-﻿using Ei;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EGG9000.Common.Database.Entities {
-    public class Contract {
+    [Table("Contracts")]
+    public class DBContract {
         public string ID { get; set; }  //identifier
         public string Name { get; set; } //name
         public string Description { get; set; } //description
@@ -58,7 +58,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public TimeSpan ContractTime {
             get {
-                if (length_seconds == 0) {
+                if(length_seconds == 0) {
                     return TimeSpan.FromSeconds(P7);
                 }
                 return TimeSpan.FromSeconds(length_seconds);
@@ -67,6 +67,10 @@ namespace EGG9000.Common.Database.Entities {
 
         [NotMapped]
         public List<Ei.Contract.Types.Goal> GoalsDetail => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(goals);
+
+        // Derived from the proto rather than a DB column so leggacy re-runs of old seasonal contracts keep the original season ID
+        [NotMapped]
+        public string SeasonId => string.IsNullOrEmpty(Details?.SeasonId) ? null : Details.SeasonId;
 
         public List<GuildContract> GuildContracts { get; set; }
 

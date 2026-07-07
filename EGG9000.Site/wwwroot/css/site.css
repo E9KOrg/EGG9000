@@ -2,9 +2,35 @@
 for details on configuring this project to bundle and minify static web assets. */
 
 a.navbar-brand {
-  white-space: normal;
-  text-align: center;
-  word-break: break-all;
+  white-space: nowrap;
+}
+
+/* Alert close button: remove focus ring */
+.alert .btn-close:focus { outline: none; }
+/* BS5 dark mode inverts .btn-close to white; override back to default dark icon
+   since alert backgrounds are kept at light-mode colors (see overrides below) */
+[data-bs-theme="dark"] .alert .btn-close { filter: none; }
+
+/* Keep alert colors consistent regardless of dark mode */
+[data-bs-theme="dark"] .alert-success {
+    --bs-alert-color: #0f5132;
+    --bs-alert-bg: #d1e7dd;
+    --bs-alert-border-color: #badbcc;
+}
+[data-bs-theme="dark"] .alert-danger {
+    --bs-alert-color: #842029;
+    --bs-alert-bg: #f8d7da;
+    --bs-alert-border-color: #f5c2c7;
+}
+[data-bs-theme="dark"] .alert-warning {
+    --bs-alert-color: #664d03;
+    --bs-alert-bg: #fff3cd;
+    --bs-alert-border-color: #ffecb5;
+}
+[data-bs-theme="dark"] .alert-info {
+    --bs-alert-color: #055160;
+    --bs-alert-bg: #cff4fc;
+    --bs-alert-border-color: #b6effb;
 }
 
 /* Provide sufficient contrast against white background */
@@ -119,9 +145,41 @@ body {
 .card > table thead tr th {
     border-top: none !important;
 }
+
+/* Tables carry Bootstrap's default 1rem bottom margin. In a borderless card with no
+   card-body padding that margin renders as a bare striped band that looks like an empty
+   trailing row. Drop it for card-hosted tables (direct or .table-responsive wrapped). */
+.card > .table,
+.card > .table-responsive > .table {
+    margin-bottom: 0;
+}
 @media (max-width: 768px) {
     .afx-card-container {
         flex-direction: column; /* Change to a vertical layout */
+    }
+
+    /* Combos: the two-up suggestion grid and the side-by-side image/rates tile both overflow a phone
+       column. Collapse the grid to one tile per row and stack each tile's rates under its image. */
+    .combo-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .combo-tile,
+    .combo-tile-set .afx-set-wrap {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .combo-tile-body {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+
+    .combo-tile-rates {
+        padding-left: 0;
+        flex-direction: row;
+        gap: 24px;
     }
 }
 

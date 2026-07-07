@@ -7,7 +7,7 @@ namespace EGG9000.Common.Factories {
     public static class StaticLoggerFactory {
         private static ILoggerFactory _loggerFactory;
 
-        private static ConcurrentDictionary<Type, ILogger> loggerByType = new();
+        private static readonly ConcurrentDictionary<Type, ILogger> loggerByType = new();
 
         public static void Initialize(ILoggerFactory loggerFactory) {
             if(_loggerFactory is not null)

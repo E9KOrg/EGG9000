@@ -61,11 +61,11 @@ namespace EGG9000.Common.Database.Entities {
         public bool ThreadArchived { get; set; } = false;
         public bool RolesAddedToThread { get; set; } = false;
 
-        
+
         public CoopStatusEnum Status { get; set; }
         public bool PseudoExpired { get; set; } = false;
 
-        public Contract Contract { get; set; }
+        public DBContract Contract { get; set; }
         public List<UserCoopXref> UserCoopsXrefs { get; set; }
 
         public byte[] _StatusCompressed { get; set; }
@@ -113,7 +113,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public static void CopyTo(Stream src, Stream dst) {
-            byte[] bytes = new byte[4096];
+            var bytes = new byte[4096];
 
             int cnt;
 

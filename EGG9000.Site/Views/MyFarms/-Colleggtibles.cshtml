@@ -6,15 +6,26 @@
 }
 
 <style>
-    .bootstrap-dark .colleggtibles-table .table-success,
-    .bootstrap-dark .colleggtibles-table .table-success > td,
-    .bootstrap-dark .colleggtibles-table .table-success > th {
-        background-color: rgba(40, 167, 69, 0.25);
-        color: inherit;
+    /* Fix dark-mode table-striped: Bootstrap's stripe CSS variables can resolve to a
+       light fallback when --bs-table-bg is unset. Explicitly anchor all table vars
+       so alternating rows stay dark-on-dark instead of white-on-dark. */
+    [data-bs-theme="dark"] .colleggtibles-table {
+        --bs-table-bg: transparent;
+        --bs-table-color: var(--bs-body-color);
+        --bs-table-border-color: rgba(255, 255, 255, 0.1);
+        --bs-table-striped-bg: rgba(255, 255, 255, 0.06);
+        --bs-table-striped-color: var(--bs-body-color);
     }
-    .bootstrap-dark .colleggtibles-table .table-secondary,
-    .bootstrap-dark .colleggtibles-table .table-secondary > td,
-    .bootstrap-dark .colleggtibles-table .table-secondary > th {
+    [data-bs-theme="dark"] .colleggtibles-table .table-success {
+        /* Bootstrap's table-striped paints over background-color via box-shadow.
+           Override box-shadow too so striped odd rows stay dark-green, not light. */
+        background-color: rgba(40, 167, 69, 0.25);
+        box-shadow: inset 0 0 0 9999px rgba(40, 167, 69, 0.25);
+        color: var(--bs-body-color);
+    }
+    [data-bs-theme="dark"] .colleggtibles-table .table-secondary,
+    [data-bs-theme="dark"] .colleggtibles-table .table-secondary > td,
+    [data-bs-theme="dark"] .colleggtibles-table .table-secondary > th {
         background-color: rgba(108, 117, 125, 0.2);
         color: inherit;
         border-top-color: rgba(255, 255, 255, 0.08);
@@ -45,7 +56,7 @@
                             }
                             <strong>@row.Name</strong>
                             @if (row.Missing) {
-                                <span class="badge badge-secondary" style="margin-left:4px;">Missing</span>
+                                <span class="badge text-bg-secondary" style="margin-left:4px;">Missing</span>
                             }
                             @if (!string.IsNullOrEmpty(row.FarmReachedText)) {
                                 <small class="text-muted" style="margin-left:4px;">reached @row.FarmReachedText</small>
@@ -53,7 +64,7 @@
                         </td>
                         <td style="white-space:nowrap">@row.Dimension</td>
                         <td class="text-center">
-                            <span class="badge @(row.Missing ? "badge-secondary" : row.Level == 4 ? "badge-success" : "badge-warning")">
+                            <span class="badge @(row.Missing ? "text-bg-secondary" : row.Level == 4 ? "text-bg-success" : "text-bg-warning")">
                                 @row.Level/4
                             </span>
                         </td>

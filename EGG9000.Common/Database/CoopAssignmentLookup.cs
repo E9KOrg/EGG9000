@@ -1,5 +1,3 @@
-using EGG9000.Common.Database.Entities;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -21,15 +19,9 @@ namespace EGG9000.Common.Database {
     /// A miss is not authoritative - the caller should fall back to a DB query - so a missed
     /// prune only costs one extra query, never a wrong answer.
     /// </summary>
-    public class CoopAssignmentLookup {
-        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
-        private readonly ILogger<CoopAssignmentLookup> _logger;
-
-        public CoopAssignmentLookup(IDbContextFactory<ApplicationDbContext> dbContextFactory, ILogger<CoopAssignmentLookup> logger) {
-            _dbContextFactory = dbContextFactory;
-            _logger = logger;
-        }
-
+    public class CoopAssignmentLookup(IDbContextFactory<ApplicationDbContext> dbContextFactory, ILogger<CoopAssignmentLookup> logger) {
+        private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory = dbContextFactory;
+        private readonly ILogger<CoopAssignmentLookup> _logger = logger;
         private volatile ConcurrentDictionary<(Guid UserId, string ContractId), List<AssignedCoop>> _map = new();
 
         public DateTimeOffset? LastRefresh { get; private set; }
@@ -45,11 +37,10 @@ namespace EGG9000.Common.Database {
         public static ConcurrentDictionary<(Guid UserId, string ContractId), List<AssignedCoop>> Build(IEnumerable<CoopAssignmentRow> rows) {
             var map = new ConcurrentDictionary<(Guid, string), List<AssignedCoop>>();
             foreach(var group in rows.GroupBy(r => (r.UserId, r.ContractId))) {
-                map[group.Key] = group
+                map[group.Key] = [.. group
                     .GroupBy(r => r.CoopId)
                     .Select(c => c.First())
-                    .Select(c => new AssignedCoop(c.CoopId, c.ThreadId, c.DiscordChannelId, c.Name, c.ContractId))
-                    .ToList();
+                    .Select(c => new AssignedCoop(c.CoopId, c.ThreadId, c.DiscordChannelId, c.Name, c.ContractId))];
             }
             return map;
         }

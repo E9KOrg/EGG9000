@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace EGG9000.Common.EggIncAPI {
     // Google.Protobuf hard-rejects string fields that aren't valid UTF-8 (throws "String is invalid

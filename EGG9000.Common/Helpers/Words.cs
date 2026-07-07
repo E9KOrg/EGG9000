@@ -6,18 +6,15 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace EGG9000.Bot {
-    public class Words
-    {
+namespace EGG9000.Common.Helpers {
+    public class Words {
         private readonly Random _rnd;
 
-        public Words()
-        {
+        public Words() {
             _rnd = new Random();
         }
 
-        public string GetRandomWord()
-        {
+        public string GetRandomWord() {
             return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);
         }
 
@@ -26,8 +23,7 @@ namespace EGG9000.Bot {
         // the ~1600-word list on every coop creation; rejection sampling is allocation-free and the
         // excluded letter only trims a few percent, so it converges in ~1 try. Bounded retries guard
         // the degenerate case where the pool somehow lacks any other starting letter.
-        public string GetRandomSecondWord(string firstWord)
-        {
+        public string GetRandomSecondWord(string firstWord) {
             var exclude = char.ToLowerInvariant(firstWord.Last());
             for(var attempt = 0; attempt < 16; attempt++) {
                 var candidate = WordList[_rnd.Next(WordList.Count)];
@@ -37,17 +33,14 @@ namespace EGG9000.Bot {
             return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);
         }
 
-        public string GetRandomNumber()
-        {
+        public string GetRandomNumber() {
             int number;
             do { number = _rnd.Next(99); } while(number == 69);
             return number.ToString();
         }
 
-        public static string FirstCharToUpper(string input)
-        {
-            switch (input)
-            {
+        public static string FirstCharToUpper(string input) {
+            switch(input) {
                 case null:
                 case "":
                     return input;
@@ -62,11 +55,11 @@ namespace EGG9000.Bot {
                 customName.First().User.ExpireCustomCoopName = null;
                 customName.First().User.CustomCoopName = null;
             }
-            customNames = customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName)).ToList();
+            customNames = [.. customNames.Where(x => !string.IsNullOrEmpty(x.First().User.CustomCoopName))];
 
             if(customNames.Count > 1) {
                 return string.Join("", customNames.Select(x => x.First().User.CustomCoopName)) + GetRandomNumber();
-            } 
+            }
             if(customNames.Count == 1) {
                 var name = customNames.First().First().User.CustomCoopName;
 

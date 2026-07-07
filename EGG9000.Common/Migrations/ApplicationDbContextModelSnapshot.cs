@@ -22,6 +22,89 @@ namespace EGG9000.Common.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("GuildId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("Revoked")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.ToTable("ApiKeys");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApiKeyDailyUsage", b =>
+                {
+                    b.Property<Guid>("ApiKeyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("RequestCount")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ApiKeyId", "Date");
+
+                    b.ToTable("ApiKeyDailyUsages");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.ApiKeyRequestLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ApiKeyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Endpoint")
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("GuildId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<string>("IpAddress")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("Success")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApiKeyId", "Timestamp");
+
+                    b.ToTable("ApiKeyRequestLogs");
+                });
+
             modelBuilder.Entity("EGG9000.Common.Database.Entities.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -110,85 +193,6 @@ namespace EGG9000.Common.Migrations
                     b.HasKey("id");
 
                     b.ToTable("AutomationLogs");
-                });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Contract", b =>
-                {
-                    b.Property<string>("ID")
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("Created")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("GoodUntil")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("HadTwoRewards")
-                        .HasColumnType("boolean");
-
-                    b.Property<int>("MaxUsers")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("text");
-
-                    b.Property<int>("P11")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("P2")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("P4")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("P6")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("P7")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("Rewards")
-                        .HasColumnType("text");
-
-                    b.Property<string>("_response")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("cc_only")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("coop_allowed")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("debug")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("egg")
-                        .HasColumnType("text");
-
-                    b.Property<double>("egg_value")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("goals")
-                        .HasColumnType("text");
-
-                    b.Property<double>("length_seconds")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("max_boosts")
-                        .HasColumnType("integer");
-
-                    b.Property<double>("max_soul_eggs")
-                        .HasColumnType("double precision");
-
-                    b.Property<int>("min_client_version")
-                        .HasColumnType("integer");
-
-                    b.HasKey("ID");
-
-                    b.ToTable("Contracts");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b =>
@@ -311,6 +315,85 @@ namespace EGG9000.Common.Migrations
                     b.ToTable("Coops");
                 });
 
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.DBContract", b =>
+                {
+                    b.Property<string>("ID")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("Created")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("GoodUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("HadTwoRewards")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("MaxUsers")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<int>("P11")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("P2")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("P4")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("P6")
+                        .HasColumnType("double precision");
+
+                    b.Property<double>("P7")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Rewards")
+                        .HasColumnType("text");
+
+                    b.Property<string>("_response")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("cc_only")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("coop_allowed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("debug")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("egg")
+                        .HasColumnType("text");
+
+                    b.Property<double>("egg_value")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("goals")
+                        .HasColumnType("text");
+
+                    b.Property<double>("length_seconds")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("max_boosts")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("max_soul_eggs")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("min_client_version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ID");
+
+                    b.ToTable("Contracts");
+                });
+
             modelBuilder.Entity("EGG9000.Common.Database.Entities.DBCustomEgg", b =>
                 {
                     b.Property<string>("Identifier")
@@ -343,6 +426,41 @@ namespace EGG9000.Common.Migrations
                     b.HasKey("Identifier");
 
                     b.ToTable("CustomEggs");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.DBEvent", b =>
+                {
+                    b.Property<Guid>("id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CcOnly")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Ended")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset>("Ends")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Identifier")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MessageIds")
+                        .HasColumnType("text");
+
+                    b.Property<double>("Multiplier")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Subtitle")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .HasColumnType("text");
+
+                    b.HasKey("id");
+
+                    b.ToTable("Events");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.DBUser", b =>
@@ -535,41 +653,6 @@ namespace EGG9000.Common.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Donations");
-                });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Event", b =>
-                {
-                    b.Property<Guid>("id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("CcOnly")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("Ended")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset>("Ends")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Identifier")
-                        .HasColumnType("text");
-
-                    b.Property<string>("MessageIds")
-                        .HasColumnType("text");
-
-                    b.Property<double>("Multiplier")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("Subtitle")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Type")
-                        .HasColumnType("text");
-
-                    b.HasKey("id");
-
-                    b.ToTable("Events");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.EventCustomization", b =>
@@ -846,6 +929,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<string>("StaffCoopsMessageDetails")
                         .HasColumnType("text");
+
+                    b.Property<bool>("TachyonSuggestionsEnabled")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("_channelDetailsJson")
                         .HasColumnType("text");
@@ -1270,6 +1356,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("Status")
                         .HasColumnType("text");
 
+                    b.Property<bool>("TachyonDeflectorNotified")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("TimeCheatReported")
                         .HasColumnType("boolean");
 
@@ -1374,6 +1463,9 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<double>("SoulEggs")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("VirtueStatsJson")
+                        .HasColumnType("text");
 
                     b.HasKey("UserId", "Date", "EggIncID");
 
@@ -1533,7 +1625,7 @@ namespace EGG9000.Common.Migrations
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b =>
                 {
-                    b.HasOne("EGG9000.Common.Database.Entities.Contract", "Contract")
+                    b.HasOne("EGG9000.Common.Database.Entities.DBContract", "Contract")
                         .WithMany("Coops")
                         .HasForeignKey("ContractID");
 
@@ -1570,7 +1662,7 @@ namespace EGG9000.Common.Migrations
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.GuildContract", b =>
                 {
-                    b.HasOne("EGG9000.Common.Database.Entities.Contract", "Contract")
+                    b.HasOne("EGG9000.Common.Database.Entities.DBContract", "Contract")
                         .WithMany("GuildContracts")
                         .HasForeignKey("ContractID")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -1598,7 +1690,7 @@ namespace EGG9000.Common.Migrations
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UpcomingContract", b =>
                 {
-                    b.HasOne("EGG9000.Common.Database.Entities.Contract", "Contract")
+                    b.HasOne("EGG9000.Common.Database.Entities.DBContract", "Contract")
                         .WithMany()
                         .HasForeignKey("ContractId");
 
@@ -1692,16 +1784,16 @@ namespace EGG9000.Common.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Contract", b =>
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b =>
+                {
+                    b.Navigation("UserCoopsXrefs");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.DBContract", b =>
                 {
                     b.Navigation("Coops");
 
                     b.Navigation("GuildContracts");
-                });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.Coop", b =>
-                {
-                    b.Navigation("UserCoopsXrefs");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.DBUser", b =>

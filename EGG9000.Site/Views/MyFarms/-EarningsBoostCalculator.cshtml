@@ -1,4 +1,4 @@
-﻿@model EGG9000.Site.Controllers.MyFarmsController.EarningsBoostCalculatorModel
+@model EGG9000.Site.Controllers.MyFarmsController.EarningsBoostCalculatorModel
 @{
     ViewData["Title"] = "Home Page";
 
@@ -8,40 +8,44 @@
         max-height: 20px;
     }
 </style>
-<div ng-controller="EarningsBoostCalcModel@(Model.Backup.EggIncId)">
-    <div class="form-inline" style="padding-top:10px">
+<div x-data="earningsBoostCalc()">
+    <div class="d-flex align-items-center gap-2" style="padding-top:10px">
         <div class="form-group">
             <label style="margin-right:5px;">Farm</label>
-            <select class="form-control" ng-model="selectedFarm" ng-options="farm.name for farm in farms"></select>
+            <select class="form-control" x-model="selectedFarmIndex" @@change="selectedFarm = farms[parseInt($event.target.value)]; startCalculate()">
+                <template x-for="(farm, idx) in farms" :key="idx">
+                    <option :value="idx" x-text="farm.name"></option>
+                </template>
+            </select>
         </div>
         &nbsp;&nbsp;
         <div class="form-group">
             <label style="margin-right:5px;">Max Tokens</label>
-            <input type="number" ng-model="maxTokens" class="form-control" style="width: 70px" />
+            <input type="number" x-model.number="maxTokens" @@input="startCalculate()" class="form-control" style="width: 70px" />
         </div>
         &nbsp;&nbsp;
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" ng-model="hide8Hour">
+            <input class="form-check-input" type="checkbox" value="" id="defaultCheck1" x-model="hide8Hour" @@change="startCalculate()">
             <label class="form-check-label" for="defaultCheck1">
                 Hide 8h boosts
             </label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" value="" id="defaultCheckBoost" ng-model="twoBoost">
+            <input class="form-check-input" type="checkbox" value="" id="defaultCheckBoost" x-model="twoBoost" @@change="startCalculate()">
             <label class="form-check-label" for="defaultCheckBoost">
                 2 Boosts
             </label>
         </div>
         <div class="form-check form-check-inline">
-            <input class="form-check-input" type="checkbox" value="" id="defaultCheck2" ng-model="includeRunning">
+            <input class="form-check-input" type="checkbox" value="" id="defaultCheck2" x-model="includeRunning" @@change="startCalculate()">
             <label class="form-check-label" for="defaultCheck2">
                 Include Running Bonus
             </label>
         </div>
         <br />
         <div style="margin-top: 10px; margin-bottom: 10px;">
-            <span style="display:inline-block">Earning: <b>{{ToEggString(selectedFarm.income)}}/s</b></span><br />
-            <span style="display:inline-block">With Running <b>{{ToEggString(selectedFarm.incomeRunning)}}/s</b> <i>(This includes 2x from video<span ng-if="BoostValue > 1"> and {{BoostValue}}x from current event</span>)</i></span>
+            <span style="display:inline-block">Earning: <b x-text="toEggString(selectedFarm.income) + '/s'"></b></span><br />
+            <span style="display:inline-block">With Running <b x-text="toEggString(selectedFarm.incomeRunning) + '/s'"></b> <i>(This includes 2x from video<span x-show="boostValue > 1"> and <span x-text="boostValue"></span>x from current event</span>)</i></span>
         </div>
     </div>
     <table class="table table-striped">
@@ -49,9 +53,9 @@
             <tr>
                 <th>Boost 1</th>
                 <th>Boost 2</th>
-                <th ng-if="!twoBoost">Boost 3</th>
-                <th ng-if="!twoBoost">Boost 4</th>
-                <th ng-if="!twoBoost">Boost 5</th>
+                <th x-show="!twoBoost">Boost 3</th>
+                <th x-show="!twoBoost">Boost 4</th>
+                <th x-show="!twoBoost">Boost 5</th>
                 <th>Cost</th>
                 @*<th>Multiplier</th>
                     <th>Per Token</th>*@
@@ -61,225 +65,180 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="combo in combos track by $index">
-                <td ng-repeat="boost in combo.boosts track by $index">
-                    <div ng-if="boost.A">
-                        <img ng-src="{{boost.img}}" class="thumb" /> {{boost.A}}x {{boost.T}}m
-                    </div>
-                    <div ng-if="boost.B">
-                        <img ng-src="{{boost.img}}" class="thumb" /> {{boost.B}}x {{boost.T}}m
-                    </div>
-                </td>
-                <td>
-                    <img src="https://vignette.wikia.nocookie.net/egg-inc/images/e/ee/B_token.png/revision/latest/scale-to-width-down/16?cb=20191210172515" /> {{combo.cost}}
-                </td>
-                @*<td>
-                        {{combo.multiplier}}
+            <template x-for="(combo, $ci) in combos" :key="$ci">
+                <tr>
+                    <template x-for="(boost, $bi) in combo.boosts" :key="$bi">
+                        <td>
+                            <div x-show="boost.A">
+                                <img :src="boost.img" class="thumb" /> <span x-text="boost.A + 'x ' + boost.T + 'm'"></span>
+                            </div>
+                            <div x-show="boost.B">
+                                <img :src="boost.img" class="thumb" /> <span x-text="boost.B + 'x ' + boost.T + 'm'"></span>
+                            </div>
+                        </td>
+                    </template>
+                    <td>
+                        <img src="https://vignette.wikia.nocookie.net/egg-inc/images/e/ee/B_token.png/revision/latest/scale-to-width-down/16?cb=20191210172515" /> <span x-text="combo.cost"></span>
+                    </td>
+                    @*<td>
+                            <span x-text="combo.multiplier"></span>
+                        </td>
+                        <td>
+                            <span x-text="combo.pertoken"></span>
+                        </td>*@
+                    <td>
+                        🕑<span x-text="combo.time"></span>m
                     </td>
                     <td>
-                        {{combo.pertoken}}
-                    </td>*@
-                <td>
-                    🕑{{combo.time}}m
-                </td>
-                <td>
-                    <img src="https://vignette.wikia.nocookie.net/egg-inc/images/5/59/Money.png/revision/latest/scale-to-width-down/16?cb=20160818160253" />{{ToEggString(combo.total)}}
-                </td>
-                <td>
-                    {{ToEggString(combo.total / combo.cost)}} <img src="https://vignette.wikia.nocookie.net/egg-inc/images/5/59/Money.png/revision/latest/scale-to-width-down/16?cb=20160818160253" />/<img src="https://vignette.wikia.nocookie.net/egg-inc/images/e/ee/B_token.png/revision/latest/scale-to-width-down/16?cb=20191210172515" />
-                </td>
-            </tr>
+                        <img src="https://vignette.wikia.nocookie.net/egg-inc/images/5/59/Money.png/revision/latest/scale-to-width-down/16?cb=20160818160253" /><span x-text="toEggString(combo.total)"></span>
+                    </td>
+                    <td>
+                        <span x-text="toEggString(combo.total / combo.cost)"></span> <img src="https://vignette.wikia.nocookie.net/egg-inc/images/5/59/Money.png/revision/latest/scale-to-width-down/16?cb=20160818160253" />/<img src="https://vignette.wikia.nocookie.net/egg-inc/images/e/ee/B_token.png/revision/latest/scale-to-width-down/16?cb=20191210172515" />
+                    </td>
+                </tr>
+            </template>
         </tbody>
     </table>
-    <div class="alert alert-info" role="alert" ng-if="calculating">
+    <div class="alert alert-info" role="alert" x-show="calculating">
         Calculating...
     </div>
 </div>
 
 
 <script type="text/javascript">
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('earningsBoostCalc', () => ({
+            boostValue: @(Model.Event?.Multiplier ?? 1),
+            farms: [],
+            selectedFarm: null,
+            selectedFarmIndex: 0,
+            maxTokens: 75,
+            hide8Hour: true,
+            includeRunning: true,
+            twoBoost: false,
+            combos: [],
+            calculating: false,
 
-    function scriptToExecute() {
-        window.egg9000module = window.egg9000module || angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages']);
+            init() {
+                const _farmsRaw = @Html.Raw(
+                    Json.Serialize(
+                        Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
+                        var farm = x.WithStats(Model.Backup, null, Model.CustomEggs);
+                            var name = x.FarmType == Ei.FarmType.Home ? "Home" : $"{x.ContractId} ({x.CoopId})";
+                            return new {
+                                Name = name,
+                                Income = farm.Income * (Model.Event?.Multiplier ?? 1),
+                                IncomeRunning = farm.MaxRunningBonus * farm.Income * (Model.Event?.Multiplier ?? 1)
+                            };
+                        })
+                    )
+                );
+                this.farms = _farmsRaw;
+                this.selectedFarm = this.farms[0] || { name: '', income: 0, incomeRunning: 0 };
+                this.startCalculate();
+            },
 
-        window.egg9000module.controller('EarningsBoostCalcModel@(Model.Backup.EggIncId)', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-            $scope.BoostValue = @(Model.Event?.Multiplier ?? 1);
-            $scope.farms = @Html.Raw(
-                Json.Serialize(
-                    Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
-                    var farm = x.WithStats(Model.Backup, null, Model.CustomEggs);
-                        var name = x.FarmType == Ei.FarmType.Home ? "Home" : $"{x.ContractId} ({x.CoopId})";
-                        return new {
-                            Name = name,
-                            Income = farm.Income * (Model.Event?.Multiplier ?? 1),
-                            IncomeRunning = farm.MaxRunningBonus * farm.Income * (Model.Event?.Multiplier ?? 1)
-                        };
-                    }
-                ))
-            );
-            $scope.selectedFarm = $scope.farms[0];
-            var allBoosts = [
-                { A: 2, T: 60, C: 1, img: '/images/boosts/Jimbos_Excellent_Bird_Feed.png' },
-                { A: 2, T: 60 * 8, C: 1, img: '/images/boosts/Jimbos_Excellent_Bird_Feed_big.png' },
-                { A: 10, T: 30, C: 2, img: '/images/boosts/Jimbos_Premium_Bird_Feed.png' },
-                { A: 10, T: 120, C: 3, img: '/images/boosts/Jimbos_Premium_Bird_Feed_big.png' },
-                { A: 50, T: 10, C: 3, img: '/images/boosts/Jimbos_Best_Bird_Feed.png' },
-                { A: 50, T: 60, C: 5, img: '/images/boosts/Jimbos_Best_Bird_Feed_big.png' },
-                { B: 2, T: 30, C: 5, img: '/images/boosts/Boost_Beacon.png' },
-                { B: 10, T: 10, C: 8, img: '/images/boosts/Epic_Boost_Beacon.png' },
-                { B: 5, T: 60, C: 10, img: '/images/boosts/Large_Boost_Beacon.png' },
-                { B: 50, T: 10, C: 15, img: '/images/boosts/Legendary_Boost_Beacon.png' },
-                { C: 0, T: 0 }
-            ];
+            startCalculate() {
+                this.calculating = true;
+                this.combos = [];
+                setTimeout(() => this.calculateAll(), 1);
+            },
 
+            calculateAll() {
+                const allBoosts = [
+                    { A: 2, T: 60, C: 1, img: '/images/boosts/Jimbos_Excellent_Bird_Feed.png' },
+                    { A: 2, T: 60 * 8, C: 1, img: '/images/boosts/Jimbos_Excellent_Bird_Feed_big.png' },
+                    { A: 10, T: 30, C: 2, img: '/images/boosts/Jimbos_Premium_Bird_Feed.png' },
+                    { A: 10, T: 120, C: 3, img: '/images/boosts/Jimbos_Premium_Bird_Feed_big.png' },
+                    { A: 50, T: 10, C: 3, img: '/images/boosts/Jimbos_Best_Bird_Feed.png' },
+                    { A: 50, T: 60, C: 5, img: '/images/boosts/Jimbos_Best_Bird_Feed_big.png' },
+                    { B: 2, T: 30, C: 5, img: '/images/boosts/Boost_Beacon.png' },
+                    { B: 10, T: 10, C: 8, img: '/images/boosts/Epic_Boost_Beacon.png' },
+                    { B: 5, T: 60, C: 10, img: '/images/boosts/Large_Boost_Beacon.png' },
+                    { B: 50, T: 10, C: 15, img: '/images/boosts/Legendary_Boost_Beacon.png' },
+                    { C: 0, T: 0 }
+                ];
+                const maxTime = 40099;
+                const boosts = _.filter(allBoosts, item => !this.hide8Hour || item.T < 480);
+                const combos = [];
 
-            var maxTime = 40099;
-
-            $scope.maxTokens = 75;
-            $scope.hide8Hour = true;
-            $scope.includeRunning = true;
-            $scope.twoBoost = false;
-
-
-            $scope.$watchGroup(['maxTokens', 'hide8Hour', 'selectedFarm', 'includeRunning', 'twoBoost'], StartCalculate)
-
-            function StartCalculate() {
-                $scope.calculating = true;
-                $scope.combos = [];
-                $timeout(CalculateAll, 1);
-            }
-
-            function CalculateAll() {
-                var boosts = _.filter(allBoosts, function (item) {
-                    return !$scope.hide8Hour || item.T < 480
-                });
-
-
-                if ($scope.twoBoost) {
-                    for (var a1 = 0; a1 < boosts.length; a1++) {
-                        for (var a2 = a1; a2 < boosts.length; a2++) {
-                            var combo = [boosts[a1], boosts[a2]];
-                            var cost = _.sumBy(combo, "C");
-                            var aSum = _.sumBy(combo, "A");
-                            var time = _.max(combo, "T").T;
-                            if (cost <= $scope.maxTokens && aSum > 0 && time < maxTime) {
-                                var item = {
-                                    cost: cost,
-                                    boosts: combo,
-                                    time: time
-                                };
-                                CalculateM(item);
-                                $scope.combos.push(item);
+                if (this.twoBoost) {
+                    for (let a1 = 0; a1 < boosts.length; a1++) {
+                        for (let a2 = a1; a2 < boosts.length; a2++) {
+                            const combo = [boosts[a1], boosts[a2]];
+                            const cost = _.sumBy(combo, 'C');
+                            const aSum = _.sumBy(combo, 'A');
+                            const time = _.maxBy(combo, 'T').T;
+                            if (cost <= this.maxTokens && aSum > 0 && time < maxTime) {
+                                const item = { cost, boosts: combo, time };
+                                this.calculateM(item);
+                                combos.push(item);
                             }
                         }
                     }
                 } else {
-                    for (var a1 = 0; a1 < boosts.length; a1++) {
-                        for (var a2 = a1; a2 < boosts.length; a2++) {
-                            for (var a3 = a2; a3 < boosts.length; a3++) {
-                                for (var a4 = a3; a4 < boosts.length; a4++) {
-                                    for (var a5 = a4; a5 < boosts.length; a5++) {
-                                        var combo = [boosts[a1], boosts[a2], boosts[a3], boosts[a4], boosts[a5]];
-                                        var cost = _.sumBy(combo, "C");
-                                        var aSum = _.sumBy(combo, "A");
-                                        var time = _.max(combo, "T").T;
-                                        if (cost <= $scope.maxTokens && aSum > 0 && time < maxTime) {
-                                            var item = {
-                                                cost: cost,
-                                                boosts: combo,
-                                                time: time
-                                            };
-                                            CalculateM(item);
-                                            $scope.combos.push(item);
-                                        }
-                                    }
-                                }
-                            }
+                    for (let a1 = 0; a1 < boosts.length; a1++)
+                    for (let a2 = a1; a2 < boosts.length; a2++)
+                    for (let a3 = a2; a3 < boosts.length; a3++)
+                    for (let a4 = a3; a4 < boosts.length; a4++)
+                    for (let a5 = a4; a5 < boosts.length; a5++) {
+                        const combo = [boosts[a1], boosts[a2], boosts[a3], boosts[a4], boosts[a5]];
+                        const cost = _.sumBy(combo, 'C');
+                        const aSum = _.sumBy(combo, 'A');
+                        const time = _.maxBy(combo, 'T').T;
+                        if (cost <= this.maxTokens && aSum > 0 && time < maxTime) {
+                            const item = { cost, boosts: combo, time };
+                            this.calculateM(item);
+                            combos.push(item);
                         }
                     }
                 }
 
-                $scope.combos = _.orderBy($scope.combos, ['total'], ['desc']);
-
-
-                for (var i = 0; i < $scope.combos.length - 1; i++) {
-                    var c1 = $scope.combos[i];
-                    for (var j = i + 1; j < $scope.combos.length; j++) {
-                        var c2 = $scope.combos[j];
-                        if (c2.cost > c1.cost || (c2.cost == c1.cost && c2.total <= c1.total && c2.time >= c1.time)) {
+                let sorted = _.orderBy(combos, ['total'], ['desc']);
+                for (let i = 0; i < sorted.length - 1; i++) {
+                    const c1 = sorted[i];
+                    for (let j = i + 1; j < sorted.length; j++) {
+                        const c2 = sorted[j];
+                        if (c2.cost > c1.cost || (c2.cost === c1.cost && c2.total <= c1.total && c2.time >= c1.time)) {
                             c2.delete = true;
                         }
-
                     }
                 }
+                this.combos = _.filter(sorted, item => !item.delete);
+                this.calculating = false;
+            },
 
-                $scope.combos = _.filter($scope.combos, function (item) { return !item.delete; });
-                $scope.calculating = false;
-            }
-
-            function CalculateM(combo) {
-                var multiplier = 0;
-                for (var m = 0; m < _.max(combo.boosts, "T").T; m++) {
-                    var earnings = _.filter(combo.boosts, function (item) { return item.A > 0 && item.T > m; });
-                    var boost = _.filter(combo.boosts, function (item) { return item.B > 0 && item.T > m; });
-                    multiplier += _.sumBy(earnings, "A") * Math.max(_.sumBy(boost, "B"), 1);
+            calculateM(combo) {
+                let multiplier = 0;
+                const maxT = _.maxBy(combo.boosts, 'T').T;
+                for (let m = 0; m < maxT; m++) {
+                    const earnings = _.filter(combo.boosts, b => b.A > 0 && b.T > m);
+                    const boost = _.filter(combo.boosts, b => b.B > 0 && b.T > m);
+                    multiplier += _.sumBy(earnings, 'A') * Math.max(_.sumBy(boost, 'B'), 1);
                 }
                 combo.multiplier = multiplier;
                 combo.pertoken = Math.round(multiplier / combo.cost);
-                combo.total = multiplier * ($scope.includeRunning ? $scope.selectedFarm.incomeRunning : $scope.selectedFarm.income) * 60;
-            }
-            $scope.ToEggString = ToEggString;
+                combo.total = multiplier * (this.includeRunning ? this.selectedFarm.incomeRunning : this.selectedFarm.income) * 60;
+            },
 
-            function ToEggString(number) {
-                var SIPrefixs = {
-                    78: "QV",
-                    75: "qV",
-                    72: "tV",
-                    69: "dV",
-                    66: "uV",
-                    63: "V",
-                    60: "Nd",
-                    57: "Od",
-                    54: "Sd",
-                    51: "sd",
-                    48: "Qd",
-                    45: "qd",
-                    42: "td",
-                    39: "D",
-                    36: "u",
-                    33: "d",
-                    30: "n",
-                    27: "o",
-                    24: "S",
-                    21: "s",
-                    18: "Q",
-                    15: "q",
-                    12: "t",
-                    9: "b",
-                    6: "m",
-                    3: "k"
+            toEggString(number) {
+                const SIPrefixs = {
+                    78: "QV", 75: "qV", 72: "tV", 69: "dV", 66: "uV", 63: "V",
+                    60: "Nd", 57: "Od", 54: "Sd", 51: "sd", 48: "Qd", 45: "qd",
+                    42: "td", 39: "D", 36: "u", 33: "d", 30: "n", 27: "o",
+                    24: "S", 21: "s", 18: "Q", 15: "q", 12: "t", 9: "b", 6: "m", 3: "k"
                 };
-
-                for (var i = 78; i > 0; i = i - 3) {
-                    var ibig = i//BigInt(i);
-                    if (number >= 10 ** ibig) {
-                        var o = number / (10 ** ibig);
-                        if (o > 100) {
-                            o = o.toFixed(0);
-                        } else if (o > 10) {
-                            o = o.toFixed(1);
-                        } else {
-                            o = o.toFixed(2);
-                        }
+                for (let i = 78; i > 0; i -= 3) {
+                    if (number >= 10 ** i) {
+                        let o = number / (10 ** i);
+                        if (o > 100) o = o.toFixed(0);
+                        else if (o > 10) o = o.toFixed(1);
+                        else o = o.toFixed(2);
                         return o + SIPrefixs[i];
                     }
                 }
                 return number;
             }
-        }]);
-    }
-
-
-    window.ScriptsToExecute = window.ScriptsToExecute || [];
-    window.ScriptsToExecute.push(scriptToExecute);
+        }));
+    });
 </script>

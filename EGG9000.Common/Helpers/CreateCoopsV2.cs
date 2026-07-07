@@ -1,19 +1,12 @@
 ﻿using Discord;
 using Discord.WebSocket;
-
-using EGG9000.Bot;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
-
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
-
 using Polly;
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -31,10 +24,7 @@ namespace EGG9000.Common.Helpers {
         public const int PrimaryMaxThreads = 975;
         public const int OverflowMaxThreads = 995;
 
-        public static async Task<Coop> Start(List<UserByAccount> accounts, Contract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbGuild, uint Group, bool allowAllGrades) {
-            var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-
+        public static async Task<Coop> Start(List<UserByAccount> accounts, DBContract contract, Ei.Contract.Types.PlayerGrade grade, SocketGuild guild, Words words, IServiceProvider provider, Guild dbGuild, uint Group, bool allowAllGrades) {
             string creatorId = null;
 
             if(EggIncApi.CoopCreatorIds.Any(x => x.Grade == grade) && !allowAllGrades) {
@@ -54,6 +44,8 @@ namespace EGG9000.Common.Helpers {
                     creatorId = account.Account.Id;
                 }
             }
+
+            var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
             var secondsRemaining = Math.Max(contract.Details.LengthSeconds, TimeSpan.FromDays(1.6).TotalSeconds);
             var coopEnds = DateTimeOffset.UtcNow.AddSeconds(secondsRemaining);
@@ -137,7 +129,7 @@ namespace EGG9000.Common.Helpers {
 
 
             if(kickCreator) {
-                var r = await EggIncApi.Send<Ei.KickPlayerCoopRequest>(new Ei.KickPlayerCoopRequest {
+                var r = await EggIncApi.Send(new Ei.KickPlayerCoopRequest {
                     ClientVersion = EggIncApi.ClientVersion,
                     ContractIdentifier = ContractID,
                     CoopIdentifier = coopName.ToLower(),

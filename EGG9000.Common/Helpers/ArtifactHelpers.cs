@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Drawing;
 using SixLabors.ImageSharp.Drawing.Processing;
+using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
 using System;
@@ -21,9 +22,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Ei.MissionInfo.Types;
-using System.Text.Json;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
 
 namespace EGG9000.Common.Helpers {
 
@@ -32,7 +30,7 @@ namespace EGG9000.Common.Helpers {
         public bool Skip { get; set; } = false;
     }
 
-    public static class ArtifactHelpers {
+    public static partial class ArtifactHelpers {
 
         private class MennoAPIData {
             public string shipTypeName { get; set; }
@@ -100,7 +98,7 @@ namespace EGG9000.Common.Helpers {
 
                 _logger.LogInformation("Menno Ship Coefficients were refreshed at {refreshTime}, and will be invalidated again at {invalidationTime}", DateTimeOffset.UtcNow.Humanize(), DateTimeOffset.UtcNow.AddHours(6).Humanize());
 
-                return shipDataArray.GroupBy(data => new { data.Ship, data.DurationType })
+                return [.. shipDataArray.GroupBy(data => new { data.Ship, data.DurationType })
                     .SelectMany(shipGrouping => shipGrouping.GroupBy(sg => sg.Ship)
                         .Select(durationGrouping => (
                             ship: durationGrouping.First().Ship,
@@ -111,7 +109,7 @@ namespace EGG9000.Common.Helpers {
                                 .ToList()
                         )
                     )
-                ).ToList();
+                )];
             } catch(HttpRequestException ex) {
                 _logger.LogError("Failed to load Menno Ship Coefficients from API: {exception}", ex);
                 return null;
@@ -123,7 +121,15 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static BigInteger GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {
-            return (ArtifactHall is null || ArtifactHall.Count == 0) ? 0 : (BigInteger)ArtifactHall.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
+            if(ArtifactHall is null || ArtifactHall.Count == 0) return 0;
+            // Collapse duplicate rows for the same artifact instance before scoring. A real hall has one
+            // row per distinct artifact; stray duplicates (from a corrupted/legacy backup) would otherwise
+            // be summed separately and massively inflate the score, producing false cheater flags.
+            var collapsed = ArtifactHall
+                .Where(a => a.Artifact is not null)
+                .GroupBy(a => a.Artifact)
+                .Select(g => (Artifact: g.Key, Count: g.Sum(x => x.Count)));
+            return (BigInteger)collapsed.Sum(a => Math.Pow(GetFairness(a.Artifact)[a.Artifact.Tier - 1], a.Artifact.Rarity + 1) * a.Count);
         }
 
         public static int GetAFOrder(string AF) {
@@ -168,39 +174,39 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static long[] GetFairness(EggIncArtifactInstance instance) {
-            return (instance is null || instance.Artifact is null || instance.Tier < 0) ? new long[] { 0, 0, 0, 0 } : instance.Artifact.Replace(" Fragement", "") switch {
-                "Aurelian Brooch" => new long[] { 0, 1186, 13827, 58753 },
-                "Beak of Midas" => new long[] { 0, 6075, 23885, 86083 },
-                "Book of Basan" => new long[] { 0, 114405, 360427, 934701 },
-                "Carved Rainstick" => new long[] { 0, 10082, 39572, 168121 },
-                "Clarity Stone" => new long[] { 0, 36603, 185026, 774986 },
-                "Demeters Necklace" => new long[] { 0, 383, 7628, 41267 },
-                "Dilithium Monocle" => new long[] { 0, 24487, 80590, 271970 },
-                "Dilithium Stone" => new long[] { 0, 19671, 82572, 459362 },
-                "Gusset" => new long[] { 0, 5167, 28986, 163774 },
-                "Interstellar Compass" => new long[] { 0, 9425, 37923, 226570 },
-                "Life Stone" => new long[] { 0, 10507, 63177, 325027 },
-                "Light of Eggendil" => new long[] { 0, 67892, 168121, 330068 },
-                "Lunar Stone" => new long[] { 0, 406, 12447, 155125 },
-                "Lunar Totem" => new long[] { 1, 1, 4749, 28986 },
-                "Mercury's Lens" => new long[] { 0, 7084, 30365, 295510 },
-                "Neodymium Medallion" => new long[] { 0, 3982, 16466, 58753 },
-                "Phoenix Feather" => new long[] { 0, 16466, 50473, 237296 },
-                "Prophecy Stone" => new long[] { 0, 50259, 246536, 731674 },
-                "Puzzle Cube" => new long[] { 0, 90, 14672, 110353 },
-                "Quantum Metronome" => new long[] { 0, 18400, 67892, 306621 },
-                "Quantum Stone" => new long[] { 0, 7252, 25118, 228278 },
-                "Shell Stone" => new long[] { 0, 262, 18048, 183125 },
-                "Ship in a Bottle" => new long[] { 0, 36322, 113895, 442510 },
-                "Soul Stone" => new long[] { 0, 5196, 64770, 250022 },
-                "Tachyon Deflector" => new long[] { 0, 77412, 259516, 1220591 },
-                "Tachyon Stone" => new long[] { 0, 495, 18048, 236946 },
-                "Terra Stone" => new long[] { 0, 5196, 29988, 303837 },
-                "The Chalice" => new long[] { 0, 8798, 30365, 139253 },
-                "Titanium Actuator" => new long[] { 0, 26353, 88920, 215900 },
-                "Tungsten Ankh" => new long[] { 0, 3982, 25099, 110546 },
-                "Vial of Martian Dust" => new long[] { 0, 3302, 26353, 139253 },
-                _ => new long[] { 0, 0, 0, 0 }
+            return (instance is null || instance.Artifact is null || instance.Tier < 0) ? [0, 0, 0, 0] : instance.Artifact.Replace(" Fragement", "") switch {
+                "Aurelian Brooch" => [0, 1186, 13827, 58753],
+                "Beak of Midas" => [0, 6075, 23885, 86083],
+                "Book of Basan" => [0, 114405, 360427, 934701],
+                "Carved Rainstick" => [0, 10082, 39572, 168121],
+                "Clarity Stone" => [0, 36603, 185026, 774986],
+                "Demeters Necklace" => [0, 383, 7628, 41267],
+                "Dilithium Monocle" => [0, 24487, 80590, 271970],
+                "Dilithium Stone" => [0, 19671, 82572, 459362],
+                "Gusset" => [0, 5167, 28986, 163774],
+                "Interstellar Compass" => [0, 9425, 37923, 226570],
+                "Life Stone" => [0, 10507, 63177, 325027],
+                "Light of Eggendil" => [0, 67892, 168121, 330068],
+                "Lunar Stone" => [0, 406, 12447, 155125],
+                "Lunar Totem" => [1, 1, 4749, 28986],
+                "Mercury's Lens" => [0, 7084, 30365, 295510],
+                "Neodymium Medallion" => [0, 3982, 16466, 58753],
+                "Phoenix Feather" => [0, 16466, 50473, 237296],
+                "Prophecy Stone" => [0, 50259, 246536, 731674],
+                "Puzzle Cube" => [0, 90, 14672, 110353],
+                "Quantum Metronome" => [0, 18400, 67892, 306621],
+                "Quantum Stone" => [0, 7252, 25118, 228278],
+                "Shell Stone" => [0, 262, 18048, 183125],
+                "Ship in a Bottle" => [0, 36322, 113895, 442510],
+                "Soul Stone" => [0, 5196, 64770, 250022],
+                "Tachyon Deflector" => [0, 77412, 259516, 1220591],
+                "Tachyon Stone" => [0, 495, 18048, 236946],
+                "Terra Stone" => [0, 5196, 29988, 303837],
+                "The Chalice" => [0, 8798, 30365, 139253],
+                "Titanium Actuator" => [0, 26353, 88920, 215900],
+                "Tungsten Ankh" => [0, 3982, 25099, 110546],
+                "Vial of Martian Dust" => [0, 3302, 26353, 139253],
+                _ => [0, 0, 0, 0]
             };
         }
 
@@ -220,7 +226,7 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static ShipTargetInfo GetTargetInfo(ArtifactSpec.Types.Name aspec) {
-            var bInfo = string.Join(" ", Regex.Split(Enum.GetName(typeof(ArtifactSpec.Types.Name), aspec), @"(?=\p{Lu})"))
+            var bInfo = string.Join(" ", MyRegex().Split(Enum.GetName(typeof(ArtifactSpec.Types.Name), aspec)))
                 .Replace(" Of ", " of ").Replace(" In ", " in ").Replace(" A ", " a ").Trim();
             var tier = bInfo.IndexOf("Fragment") > -1 ? (byte)0
                     : (bInfo.IndexOf(" Stone") > -1 || bInfo.IndexOf("Tau Ceti Geode") > -1 || bInfo.IndexOf("Gold Meteorite") > -1 || bInfo.IndexOf("Solar Titanium") > -1 ? (byte)3
@@ -360,7 +366,7 @@ namespace EGG9000.Common.Helpers {
         // sets look distinct. Used to synthesise display sets (e.g. the DEV combos preview) without the
         // page hand-rolling family-uniqueness rules.
         public static List<EggIncArtifactInstance> BuildSampleSet(CustomBackup backup, bool withDeflector, int familyOffset = 0) {
-            if(backup?.ArtifactHall is null) return new List<EggIncArtifactInstance>();
+            if(backup?.ArtifactHall is null) return [];
 
             var byFamily = backup.ArtifactHall
                 .Where(a => a.Count > 0 && a.Artifact is not null && !a.Artifact.Artifact.Contains("Stone", StringComparison.OrdinalIgnoreCase))
@@ -369,8 +375,8 @@ namespace EGG9000.Common.Helpers {
                 .Select(g => g.OrderByDescending(a => a.Rarity).ThenByDescending(a => a.Tier).First())
                 .ToList();
 
-            var deflectors = byFamily.Where(a => a.Boost == EGG9000.Common.JsonData.EiStatics.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
-            var others = byFamily.Where(a => a.Boost != EGG9000.Common.JsonData.EiStatics.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+            var deflectors = byFamily.Where(a => a.Boost == JsonData.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
+            var others = byFamily.Where(a => a.Boost != JsonData.EggIncBoostTypeEnum.CoopMembersEggLayingRates).ToList();
 
             var set = new List<EggIncArtifactInstance>();
             if(withDeflector && deflectors.Count > 0) set.Add(deflectors[0]);
@@ -380,7 +386,7 @@ namespace EGG9000.Common.Helpers {
                 set.Add(others[(familyOffset + i) % others.Count]);
             }
             // Drop any accidental family duplicates from the offset wrap, then cap at four.
-            return set.GroupBy(a => a.Artifact).Select(g => g.First()).Take(4).ToList();
+            return [.. set.GroupBy(a => a.Artifact).Select(g => g.First()).Take(4)];
         }
 
         public static List<ArtifactCount> GetOrderedInventory(EggIncAccount account) {
@@ -392,7 +398,7 @@ namespace EGG9000.Common.Helpers {
                 AF = new ArtifactCount { Count = a.Count, Artifact = a.Artifact, NumberCrafted = a.NumberCrafted }, Skip = false
             }).ToList();
             var rarityGroupedAfs = orderedList.GroupBy(a => a.AF.Artifact.Rarity).ToList();
-            orderedList = new List<InventoryArtifactCount>();
+            orderedList = [];
             foreach(var rarityGrouping in rarityGroupedAfs) {
                 orderedList.AddRange(rarityGrouping.OrderByDescending(g => GetAFOrder(g.AF.Artifact.Artifact.Replace(" Fragment", "")) + (g.AF.Artifact.Artifact.Contains("Fragment") ? -0.05 : 0) + 0.05 * g.AF.Artifact.Tier + 0.01 * g.AF.Artifact.Stones.Count).ToList());
             }
@@ -401,7 +407,7 @@ namespace EGG9000.Common.Helpers {
                 foreach(var other in others) other.Skip = true;
                 acount.AF.Count += others.Sum(o => o.AF.Count);
             }
-            return orderedList.Where(a => !a.Skip).Select(a => a.AF).ToList();
+            return [.. orderedList.Where(a => !a.Skip).Select(a => a.AF)];
         }
 
         public class InventoryCreatorConfig : IRenderConfig {
@@ -493,7 +499,7 @@ namespace EGG9000.Common.Helpers {
                 using var ms = new MemoryStream(imageBytes);
                 var image = Image.Load(ms);
                 var imageB64 = image.ToBase64String(JpegFormat.Instance);
-                if (removeB64Header) {
+                if(removeB64Header) {
                     // Remove everything up until, and including 'base64,'
                     var splits = imageB64.Split("base64,");
                     if(splits.Length > 1) imageB64 = splits[1];
@@ -503,6 +509,9 @@ namespace EGG9000.Common.Helpers {
                 return ($"$ERROR$:exception caught\n{e.Message}", null);
             }
         }
+
+        [GeneratedRegex(@"(?=\p{Lu})")]
+        private static partial Regex MyRegex();
         #endregion
     }
 }

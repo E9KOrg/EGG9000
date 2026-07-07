@@ -3,7 +3,8 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EGG9000.Common.Database.Entities {
-    public class Event {
+    [Table("Events")]
+    public class DBEvent {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid id { get; set; }
@@ -16,10 +17,10 @@ namespace EGG9000.Common.Database.Entities {
         public bool Ended { get; set; }
         public bool CcOnly { get; set; } = false;
 
-        public Event() {
+        public DBEvent() {
         }
 
-        public Event(Ei.EggIncEvent e) {
+        public DBEvent(Ei.EggIncEvent e) {
             Identifier = e.Identifier;
             Type = e.Type;
             Multiplier = e.Multiplier;

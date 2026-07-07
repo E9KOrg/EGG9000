@@ -1,16 +1,12 @@
 ﻿using EGG9000.Common.Database.Entities;
-
-using Npgsql;
-
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Design;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
-
+using Npgsql;
 using System;
 using System.Collections.Frozen;
 using System.IO;
@@ -105,7 +101,7 @@ namespace EGG9000.Common.Database {
     public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IDataProtectionKeyContext {
         public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
         public DbSet<Guild> Guilds { get; set; }
-        public DbSet<Contract> Contracts { get; set; }
+        public DbSet<DBContract> Contracts { get; set; }
         public DbSet<Coop> Coops { get; set; }
         public DbSet<DBUser> DBUsers { get; set; }
         public DbSet<UserCoopXref> UserCoopXrefs { get; set; }
@@ -113,7 +109,7 @@ namespace EGG9000.Common.Database {
         public DbSet<GuildContract> GuildContracts { get; set; }
         public DbSet<Demerit> Demerit { get; set; }
         public DbSet<Merit> Merit { get; set; }
-        public DbSet<Event> Events { get; set; }
+        public DbSet<DBEvent> Events { get; set; }
         public DbSet<EventCustomization> EventCustomizations { get; set; }
         public DbSet<Donation> Donations { get; set; }
         public DbSet<DBCustomEgg> CustomEggs { get; set; }
@@ -133,6 +129,9 @@ namespace EGG9000.Common.Database {
         public DbSet<NasaApod> NasaApods { get; set; }
         public DbSet<SeasonInfo> SeasonInfos { get; set; }
         public DbSet<UserSeasonProgress> UserSeasonProgresses { get; set; }
+        public DbSet<ApiKey> ApiKeys { get; set; }
+        public DbSet<ApiKeyRequestLog> ApiKeyRequestLogs { get; set; }
+        public DbSet<ApiKeyDailyUsage> ApiKeyDailyUsages { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -164,7 +163,7 @@ namespace EGG9000.Common.Database {
         // Registers contract definitions fetched by identifier (get_contracts_info) that the periodicals
         // feed never delivered to us (e.g. single-player contracts), so they exist in the DB and resolve
         // in CachedEiContractsAsync for everyone. Inserts the row only; fires no channel/coop automation.
-        public async Task<int> RegisterMissingContractsAsync(System.Collections.Generic.IEnumerable<Ei.Contract> contractDefs, System.Threading.CancellationToken ct = default) {
+        public async Task<int> RegisterMissingContractsAsync(System.Collections.Generic.IEnumerable<Ei.Contract> contractDefs, CancellationToken ct = default) {
             var defs = contractDefs
                 .Where(c => c is not null && !string.IsNullOrEmpty(c.Identifier))
                 .GroupBy(c => c.Identifier)
@@ -177,7 +176,7 @@ namespace EGG9000.Common.Database {
             if(missing.Count == 0) return 0;
 
             foreach(var def in missing) {
-                Contracts.Add(new Contract {
+                Contracts.Add(new DBContract {
                     ID = def.Identifier,
                     Created = DateTimeOffset.UtcNow,
                     Description = def.Description,
@@ -211,12 +210,12 @@ namespace EGG9000.Common.Database {
         }
 #nullable disable
 
-        void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
+        private void OnEntityTracked(object sender, EntityTrackedEventArgs e) {
             if(!e.FromQuery && e.Entry.State == EntityState.Added && e.Entry.Entity is ILastModified entity)
                 entity.LastModified = DateTimeOffset.UtcNow;
         }
 
-        void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
+        private void OnEntityStateChanged(object sender, EntityStateChangedEventArgs e) {
             if(e.NewState == EntityState.Modified && e.Entry.Entity is ILastModified entity)
                 entity.LastModified = DateTimeOffset.UtcNow;
         }
@@ -291,6 +290,9 @@ namespace EGG9000.Common.Database {
             builder.Entity<NasaApod>().HasKey(x => x.ID);
             builder.Entity<NasaApod>().Property(x => x.DateString).HasDefaultValueSql("TO_CHAR(NOW() AT TIME ZONE 'UTC', 'YYYY-MM-DD')");
 
+            builder.Entity<ApiKey>().HasIndex(x => x.KeyHash).IsUnique();
+            builder.Entity<ApiKeyRequestLog>().HasIndex(x => new { x.ApiKeyId, x.Timestamp });
+            builder.Entity<ApiKeyDailyUsage>().HasKey(x => new { x.ApiKeyId, x.Date });
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
             builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
             builder.Entity<Guild>().HasIndex(x => x.DiscordSeverId);

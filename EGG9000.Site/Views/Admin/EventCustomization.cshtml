@@ -28,22 +28,15 @@
         white-space: nowrap;
         text-align: center; /* Center the text within the tooltip */
         position: absolute;
+        background-color: rgba(130, 135, 140, 0.95);
     }
 
-        .tooltiptext-custom .bootstrap-dark {
+        [data-bs-theme="dark"] .tooltiptext-custom {
             background-color: rgba(33, 37, 41, 0.95);
         }
 
-        .tooltiptext-custom .bootstrap {
-            background-color: rgba(130, 135, 140, 0.95);
-        }
-
-    .bootstrap-dark .speech-bubble {
+    [data-bs-theme="dark"] .speech-bubble {
         background-color: rgba(33, 37, 41, 0.95);
-    }
-
-    .bootstrap .speech-bubble {
-        background-color: rgba(130, 135, 140, 0.95);
     }
 
     .speech-bubble {
@@ -51,6 +44,7 @@
         padding: 10px;
         margin: 10px auto; /* Center the bubble horizontally */
         border-radius: 5px; /* Rounded corners for the bubble */
+        background-color: rgba(130, 135, 140, 0.95);
     }
 
         /* Create the triangle */
@@ -66,7 +60,7 @@
         }
 </style>
 
-<div ng-controller="AdminPage">
+<div x-data="eventCustomizationPage()">
     <h2>Event Customization</h2>
 
     <table class="table table-striped table-hover">
@@ -81,115 +75,122 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="item in items" ng-click="EditItem(item)">
-                <td>{{item.type}}</td>
-                <td>{{item.priority}}</td>
-                <td>{{item.description}}</td>
-                <td>{{item.Tips.length}}</td>
-                <td style="max-width: 50px;"><img ng-src="{{item.thumbnailURL}}" class="img-thumbnail" /></td>
-                <td>{{item.emoji}}</td>
-            </tr>
+            <template x-for="item in items" :key="item.type">
+                <tr @@click="editItem(item)" style="cursor:pointer;">
+                    <td x-text="item.type"></td>
+                    <td x-text="item.priority"></td>
+                    <td x-text="item.description"></td>
+                    <td x-text="item.Tips.length"></td>
+                    <td style="max-width: 50px;"><img :src="item.thumbnailURL" class="img-thumbnail" /></td>
+                    <td x-text="item.emoji"></td>
+                </tr>
+            </template>
         </tbody>
     </table>
 
-    <script type="text/ng-template" id="Edit.html">
-        <style>
-            .modal-body {
-                max-height: calc(100vh - 180px);
-                overflow-y: auto;
-            }
+    <div class="modal fade" id="editEventModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <style>
+                    .modal-body {
+                        max-height: calc(100vh - 180px);
+                        overflow-y: auto;
+                    }
+                    .tip-container {
+                        border: 1px solid #ccc;
+                        border-radius: 8px;
+                        margin-bottom: 10px;
+                        padding: 10px;
+                    }
+                    .tip-item {
+                        margin-bottom: 10px;
+                    }
+                </style>
+                <div class="modal-header d-flex justify-content-between align-items-center">
+                    <span>Edit Item</span>
+                    <button type="button" class="btn-close" @@click="cancel()" aria-label="Close"></button>
+                </div>
+                <div class="modal-body overflow-auto">
+                    <template x-if="selectedItem">
+                        <div>
+                            <div class="form-group mb-3">
+                                <label>Type</label>
+                                <input class="form-control" disabled :value="selectedItem.type" />
+                            </div>
+                            <div class="form-group mb-3">
+                                <label>Priority (Positive Numbers will stack Emoji)</label>
+                                <input class="form-control" type="number" x-model.number="selectedItem.priority" />
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="Description">Description</label>
+                                <textarea spellcheck="false" class="form-control" id="Description" x-model="selectedItem.description"></textarea>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label>ThumbnailUrl</label>
+                                <input class="form-control" x-model="selectedItem.thumbnailURL" />
+                            </div>
+                            <div class="form-group mb-3">
+                                <label>Emoji</label>
+                                <input class="form-control" x-model="selectedItem.emoji" />
+                            </div>
 
-            .tip-container {
-                border: 1px solid #ccc;
-                border-radius: 8px;
-                margin-bottom: 10px;
-                padding: 10px;
-            }
+                            <hr class="mt-1 mb-1">
+                            <h3>Tips</h3>
+                            <template x-for="(tip, idx) in selectedItem.Tips" :key="idx">
+                                <div class="tip-container">
+                                    <div class="form-group tip-item">
+                                        <label>Title</label>
+                                        <input class="form-control" x-model="tip.Name" />
+                                    </div>
+                                    <div class="form-group tip-item">
+                                        <label>Text</label>
+                                        <textarea spellcheck="false" class="form-control" x-model="tip.Value"></textarea>
+                                    </div>
+                                    <div class="form-group tip-item">
+                                        <label>Remove Tip</label><br>
+                                        <button class="btn btn-danger" @@click="removeTip(idx)">X</button>
+                                    </div>
+                                </div>
+                            </template>
+                            <button class="mt-2 btn btn-success" @@click="selectedItem.Tips.push({})">+ Add Tip</button>
 
-            .tip-item {
-                margin-bottom: 10px;
-            }
-        </style>
-        <div class="modal-header d-flex justify-content-between align-items-center">
-            <span>Edit Item</span>
-            <button type="button" class="close" ng-click="Cancel()" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
+                            <hr class="mt-1 mb-1">
+                            <h3>Notifications</h3>
+                            <template x-for="(notification, idx) in (selectedItem.settings.notifications || [])" :key="idx">
+                                <div class="pb-2">
+                                    <div class="row align-items-center">
+                                        <div class="col">
+                                            <label>Role ID</label>
+                                            <input class="form-control" x-model="notification.roleIdString" />
+                                        </div>
+                                        <div class="col">
+                                            <label class="tooltip-custom">
+                                                Min Value (-1 for Ultra pings in event channel)
+                                                <span class="tooltiptext-custom speech-bubble">
+                                                    The minimum value the event must be to ping this role. <br>
+                                                    For example, to ping a role specifically <br>for 3x prestige you would enter 3
+                                                </span>
+                                            </label>
+                                            <input class="form-control" x-model.number="notification.minValue" />
+                                        </div>
+                                        <div class="col">
+                                            <label>Remove</label><br>
+                                            <button class="btn btn-danger" @@click="selectedItem.settings.notifications.splice(idx, 1)">X</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </template>
+                            <button class="mt-2 btn btn-success" @@click="addNotification()">+ Add Notification</button>
+                        </div>
+                    </template>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-success" @@click="save()">Save</button>
+                    <button class="btn btn-secondary" @@click="cancel()">Cancel</button>
+                </div>
+            </div>
         </div>
-        <div class="modal-body overflow-auto">
-            <div class="form-group">
-                <label>Type</label>
-                <input class="form-control" disabled ng-model="item.type" />
-            </div>
-            <div class="form-group">
-                <label>Priority (Positive Numbers will stack Emoji)</label>
-                <input class="form-control" type="number" ng-model="item.priority" />
-            </div>
-            <div class="form-group">
-                <label for="Description">Description</label>
-                <textarea spellcheck="false" class="form-control" id="Description" ng-model="item.description"></textarea>
-            </div>
-            <div class="form-group">
-                <label>ThumbnailUrl</label>
-                <input class="form-control" ng-model="item.thumbnailURL" />
-            </div>
-            <div class="form-group">
-                <label>Emoji</label>
-                <input class="form-control" ng-model="item.emoji" />
-            </div>
-
-            <hr class="mt-1 mb-1">
-            
-            <h3>Tips</h3>
-            <div ng-repeat="tip in item.Tips track by $index" class="tip-container">
-                <div class="form-group tip-item">
-                    <label>Title</label>
-                    <input class="form-control" ng-model="tip.Name" />
-                </div>
-                <div class="form-group tip-item">
-                    <label>Text</label>
-                    <textarea spellcheck="false" class="form-control" ng-model="tip.Value"></textarea>
-                </div>
-                <div class="form-group tip-item">
-                    <label>Remove Tip</label> <br>
-                    <button class="btn btn-danger" ng-click="RemoveTip($index)">X</button>
-                </div>
-            </div>
-
-            <button class="mt-2 btn btn-success" ng-click="AddTip()">+ Add Tip</button>
-
-            <hr class="mt-1 mb-1">
-
-            <h3>Notifications</h3>
-            <div class="pb-2" ng-repeat="notification in item.settings.notifications track by $index">
-                <div class="row align-items-center">
-                    <div class="col">
-                        <label for="roleId{{$index}}">Role ID</label>
-                        <input id="roleId{{$index}}" class="form-control" ng-model="notification.roleIdString" />
-                    </div>
-                    <div class="col">
-                        <label for="minValue{{$index}}" class="tooltip-custom">
-                            Min Value (-1 for Ultra pings in event channel)
-                            <span class="tooltiptext-custom speech-bubble">
-                                The minimum value the event must be to ping this role. <br>
-                                For example, to ping a role specifically <br>for 3x prestige you would enter 3
-                            </span>
-                        </label>
-                        <input id="minValue{{$index}}" class="form-control" ng-model="notification.minValue" />
-                    </div>
-                    <div class="col">
-                        <label for="removeNotif{{$index}}">Remove</label> <br>
-                        <button id="removeNotif{{$index}}" class="btn btn-danger" ng-click="$parent.item.settings.notifications.splice($index, 1)">X</button>
-                    </div>
-                </div>
-            </div>
-            <button class="mt-2 btn btn-success" ng-click="item.settings.notifications.push({})">+ Add Notification</button>
-        </div>        
-        <div class="modal-footer">
-            <button class="btn btn-success" ng-click="Save()">Save</button>
-            <button class="btn btn-default" ng-click="Cancel()">Cancel</button>
-        </div>
-    </script>
+    </div>
 </div>
 @section Scripts {
     <style>
@@ -202,63 +203,76 @@
         }
     </style>
 
-
     <script>
-        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
-            .controller('AdminPage', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-                $scope.items = @Html.Raw(Json.Serialize(Model));
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('eventCustomizationPage', () => ({
+                items: [],
+                selectedItem: null,
+                savedItem: null,
+                _modal: null,
 
-                angular.forEach($scope.items, function (item) {
-                    item.Tips = JSON.parse(item.fields || '[]');
-                });
-
-                $scope.EditItem = function EditItem(item) {
-                    $uibModal.open({
-                        templateUrl: 'Edit.html',
-                        size: 'lg',
-                        backdrop: 'static',
-                        animation: false,
-                        controller: function ($scope, $uibModalInstance) {
-                            $scope.item = item;
-                            if($scope.item.settings.notifications == null) {
-                                $scope.item.settings.notifications = [];
-                            }
-
-                            $scope.saved = angular.copy(item);
-
-                            $scope.AddTip = function AddTip() {
-                                $scope.item.Tips.push({});
-                            };
-
-                            $scope.RemoveTip = function (index) {
-                                if (confirm("Are you sure you want to delete the tip?")) {
-                                    $scope.item.Tips.splice(index, 1);
-                                }
-                            }
-
-                            $scope.Save = function Save() {
-                                $scope.item.Fields = JSON.stringify($scope.item.Tips);
-                                $scope.item._settings = JSON.stringify($scope.item.settings);
-                                console.log($scope.item);
-                                $http({ method: 'POST', data: item, url: '/admin/saveeventcustomization/' })
-                                    .then(function successCallback(response) {
-                                        if (response.data.Error) {
-                                            alert(response.data.Error);
-                                            return;
-                                        }
-                                        $uibModalInstance.close();
-                                    }, function errorCallback(response) {
-                                        alert('Error Saving');
-                                    });
-                            };
-
-                            $scope.Cancel = function Cancel() {
-                                _.assign(item, $scope.saved);
-                                $uibModalInstance.close();
-                            };
-                        }
+                init() {
+                    const _raw = @Html.Raw(Json.Serialize(Model));
+                    this.items = _raw.map(item => ({
+                        ...item,
+                        Tips: JSON.parse(item.fields || '[]'),
+                        settings: item.settings || { notifications: [] }
+                    }));
+                    this._modal = new bootstrap.Modal(document.getElementById('editEventModal'));
+                    document.getElementById('editEventModal').addEventListener('hidden.bs.modal', () => {
+                        this.selectedItem = null;
                     });
-                };
-            }]);
+                },
+
+                editItem(item) {
+                    if (!item.settings) item.settings = {};
+                    if (!item.settings.notifications) item.settings.notifications = [];
+                    this.savedItem = JSON.parse(JSON.stringify(item));
+                    this.selectedItem = item;
+                    this._modal.show();
+                },
+
+                removeTip(index) {
+                    if (confirm('Are you sure you want to delete the tip?')) {
+                        this.selectedItem.Tips.splice(index, 1);
+                    }
+                },
+
+                addNotification() {
+                    if (!this.selectedItem.settings.notifications) {
+                        this.selectedItem.settings.notifications = [];
+                    }
+                    this.selectedItem.settings.notifications.push({});
+                },
+
+                async save() {
+                    this.selectedItem.Fields = JSON.stringify(this.selectedItem.Tips);
+                    this.selectedItem._settings = JSON.stringify(this.selectedItem.settings);
+                    try {
+                        const r = await fetch('/admin/saveeventcustomization/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(this.selectedItem)
+                        });
+                        const data = await r.json();
+                        if (data.Error) {
+                            alert(data.Error);
+                            return;
+                        }
+                        this._modal.hide();
+                    } catch (e) {
+                        alert('Error Saving');
+                        console.error(e);
+                    }
+                },
+
+                cancel() {
+                    if (this.savedItem && this.selectedItem) {
+                        Object.assign(this.selectedItem, this.savedItem);
+                    }
+                    this._modal.hide();
+                }
+            }));
+        });
     </script>
 }

@@ -2,11 +2,10 @@ using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
 
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -52,7 +51,7 @@ namespace EGG9000.Common.Services {
             _ = await ChannelHelper.DetermineAndSend(_discord, guild, GuildChannelType.BotLog, new() { Text = message });
         }
 
-        public async Task AddBoardingGroup(int bgnum, Contract contract, Guild guild) {
+        public async Task AddBoardingGroup(int bgnum, DBContract contract, Guild guild) {
             try {
                 var channel = await ChannelHelper.GetTextChannel(_discord, guild, GuildChannelType.BotLog);
                 if(channel is null) return;

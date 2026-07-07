@@ -1,14 +1,13 @@
 ﻿@using Discord.WebSocket;
 @using static EGG9000.Common.Helpers.EggIncStatics;
 @using EGG9000.Common.JsonData
-@using EGG9000.Common.JsonData.EiStatics
 @using EGG9000.Site.Controllers;
 @using System.Globalization;
 @using EGG9000.Common.Coops;
 @using EGG9000.Common.Helpers.ArtifactImaging;
 @inject DiscordSocketClient DiscordClient
 @inject EGG9000.Site.Services.ArtifactImageRenderer ArtifactRenderer
-@model (CustomBackup Backup, List<Contract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
+@model (CustomBackup Backup, List<DBContract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
 
 @{
     void rateRow(string label, double perSecond, string eggImg) {

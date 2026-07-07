@@ -1,13 +1,13 @@
-﻿@model EGG9000.Site.Controllers.HomeController.FAQViewModel;
+@model EGG9000.Site.Controllers.HomeController.FAQViewModel;
 @using System.Security.Claims;
 @{
     ViewData["Title"] = "FAQ Index";
 }
 
-<div ng-controller="Page">
+<div x-data="faqPage()">
     <div style="display: flex; align-items: center; justify-content: space-between;">
         <h2>@Model.GuildName FAQs</h2>
-        <input class="form-control" ng-model="guildSearchTerm" style="width: 500px" placeholder="Search (Name, Keywords, Explanation)" name="guildSearchTerm" />
+        <input class="form-control" x-model="guildSearchTerm" style="width: 500px" placeholder="Search (Name, Keywords, Explanation)" name="guildSearchTerm" />
     </div>
     <table class="table table-striped table-hover">
         <thead>
@@ -19,91 +19,61 @@
             </tr>
         </thead>
         <tbody>
-            <tr ng-if="filteredGuildItems.length == 0">
-                <td colspan="8" style="text-align: center; font-weight: bold;">No items to show.</td>
-            </tr>
-            <tr ng-else ng-repeat="faqItem in filteredGuildItems = (items | filter:guildFilter)" ng-click="ViewItem(faqItem, false)">
-                <td>{{faqItem.name}}</td>
-                <td>{{faqItem.Keywords.join(", ")}}</td>
-                <td colspan="2">{{minifyIfOver(faqItem.explanation)}}</td>
-                <td>{{faqItem.createdBy}}</td>
-            </tr>
+            <template x-if="filteredItems().length === 0">
+                <tr>
+                    <td colspan="8" style="text-align: center; font-weight: bold;">No items to show.</td>
+                </tr>
+            </template>
+            <template x-for="faqItem in filteredItems()" :key="faqItem.name">
+                <tr @@click="viewItem(faqItem)" style="cursor:pointer;">
+                    <td x-text="faqItem.name"></td>
+                    <td x-text="faqItem.Keywords.join(', ')"></td>
+                    <td colspan="2" x-text="minifyIfOver(faqItem.explanation)"></td>
+                    <td x-text="faqItem.createdBy"></td>
+                </tr>
+            </template>
         </tbody>
     </table>
 
-    <script type="text/ng-template" id="View.html">
-        <style>
-            .modal-body {
-                max-height: calc(100vh - 180px);
-                overflow-y: auto;
-            }
-
-            .grid-container {
-                display: grid;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 10px;
-                margin-top: 10px;
-            }
-
-            .grid-item {
-                display: flex;
-                flex-direction: column;
-            }
-
-            .grid-item label {
-                margin-bottom: 5px;
-            }
-        </style>
-
-        <div class="modal-header d-flex justify-content-between align-items-center">
-            <span ng-if="!newItem">FAQ Topic - {{ item.name }}</span>
-            <span ng-if="newItem">New FAQ Topic</span>
-            <button type="button" class="close" ng-click="Back()" aria-label="Close">
-                <span aria-hidden="true">&times;</span>
-            </button>
-        </div>
-
-        <div class="modal-body overflow-auto">
-            <div class="form-group">
-                <label>
-                    Name<br />
-                </label>
-                <input ng-disabled="true" autocomplete="off" aria-autocomplete="none" class="form-control" ng-model="item.name" />
-            </div>
-
-            <div class="form-group">
-                <label>
-                    Keywords<br />
-                    <span style="font-size: 0.9rem; color: gray;">
-                        These are the keywords that can be searched to display this topic.
-                    </span>
-                </label><br>
-                <div ng-repeat="keyword in item.Keywords track by $index" style="display: flex; align-items: center; margin-bottom: 5px;">
-                    <input ng-disabled="true" autocomplete="off" aria-autocomplete="none" type="text" class="form-control" ng-model="item.Keywords[$index]" ng-blur="formatKeyword($index)" style="margin-right: 10px;" />
+    <div class="modal fade" id="faqViewModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header d-flex justify-content-between align-items-center">
+                    <span x-text="selectedItem ? 'FAQ Topic - ' + selectedItem.name : ''"></span>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body overflow-auto" style="max-height: calc(100vh - 180px);">
+                    <template x-if="selectedItem">
+                        <div>
+                            <div class="form-group mb-3">
+                                <label>Name</label>
+                                <input disabled autocomplete="off" class="form-control" :value="selectedItem.name" />
+                            </div>
+                            <div class="form-group mb-3">
+                                <label>Keywords</label>
+                                <template x-for="(keyword, idx) in selectedItem.Keywords" :key="idx">
+                                    <div style="display: flex; align-items: center; margin-bottom: 5px;">
+                                        <input disabled type="text" class="form-control" :value="keyword" style="margin-right: 10px;" />
+                                    </div>
+                                </template>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label>Explanation</label>
+                                <textarea rows="8" disabled autocomplete="off" spellcheck="false" class="form-control" x-text="selectedItem.explanation"></textarea>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label>Created by</label>
+                                <input disabled class="form-control" :value="selectedItem.createdBy" />
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="modal-footer" style="justify-content: flex-start;">
+                    <button class="btn btn-warning" data-bs-dismiss="modal">Back</button>
                 </div>
             </div>
-
-            <div class="form-group">
-                <label>
-                    Explanation<br />
-                </label>
-                <textarea rows="8" ng-disabled="true" autocomplete="off" aria-autocomplete="none" spellcheck="false" class="form-control" ng-model="item.explanation"></textarea>
-            </div>
-
-            <div class="form-group">
-                <label>
-                    Created by<br />
-                </label>
-                <input disabled class="form-control" ng-model="item.createdBy" />
-            </div>
         </div>
-
-        <div class="modal-footer ng-scope" style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; gap: 10px;">
-                <button class="btn btn-warning" ng-click="Back()">Back</button>
-            </div>
-        </div>
-    </script>
+    </div>
 </div>
 
 @section Scripts {
@@ -118,52 +88,42 @@
     </style>
 
     <script>
-        angular.module('egg9000', ['ui.bootstrap', 'angularMoment', 'ngMaterial', 'ngMessages'])
-            .controller('Page', ['$scope', '$rootScope', '$uibModal', 'moment', '$http', '$timeout', '$interval', '$q', function ($scope, $rootScope, $uibModal, moment, $http, $timeout, $interval, $q) {
-                // Setup items from Model
-                $scope.items = @Html.Raw(Json.Serialize(Model.FAQTopics));
+        const _faqRawItems = @Html.Raw(Json.Serialize(Model.FAQTopics));
 
-                angular.forEach($scope.items, function (item) {
-                    item.Keywords = JSON.parse(item._keywords || '[]');
-                });
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('faqPage', () => ({
+                items: _faqRawItems.map(item => ({
+                    ...item,
+                    Keywords: JSON.parse(item._keywords || '[]')
+                })),
+                guildSearchTerm: '',
+                selectedItem: null,
+                _modal: null,
 
-                $scope.minifyIfOver = function (str) {
+                init() {
+                    this._modal = new bootstrap.Modal(document.getElementById('faqViewModal'));
+                },
+
+                filteredItems() {
+                    if (!this.guildSearchTerm) return this.items;
+                    const term = this.guildSearchTerm.toLowerCase();
+                    return this.items.filter(item =>
+                        item.name.toLowerCase().includes(term) ||
+                        item.Keywords.join(', ').toLowerCase().includes(term) ||
+                        item.explanation.toLowerCase().includes(term)
+                    );
+                },
+
+                minifyIfOver(str) {
                     if (!str) return '';
-                    if (str.length > 200) {
-                        return str.substr(0, 200) + ' [...]';
-                    } else return str;
-                };
+                    return str.length > 200 ? str.substr(0, 200) + ' [...]' : str;
+                },
 
-                // Filter function for guild items
-                $scope.guildFilter = function (faqItem) {
-                    if (!$scope.guildSearchTerm) {
-                        return true;
-                    }
-                    var searchTerm = $scope.guildSearchTerm.toLowerCase();
-                    return faqItem.name.toLowerCase().includes(searchTerm) ||
-                        faqItem.Keywords.join(", ").toLowerCase().includes(searchTerm) ||
-                        faqItem.explanation.toLowerCase().includes(searchTerm);
-                };
-
-                // Modal setup
-                $scope.ViewItem = function ViewItem(item, subscribeModal) {
-                    $uibModal.open({
-                        templateUrl: 'View.html',
-                        size: 'lg',
-                        backdrop: 'static',
-                        animation: false,
-                        controller: function ($scope, $uibModalInstance) {
-                            // Item declarations and setup
-                            if (item != null) {
-                                $scope.item = item;
-                            }
-
-                            $scope.Back = function Cancel() {
-                                $uibModalInstance.close();
-                            };
-                        }
-                    });
-                };
-            }]);
+                viewItem(item) {
+                    this.selectedItem = item;
+                    this._modal.show();
+                }
+            }));
+        });
     </script>
 }

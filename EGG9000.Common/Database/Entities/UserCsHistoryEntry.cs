@@ -20,7 +20,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public override int GetHashCode() {
-           return ContractIdentifier.GetHashCode() ^ CoopIdentifier.GetHashCode();
+            return ContractIdentifier.GetHashCode() ^ CoopIdentifier.GetHashCode();
         }
     }
 }

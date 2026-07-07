@@ -19,13 +19,17 @@ namespace EGG9000.Test {
     public class DatabaseCacheFilterTests {
         private static readonly DateTimeOffset Base = new(2026, 6, 16, 0, 0, 0, TimeSpan.Zero);
 
-        private static DateTimeOffset At(int seconds) => Base.AddSeconds(seconds);
+        private static DateTimeOffset At(int seconds) {
+            return Base.AddSeconds(seconds);
+        }
 
-        private static bool OldPredicate(DBUser u, DateTimeOffset cutoff)
-            => u.LastModified > cutoff || u.CreateOn > cutoff;
+        private static bool OldPredicate(DBUser u, DateTimeOffset cutoff) {
+            return u.LastModified > cutoff || u.CreateOn > cutoff;
+        }
 
-        private static bool NewPredicate(DBUser u, DateTimeOffset cutoff)
-            => DatabaseCache.UpdatedSince(cutoff).Compile()(u);
+        private static bool NewPredicate(DBUser u, DateTimeOffset cutoff) {
+            return DatabaseCache.UpdatedSince(cutoff).Compile()(u);
+        }
 
         [TestMethod]
         public void NewMatchesOldForAllInvariantRespectingUsers() {

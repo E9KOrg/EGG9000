@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace EGG9000.Common.JsonData.EiAfxData {
+namespace EGG9000.Common.JsonData {
 
     public record ArtifactFamily(
  string id,

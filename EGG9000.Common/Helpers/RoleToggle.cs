@@ -8,7 +8,7 @@ using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace EGG9000.Bot.Helpers {
+namespace EGG9000.Common.Helpers {
     public static class RoleToggle {
         public enum RoleAction { None, Add, Remove }
 
@@ -24,11 +24,11 @@ namespace EGG9000.Bot.Helpers {
             switch(Decide(hasRole, shouldHave, canAdd)) {
                 case RoleAction.Add:
                     await user.AddRoleAsync(role);
-                    if(logLabel != null) StaticLoggerFactory.GetLogger<DiscordHelpers>().LogInformation("Adding {label} for {user}", logLabel, user.GetName());
+                    if(logLabel != null) GetLogger<DiscordHelpers>().LogInformation("Adding {label} for {user}", logLabel, user.GetName());
                     break;
                 case RoleAction.Remove:
                     await user.RemoveRoleAsync(role);
-                    if(logLabel != null) StaticLoggerFactory.GetLogger<DiscordHelpers>().LogInformation("Removing {label} for {user}", logLabel, user.GetName());
+                    if(logLabel != null) GetLogger<DiscordHelpers>().LogInformation("Removing {label} for {user}", logLabel, user.GetName());
                     break;
             }
         }

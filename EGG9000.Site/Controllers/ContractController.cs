@@ -1,16 +1,12 @@
 ﻿using Discord.WebSocket;
-using EGG9000.Bot;
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
-using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
@@ -43,11 +39,11 @@ namespace EGG9000.Site.Controllers {
 
 
 
-        private async Task<((List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded), Contract)> _GetGroups(ulong GuildId, string contractid, int skipbg, Guild dbguild, SocketGuild guild, int count) {
-            Contract contract;
+        private async Task<((List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded), DBContract)> _GetGroups(ulong GuildId, string contractid, int skipbg, Guild dbguild, SocketGuild guild, int count) {
+            DBContract contract;
 
             if(string.IsNullOrWhiteSpace(contractid) || contractid == "test") {
-                contract = new Contract();
+                contract = new DBContract();
                 var eicontract = new Ei.Contract();
                 foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                     var gradeSpec = new Ei.Contract.Types.GradeSpec {
@@ -62,7 +58,7 @@ namespace EGG9000.Site.Controllers {
                 eicontract.Egg = Ei.Egg.Edible;
                 contract.OverwriteDetails(eicontract);
             } else if(contractid == "sub") {
-                contract = new Contract();
+                contract = new DBContract();
                 var eicontract = new Ei.Contract();
                 foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
                     var gradeSpec = new Ei.Contract.Types.GradeSpec {
@@ -84,7 +80,10 @@ namespace EGG9000.Site.Controllers {
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
             var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contractid && x.Created > DateTimeOffset.UtcNow.AddDays(-60)).ToListAsync();
             var userCsHistoryEntries = await _db.UserCsHistoryEntries.Where(x => x.ContractIdentifier == contract.ID).ToListAsync();
-            var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild, guild, count);
+
+            var (contractSeason, seasonProgresses) = await OrganizeCoops.LoadContractSeasonData(_db, contract, users);
+
+            var coopGroups = await OrganizeCoops.SortUsersIntoDay1Coops(users, contract, coops, skipbg, userCsHistoryEntries, dbguild, contractSeason, seasonProgresses, guild: guild, overrideNumber: count);
 
             return (coopGroups, contract);
         }
@@ -143,7 +142,7 @@ namespace EGG9000.Site.Controllers {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
             var userIds = coops.SelectMany(x => x.Users.Select(y => y.DatabaseId)).ToList();
             var useRoles = dbguild.DisableBG;
-            var roles = useRoles ? dbguild.GroupRoles.Split(",") : Array.Empty<string>();
+            var roles = useRoles ? dbguild.GroupRoles.Split(",") : [];
             var users = (await _db.DBUsers.Where(x => userIds.Contains(x.Id)).ToListAsync()).SelectMany(x => x.EggIncAccounts.Select(y => new UserByAccount {
                 User = x,
                 Account = y
@@ -329,10 +328,10 @@ namespace EGG9000.Site.Controllers {
             times.Set("Download Guild Users");
             var scoreGridItems = coops.SelectMany(coop => {
                 var contract = contracts.First(x => x.ID == coop.ContractID);
-                var details = new CoopDetails(coop, contract, coop.League, coop.UserCoopsXrefs.SelectMany(xref => {
+                var details = new CoopDetails(coop, contract, coop.League, [.. coop.UserCoopsXrefs.SelectMany(xref => {
                     var user = users.First(u => u.Id == xref.UserId);
                     return user.EggIncAccounts.Select(acc => new UserWithBackup { Account = acc, Backup = acc.Backup, User = xref.User });
-                }).ToList(), customEggs, _discord, coop.LastStatusUpdate);
+                })], customEggs, _discord, coop.LastStatusUpdate);
 
                 return details.CoopParticipants.Where(p => p.DBUser is not null && p.DBUser.GuildId == guildid).Select(p => {
                     var role = groupRoles.Length > 0 ? dbguild.GroupRoles.Split(",").FirstOrDefault(gr => guild.GetUser(p.DBUser.DiscordId)?.Roles.Any(r => r.Id.ToString() == gr) ?? false) : "";

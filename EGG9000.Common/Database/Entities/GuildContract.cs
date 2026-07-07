@@ -6,7 +6,7 @@ namespace EGG9000.Common.Database.Entities {
         public string ContractID { get; set; }
         public ulong GuildID { get; set; }
 
-        public Contract Contract { get; set; }
+        public DBContract Contract { get; set; }
 
         public ulong DiscordChannelId { get; set; }
         public DateTimeOffset? WarningForDeleteChannel { get; set; }
@@ -17,7 +17,7 @@ namespace EGG9000.Common.Database.Entities {
         public string Skip { get; set; }
         public ContractStatus Status { get; set; }
 
-        [Column] 
+        [Column]
         private bool Elite { get; set; }
         public bool HasScores { get; set; }
 

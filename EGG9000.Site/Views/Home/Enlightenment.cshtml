@@ -13,7 +13,7 @@
         return new {
             x.Backup,
             Farm = farm,
-            x.DiscordUser,
+            DisplayName = x.DisplayName,
             FarmStats = stats,
             TimeToComplete = stats.InternalHatchery > 0 ?  TimeSpan.FromMinutes((10e9 - farm.NumChickens) / (stats.InternalHatchery * 4 * 3)) : TimeSpan.MaxValue
         };
@@ -44,7 +44,7 @@
         <tbody>
             @foreach(var account in accounts) {
                 <tr>
-                    <td id="@(isAdmin ? account.Backup.EggIncId : "")">@account.DiscordUser.GetCleanName()</td>
+                    <td id="@(isAdmin ? account.Backup.EggIncId : "")">@account.DisplayName</td>
                     @*<td>@((account.Farm.Started - DateTimeOffset.Now).Humanize())</td>*@
                     <td>@account.Backup.EarningsBonus.ToEggString()</td>
                     <td>@account.Farm.NumChickens.ToEggString()</td>

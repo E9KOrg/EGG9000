@@ -1,35 +1,29 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using System;
 
 #nullable disable
 
-namespace EGG9000.Common.Migrations
-{
+namespace EGG9000.Common.Migrations {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
-    {
+    public partial class InitialCreate : Migration {
         /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
+        protected override void Up(MigrationBuilder migrationBuilder) {
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     ConcurrencyStamp = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_AspNetRoles", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "AspNetUsers",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<string>(type: "text", nullable: false),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -46,30 +40,26 @@ namespace EGG9000.Common.Migrations
                     LockoutEnabled = table.Column<bool>(type: "boolean", nullable: false),
                     AccessFailedCount = table.Column<int>(type: "integer", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "AutomationLogs",
-                columns: table => new
-                {
+                columns: table => new {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     StartTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     Type = table.Column<string>(type: "text", nullable: true),
                     EndTime = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
                     Skipped = table.Column<bool>(type: "boolean", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_AutomationLogs", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "Contracts",
-                columns: table => new
-                {
+                columns: table => new {
                     ID = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: true),
                     Description = table.Column<string>(type: "text", nullable: true),
@@ -95,15 +85,13 @@ namespace EGG9000.Common.Migrations
                     P11 = table.Column<int>(type: "integer", nullable: false),
                     Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_Contracts", x => x.ID);
                 });
 
             migrationBuilder.CreateTable(
                 name: "CustomEggs",
-                columns: table => new
-                {
+                columns: table => new {
                     Identifier = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: true),
                     Description = table.Column<string>(type: "text", nullable: true),
@@ -114,29 +102,25 @@ namespace EGG9000.Common.Migrations
                     EmojiId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     Released = table.Column<bool>(type: "boolean", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_CustomEggs", x => x.Identifier);
                 });
 
             migrationBuilder.CreateTable(
                 name: "DataProtectionKeys",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     FriendlyName = table.Column<string>(type: "text", nullable: true),
                     Xml = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_DataProtectionKeys", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "EventCustomizations",
-                columns: table => new
-                {
+                columns: table => new {
                     Type = table.Column<string>(type: "text", nullable: false),
                     Color = table.Column<string>(type: "text", nullable: true),
                     Description = table.Column<string>(type: "text", nullable: true),
@@ -146,15 +130,13 @@ namespace EGG9000.Common.Migrations
                     Priority = table.Column<int>(type: "integer", nullable: false),
                     _settings = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_EventCustomizations", x => x.Type);
                 });
 
             migrationBuilder.CreateTable(
                 name: "Events",
-                columns: table => new
-                {
+                columns: table => new {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     Identifier = table.Column<string>(type: "text", nullable: true),
                     Ends = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -165,15 +147,13 @@ namespace EGG9000.Common.Migrations
                     Ended = table.Column<bool>(type: "boolean", nullable: false),
                     CcOnly = table.Column<bool>(type: "boolean", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_Events", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "ExpiringShells",
-                columns: table => new
-                {
+                columns: table => new {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: true),
                     Expires = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -184,15 +164,13 @@ namespace EGG9000.Common.Migrations
                     MessageIds = table.Column<string>(type: "text", nullable: true),
                     Archived = table.Column<bool>(type: "boolean", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_ExpiringShells", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "FAQTopics",
-                columns: table => new
-                {
+                columns: table => new {
                     InternalId = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: true),
                     _keywords = table.Column<string>(type: "text", nullable: true),
@@ -210,15 +188,13 @@ namespace EGG9000.Common.Migrations
                     EmbedColorHex = table.Column<string>(type: "text", nullable: true),
                     ImageUrl = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_FAQTopics", x => x.InternalId);
                 });
 
             migrationBuilder.CreateTable(
                 name: "GlobalLeaderboardCoops",
-                columns: table => new
-                {
+                columns: table => new {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: true),
                     ContractID = table.Column<string>(type: "text", nullable: true),
@@ -226,15 +202,13 @@ namespace EGG9000.Common.Migrations
                     CheckFailed = table.Column<bool>(type: "boolean", nullable: false),
                     DegreeOfSeperation = table.Column<int>(type: "integer", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_GlobalLeaderboardCoops", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "GlobalLeaderboardUsers",
-                columns: table => new
-                {
+                columns: table => new {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     NeedsUpdate = table.Column<bool>(type: "boolean", nullable: false),
                     LastUpdate = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
@@ -249,15 +223,13 @@ namespace EGG9000.Common.Migrations
                     lifetime_cash_earned = table.Column<double>(type: "double precision", nullable: false),
                     DegreeOfSeperation = table.Column<int>(type: "integer", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_GlobalLeaderboardUsers", x => x.id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "Guilds",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: true),
                     ActiveElites = table.Column<string>(type: "text", nullable: true),
@@ -286,15 +258,13 @@ namespace EGG9000.Common.Migrations
                     PublicScoreGrid = table.Column<bool>(type: "boolean", nullable: false),
                     RemoveFindCoopSpot = table.Column<bool>(type: "boolean", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_Guilds", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "NasaApods",
-                columns: table => new
-                {
+                columns: table => new {
                     ID = table.Column<Guid>(type: "uuid", nullable: false),
                     Title = table.Column<string>(type: "text", nullable: true),
                     Url = table.Column<string>(type: "text", nullable: true),
@@ -306,30 +276,26 @@ namespace EGG9000.Common.Migrations
                     Copyright = table.Column<string>(type: "text", nullable: true),
                     _postedToBytes = table.Column<byte[]>(type: "bytea", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_NasaApods", x => x.ID);
                 });
 
             migrationBuilder.CreateTable(
                 name: "ResearchCostSubmissions",
-                columns: table => new
-                {
+                columns: table => new {
                     ID = table.Column<string>(type: "text", nullable: false),
                     Level = table.Column<int>(type: "integer", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     Cost = table.Column<double>(type: "double precision", nullable: false),
                     SubmittedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_ResearchCostSubmissions", x => new { x.ID, x.Level, x.UserId });
                 });
 
             migrationBuilder.CreateTable(
                 name: "TemporaryRoles",
-                columns: table => new
-                {
+                columns: table => new {
                     UserId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     RoleId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
@@ -338,30 +304,26 @@ namespace EGG9000.Common.Migrations
                     Reason = table.Column<string>(type: "text", nullable: true),
                     IsRemoved = table.Column<bool>(type: "boolean", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_TemporaryRoles", x => new { x.UserId, x.RoleId, x.Created });
                 });
 
             migrationBuilder.CreateTable(
                 name: "UserCsHistoryEntries",
-                columns: table => new
-                {
+                columns: table => new {
                     ContractIdentifier = table.Column<string>(type: "text", nullable: false),
                     CoopIdentifier = table.Column<string>(type: "text", nullable: false),
                     EggIncId = table.Column<string>(type: "text", nullable: false),
                     Cxp = table.Column<double>(type: "double precision", nullable: false),
                     Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_UserCsHistoryEntries", x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
                 });
 
             migrationBuilder.CreateTable(
                 name: "Users",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     LastModified = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     DiscordId = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
@@ -401,15 +363,13 @@ namespace EGG9000.Common.Migrations
                     CreateOn = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     Registered = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_Users", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "UserSnapShots",
-                columns: table => new
-                {
+                columns: table => new {
                     Date = table.Column<DateTime>(type: "Date", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     EggIncID = table.Column<string>(type: "text", nullable: false),
@@ -419,23 +379,20 @@ namespace EGG9000.Common.Migrations
                     Prestiges = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     EggsOfTruth = table.Column<decimal>(type: "numeric(20,0)", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_UserSnapShots", x => new { x.UserId, x.Date, x.EggIncID });
                 });
 
             migrationBuilder.CreateTable(
                 name: "AspNetRoleClaims",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     RoleId = table.Column<string>(type: "text", nullable: false),
                     ClaimType = table.Column<string>(type: "text", nullable: true),
                     ClaimValue = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_AspNetRoleClaims", x => x.Id);
                     table.ForeignKey(
                         name: "FK_AspNetRoleClaims_AspNetRoles_RoleId",
@@ -447,16 +404,14 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "AspNetUserClaims",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<int>(type: "integer", nullable: false)
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     UserId = table.Column<string>(type: "text", nullable: false),
                     ClaimType = table.Column<string>(type: "text", nullable: true),
                     ClaimValue = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_AspNetUserClaims", x => x.Id);
                     table.ForeignKey(
                         name: "FK_AspNetUserClaims_AspNetUsers_UserId",
@@ -468,15 +423,13 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "AspNetUserLogins",
-                columns: table => new
-                {
+                columns: table => new {
                     LoginProvider = table.Column<string>(type: "text", nullable: false),
                     ProviderKey = table.Column<string>(type: "text", nullable: false),
                     ProviderDisplayName = table.Column<string>(type: "text", nullable: true),
                     UserId = table.Column<string>(type: "text", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_AspNetUserLogins", x => new { x.LoginProvider, x.ProviderKey });
                     table.ForeignKey(
                         name: "FK_AspNetUserLogins_AspNetUsers_UserId",
@@ -488,13 +441,11 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "AspNetUserRoles",
-                columns: table => new
-                {
+                columns: table => new {
                     UserId = table.Column<string>(type: "text", nullable: false),
                     RoleId = table.Column<string>(type: "text", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_AspNetUserRoles", x => new { x.UserId, x.RoleId });
                     table.ForeignKey(
                         name: "FK_AspNetUserRoles_AspNetRoles_RoleId",
@@ -512,15 +463,13 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "AspNetUserTokens",
-                columns: table => new
-                {
+                columns: table => new {
                     UserId = table.Column<string>(type: "text", nullable: false),
                     LoginProvider = table.Column<string>(type: "text", nullable: false),
                     Name = table.Column<string>(type: "text", nullable: false),
                     Value = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_AspNetUserTokens", x => new { x.UserId, x.LoginProvider, x.Name });
                     table.ForeignKey(
                         name: "FK_AspNetUserTokens_AspNetUsers_UserId",
@@ -532,8 +481,7 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Coops",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     ContractID = table.Column<string>(type: "text", nullable: true),
                     Name = table.Column<string>(type: "text", nullable: true),
@@ -568,8 +516,7 @@ namespace EGG9000.Common.Migrations
                     PseudoExpired = table.Column<bool>(type: "boolean", nullable: false),
                     _StatusCompressed = table.Column<byte[]>(type: "bytea", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_Coops", x => x.Id);
                     table.ForeignKey(
                         name: "FK_Coops_Contracts_ContractID",
@@ -580,8 +527,7 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "GuildContracts",
-                columns: table => new
-                {
+                columns: table => new {
                     ContractID = table.Column<string>(type: "text", nullable: false),
                     GuildID = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     League = table.Column<long>(type: "bigint", nullable: false),
@@ -599,8 +545,7 @@ namespace EGG9000.Common.Migrations
                     ReadyToScore = table.Column<bool>(type: "boolean", nullable: false),
                     Created = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_GuildContracts", x => new { x.ContractID, x.GuildID, x.League });
                     table.ForeignKey(
                         name: "FK_GuildContracts_Contracts_ContractID",
@@ -612,8 +557,7 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "UpcomingContracts",
-                columns: table => new
-                {
+                columns: table => new {
                     ID = table.Column<Guid>(type: "uuid", nullable: false),
                     GuildID = table.Column<decimal>(type: "numeric(20,0)", nullable: false),
                     TargetDate = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -622,8 +566,7 @@ namespace EGG9000.Common.Migrations
                     ContractId = table.Column<string>(type: "text", nullable: true),
                     ChannelId = table.Column<decimal>(type: "numeric(20,0)", nullable: false)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_UpcomingContracts", x => x.ID);
                     table.ForeignKey(
                         name: "FK_UpcomingContracts_Contracts_ContractId",
@@ -634,8 +577,7 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Demerit",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     When = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -645,8 +587,7 @@ namespace EGG9000.Common.Migrations
                     ContractID = table.Column<string>(type: "text", nullable: true),
                     Details = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_Demerit", x => x.Id);
                     table.ForeignKey(
                         name: "FK_Demerit_Users_AdminUserId",
@@ -663,16 +604,14 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Donations",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     When = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     Amount = table.Column<float>(type: "real", nullable: false),
                     Type = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_Donations", x => x.Id);
                     table.ForeignKey(
                         name: "FK_Donations_Users_UserId",
@@ -684,16 +623,14 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "Merit",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     When = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     AdminUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     Reason = table.Column<string>(type: "text", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_Merit", x => x.Id);
                     table.ForeignKey(
                         name: "FK_Merit_Users_AdminUserId",
@@ -709,8 +646,7 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "UserCoopStatuses",
-                columns: table => new
-                {
+                columns: table => new {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: true),
                     CoopId = table.Column<Guid>(type: "uuid", nullable: false),
@@ -721,8 +657,7 @@ namespace EGG9000.Common.Migrations
                     Rate = table.Column<double>(type: "double precision", nullable: false),
                     SleepingWarning = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_UserCoopStatuses", x => x.Id);
                     table.ForeignKey(
                         name: "FK_UserCoopStatuses_Coops_CoopId",
@@ -739,8 +674,7 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.CreateTable(
                 name: "UserCoopXrefs",
-                columns: table => new
-                {
+                columns: table => new {
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     CoopId = table.Column<Guid>(type: "uuid", nullable: false),
                     EggIncId = table.Column<string>(type: "text", nullable: false),
@@ -781,8 +715,7 @@ namespace EGG9000.Common.Migrations
                     _sleepTrackingByte = table.Column<byte[]>(type: "bytea", nullable: true),
                     _coopSettingByte = table.Column<byte[]>(type: "bytea", nullable: true)
                 },
-                constraints: table =>
-                {
+                constraints: table => {
                     table.PrimaryKey("PK_UserCoopXrefs", x => new { x.UserId, x.CoopId, x.EggIncId });
                     table.ForeignKey(
                         name: "FK_UserCoopXrefs_Coops_CoopId",
@@ -843,7 +776,7 @@ namespace EGG9000.Common.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Coops_DiscordChannelId_ThreadArchived_CoopEnds_ThreadID",
                 table: "Coops",
-                columns: new[] { "DiscordChannelId", "ThreadArchived", "CoopEnds", "ThreadID" });
+                columns: ["DiscordChannelId", "ThreadArchived", "CoopEnds", "ThreadID"]);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Coops_Status",
@@ -858,7 +791,7 @@ namespace EGG9000.Common.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Coops_ThreadID_Created",
                 table: "Coops",
-                columns: new[] { "ThreadID", "Created" });
+                columns: ["ThreadID", "Created"]);
 
             migrationBuilder.CreateIndex(
                 name: "IX_Demerit_AdminUserId",
@@ -908,7 +841,7 @@ namespace EGG9000.Common.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_UserCoopXrefs_CreatedOn_JoinedCoop",
                 table: "UserCoopXrefs",
-                columns: new[] { "CreatedOn", "JoinedCoop" });
+                columns: ["CreatedOn", "JoinedCoop"]);
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserCoopXrefs_JoinedCoop",
@@ -918,12 +851,12 @@ namespace EGG9000.Common.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_UserCoopXrefs_JoinedCoop_CreatedOn",
                 table: "UserCoopXrefs",
-                columns: new[] { "JoinedCoop", "CreatedOn" });
+                columns: ["JoinedCoop", "CreatedOn"]);
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserCoopXrefs_UserId_JoinedCoop",
                 table: "UserCoopXrefs",
-                columns: new[] { "UserId", "JoinedCoop" });
+                columns: ["UserId", "JoinedCoop"]);
 
             migrationBuilder.CreateIndex(
                 name: "IX_UserCsHistoryEntries_ContractIdentifier",
@@ -957,8 +890,7 @@ namespace EGG9000.Common.Migrations
         }
 
         /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
+        protected override void Down(MigrationBuilder migrationBuilder) {
             migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 

@@ -1,0 +1,47 @@
+@using EGG9000.Common.Database.Entities
+@model (List<DBUser> rows, bool incompleteCache)
+
+<h2>Non-Server Users</h2>
+<p>Users registered to this server whose Discord account is no longer a member.</p>
+
+@if (Model.incompleteCache) {
+	<div class="alert alert-warning">
+		Member cache for this server is incomplete right now, so non-members cannot be listed safely. Try again shortly.
+	</div>
+} else if (!Model.rows.Any()) {
+	<p>No non-server users found.</p>
+} else {
+	<table class="table table-striped">
+		<thead>
+			<tr>
+				<th>Discord Name</th>
+				<th>Discord ID</th>
+				<th>Accounts</th>
+				<th></th>
+			</tr>
+		</thead>
+		<tbody>
+			@foreach (var user in Model.rows) {
+				<tr>
+					<td>@user.DiscordUsername</td>
+					<td>@user.DiscordId</td>
+					<td>
+						@foreach (var account in user.EggIncAccounts) {
+							<span>@account.Id</span>
+						}
+					</td>
+					<td>
+						<a href="/admin/removeserver?UserId=@user.Id" class="btn btn-danger btn-sm"
+						   onclick="return confirm('Remove this user\'s server assignment?');">Remove Server</a>
+					</td>
+				</tr>
+			}
+		</tbody>
+	</table>
+}
+
+<style>
+	.container {
+		max-width: initial !important;
+	}
+</style>

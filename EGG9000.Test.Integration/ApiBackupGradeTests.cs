@@ -1,8 +1,6 @@
-using System.Linq;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using Microsoft.Extensions.Configuration;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test.Integration;
 
@@ -10,7 +8,11 @@ namespace EGG9000.Test.Integration;
 [TestCategory("Network")]
 public class ApiBackupGradeTests {
 
-    private static string Eid => EggIncApi.UserId;
+    private static string Eid {
+        get {
+            return EggIncApi.UserId;
+        }
+    }
 
     [ClassInitialize]
     public static void InitSalt(TestContext _) {
@@ -34,7 +36,7 @@ public class ApiBackupGradeTests {
 
         var my = fc.Backup.Contracts;
         if(my is not null) {
-            TestContext.WriteLine($"active: {my.Contracts.Count}, archive: {my.Archive.Count}, last_cpi null: {my.LastCpi is null}");
+            TestContext!.WriteLine($"active: {my.Contracts.Count}, archive: {my.Archive.Count}, last_cpi null: {my.LastCpi is null}");
         }
 
         Assert.IsNotNull(my, "Backup.Contracts is null; CustomBackup dereferences it and will throw");
@@ -57,7 +59,7 @@ public class ApiBackupGradeTests {
             .Select(c => c.Grade)
             .ToList();
 
-        TestContext.WriteLine($"last_cpi.grade: {lastCpiGrade}, contract grades: {perContract.Count}");
+        TestContext!.WriteLine($"last_cpi.grade: {lastCpiGrade}, contract grades: {perContract.Count}");
 
         Assert.IsTrue(lastCpiGrade != Ei.Contract.Types.PlayerGrade.GradeUnset || perContract.Count > 0,
             "No grade in the backup: last_cpi.grade unset and no contract carries a grade");
@@ -72,11 +74,11 @@ public class ApiBackupGradeTests {
 
         var (info, error) = await EggIncApi.GetContractPlayerInfo(Eid);
         if(info is not null)
-            TestContext.WriteLine($"grade: {info.Grade}, status: {info.Status}");
+            TestContext!.WriteLine($"grade: {info.Grade}, status: {info.Status}");
 
         Assert.IsNotNull(info, $"get_contract_player_info returned null: {error}");
         Assert.AreNotEqual(Ei.Contract.Types.PlayerGrade.GradeUnset, info.Grade, "grade is unset");
     }
 
-    public TestContext TestContext { get; set; }
+    public TestContext? TestContext { get; set; }
 }

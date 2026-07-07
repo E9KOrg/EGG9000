@@ -1,20 +1,15 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-
-using EGG9000.Common.EggIncAPI;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using Ei;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-
 using Newtonsoft.Json;
-
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -35,7 +30,7 @@ namespace EGG9000.Bot.Automated {
 
     public class EventUpdater(IServiceProvider provider) : _UpdaterBase<EventUpdater>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
         private class EventWithCustom {
-            public Event Event { get; set; }
+            public DBEvent Event { get; set; }
             public EventCustomization Customization { get; set; }
         }
 
@@ -69,16 +64,16 @@ namespace EGG9000.Bot.Automated {
                 await UpdateMessages(e, _db, Ended: true);
             }
 
-            int newCount = 0;
-            int significantChangeCount = 0;
-            int timeChangeCount = 0;
-            int unchangedCount = 0;
+            var newCount = 0;
+            var significantChangeCount = 0;
+            var timeChangeCount = 0;
+            var unchangedCount = 0;
 
             var events = response.Events.Events.ToList();
             foreach(var evt in events) {
                 var currentEvent = recentEvents.FirstOrDefault(x => x.Identifier == evt.Identifier);
                 if(currentEvent == null) {
-                    var newEvent = new Event(evt);
+                    var newEvent = new DBEvent(evt);
                     newEvent.Ends = newEvent.Ends.RoundToClosestFifteen();
                     _logger.LogInformation("New event detected: Type={type}, Identifier={identifier}, Subtitle='{subtitle}', Multiplier={multiplier}, Ends={ends:o}, CcOnly={ccOnly}",
                         newEvent.Type, newEvent.Identifier, newEvent.Subtitle, newEvent.Multiplier, newEvent.Ends, newEvent.CcOnly);
@@ -220,7 +215,7 @@ namespace EGG9000.Bot.Automated {
                 }
             }
         }
-        private async Task PostMessages(Event newEvent, ApplicationDbContext _db) {
+        private async Task PostMessages(DBEvent newEvent, ApplicationDbContext _db) {
             _logger.LogInformation("PostMessages: posting event {type} ({identifier}), Multiplier={multiplier}, CcOnly={ccOnly}, Ends={ends:o}",
                 newEvent.Type, newEvent.Identifier, newEvent.Multiplier, newEvent.CcOnly, newEvent.Ends);
 
@@ -286,7 +281,7 @@ namespace EGG9000.Bot.Automated {
                 messageIds.Count, newEvent.Type, newEvent.Identifier);
         }
 
-        private async Task UpdateMessages(Event currentEvent, ApplicationDbContext _db, bool Ended = false, bool Crossout = false) {
+        private async Task UpdateMessages(DBEvent currentEvent, ApplicationDbContext _db, bool Ended = false, bool Crossout = false) {
             var reason = Ended ? "ENDED" : Crossout ? "CROSSOUT" : "UPDATE";
             _logger.LogInformation("UpdateMessages [{reason}]: updating event {type} ({identifier})",
                 reason, currentEvent.Type, currentEvent.Identifier);
@@ -296,9 +291,9 @@ namespace EGG9000.Bot.Automated {
             foreach(var dbguild in dbguilds) {
                 var customization = await _db.GetCustomizationAsync(dbguild, currentEvent);
                 var (embed, embedImage) = await GetEventEmbed(_db, currentEvent, customization, Ended, Crossout);
-                byte[] embedImageBytes = embedImage.HasValue ? ((MemoryStream)embedImage.Value.Stream).ToArray() : null;
-                string embedImageFileName = embedImage.HasValue ? embedImage.Value.FileName : null;
-                string embedImageDescription = embedImage.HasValue ? embedImage.Value.Description : null;
+                var embedImageBytes = embedImage.HasValue ? ((MemoryStream)embedImage.Value.Stream).ToArray() : null;
+                var embedImageFileName = embedImage.HasValue ? embedImage.Value.FileName : null;
+                var embedImageDescription = embedImage.HasValue ? embedImage.Value.Description : null;
 
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 if(guild == null) continue;
@@ -360,7 +355,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public static async Task<(Embed, FileAttachment?)> GetEventEmbed(ApplicationDbContext _db, Event e, EventCustomization eventC, bool Ended = false, bool CrossOut = false) {
+        public static async Task<(Embed, FileAttachment?)> GetEventEmbed(ApplicationDbContext _db, DBEvent e, EventCustomization eventC, bool Ended = false, bool CrossOut = false) {
             var multiplier = e.Multiplier;
             var equivalent_multiplier = Math.Round(Math.Pow(e.Multiplier, 0.21), 2);
             var percent = Math.Round((1 - e.Multiplier) * 100, 2);

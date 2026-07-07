@@ -1,12 +1,11 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Bot.Common.Helpers;
-using EGG9000.Bot.Helpers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,11 +15,11 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Bot.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated {
-    public class LeaderboardUpdater(IServiceProvider provider) : _UpdaterBase<LeaderboardUpdater>(UpdateTime, delayedStart: TimeSpan.FromMinutes(5), provider) {
+    public partial class LeaderboardUpdater(IServiceProvider provider) : _UpdaterBase<LeaderboardUpdater>(UpdateTime, delayedStart: TimeSpan.FromMinutes(5), provider) {
         public static readonly TimeSpan UpdateTime = TimeSpan.FromMinutes(60);
 
         private class BreakCooper {
@@ -56,10 +55,6 @@ namespace EGG9000.Bot.Automated {
 
 
                 var userQuery = _db.DBUsers.Where(x => x.GuildId > 0 && !x.TempDisabled);
-
-#if DEBUG
-#endif
-
 
                 var dbusers = await userQuery.ToListAsync(CancellationToken.None);
                 timings.Set("dbusers");
@@ -110,11 +105,17 @@ namespace EGG9000.Bot.Automated {
 
                     List<SocketGuild> overflowGuilds = null;
                     if(dbguild.OverflowServers.Count > 0) {
-                        overflowGuilds = dbguild.OverflowServers.Select(x => _client.Guilds.First(y => y.Id == x)).ToList();
+                        overflowGuilds = [.. dbguild.OverflowServers.Select(x => _client.Guilds.First(y => y.Id == x))];
                     }
 
 
-                    var users = lUsers.Where(x => x.User.GuildId == guild.Id).ToList();
+                    // GuildId can be stale when a user leaves Discord without being unassigned, which
+                    // makes warning loops (MER cheater, break-coop, promotions) ping ex-members. When the
+                    // roster is complete (DownloadUsersAsync above), drop users no longer in guild.Users.
+                    var memberIds = guild.HasAllMembers ? guild.Users.Select(u => u.Id).ToHashSet() : null;
+                    var users = lUsers
+                        .Where(x => x.User.GuildId == guild.Id && (memberIds is null || memberIds.Contains(x.User.DiscordId)))
+                        .ToList();
                     var guildContracts = await _db.GuildContracts.Where(gc => gc.GuildID == dbguild.Id).ToListAsync(CancellationToken.None);
 
                     //Handle users who are on break, and doing coops
@@ -138,12 +139,12 @@ namespace EGG9000.Bot.Automated {
                                 continue;
                             }
 
-                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.ToLower() == breakCooper.Farm.CoopId.ToLower() && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId), CancellationToken.None);
-                            var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.ToLower() == breakCooper.Farm.ContractId.ToLower());
+                            var dbCoop = await _db.Coops.FirstOrDefaultAsync(c => c.Name.Equals(breakCooper.Farm.CoopId, StringComparison.CurrentCultureIgnoreCase) && (dbguild.OverflowServersJson.Contains(c.GuildId.ToString()) || dbguild.Id == c.GuildId), CancellationToken.None);
+                            var guildContract = guildContracts.FirstOrDefault(gc => gc.GuildID == dbguild.Id && gc.ContractID.Equals(breakCooper.Farm.ContractId, StringComparison.CurrentCultureIgnoreCase));
                             var username = breakCooper.User.Account.Name ?? breakCooper.User.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{breakCooper.User.User.DiscordId}>{(breakCooper.User.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")}" +
                                 $"is currently on break that ends {DiscordHelpers.TimeStamper(breakCooper.User.Account.OnBreakUntil)}, and joined a coop " +
-                                $"({(dbCoop is not null? $"<#{dbCoop.ThreadID}> - `{dbCoop.Name}`" : $"`{breakCooper.Farm.CoopId}`")}) " +
+                                $"({(dbCoop is not null ? $"<#{dbCoop.ThreadID}> - `{dbCoop.Name}`" : $"`{breakCooper.Farm.CoopId}`")}) " +
                                 $"for {(guildContract is not null ? $"<#{guildContract.DiscordChannelId}>" : $"`{breakCooper.Farm.ContractId ?? "???"}`")}";
 
                             var capturedMessage = message;
@@ -161,7 +162,7 @@ namespace EGG9000.Bot.Automated {
                     var cheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.CheaterThread);
                     if(cheaterChannel is not null) {
                         _logger.LogInformation("Handling MER cheaters for {guild}", guild.Name);
-                        var merCheaters = users.Where(ua => 
+                        var merCheaters = users.Where(ua =>
                         ua.Account != null && !ua.Account.MERWarningSent && !ua.Account.MERMarkedClean &&
                         ua.Backup != null && ua.Backup.MER / Math.Log10((int)ua.Backup.NumPrestiges) > adjustedMerThreshold
                         );
@@ -169,7 +170,7 @@ namespace EGG9000.Bot.Automated {
                             if(cancellationToken.IsCancellationRequested)
                                 break;
 
-                            var mer = merCheater.Backup.MER;;
+                            var mer = merCheater.Backup.MER; ;
                             var username = merCheater.Account.Name ?? merCheater.Account.Backup.UserName ?? "Unknown"; if(username == "") username = "Unknown";
                             var message = $"<@{merCheater.User.DiscordId}>{(merCheater.User.EggIncAccounts.Count > 1 ? $" ({username}) " : " ")} may be cheating. MER is higher than expected, at `{mer:n2}`, after `{(int)merCheater.Backup.NumPrestiges}` prestiges.";
 
@@ -203,12 +204,12 @@ namespace EGG9000.Bot.Automated {
                             try {
                                 var capturedUser = discordUser;
                                 _logger.LogInformation("Updating {user} to {newname}", discordUser.Nickname, discordUser.GetCleanName());
-                                await _queue.EnqueueLowAsync<bool>(async () => { await capturedUser.ModifyAsync(x => x.Nickname = capturedUser.GetCleanName()); return true; });
+                                await _queue.EnqueueLowAsync(async () => { await capturedUser.ModifyAsync(x => x.Nickname = capturedUser.GetCleanName()); return true; });
                             } catch(Exception) {
                                 _logger.LogWarning("Unable to change name of {user}", discordUser.GetName());
                             }
                         }
-                        _ = await DiscordHelpers.CheckRoles(_db, guild, discordUser, dbUser, _client, await DiscordHelpers.GetGradeRoles(_client, guild), [..userAccounts], _logger);
+                        _ = await DiscordHelpers.CheckRoles(_db, guild, discordUser, dbUser, _client, await DiscordHelpers.GetGradeRoles(_client, guild), [.. userAccounts], _logger);
                     }
 
                     await PostOverallLeaderboard(guild, users, recentContracts, _db);
@@ -222,12 +223,12 @@ namespace EGG9000.Bot.Automated {
 
         }
 
-        private async Task PostOverallLeaderboard(SocketGuild guild, List<LeaderboardUser> lUsers, List<Contract> recentContracts, ApplicationDbContext _db) {
+        private async Task PostOverallLeaderboard(SocketGuild guild, List<LeaderboardUser> lUsers, List<DBContract> recentContracts, ApplicationDbContext _db) {
             var channel = await _client.GetChannelAsync(GuildChannelType.Leaderboard, guild);
             if(channel == null)
                 return;
 
-            lUsers = lUsers.Where(x => x.Backup != null).ToList();
+            lUsers = [.. lUsers.Where(x => x.Backup != null)];
             var activeUsers = lUsers.Where(x => x.Account.Active && x.DiscordUser != null).ToList();
 
             var dbguild = _db.Guilds.FirstOrDefault(x => x.Id == guild.Id);
@@ -248,7 +249,7 @@ namespace EGG9000.Bot.Automated {
 
             var msgs = (await channel.GetMessagesAsync().FlattenAsync()).ToList();
 
-            msgs = msgs.OrderBy(x => x.CreatedAt).Where(x => x.Author.Id == KnownUsers.Bot).ToList();
+            msgs = [.. msgs.OrderBy(x => x.CreatedAt).Where(x => x.Author.Id == KnownUsers.Bot)];
 
             table1.Add("@@@EMBED");
 
@@ -299,7 +300,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public static List<string> GetTables(List<LeaderboardUser> users, string name) {
-            users = users.OrderByDescending(x => x.Backup.EarningsBonus).Where(x => x.DiscordUser != null).ToList();
+            users = [.. users.OrderByDescending(x => x.Backup.EarningsBonus).Where(x => x.DiscordUser != null)];
             return GetTable(name, users);
         }
 
@@ -329,11 +330,14 @@ namespace EGG9000.Bot.Automated {
         private static List<FixedWidthCell> GetRow(LeaderboardUser x, int i) {
             return [
                 new(i++.ToString()),
-                new(ContractUpdater.Truncate(Regex.Replace(x.DiscordUser.GetCleanName(), @"\p{Cs}", ""), 12)),
+                new(ContractUpdater.Truncate(MyRegex().Replace(x.DiscordUser.GetCleanName(), ""), 12)),
                 new(x.Backup.SoulEggs.ToEggString(), CellAlignment.Right),
                 new(x.Backup.EggsOfProphecy.ToString(), CellAlignment.Right),
                 new(x.Backup.EarningsBonus.ToEggString(), CellAlignment.Right),
             ];
         }
+
+        [GeneratedRegex(@"\p{Cs}")]
+        private static partial Regex MyRegex();
     }
 }

@@ -1,52 +1,51 @@
-﻿using Discord;
+using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
-
 using EGG9000.Bot.Automated;
-using EGG9000.Bot.Helpers;
-using EGG9000.Common.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
-
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
-using static EGG9000.Bot.Helpers.FixedWidthTable;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
+using static EGG9000.Common.Helpers.FixedWidthTable;
 
-namespace EGG9000.Bot.Commands {
-    public class ChasingCommand {
-        [SlashCommand(Description = "Show you players ahead and behind you.", AllowInDMs = true)]
-        public static async Task Chasing(FauxCommand command, [SlashParam] ChasingParameters parameter, ApplicationDbContext db, DiscordSocketClient discord) {
-            await command.DeferAsync();
+namespace EGG9000.Bot.Commands.Informational {
+    public class ChasingModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordSocketClient _client = client;
 
-            var dbUser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == command.User.Id);
+        [SlashCommand("chasing", "Show you players ahead and behind you.")]
+        [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
+        public async Task Chasing([Summary("parameter")] ChasingParameters parameter) {
+            await Context.Interaction.DeferAsync();
+
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{command.User.Id}>.\nAre you registered?"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
             if(dbUser.EggIncAccounts.Count == 1) {
-                var embed = await ChasingStringBuilder(discord, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), db);
-                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; });
+                var embed = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), Db);
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; });
             } else {
                 var builder = new ComponentBuilder();
                 foreach(var account in dbUser.EggIncAccounts) {
-                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"ChasingAccountButton:{account.Id}|{((int)parameter)}|{command.User.Id}");
+                    builder.WithButton($"{account.Backup?.UserName ?? "(No Name)"} {account.Backup?.EarningsBonus.ToEggString()}", customId: $"ChasingAccountButton:{account.Id}|{((int)parameter)}|{Context.User.Id}");
                 }
-                await command.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to chase with."; x.Components = builder.Build(); x.Embed = null; });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = "Please select the account you would like to chase with."; x.Components = builder.Build(); x.Embed = null; });
             }
 
             dbUser.UpdateAccounts();
-            await db.SaveChangesAsync();
+            await Db.SaveChangesAsync();
         }
-        
-        [ComponentCommand]
-        public static async Task ChasingAccountButton(SocketMessageComponent component, DiscordSocketClient _client, [ComponentData] string data, ApplicationDbContext db) {
+
+        [ComponentInteraction("ChasingAccountButton:*", ignoreGroupNames: true)]
+        public async Task ChasingAccountButton(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
 
             var dataObjs = data.Split("|");
             var originalUserId = ulong.Parse(dataObjs[2]);
@@ -61,12 +60,12 @@ namespace EGG9000.Bot.Commands {
 
             if(!component.HasResponded) await component.DeferAsync();
 
-            var dbUser = await db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
+            var dbUser = await Db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
             if(dbUser is null) return;
             var account = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var parameter = (ChasingParameters)int.Parse(dataObjs[1]);
 
-            var embed = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), db);
+            var embed = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), Db);
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = null; });
         }
 
@@ -83,7 +82,7 @@ namespace EGG9000.Bot.Commands {
                 x.Registered,
                 DBUser = x
             }).ToListAsync();
-            
+
             var accounts = rawUsers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new Prefarm.LeaderboardUser {
                 User = x.DBUser,
                 Backup = y.Backup,
@@ -93,26 +92,25 @@ namespace EGG9000.Bot.Commands {
                 SeasonCS = y.Backup?.SeasonCS ?? 0
             })).Where(x => x.DiscordUser != null && x.Backup != null && x.Backup.Farms.Count > 0).ToList();
 
-#if DEV9002
-#else
-            accounts = accounts.Where(x => x.Account.Active).ToList();
-#endif
+            if(!BuildConfig.IsDev9002) {
+                accounts = [.. accounts.Where(x => x.Account.Active)];
+            }
             var unit = "";
             switch(parameter) {
                 case ChasingParameters.EB:
-                    accounts = [..accounts.OrderByDescending(x => x.Backup.EarningsBonus)];
+                    accounts = [.. accounts.OrderByDescending(x => x.Backup.EarningsBonus)];
                     unit = "EB";
                     break;
                 case ChasingParameters.SE:
-                    accounts = [..accounts.OrderByDescending(x => x.Backup.SoulEggs)];
+                    accounts = [.. accounts.OrderByDescending(x => x.Backup.SoulEggs)];
                     unit = "SE";
                     break;
             }
-            
+
             var userIndex = accounts.FindIndex(x => x.Backup.EggIncId == eggIncAccount.Backup.EggIncId);
 
             var stringBuilder = new StringBuilder();
-            
+
             var counter = 0;
             var start = userIndex != accounts.Count - 1 ? userIndex - 3 : userIndex - 4;
 

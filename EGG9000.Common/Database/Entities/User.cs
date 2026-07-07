@@ -1,5 +1,4 @@
-﻿using EGG9000.Bot.Helpers;
-using EGG9000.Common.Helpers;
+﻿using EGG9000.Common.Helpers;
 
 using Ei;
 
@@ -46,20 +45,20 @@ namespace EGG9000.Common.Database.Entities {
         public bool SkipNoArtifacts { get; set; }
         public bool SkipNoPiggyDouble { get; set; }
         [NotMapped]
-        public List<Ei.RewardType> PingForRewards {
+        public List<RewardType> PingForRewards {
             get {
                 if(!SkipNoArtifacts && !SkipNoPE && !SkipNoPiggyDouble) {
-                    return new List<Ei.RewardType> { Ei.RewardType.UnknownReward };
+                    return [RewardType.UnknownReward];
                 }
-                var rewards = new List<Ei.RewardType>();
+                var rewards = new List<RewardType>();
                 if(SkipNoPE)
-                    rewards.Add(Ei.RewardType.EggsOfProphecy);
+                    rewards.Add(RewardType.EggsOfProphecy);
                 if(SkipNoArtifacts) {
-                    rewards.Add(Ei.RewardType.Artifact);
-                    rewards.Add(Ei.RewardType.ArtifactCase);
+                    rewards.Add(RewardType.Artifact);
+                    rewards.Add(RewardType.ArtifactCase);
                 }
                 if(SkipNoPiggyDouble)
-                    rewards.Add(Ei.RewardType.PiggyMultiplier);
+                    rewards.Add(RewardType.PiggyMultiplier);
                 return rewards;
             }
         }
@@ -159,12 +158,12 @@ namespace EGG9000.Common.Database.Entities {
                         try {
                             _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
                         } catch(MessagePackSerializationException) {
-                            _accounts = new List<EggIncAccount>();
+                            _accounts = [];
                             return _accounts;
                         }
-                        bool needsUpdate = false;
+                        var needsUpdate = false;
                         if(_accounts is null) {
-                            _accounts = new List<EggIncAccount>();
+                            _accounts = [];
                             needsUpdate = true;
                         }
 
@@ -180,14 +179,43 @@ namespace EGG9000.Common.Database.Entities {
                         _accounts.ForEach(account => {
                             if(account.RedoLeggacySelection == RedoLeggacyOption.NotSet)
                                 account.RedoLeggacySelection = account.RedoLeggacy ? RedoLeggacyOption.YesAll : RedoLeggacyOption.No;
+                            // Catch LastGrade up from the most-recent backup contract, but only upward.
+                            // A lower-grade contract accepted after PromotionTime is a grade pull (ULTRA
+                            // all-grade coop join), not a demotion, so it must not push LastGrade down.
+                            // Real demotions arrive via the authoritative API grade (UserGrades).
                             var (backupGrade, backupGradeAccepted) = account.Backup?.GetMostRecentContractGrade() ?? (Ei.Contract.Types.PlayerGrade.GradeUnset, DateTimeOffset.MinValue);
-                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade != account.LastGrade && backupGradeAccepted > account.PromotionTime) {
+                            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && backupGrade > account.LastGrade && backupGradeAccepted > account.PromotionTime) {
                                 account.LastGrade = backupGrade;
                                 needsUpdate = true;
                             }
                             //Sync account's Device ID from backup
                             if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
                                 account.DeviceID = account.Backup.DeviceId;
+                            }
+
+                            //One-time migration of the scalar contract-settings keys into the consolidated blob.
+                            if(account.Assignment is null) {
+                                account.Assignment = Contracts.Assignment.AssignmentSettingsMigration.FromLegacyKeys(account);
+                                needsUpdate = true;
+                            } else {
+                                // Heal partial v1 blobs: Seasonal (Key 5) and RewardFilter were added in v2,
+                                // so blobs persisted before then deserialize with these as null.
+                                if(account.Assignment.Seasonal is null) { account.Assignment.Seasonal = new(); needsUpdate = true; }
+                                if(account.Assignment.RewardFilter is null) { account.Assignment.RewardFilter = []; needsUpdate = true; }
+                            }
+                            // One-shot repair (must run after BOTH branches above, or the fresh-migration
+                            // path leaves PE in the legacy key and this fires later, resurrecting PE after
+                            // the user unticked it): the original V2 migration wrongly stripped PE when it
+                            // migrated LeggacyAutoRegisterRewards. Re-add PE only (a full FromLegacyKeys
+                            // rebuild would clobber edits made through the new UI since V2), then remove
+                            // PE from the legacy key so this can never fire again, nothing writes that
+                            // key anymore.
+                            if(account.LeggacyAutoRegisterRewards is { Count: > 0 }
+                                && account.LeggacyAutoRegisterRewards.Contains(RewardType.EggsOfProphecy)) {
+                                if(!account.Assignment.RewardFilter.Contains(RewardType.EggsOfProphecy))
+                                    account.Assignment.RewardFilter.Add(RewardType.EggsOfProphecy);
+                                account.LeggacyAutoRegisterRewards.Remove(RewardType.EggsOfProphecy);
+                                needsUpdate = true;
                             }
                         });
                         if(needsUpdate) {
@@ -196,7 +224,7 @@ namespace EGG9000.Common.Database.Entities {
                     }
                     return _accounts;
                 } catch(MessagePackSerializationException) {
-                    return new List<EggIncAccount>();
+                    return [];
                 } catch(Exception) { throw; }
             }
             set {
@@ -213,8 +241,8 @@ namespace EGG9000.Common.Database.Entities {
             var compressedAccounts = MessagePackSerializer.Serialize(_accounts, lz4Options);
             var changed = compressedAccounts != _contractRegistrationByte;
             _contractRegistrationByte = compressedAccounts;
-            Usernames = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.UserName).ToList());
-            EIDs = string.Join(",", _accounts.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId).ToList());
+            Usernames = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.UserName) ?? []);
+            EIDs = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId) ?? []);
             return changed;
         }
 
@@ -227,12 +255,12 @@ namespace EGG9000.Common.Database.Entities {
 
         public List<UserCoopXref> UserCoopXrefs { get; set; }
 
-        public bool UserMatchesProto(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
+        public bool UserMatchesProto(ContractCoopStatusResponse.Types.ContributionInfo proto) {
             return EggIncAccounts.Any(x => x.Id == proto.UserId);
         }
 
 
-        public void UpdateNameAndId(Ei.ContractCoopStatusResponse.Types.ContributionInfo proto) {
+        public void UpdateNameAndId(ContractCoopStatusResponse.Types.ContributionInfo proto) {
             var eggIncIds = EggIncAccounts;
             var nameId = eggIncIds.First(x => x.Id == proto.UserId);
 
@@ -268,7 +296,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public void RemoveID(string id) {
             var eggIncIds = EggIncAccounts;
-            eggIncIds.RemoveAll(x => x.Id.ToLower() == id.ToLower());
+            eggIncIds.RemoveAll(x => x.Id.Equals(id, StringComparison.CurrentCultureIgnoreCase));
             UpdateAccounts();//Force JSON Update
         }
 
@@ -405,7 +433,15 @@ namespace EGG9000.Common.Database.Entities {
         [Key(40)]
         public string AfxSetsImageHash { get; set; } = "";
         [Key(41)]
-        public List<string> AfxSetsImageUrls { get; set; } = new();
+        public List<string> AfxSetsImageUrls { get; set; } = [];
+        [Key(42)]
+        public SeasonalPeOption SeasonalPeOption { get; set; } = SeasonalPeOption.NotSet;
+        [Key(43)]
+        public double SeasonalPeThreshold { get; set; } = 0;
+        // Consolidated contract-assignment settings. Migrated once from the scalar keys above
+        // (which are retained as a recovery copy). See AssignmentSettingsMigration.
+        [Key(44)]
+        public Contracts.Assignment.AssignmentSettings Assignment { get; set; }
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
                 return UltraGroup;
@@ -434,8 +470,13 @@ namespace EGG9000.Common.Database.Entities {
             // The backup's contract grade beats a possibly-stale LastGrade, but only when that
             // contract was accepted after the last known promotion. Otherwise the promotion is newer
             // than any contract has caught up to, so LastGrade is the truth.
+            // The backup contract grade is only a fallback signal: it may catch LastGrade up when the
+            // player has promoted, but it must never override LastGrade downward. ULTRA players can join
+            // a lower-grade all-grade coop (a grade pull), which leaves a newer lower-grade contract in
+            // the backup that is not a demotion. Real demotions come through the authoritative API grade
+            // (LastGrade, refreshed by UserGrades), not the backup.
             var (backupGrade, accepted) = Backup.GetMostRecentContractGrade();
-            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && accepted > PromotionTime)
+            if(backupGrade != Ei.Contract.Types.PlayerGrade.GradeUnset && accepted > PromotionTime && backupGrade > LastGrade)
                 return backupGrade;
 
             return LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset ? LastGrade : backupGrade;

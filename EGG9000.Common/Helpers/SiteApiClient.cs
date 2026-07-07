@@ -9,11 +9,7 @@ namespace EGG9000.Common.Helpers {
         public static string BaseUrl() {
             var baseUrl = Environment.GetEnvironmentVariable("E9K_SITE_BASEURL");
             if(string.IsNullOrWhiteSpace(baseUrl)) {
-#if RELEASE
-                baseUrl = "https://egg9000.com";
-#else
-                baseUrl = "https://egg9000.dev.sglade.com";
-#endif
+                baseUrl = BuildConfig.IsRelease ? "https://egg9000.com" : "https://egg9000.dev.sglade.com";
             }
             return baseUrl.TrimEnd('/');
         }
