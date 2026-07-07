@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Event = EGG9000.Common.Database.Entities.Event;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
