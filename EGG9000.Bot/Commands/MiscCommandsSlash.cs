@@ -19,12 +19,12 @@ using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
-    public class MiscModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater, ILogger<MiscModule> logger) : Interactions.E9KModuleBase(dbFactory) {
-        private readonly DiscordSocketClient _client = client;
-        private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads = coopStatusUpdaterThreads;
-        private readonly ContractUpdater _contractUpdater = contractUpdater;
-        private readonly ILogger<MiscModule> _logger = logger;
-
+    // EID screenshot recognition is undecided - kept around, dev-only, until we settle on whether
+    // to continue down this path. See HandleTestOCR in MessageHandlerService for the DM-reply handler
+    // this command's prompt matches against. Own module so BuildConfigOnly can gate just this command
+    // (the attribute is class-level; MiscModule's other commands are prod-eligible).
+    [Interactions.BuildConfigOnly(BuildConfiguration.Debug, BuildConfiguration.Dev9001, BuildConfiguration.Dev9002)]
+    public class TestOCRModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
         [SlashCommand("starttestprocess", "Start EID screenshot recognition process.")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task StartTestProcess() {
@@ -41,6 +41,13 @@ namespace EGG9000.Bot.Commands {
                 embed: EmbedSuccess("Please reply (a real Discord Reply - hit the Reply button) to this message with an **uncropped screenshot of your Privacy & Data tab**.")
             );
         }
+    }
+
+    public class MiscModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater, ILogger<MiscModule> logger) : Interactions.E9KModuleBase(dbFactory) {
+        private readonly DiscordSocketClient _client = client;
+        private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads = coopStatusUpdaterThreads;
+        private readonly ContractUpdater _contractUpdater = contractUpdater;
+        private readonly ILogger<MiscModule> _logger = logger;
 
         [SlashCommand("trackeb", "Track your EB since the last time you ran this command")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
