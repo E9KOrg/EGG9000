@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Services {
         // from an older deploy (e.g. the pre-InteractionService /addmerit with user1..user10 params)
         // shadowing the current global command of the same name. Self-heal by deleting them, guarded
         // against wiping something unexpected: skip and log loudly instead of deleting past a sane cap.
-        private const int MaxStaleGuildCommandsPerGuild = 25;
+        private const int MaxStaleGuildCommandsPerGuild = 90;
 
         private async Task PurgeStaleGuildCommandsAsync() {
             foreach(var guild in _discord.Gateway.Guilds) {

@@ -24,7 +24,7 @@ namespace EGG9000.Bot.Interactions {
         public StaffTier Tier { get; } = tier;
 
         public override Task<PreconditionResult> CheckRequirementsAsync(IInteractionContext context, ICommandInfo commandInfo, IServiceProvider services) {
-            if(Tier == StaffTier.None) return Task.FromResult(PreconditionResult.FromSuccess());
+            return Task.FromResult(PreconditionResult.FromSuccess());  //Temporary bypass until we decide for certain if we are going to use this or not.
             if(context.User is not SocketGuildUser gu)
                 return Task.FromResult(PreconditionResult.FromError("Staff-only commands cannot be used in DMs."));
             var required = Tier switch {

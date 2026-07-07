@@ -142,7 +142,7 @@ namespace EGG9000.Bot.Commands {
                 var canBan = banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers);
 
                 try {
-                    var execDiscordUser = (targetUser as SocketGuildUser);
+                    var execDiscordUser = guild.GetUser(targetUser.Id);
                     if(execDiscordUser is null) {
                         if(users.Length > 1) {
                             exceptionList.Add(targetUser.Id);
