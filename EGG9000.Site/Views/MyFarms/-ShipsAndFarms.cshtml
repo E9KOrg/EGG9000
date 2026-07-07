@@ -8,7 +8,7 @@
 @using static EGG9000.Common.Helpers.MissionHelpers;
 @inject DiscordSocketClient DiscordClient
 @inject EGG9000.Site.Services.ArtifactImageRenderer ArtifactRenderer
-@model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<Contract> Contracts, List<DBCustomEgg> CustomEggs)
+@model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<DBContract> Contracts, List<DBCustomEgg> CustomEggs)
 
 @{
     string properCaseAndSuffix(string inputString, int number){

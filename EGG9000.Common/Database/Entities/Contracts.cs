@@ -4,7 +4,8 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EGG9000.Common.Database.Entities {
-    public class Contract {
+    [Table("Contracts")]
+    public class DBContract {
         public string ID { get; set; }  //identifier
         public string Name { get; set; } //name
         public string Description { get; set; } //description

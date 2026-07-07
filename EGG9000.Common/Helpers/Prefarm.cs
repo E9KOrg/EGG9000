@@ -150,7 +150,7 @@ namespace EGG9000.Common.Helpers {
             public bool IsFire;
             public bool IsDoubleFire;
             public double TargetAmount { get; set; }
-            public CoopDetails(Coop coop, Contract contract, uint league, IList<UserWithBackup> backups, List<DBCustomEgg> customEggs, DiscordSocketClient discord, Ei.ContractCoopStatusResponse status = null) {
+            public CoopDetails(Coop coop, DBContract contract, uint league, IList<UserWithBackup> backups, List<DBCustomEgg> customEggs, DiscordSocketClient discord, Ei.ContractCoopStatusResponse status = null) {
                 var coopParticipants = GetCoopParticipants(coop, contract, league, status ?? coop.LastStatusUpdate, backups, customEggs, discord);
                 Coop = coop;
                 SetCoopDetails(coopParticipants, contract, league);
@@ -158,7 +158,7 @@ namespace EGG9000.Common.Helpers {
             public CoopDetails(List<UserFarmDetails> coopParticipants, GuildContract guildContract, uint league) {
                 SetCoopDetails(coopParticipants, guildContract.Contract, league);
             }
-            public void SetCoopDetails(List<UserFarmDetails> coopParticipants, Contract contract, uint league) {
+            public void SetCoopDetails(List<UserFarmDetails> coopParticipants, DBContract contract, uint league) {
                 CoopParticipants = [.. coopParticipants.Where(x => x.DBUser is not null || x.CoopStatus is not null)];
                 TargetAmount = contract.Details.GetGoals((int)league).Last().TargetAmount;
                 if(TargetAmount > 0) {
@@ -385,7 +385,7 @@ namespace EGG9000.Common.Helpers {
             return prefarms;
         }
 
-        public static List<UserFarmDetails> GetCoopParticipants(Coop coop, Contract contract, uint league, Ei.ContractCoopStatusResponse status, IEnumerable<UserWithBackup> backups, List<DBCustomEgg> customEggs, DiscordSocketClient discord) {
+        public static List<UserFarmDetails> GetCoopParticipants(Coop coop, DBContract contract, uint league, Ei.ContractCoopStatusResponse status, IEnumerable<UserWithBackup> backups, List<DBCustomEgg> customEggs, DiscordSocketClient discord) {
             var coopParticipants = new List<UserFarmDetails>();
 
 
@@ -513,7 +513,7 @@ namespace EGG9000.Common.Helpers {
             return coopParticipants;
         }
 
-        public static UserPreFarm BackupToPreFarm(LeaderboardUser user, Contract contract, List<DBCustomEgg> customEggs) {
+        public static UserPreFarm BackupToPreFarm(LeaderboardUser user, DBContract contract, List<DBCustomEgg> customEggs) {
             var farm = user.Backup.Farms?.FirstOrDefault(x => x.ContractId == contract.ID);
             if(farm == null) {
                 if(!user.Backup.EmptyBackup && (user.Backup.ArchivedFarms?.Any(f => f.ContractId == contract.ID) ?? false)) {

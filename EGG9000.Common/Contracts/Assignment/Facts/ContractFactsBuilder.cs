@@ -7,7 +7,7 @@ namespace EGG9000.Common.Contracts.Assignment.Facts {
     public static class ContractFactsBuilder {
         // season is non-null only when the contract belongs to a PE season (mirrors the legacy
         // "contractSeason != null" gate that decides whether seasonal-PE logic runs at all).
-        public static ContractFacts Build(Contract contract, SeasonInfo season) {
+        public static ContractFacts Build(DBContract contract, SeasonInfo season) {
             var details = contract.Details;
             var isColleggtible = details.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(details.CustomEggId);
 

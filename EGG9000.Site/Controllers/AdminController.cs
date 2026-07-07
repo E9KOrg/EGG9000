@@ -31,8 +31,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Ei.Contract.Types;
-using Contract = EGG9000.Common.Database.Entities.Contract;
-using EventCustomization = EGG9000.Common.Database.Entities.EventCustomization;
 
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
@@ -191,10 +189,10 @@ namespace EGG9000.Site.Controllers {
         }
 
         public class IndexViewModel {
-            public List<Contract> Contracts { get; set; }
+            public List<DBContract> Contracts { get; set; }
             public List<GuildDetails> Guilds { get; set; }
             public Dictionary<DateTimeOffset, int[]> Days { get; set; }
-            public List<Contract> ContractsToScore { get; set; }
+            public List<DBContract> ContractsToScore { get; set; }
             public Guild Guild { get; set; }
             public int CoopsWithoutThreads { get; set; }
         }

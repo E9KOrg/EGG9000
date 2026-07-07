@@ -18,7 +18,6 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordExtensions;
-using Contract = EGG9000.Common.Database.Entities.Contract;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts(IServiceProvider provider, Words words, ContractUpdater contractUpdater, BotLogger botLogger) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
@@ -125,7 +124,7 @@ namespace EGG9000.Bot.Automated {
                             contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
                         }
 
-                        contract = new Contract {
+                        contract = new DBContract {
                             ID = contractResponse.Identifier,
                             Created = DateTime.Now,
                             Description = contractResponse.Description,
@@ -207,7 +206,7 @@ namespace EGG9000.Bot.Automated {
                 ContractUpdater.ResetTimeStatic();
         }
 
-        private async Task AddContractChanelsIfNeeded(List<Guild> dbguilds, Contract contract, Ei.Contract contractResponse, ApplicationDbContext _db) {
+        private async Task AddContractChanelsIfNeeded(List<Guild> dbguilds, DBContract contract, Ei.Contract contractResponse, ApplicationDbContext _db) {
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 if(guild is null)
@@ -324,7 +323,7 @@ namespace EGG9000.Bot.Automated {
             await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild, dbguild);
         }
 
-        private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg, Guild dbguild) {
+        private async Task OrganizeAndLaunch(DBContract contract, SocketGuild guild, int skipbg, Guild dbguild) {
             await _botLogger.AddBoardingGroup(skipbg + 1, contract, dbguild);
 
             if(_debug) return;
@@ -363,7 +362,7 @@ namespace EGG9000.Bot.Automated {
             await _botLogger.MarkAssigned(skipbg + 1, contract.ID, dbguild.Id);
         }
 
-        private void CheckUpdateInterval(List<Contract> existingContracts) {
+        private void CheckUpdateInterval(List<DBContract> existingContracts) {
             var dayOfWeek = DateTimeOffset.UtcNow.DayOfWeek;
             TimeSpan newUpdateInterval;
             switch(dayOfWeek) {

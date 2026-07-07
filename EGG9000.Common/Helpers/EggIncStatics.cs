@@ -26,15 +26,15 @@ namespace EGG9000.Common.Helpers {
             _cache.Set(CustomEggsKey, new List<DBCustomEgg>(), TimeSpan.FromSeconds(1));
         }
 
-        public static EggIncEgg GetEggByContract(Contract contract, List<DBCustomEgg> customEggs) {
+        public static EggIncEgg GetEggByContract(DBContract contract, List<DBCustomEgg> customEggs) {
             return GetEggById(contract.Details.Egg, contract, customEggs);
         }
 
-        public static EggIncEgg GetEggById(Ei.Egg egg, Contract contract, List<DBCustomEgg> customEggs) {
+        public static EggIncEgg GetEggById(Ei.Egg egg, DBContract contract, List<DBCustomEgg> customEggs) {
             return GetEggById((int)egg, contract, customEggs);
         }
 
-        public static EggIncEgg GetEggById(int id, Contract contract, List<DBCustomEgg> customEggs) {
+        public static EggIncEgg GetEggById(int id, DBContract contract, List<DBCustomEgg> customEggs) {
             try {
                 if(id == 200) {
                     var customEgg = customEggs?.FirstOrDefault(ce => ce.Identifier == (contract?.Details?.CustomEggId ?? "INVALID"));

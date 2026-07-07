@@ -23,7 +23,7 @@ namespace EGG9000.Common.Helpers {
             return customizations;
         }
 
-        public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, Event customEvent) {
+        public static async Task<EventCustomization> GetCustomizationAsync(this ApplicationDbContext db, Guild dbguild, DBEvent customEvent) {
             return await db.GetCustomizationAsync(dbguild, customEvent.Type);
         }
 
@@ -53,7 +53,7 @@ namespace EGG9000.Common.Helpers {
             return "EventCustomizationCache:" + g.Id.ToString();
         }
 
-        public static async Task<Image> GetEventImageAsync(this ApplicationDbContext db, Event customEvent) {
+        public static async Task<Image> GetEventImageAsync(this ApplicationDbContext db, DBEvent customEvent) {
             var eventKey = $"{customEvent.Type.ToLowerInvariant()}-U:{customEvent.CcOnly}";
             if(!db._cache.TryGetValue(eventKey, out Image image)) {
                 image = await GenerateEventImageAsync(customEvent);
@@ -63,7 +63,7 @@ namespace EGG9000.Common.Helpers {
             return image;
         }
 
-        private static async Task<Image> GenerateEventImageAsync(Event customEvent) {
+        private static async Task<Image> GenerateEventImageAsync(DBEvent customEvent) {
             using var client = new HttpClient();
             client.DefaultRequestHeaders.Add("authenticationKey", SecretsHelper.BotToken);
 

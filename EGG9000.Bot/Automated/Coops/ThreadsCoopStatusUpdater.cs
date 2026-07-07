@@ -1263,7 +1263,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Common.Database.Entities.Contract contract) {
+        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Common.Database.Entities.DBContract contract) {
             var table = new List<List<FixedWidthCell>> {new () {
                 new($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
                 new("Discord", CellAlignment.Center),
