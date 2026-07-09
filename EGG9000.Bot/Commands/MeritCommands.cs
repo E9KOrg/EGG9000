@@ -73,16 +73,9 @@ namespace EGG9000.Bot.Commands {
         [Interactions.StaffOnly(Interactions.StaffTier.ChickenTender)]
         public async Task AddMerit(
             [Summary("reason", "Merit Reason")] string reason,
-            [Summary("users", "Mention one or more users (e.g. @a @b) or paste IDs")] string usersInput) {
+            [ComplexParameter] Interactions.UserSlots userSlots) {
             await Context.Interaction.RespondAsyncGettingMessage("Adding Merits");
-            var users = Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
-            if(users.Length == 0) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs."); });
-                return;
-            }
-            if(missing.Count > 0) {
-                await Context.Interaction.FollowupAsync(embed: EmbedWarning($"Could not resolve: {string.Join(", ", missing.Select(id => $"`{id}`"))}"), ephemeral: true);
-            }
+            var users = userSlots.Users;
             var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
 
             var dbGuild = await Db.Guilds.FirstOrDefaultAsync(x => x.Id == Context.Interaction.GuildId || x.OverflowServersJson.IndexOf(Context.Interaction.GuildId.ToString()) > -1);
