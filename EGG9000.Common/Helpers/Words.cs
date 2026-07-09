@@ -18,9 +18,11 @@ namespace EGG9000.Common.Helpers {
             return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);
         }
 
-        // Excludes words starting with the first word's last letter (avoids mashups like
-        // "BankKite"). Rejection sampling instead of pre-filtering the ~1600-word list on every
-        // coop creation; bounded retries guard the case where no word avoids the excluded letter.
+        // Pick a second word that does not start with the first word's last character (avoids
+        // double-letter mashups like "BankKite"). The old version allocated a full filtered copy of
+        // the ~1600-word list on every coop creation; rejection sampling is allocation-free and the
+        // excluded letter only trims a few percent, so it converges in ~1 try. Bounded retries guard
+        // the degenerate case where the pool somehow lacks any other starting letter.
         public string GetRandomSecondWord(string firstWord) {
             var exclude = char.ToLowerInvariant(firstWord.Last());
             for(var attempt = 0; attempt < 16; attempt++) {

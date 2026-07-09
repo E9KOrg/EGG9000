@@ -120,9 +120,11 @@ namespace EGG9000.Bot.Automated {
                 }
             }
 
+            // Calculate the average score
             var sumScores = scoreSet.Values.Sum();
             var averageScore = sumScores / scoreSet.Where(s => s.Value > 0).Count();
 
+            // Calculate the standard deviation for Z-score calculation
             var sumSquaredDeviations = scoreSet.Values.Sum(score => Math.Pow(score - averageScore, 2));
             var standardDeviation = Math.Sqrt(sumSquaredDeviations / scoreSet.Count);
 

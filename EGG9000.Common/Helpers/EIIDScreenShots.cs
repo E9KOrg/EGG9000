@@ -154,8 +154,10 @@ namespace EGG9000.Common.Helpers {
 
         public static (int yStart, int yEnd) FindEILocation(ImageRowStats[] rows) {
             for(var y = 1; y < rows.Length; y++) {
+                // Find bottom of large mostly red sections
                 if(rows[y].MostlyRedRowCount == 0 && rows[y - 1].MostlyRedRowCount > 40) {
                     for(var y2 = y; y2 < y + 300 && y2 < rows.Length; y2++) {
+                        // Find bottom of large mostly white section close to red section
                         if(rows[y2].MostlyWhiteRowCount == 0 && rows[y2 - 1].MostlyWhiteRowCount > 30) {
                             return (y2 - rows[y2 - 1].MostlyWhiteRowCount, y2 - 1);
                         }
@@ -170,6 +172,7 @@ namespace EGG9000.Common.Helpers {
                 return true;
             if(IsWhite(image[x, y]))
                 return false;
+            // Go out and find the darkest pixel within 5 pixels
             (int x, int y) darkest = (x, y);
             for(var i = 0; i < image.Height / 30; i++) {
                 darkest = FindDarkestNeighbor(image, darkest.x, darkest.y);

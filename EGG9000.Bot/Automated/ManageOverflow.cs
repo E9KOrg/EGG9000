@@ -33,9 +33,11 @@ namespace EGG9000.Bot.Automated {
                 if(!mainServer.HasAllMembers || mainServer.Users.Count == 0) {
                     _logger.LogWarning("Skipping departure handling for {name}: HasAllMembers={hasAll}, likely an incomplete member download", guild.Name, mainServer.HasAllMembers);
                 } else {
-                    // A large chunk missing from the gateway cache can be a missed member-download
-                    // spike rather than a real mass exodus, so each candidate is confirmed with a
-                    // live REST lookup instead of trusting the cache snapshot outright.
+                    // A large chunk missing from the gateway cache is often a spike from a
+                    // missed member-download rather than a real mass exodus, so each candidate
+                    // is confirmed with a live REST lookup (bypasses the gateway cache) instead
+                    // of trusting the cache snapshot outright. This also means real departures
+                    // during an actual mass-exodus event are no longer stuck behind a blanket skip.
                     var confirmedMissing = new List<Guid>();
                     foreach(var candidate in missingFromCache) {
                         var restUser = await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId);
@@ -54,11 +56,13 @@ namespace EGG9000.Bot.Automated {
                     await PurgePendingAssignments(_db, confirmedMissing, guild.Id);
                 }
 
-                // Re-associate any registered user present in this server but whose GuildId is unset.
-                // The gateway cache can be wrong in this direction too (a stale add never evicted by
-                // a missed/delayed remove), so each candidate is confirmed with a live REST lookup
-                // before being written back, same as the departure check above. Covers both
-                // LastGuild-trail returns and no-trail users left with GuildId = 0 by earlier zeroing.
+                // Re-associate any registered user who is present in this server but whose GuildId is unset.
+                // The gateway cache can be wrong in this direction too (a stale add that never got
+                // evicted by a missed/delayed remove), so, same as the departure check above, each
+                // candidate is confirmed with a live REST lookup before being written back, instead of
+                // trusting the cache snapshot on its own. Covers both LastGuild-trail returns and the
+                // no-trail users that earlier zeroing left with GuildId = 0 and no record of their
+                // original guild.
                 var returnCandidates = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).ToList();
                 var confirmedReturned = new List<Guid>();
                 foreach(var candidate in returnCandidates) {
@@ -187,8 +191,9 @@ namespace EGG9000.Bot.Automated {
             return missingCount > threshold;
         }
 
+        // Pending coop assignments (never joined) on still-active coops for users who left the guild.
         // Status range and CoopEnds/PseudoExpired checks mirror CoopAssignmentLookup.RefreshAsync so
-        // this purges exactly what that lookup would otherwise keep resurfacing.
+        // we purge exactly what that lookup would otherwise keep resurfacing.
         public static Expression<Func<UserCoopXref, bool>> PendingAssignmentPurgeFilter(List<Guid> departedUserIds, ulong guildId, DateTimeOffset now) =>
             x => departedUserIds.Contains(x.UserId)
               && !x.JoinedCoop

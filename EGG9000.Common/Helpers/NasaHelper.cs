@@ -19,12 +19,16 @@ using static EGG9000.Common.Helpers.Discord.ChannelHelper;
 namespace EGG9000.Common.Helpers;
 
 public static partial class NasaHelper {
-    // Official NASA API is bugged and hasn't been reliably updated in years; this is a self-hosted
-    // mirror that also removes the need for an API key. To switch back, restore BASE_URL to
-    // "https://api.nasa.gov" and add an api_key param to the Api URL.
+    // # Official NASA API is bugged and hasn't been updated in 14 years.
+    // # It works 85% of the time, but when it goes bad, it goes really bad.
+    // # Also big benefit of running our own instance is, API key is no longer needed.
+    // # If for whatever reason we want to switch back to official NASA API,
+    // # just change the BASE_URL and add api_key param to the Api URL.
+    // public const string BASE_URL = "https://api.nasa.gov";
     private const string BASE_URL = "https://nasa.davidarthurcole.me";
     private const string APOD_ENDPOINT = "/v1/apod/";
     private const string URL_PARAM_STRING = "?thumbs=true&hd=true";
+    // public const string API_KEY = "";
     private const string NasaApiUrl = $"{BASE_URL}{APOD_ENDPOINT}{URL_PARAM_STRING}";
 
 #nullable enable

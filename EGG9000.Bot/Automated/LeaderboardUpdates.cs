@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Automated {
 
                     // GuildId can be stale when a user leaves Discord without being unassigned, which
                     // makes warning loops (MER cheater, break-coop, promotions) ping ex-members. When the
-                    // roster is complete, drop users no longer in guild.Users.
+                    // roster is complete (DownloadUsersAsync above), drop users no longer in guild.Users.
                     var memberIds = guild.HasAllMembers ? guild.Users.Select(u => u.Id).ToHashSet() : null;
                     var users = lUsers
                         .Where(x => x.User.GuildId == guild.Id && (memberIds is null || memberIds.Contains(x.User.DiscordId)))
@@ -160,7 +160,8 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
 
-                    const int adjustedMerThreshold = 12;
+                    //Handle users with suspiciously high Mystical Egg Ratios
+                    const int adjustedMerThreshold = 12; //Pre-determined to be a good threshold.
                     var cheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.CheaterThread);
                     if(cheaterChannel is not null) {
                         _logger.LogInformation("Handling MER cheaters for {guild}", guild.Name);

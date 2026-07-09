@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 namespace EGG9000.Common.Helpers.AfxSets {
     // Sizing + layout config shared between the bot (sender) and site (renderer).
     public class AfxSetsCreatorConfig : IRenderConfig {
+        // Shared default so the bot's set-selection dropdown pages the same way the renderer does.
         public const int DefaultSetsPerPage = 5;
 
         public int AFSize { get; set; }
@@ -50,6 +51,7 @@ namespace EGG9000.Common.Helpers.AfxSets {
     public class AfxSetsAPIObject {
         public string EID { get; set; }
         public AfxSetsCreatorConfig Config { get; set; }
+        // When set, the Site renders only that single (zero-based) page instead of every page.
         public int? Page { get; set; }
     }
 
@@ -70,6 +72,8 @@ namespace EGG9000.Common.Helpers.AfxSets {
     public static class AfxSetsRender {
         private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
+        // Returns one base64 JPEG (no data: header) per page. On failure pages is null and error
+        // holds a short human-readable reason (also logged).
         public static async Task<(List<string> pages, string error)> AfxSetsB64(EggIncAccount account, int? page = null) {
             var posted = new AfxSetsAPIObject { EID = account.Id, Config = new AfxSetsCreatorConfig(100), Page = page };
 

@@ -128,7 +128,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var allTasks = Task.WhenAll(tasks.Select(x => x.task));
                 var completedTask = await Task.WhenAny(allTasks, watchdogTask);
 
-                if(completedTask == watchdogTask) {
+                if(completedTask == watchdogTask) { // Timeout occurred
                     watchdogCancellationSource.Cancel();
                     _logger.LogWarning("Watchdog Task Called");
                 }
@@ -148,6 +148,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 var slashCommands = await guild.GetCachedApplicationCommands();
 
+                //** Get Coop
                 var coop = await _db.Coops.Include(x => x.Contract).Include(x => x.UserCoopsXrefs).FirstOrDefaultAsync(x => x.Id == coopId, cancellationToken);
                 if(coop == null) {
                     _logger.LogWarning("Unable to find co-op with id {coopid}", coopId);
@@ -159,6 +160,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     return false;
                 }
 
+                //** Get Coop Thread
                 IThreadChannel coopThread = guild.ThreadChannels.FirstOrDefault(x => x.Id == coop.ThreadID);
 
                 if(coopThread == null) {
@@ -183,6 +185,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     return false;
                 }
 
+                //Make sure the thread isn't archived before continuing
                 if(coopThread.IsArchived) {
                     try {
                         await _queue.EnqueueLowAsync(async () => { await coopThread.ModifyAsync(t => t.Archived = false); return true; });
@@ -236,6 +239,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     _logger.LogWarning("{coopName} is returning Grade as 0", coopName);
                     return false;
                 } else if(status.SecondsRemaining == coop.Contract.Details.GradeSpecs[(int)coop.League - 1].LengthSeconds) {
+                    //Attempt to fix not started co-op
                     _logger.LogInformation("Attempting to start co-op: {coopName}", coop.Name);
 
                     var joinResponse = await EggIncApi.Post<JoinCoopResponse, JoinCoopRequest>(new JoinCoopRequest {
@@ -287,6 +291,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 _ = CheckForCreator(coop, coopDetails);
 
 
+                //** Verify if people have access to the parent channel
                 var headChannel = coopThread.CategoryId.HasValue ? guild.GetTextChannel(coopThread.CategoryId.Value) : null;
                 if(headChannel is not null) {
                     foreach(var participant in coopDetails.CoopParticipants.Where(x => x.DBUser is not null)) {
@@ -303,6 +308,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
+                //** Handle creation account not being kicked from co-op
                 if(coopDetails.CoopParticipants.Any(x => x.Account?.Id == EggIncApi.UserId) && !coop.FinishedOrFailedOrExpired()) {
                     var success = await EggIncApi.Send(new KickPlayerCoopRequest { Reason = KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = EggIncApi.ClientVersion, ContractIdentifier = coop.ContractID, CoopIdentifier = coop.Name, PlayerIdentifier = EggIncApi.UserId, RequestingUserId = EggIncApi.UserId, Rinfo = EggIncApi.GetInfo(EggIncApi.UserId) }, EggIncApi.UserId);
                     _logger.LogInformation("Attempted to kick co-op creator to free up spot for {co-op}, it returned {status}", coop.Name, success.ToString());
@@ -391,6 +397,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 timings.Set(2);
 
 
+                //Handle User Joining Without Xref
                 var usersWithoutXref = coopDetails.CoopParticipants.Where(x => x.DBUser is not null && x.Xref is null);
                 List<ulong> usersNeedingChannelPermissions = [];
                 foreach(var user in usersWithoutXref) {
@@ -511,7 +518,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
-                // JoinedCoop must already be populated from status before this runs.
+                //** Send Co-op has been created DM (after JoinedCoop is populated from status)
                 foreach(var xref in coop.UserCoopsXrefs) {
                     var user = users.FirstOrDefault(x => x.User.Id == xref.UserId);
                     if(xref.CoopSetting is null && user is not null) {
@@ -574,6 +581,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             var pingsMessage = editPingsInto;
                             var capturedContent = currentContent;
                             _queue.EnqueueLow(() => pingsMessage.ModifyAsync(m => m.Content = capturedContent + " " + string.Join(" ", pingsBatch)));
+                            // Remove pingsPerCycle entries from pingsLeft
                             pingsLeft.RemoveRange(0, Math.Min(pingsPerCycle, pingsLeft.Count));
                         }
                         if(deleteAfter) _queue.EnqueueLow(() => editPingsInto.DeleteAsync());
@@ -590,6 +598,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 }
 
+                //Handle waiting on assigned
                 var missingFromServer = false;
                 timings.Set(5.4);
                 if(usersNotJoined.Count == 0 && coop.Status != CoopStatusEnum.Completed && coop.Status != CoopStatusEnum.Failed && coop.Status != CoopStatusEnum.CompletedAllCheckIn) {
@@ -667,12 +676,14 @@ namespace EGG9000.Bot.Automated.Coops {
                                     // This should always happen so that no matter what, we're only sending one message
                                     userFarmDetails.Xref.OutsideCoop = true;
 
+                                    // Calculate a similarity scoreing to weed out typos
                                     var similarityScoring = LevenshteinRatio(farm.CoopId.ToLower(), coop.Name.ToLower());
                                     if(similarityScoring >= 80) { // Almost certainly a typo
                                         var typoMessage = $"It looks like you may have typo-ed when joining your co-op <#{coop.ThreadID}>.\n\n" +
                                             $"The co-op code is `{coop.Name}`, but your backup shows an entered code of `{farm.CoopId}`.";
                                         await SendDMWarning(_db, discordUser, coopThread, typoMessage, coop);
                                     } else {
+                                        // Check if they used 'another' co-op code (from a different contract, etc.)
                                         var otherContractXref = await _db.UserCoopXrefs
                                             .Include(c => c.Coop)
                                                 .ThenInclude(c => c.Contract)
@@ -698,6 +709,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                         }
                                     }
 
+                                    // And we always want to save the DB
                                     await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                                 }
                             }
@@ -740,6 +752,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     lastMessage += "\nLooks like everyone's shipping and/or habs are full or they haven't joined yet, so gifting chickens isn't useful.\n\n";
                 }
                 timings.Set(5.53);
+                //New commands list, each is a quick-link to start using the command
                 lastMessage += "__Co-op Commands (click to use):__\n";
 
                 timings.Set(5.54);
@@ -769,7 +782,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.CheaterThread,
                             new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{coop.ThreadID}> (`{coop.Name}`)" }
                         );
-                        u.Xref.TimeCheatReported = true;
+                        u.Xref.TimeCheatReported = true; //Set the flag to prevent repetition
                     }
                 }
 
@@ -1037,6 +1050,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         }
                     }
 
+                    //Estimate the time the coop is projected to finish
                     try {
                         coop.ProjectedFinish = DateTimeOffset.UtcNow.AddSeconds(Math.Min(TimeSpan.FromDays(365).TotalSeconds, GetTimeRemainingValue(targetAmount, totalRate, amountWithOffline).TotalSeconds));
                     } catch(ArgumentOutOfRangeException) {
@@ -1137,6 +1151,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             msgs.Insert(0, "@@@EMBED");
 
+            //Reserve up to 5 msgs
             for(var i = msgs.Count; i < (coop.MaxUsers > 40 ? 5 : 4); i++) {
                 msgs.Add("\u17B5");
             }
@@ -1437,7 +1452,8 @@ namespace EGG9000.Bot.Automated.Coops {
             }
 
             if(currentSleep != null) {
-                if(currentSleepStart > currentSleep.SleepStart.AddMinutes(10)) { //10 min buffer for timing jitter
+                if(currentSleepStart > currentSleep.SleepStart.AddMinutes(10)) { //Adding 10 mins to account for weird time stuff
+                                                                                 //No longer sleeping
                     currentSleep.WokeUp = true;
                     currentSleep.TotalHoursEmpty = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours - (currentSleep.Silos > 0 ? currentSleep.Silos : siloTimeHours);
                     currentSleep.Expected = currentSleep.EggsShipped + currentSleep.Silos * currentSleep.Rate;
@@ -1620,7 +1636,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(highestEB2 != null && !usersNotJoined.Any(x => x?.EggIncId == highestEB2.Backup?.EggIncId)) {
                     var notifiedDiscordIds = new HashSet<ulong>();
                     foreach(var user in usersWithStatus.Where(x => x.Xref?.CoopSetting?.PingOnHighestEB ?? false)) {
-                        if(highestEB2.DBUser != null && user.User?.DiscordId == highestEB2.DBUser.DiscordId) continue;
+                        if(highestEB2.DBUser != null && user.User?.DiscordId == highestEB2.DBUser.DiscordId) continue; //Don't ping them if they are the highest EB
                         user.Xref.CoopSetting.PingOnHighestEB = false;
                         user.Xref.UpdateCoopSetting();
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);

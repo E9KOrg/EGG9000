@@ -84,6 +84,7 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
                 if(string.IsNullOrWhiteSpace(size)) return Encode(effect.Value.Target);
                 return $"<span class=\"afx-tip-value\">{Encode(size)}</span> {Encode(effect.Value.Target)}";
             }
+            // No data-backed sentence (e.g. a synthetic combos instance): show just the derived value.
             var derived = DerivedValue(artifact);
             return string.IsNullOrEmpty(derived) ? null : $"<span class=\"afx-tip-value\">{Encode(derived)}</span>";
         }

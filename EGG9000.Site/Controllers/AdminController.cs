@@ -1583,6 +1583,7 @@ music
             var guildId = id ?? GetGuildID();
             if(!VerifyId(guildId)) return NotFound();
 
+            // Generate a cryptographically random 32-byte key, prefix with "egg_".
             var rawBytes = RandomNumberGenerator.GetBytes(32);
             var rawKey = "egg_" + Convert.ToBase64String(rawBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
             var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawKey))).ToLowerInvariant();

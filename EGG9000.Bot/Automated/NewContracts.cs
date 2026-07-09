@@ -71,6 +71,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
+                // If any eggs had their modifiers or icons changed
                 var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && !ce.Equals(e)));
                 if(updatedCustomEggs.Any()) {
                     foreach(var updatedEgg in updatedCustomEggs) {
@@ -87,6 +88,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
+                // If any eggs were previously "un-released" (didn't have a GuildContract in the db)
                 var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.ToLower() == "customegg").ToListAsync(cancellationToken))
                     .Select(x => x.Details.CustomEggId.ToLower()).Distinct();
                 var newlyReleasedEggs = dbCustomEggs.Where(de => !de.Released && dbContractEggs.Contains(de.Identifier.ToLower()));
@@ -278,6 +280,7 @@ namespace EGG9000.Bot.Automated {
                 _db.GuildContracts.Add(guildContract);
                 await _db.SaveChangesAsync();
 
+                //Ping non-ultra members who have "Ping on Ultra contract I don't have" turned on
                 if(contract.cc_only) {
                     var pingableUsers = await _db.DBUsers.Where(x => !x.TempDisabled && x.GuildId == guild.Id).ToListAsync();
                     pingableUsers = [.. pingableUsers.Where(u => u.EggIncAccounts.Any(a => !a.HasActiveSubscription()

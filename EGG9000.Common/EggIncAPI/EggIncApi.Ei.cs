@@ -42,7 +42,9 @@ namespace EGG9000.Common.EggIncAPI {
             return (resp?.Contracts?.Contracts?.Count ?? 0) > 0;
         }
 
-        // Builds the request from the candidate values only, without mutating the live globals.
+        // Validates a candidate version triple by issuing a periodicals call built entirely from the
+        // candidate values, without mutating the live globals. Returns true only on a decodable
+        // response carrying at least one contract. Any failure (rejection, empty, network) returns false.
         public static async Task<bool> ValidateVersionsAsync(uint clientVersion, string appVersion, string appBuild, string userId = PeriodicalsReferenceUserId) {
             try {
                 var request = BuildPeriodicalsRequest(userId, clientVersion);

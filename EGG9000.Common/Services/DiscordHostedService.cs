@@ -63,8 +63,10 @@ namespace EGG9000.Common.Services {
         // REST client, for lookups not available on the socket client
         public DiscordRestClient Rest => _rest;
 
+        // Application emotes - used by NewContracts.cs and FAQCommandSlash.cs
         public Task<IReadOnlyCollection<Emote>> GetApplicationEmotesAsync() => _gateway.GetApplicationEmotesAsync();
 
+        // Async channel lookup by raw ID - used by ContractUpdater.cs and CreateCoopThreads.cs
         public Task<IChannel> GetChannelAsync(ulong id) => (_gateway as IDiscordClient).GetChannelAsync(id);
 
         public DiscordHostedService(Microsoft.Extensions.Configuration.IConfiguration Configuration, IMemoryCache cache, IServiceProvider provider, ILogger<DiscordHostedService> logger) {
@@ -293,6 +295,7 @@ namespace EGG9000.Common.Services {
             var name = $"{contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(league).ToLower()}";
             if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
 
+            //Wait on the Server's lock, timeout defined in DiscordHostedService
             logger.LogInformation("CreateCoopThreadHeaderAsync: Waiting on Semaphore lock for guild {guild}", guild.Name);
             var dtNow = DateTimeOffset.UtcNow;
             var ownershipAcquired = await guild.GetServerSemaphore().WaitAsync(DiscordHostedService.GetSemaphoreTimeout(), CancellationToken.None);

@@ -94,6 +94,7 @@ namespace EGG9000.Common.Database {
 
                 var contractStats = new Dictionary<(ulong, string), ContractStats>();
 
+                // Map a coop's contractId to the friendly name (first matching GuildContract).
                 var nameByContract = guildContracts
                     .GroupBy(g => g.ContractID)
                     .ToDictionary(g => g.Key, g => g.First().Contract?.Name ?? g.Key);

@@ -9,6 +9,7 @@ namespace EGG9000.Common.Database.Entities {
         [Required, MaxLength(64)]
         public string KeyHash { get; set; }
 
+        // Human-readable label set by the admin who created the key.
         [Required, MaxLength(100)]
         public string Label { get; set; }
 

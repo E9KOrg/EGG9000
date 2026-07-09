@@ -116,7 +116,9 @@ namespace EGG9000.Site.Services {
             return new RenderResult { Jpeg = Encode(baseImage), Manifest = manifest };
         }
 
-        // Returns false when the artifact sprite is missing so callers can skip any follow-up drawing for that cell.
+        // Paints one artifact cell (rarity background + artifact, plus stone icons in the corner) and
+        // records its hover target. Returns false when the artifact sprite is missing so callers can skip
+        // any follow-up drawing for that cell.
         private bool PaintCell(Image<Rgba32> baseImage, ArtifactOverlayManifest manifest, EggIncArtifactInstance artifact, int count, int x, int y, int afSize, int padding, int stoneSize, int cornerRadius, bool drawStones) {
             var isFrag = artifact.Artifact.Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
             var afName = artifact.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
@@ -185,6 +187,7 @@ namespace EGG9000.Site.Services {
             };
         }
 
+        // Pixel rect -> percentage-of-image hotspot.
         private static ArtifactHotspot MakeHotspot(int x, int y, int w, int h, ArtifactOverlayManifest manifest, string tip) {
             return new() {
                 X = Round(x * 100.0 / manifest.Width),

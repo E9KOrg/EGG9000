@@ -272,7 +272,7 @@ namespace EGG9000.Common.Database.Entities {
                 update = true;
             }
             if(update) {
-                UpdateAccounts();
+                UpdateAccounts();//Force JSON Update
             }
         }
 
@@ -293,13 +293,13 @@ namespace EGG9000.Common.Database.Entities {
         public void AddName(string Name, CustomBackup backup, string Id = null) {
             var eggIncIds = EggIncAccounts;
             eggIncIds.Add(new EggIncAccount { Id = Id, Backup = backup });
-            UpdateAccounts();
+            UpdateAccounts();//Force JSON Update
         }
 
         public void RemoveID(string id) {
             var eggIncIds = EggIncAccounts;
             eggIncIds.RemoveAll(x => x.Id.Equals(id, StringComparison.CurrentCultureIgnoreCase));
-            UpdateAccounts();
+            UpdateAccounts();//Force JSON Update
         }
 
 

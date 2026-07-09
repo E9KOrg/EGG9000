@@ -28,6 +28,7 @@ namespace EGG9000.Common.Helpers {
                     dimensionColleggtibleEffect[colleggtible.Dimension] *= colleggtible.Value;
                 });
 
+            // Fill in any missing game dimensions (i.e., dimensions without colleggtibles):
             foreach(GameDimension dimension in Enum.GetValues(typeof(GameDimension))) {
                 if(!dimensionColleggtibleEffect.ContainsKey(dimension)) dimensionColleggtibleEffect[dimension] = 1.0;
             }

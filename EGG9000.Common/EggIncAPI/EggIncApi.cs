@@ -81,6 +81,7 @@ namespace EGG9000.Common.EggIncAPI {
         private sealed record EndpointDescriptor(string Path, HeaderProfile Headers, RinfoMode Rinfo, bool SignRequest, bool AuthenticatedResponse);
 
         private static readonly Dictionary<Type, EndpointDescriptor> Endpoints = new() {
+            // Post endpoints (iOS headers, Rinfo carried in the payload)
             [typeof(JoinCoopRequest)] = new("ei/join_coop", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
             [typeof(GetPeriodicalsRequest)] = new("ei/get_periodicals", HeaderProfile.Ios, RinfoMode.WithoutUser, false, true),
             [typeof(ContractsInfoRequest)] = new("ei_ctx/get_contracts_info", HeaderProfile.Ios, RinfoMode.WithUser, true, true),
@@ -88,7 +89,7 @@ namespace EGG9000.Common.EggIncAPI {
             [typeof(UpdateCoopPermissionsRequest)] = new("ei/update_coop_permissions", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
             [typeof(ContractCoopStatusUpdateRequest)] = new("ei/update_coop_status", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
             [typeof(ConfigRequest)] = new("ei/get_config", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
-            // legacy behavior sent no Rinfo in the payload for this endpoint
+            // Send (fire-and-forget) endpoints (Android headers; legacy behavior sent no Rinfo in the payload)
             [typeof(KickPlayerCoopRequest)] = new("ei/kick_player_coop", HeaderProfile.Android, RinfoMode.None, false, false),
         };
 
@@ -160,6 +161,7 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
+        // Wraps HttpClient.PostAsync so every outbound Egg Inc API call is counted for runtime reporting.
         private static Task<HttpResponseMessage> PostCounted(this HttpClient client, string url, HttpContent content) {
             Services.RuntimeMetrics.AddApiCalls();
             return client.PostAsync(url, content);
@@ -169,6 +171,8 @@ namespace EGG9000.Common.EggIncAPI {
             return client.PostAsync(url, content, ct);
         }
 
+        // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
+        // base64-decode the body. Returns null on a non-success status. body may be null.
         private static async Task<byte[]> PostRaw(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
             using var client = NewClient(http2);
             ApplyHeaders(client, profile);
@@ -179,6 +183,8 @@ namespace EGG9000.Common.EggIncAPI {
             return Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
         }
 
+        // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
+        // base64-decode the body. Returns null on a non-success status. body may be null.
         private static async Task<(byte[], string Error)> PostRawWithError(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
             using var client = NewClient(http2);
             ApplyHeaders(client, profile);
@@ -189,6 +195,8 @@ namespace EGG9000.Common.EggIncAPI {
             return (Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken)), null);
         }
 
+        // Builds the base64 form payload: populates Rinfo (or replaces a BasicRequestInfo body with
+        // GetInfo), then signs into an AuthenticatedMessage when the endpoint requires it.
         private static string BuildPayload(IMessage data, string userId, EndpointDescriptor d) {
             byte[] inner;
             if(data is BasicRequestInfo) {
@@ -265,8 +273,9 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
-        // Some backups carry invalid UTF-8 in a string field; retry once through the sanitizer
-        // rather than losing the whole response.
+        // Parse response bytes, retrying once through the UTF-8 sanitizer when the payload carries
+        // invalid UTF-8 in a string field (some backups do). The sanitized retry recovers the backup
+        // with the offending bytes replaced by '?' instead of losing the whole response.
         public static TResponse ParseTolerant<TResponse>(byte[] responseBytes) where TResponse : IMessage<TResponse>, new() {
             var parser = new MessageParser<TResponse>(() => new TResponse());
             try {

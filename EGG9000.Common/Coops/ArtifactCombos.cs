@@ -205,6 +205,7 @@ with(stoneCombo),                         stone
                         } else similarity--;
                     }
                 } else {
+                    //If a matching artifact cannot be found, very hurtful
                     similarity -= 2;
                 }
             }
@@ -213,6 +214,7 @@ with(stoneCombo),                         stone
 
         public static bool CheckSet(ArtifactSet set, bool withTachyon) {
             var hasDeflector = set.Artifacts.Any(x => x.Artifact.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates);
+            // "With Deflector" requires one; "No Deflector" forbids it. Either way the choice is explicit.
             return withTachyon ? hasDeflector : !hasDeflector;
         }
 

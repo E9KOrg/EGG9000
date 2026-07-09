@@ -87,6 +87,7 @@ namespace EGG9000.Common.Helpers {
             _httpClient ??= new() {
                 BaseAddress = new Uri(MennoAPIURL)
             };
+            //Dispose of any junk requests left over, prevent mem leaks
             _httpClient.CancelPendingRequests();
             try {
                 var response = await _httpClient.GetAsync(APIEndpoint);

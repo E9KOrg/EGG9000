@@ -170,6 +170,7 @@ namespace EGG9000.Common.Database.Entities {
         // Title-cased human dimension, e.g. "Egg Value". Shared by the contract-settings embed and the web view.
         public string DimensionName() => GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
 
+        // "+" for a buff (value >= 1), "-" for a debuff.
         public string Sign() => Value < 1 ? "-" : "+";
 
         // Signed percent away from 1.0, e.g. "+15%" / "-5%".
