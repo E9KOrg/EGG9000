@@ -1,8 +1,9 @@
+using Discord;
 using System;
 using System.Diagnostics;
 using System.IO;
 
-namespace Discord {
+namespace EGG9000.Common.Helpers.Discord.ComponentsV2 {
     // ComponentsV2 equivalent of EGG9000.Common.Helpers.Discord.EmbedHelpers - same variants, same
     // Color per variant, so a call site can switch EmbedHelpers.EmbedError(x) for
     // ComponentsV2EmbedHelpers.Error(x) with a matching visual result. Every method here returns an
@@ -12,8 +13,8 @@ namespace Discord {
             new ComponentBuilderV2()
                 .AddComponent(new ContainerBuilder()
                     .WithAccentColor(accent)
-                    .WithSection(text, ThumbnailUrl)
-                    .WithHeader(title))
+                    .WithHeader(title)
+                    .WithSection(text, ThumbnailUrl))
                 .Build();
 
         private const string ThumbnailUrl = "https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp";
@@ -30,14 +31,14 @@ namespace Discord {
 
         public static MessageComponent InternalError(string text) => Framed(Color.Red, "Internal Error", text);
 
-        public static MessageComponent MakeCustom(EGG9000.Common.Helpers.Discord.EmbedHelpers.EmbedType embedType, string title, string text) =>
+        public static MessageComponent MakeCustom(EmbedHelpers.EmbedType embedType, string title, string text) =>
             Framed(embedType switch {
-                EGG9000.Common.Helpers.Discord.EmbedHelpers.EmbedType.Success => Color.Green,
-                EGG9000.Common.Helpers.Discord.EmbedHelpers.EmbedType.InProgress => Color.Blue,
-                EGG9000.Common.Helpers.Discord.EmbedHelpers.EmbedType.Alert => Color.Orange,
-                EGG9000.Common.Helpers.Discord.EmbedHelpers.EmbedType.Warning => Color.LightOrange,
-                EGG9000.Common.Helpers.Discord.EmbedHelpers.EmbedType.Error => Color.Red,
-                EGG9000.Common.Helpers.Discord.EmbedHelpers.EmbedType.InternalError => Color.Red,
+                EmbedHelpers.EmbedType.Success => Color.Green,
+                EmbedHelpers.EmbedType.InProgress => Color.Blue,
+                EmbedHelpers.EmbedType.Alert => Color.Orange,
+                EmbedHelpers.EmbedType.Warning => Color.LightOrange,
+                EmbedHelpers.EmbedType.Error => Color.Red,
+                EmbedHelpers.EmbedType.InternalError => Color.Red,
                 _ => Color.LighterGrey
             }, title, text);
 
