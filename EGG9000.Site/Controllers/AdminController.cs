@@ -1269,6 +1269,7 @@ music
             dbGuild.AllowGuilds = model.AllowGuilds;
             dbGuild.PublicScoreGrid = model.PublicScoreGrid;
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
+            dbGuild.RemoveTestAssignment = model.RemoveTestAssignment;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             dbGuild.AddOutsideCoops = model.AddOutsideCoops;
             dbGuild.MinimumRunningScore = model.MinimumRunningScore;
@@ -1326,6 +1327,7 @@ music
             public bool PublicScoreGrid { get; set; }
             public string CoopNamePrefix { get; set; }
             public bool RemoveFindCoopSpot { get; set; }
+            public bool RemoveTestAssignment { get; set; }
             public bool AddOutsideCoops { get; set; }
             public bool FAQTopicsEnabled { get; set; }
             public int FAQTopicCooldownMinutes { get; set; }

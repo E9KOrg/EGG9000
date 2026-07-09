@@ -148,6 +148,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool PublicScoreGrid { get; set; }
         [GuildConfig("Remove Find Coop Spot", "Toggles", GuildConfigKind.Bool, Description = "Hide Find Coop Spot buttons")]
         public bool RemoveFindCoopSpot { get; set; }
+        [GuildConfig("Remove Test Assignment", "Toggles", GuildConfigKind.Bool, Description = "Hide the Test Assignment button")]
+        public bool RemoveTestAssignment { get; set; }
         [GuildConfig("Show Contract Stats Embeds", "Toggles", GuildConfigKind.Bool, Description = "Show a live co-op stats embed inside each contract channel")]
         public bool ShowContractStatsEmbeds { get; set; }
     }
