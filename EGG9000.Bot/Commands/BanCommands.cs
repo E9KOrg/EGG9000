@@ -102,18 +102,11 @@ namespace EGG9000.Bot.Commands {
         [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
         [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
         public async Task Kick(
-            [Summary("users", "Mention one or more users (e.g. @a @b @c) or paste IDs")] string usersInput,
             [Summary("reason", "reason")] string reason,
+            [ComplexParameter] Interactions.UserSlots userSlots,
             [Summary("banaccount", "banaccount")] bool banaccount = false) {
             await Context.Interaction.DeferAsync();
-            var users = Interactions.UserParams.ParseUsers(usersInput, _client.Gateway, out var missing);
-            if(users.Length == 0) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs."); });
-                return;
-            }
-            if(missing.Count > 0) {
-                await Context.Interaction.FollowupAsync(embed: EmbedWarning($"Could not resolve: {string.Join(", ", missing.Select(id => $"`{id}`"))}"), ephemeral: true);
-            }
+            var users = userSlots.Users;
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
             var dbGuild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == Context.Interaction.GuildId || g.OverflowServersJson.Contains(Context.Interaction.GuildId.ToString()));
 
