@@ -694,7 +694,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                             var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
                                             _queue.EnqueueLow(() => coopThread.SendMessageAsync(message));
                                             var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
-                                            var response = ChannelHelper.DetermineAndSend(_client.Gateway, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
+                                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage }));
                                         }
                                     }
 

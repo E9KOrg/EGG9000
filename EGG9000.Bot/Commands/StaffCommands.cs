@@ -129,7 +129,9 @@ namespace EGG9000.Bot.Commands {
             dbuser.TempDisabled = false;
             await Db.SaveChangesAsync();
 
-            await Context.Interaction.RespondAsyncGettingMessage($"{user.Mention} is enabled.");
+            var responseText = (dbuser.NextBreakExpire is not null && dbuser.NextBreakExpire > DateTimeOffset.Now) ? $" when their break expires {DiscordHelpers.TimeStamper((DateTimeOffset)dbuser.NextBreakExpire, DiscordHelpers.DiscordTimestampFormat.Relative)}" : " from now on.";
+
+            await Context.Interaction.RespondAsyncGettingMessage($"{user.Mention} is enabled and will be assigned to co-ops {responseText}");
         }
     }
 

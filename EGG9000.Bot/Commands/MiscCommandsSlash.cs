@@ -294,12 +294,8 @@ namespace EGG9000.Bot.Commands {
             [Summary("role")] SocketRole role,
             [Summary("timespan")] string timespan,
             [Summary("reason")] string reason,
-            [Summary("users", "Mention one or more users (e.g. @a @b) or paste IDs")] string usersInput) {
-            var users = Interactions.UserParams.ParseGuildUsers(usersInput, Context.Guild as SocketGuild, out var missing);
-            if(users.Length == 0) {
-                await Context.Interaction.RespondAsyncGettingMessage("No valid users parsed from input. Mention users like `@user1 @user2` or paste their IDs.");
-                return;
-            }
+            [ComplexParameter] Interactions.UserSlots userSlots) {
+            var users = userSlots.Users;
             DateTimeOffset expireTime;
             try {
                 expireTime = timespan.AddTimeSpanString(DateTimeOffset.UtcNow);
