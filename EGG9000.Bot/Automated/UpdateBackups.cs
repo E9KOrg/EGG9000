@@ -17,6 +17,8 @@ using System.Threading.Tasks;
 namespace EGG9000.Bot.Automated {
     public class UpdateBackups(IServiceProvider provider) : _UpdaterBase<UpdateBackups>(TimeSpan.FromMinutes(1), delayedStart: TimeSpan.FromMinutes(0), provider) {
 
+        private static readonly DateTimeOffset StableUltraInfoDTO = new(2026,6,11,0,0,0,DateTimeOffset.UtcNow.Offset);
+
         public async override Task Run(object state, CancellationToken cancellationToken) {
 
             var times = new TimingsFactory(_logger).Start();
@@ -29,8 +31,7 @@ namespace EGG9000.Bot.Automated {
 
             var usersToCheck = await _db.DBUsers.Where(x => !x.StaleBackup && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(75).ToListAsync();
             var longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
-            _logger.LogInformation($"Longest backup check ago: {(DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2)}");
-
+            _logger.LogInformation("Longest backup check ago: {offset}", (DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2));
 
             
             var staleUsersToCheck = await _db.DBUsers.Where(x => x.StaleBackup && x.LastBackupCheck < DateTimeOffset.UtcNow.AddDays(-1) && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(5).ToListAsync();
@@ -127,29 +128,31 @@ namespace EGG9000.Bot.Automated {
                     continue;
 
                 if(firstContact?.Backup is null) {
-                    _logger.LogWarning($"No backup from API for {user.DiscordUsername} {account.Name ?? account.Id}: Success={firstContact?.Success}, Error={firstContact?.Error}");
+                    _logger.LogWarning(
+                        "No backup from API for {user} {account}: Success={firstContactSuccess}, Error={firstContactError}",
+                        user.DiscordUsername, account.Name ?? account.Id, firstContact?.Success ?? false, firstContact?.Error?.DefaultIfEmpty()
+                    );
                     continue;
                 }
 
                 await DiscoverUnknownContracts(account.Id, firstContact.Backup, knownContractIds, discoveredContractDefs);
 
                 var oldLevel = account.SubscriptionLevel;
-                var oldEnds = account.SubscriptionEnds;
                 var backup = new CustomBackup(firstContact.Backup, cachedContracts, account.Backup);
 
-                _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
+                _logger.LogTrace("Getting backups for {user} {account}", user.DiscordUsername, account.Name ?? account.Id);
                 if(backup?.Farms is not null) {
 
                     // Backup setter auto-syncs account.SubscriptionLevel and account.SubscriptionEnds
                     account.Backup = backup;
 
-                    // Pre-June-11 game clients soemtimes sent subInfo in backup, sometimes didn't.
+                    // Pre-June-11 game clients sometimes sent subInfo in backup, sometimes didn't.
                     // For older backups fetch from the dedicated endpoint instead.
                     // Newer clients reliably include SubInfo, so trust it as-is 
-                    if(account.Backup.GetLastBackupDateTime() < new DateTimeOffset(2026,6,11,0,0,0,DateTimeOffset.UtcNow.Offset)) {
+                    if(account.Backup.GetLastBackupDateTime() < StableUltraInfoDTO) {
                         var (subscription, subError) = await EggIncApi.GetUserSubscription(backup.EggIncId);
                         if(subscription is null) {
-                            _logger.LogWarning($"Failed to fetch subscription for {user.DiscordUsername} {account.Id}: {subError}");
+                            _logger.LogWarning("Failed to fetch subscription for {user} {id}: {error}", user.DiscordUsername, account.Id, subError);
                         } else {
                             account.SubscriptionLevel = subscription.SubscriptionLevel;
                             account.SubscriptionEnds = subscription.PeriodEnd;
@@ -166,7 +169,7 @@ namespace EGG9000.Bot.Automated {
 
                     // TODO: Track current game version and notify if newer version is available
                 } else {
-                    _logger.LogWarning($"Failed to get backup for {user.DiscordUsername} {account.Name ?? account.Id}");
+                    _logger.LogWarning("Failed to get backup for {user} {account}", user.DiscordUsername, account.Name ?? account.Id);
                 }
                 if(update) {
                     user.UpdateAccounts();
@@ -175,7 +178,7 @@ namespace EGG9000.Bot.Automated {
             }
             var isStale = user.EggIncAccounts.All(x => x.Backup is null || x.Backup.GetLastBackupDateTime() < DateTimeOffset.UtcNow.AddDays(-7));
             if(isStale != user.StaleBackup) {
-                _logger.LogInformation($"User {user.DiscordUsername} backup stale status changed to {isStale}");
+                _logger.LogInformation("User {user} backup stale status changed to {stale}", user.DiscordUsername, isStale);
             }
             user.StaleBackup = isStale;
             user.LastBackupCheck = DateTimeOffset.UtcNow;
