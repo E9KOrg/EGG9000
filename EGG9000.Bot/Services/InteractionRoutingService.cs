@@ -4,6 +4,7 @@ using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord.ComponentsV2;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -13,7 +14,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Services {
     public class InteractionRoutingService(DiscordHostedService discord, InteractionService interactions, IServiceProvider provider, ILogger<InteractionRoutingService> logger, Bugsnag.IClient bugsnag) : IHostedService {
@@ -122,9 +122,9 @@ namespace EGG9000.Bot.Services {
                     _logger.LogWarning("Interaction semaphore limit hit");
                     Failures.Inc();
                     try {
-                        var dropEmbed = EmbedError("The bot is currently overloaded. Please try again in a moment.");
-                        if(interaction.HasResponded) await interaction.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = dropEmbed; });
-                        else await interaction.RespondAsync(text: "", embed: dropEmbed, ephemeral: true);
+                        var dropComponent = ComponentsV2EmbedHelpers.Error("The bot is currently overloaded. Please try again in a moment.");
+                        if(interaction.HasResponded) await interaction.ModifyOriginalResponseAsync(m => { m.Components = dropComponent; m.Flags = MessageFlags.ComponentsV2; });
+                        else await interaction.RespondAsync(components: dropComponent, flags: MessageFlags.ComponentsV2, ephemeral: true);
                     } catch(Exception) { }
                     return;
                 }
@@ -159,18 +159,18 @@ namespace EGG9000.Bot.Services {
             Failures.Inc();
             RuntimeMetrics.AddCommandFailures();
             var interaction = ctx.Interaction;
-            Embed embed;
+            MessageComponent component;
             if(result is ExecuteResult er && er.Exception is not null) {
                 _logger.LogError(er.Exception, "Command {command} failed for {username}", info?.Name, interaction.User?.Username);
                 _bugsnag.Notify(er.Exception);
-                embed = EmbedExceptionFrame(er.Exception);
+                component = ComponentsV2EmbedHelpers.ExceptionFrame(er.Exception);
             } else {
                 _logger.LogWarning("Command {command} failed for {username}: {error} - {reason}", info?.Name, interaction.User?.Username, result.Error, result.ErrorReason);
-                embed = EmbedError(result.ErrorReason ?? "Command could not be completed.");
+                component = ComponentsV2EmbedHelpers.Error(result.ErrorReason ?? "Command could not be completed.");
             }
             try {
-                if(interaction.HasResponded) await interaction.ModifyOriginalResponseAsync(m => { m.Content = ""; m.Embed = embed; });
-                else await interaction.RespondAsync(text: "", embed: embed, ephemeral: true);
+                if(interaction.HasResponded) await interaction.ModifyOriginalResponseAsync(m => { m.Components = component; m.Flags = MessageFlags.ComponentsV2; });
+                else await interaction.RespondAsync(components: component, flags: MessageFlags.ComponentsV2, ephemeral: true);
             } catch(Exception) { }
         }
 
