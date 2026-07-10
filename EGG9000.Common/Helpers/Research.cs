@@ -87,7 +87,7 @@ namespace EGG9000.Common.Helpers {
             return baseValue;
         }
 
-        public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic, Contract contract, List<DBCustomEgg> customEggs) {
+        public static double GetEggValue(CustomFarm farm, List<CustomResearch> epic, DBContract contract, List<DBCustomEgg> customEggs) {
             var baseValue = 0.01;
             try {
                 baseValue = EggIncStatics.GetEggById(farm.EggType, contract, customEggs).value;

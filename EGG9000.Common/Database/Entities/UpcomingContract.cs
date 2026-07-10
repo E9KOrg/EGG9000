@@ -15,7 +15,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool IsLeggacy { get; set; }
         public byte[] _userRegs { get; set; }
         public string ContractId { get; set; }
-        public Contract Contract { get; set; }
+        public DBContract Contract { get; set; }
 
         public ulong ChannelId { get; set; }
         [NotMapped]

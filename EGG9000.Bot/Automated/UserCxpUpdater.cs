@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -20,27 +21,32 @@ namespace EGG9000.Bot.Automated {
             : CronExpression.Parse("0 9 * * MON,WED,FRI");
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
-            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            //Get a list of all users that are a part of a guild
-            var users = BuildConfig.IsDebug
-                ? await _db.DBUsers.AsQueryable().Where(x => x.DiscordId == 273621777119313921).ToListAsync(CancellationToken.None)
-                : await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0).ToListAsync(CancellationToken.None);
+            List<DBUser> users;
+            List<UserCsHistoryEntry> existingScores;
+            using(var lookupScope = _provider.CreateScope()) {
+                var lookupDb = lookupScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                //Get a list of all users that are a part of a guild
+                users = BuildConfig.IsDebug
+                    ? await lookupDb.DBUsers.AsNoTracking().Where(x => x.DiscordId == 273621777119313921).ToListAsync(CancellationToken.None)
+                    : await lookupDb.DBUsers.AsNoTracking().Where(x => x.GuildId > 0).ToListAsync(CancellationToken.None);
+
+                _logger.LogInformation("Getting scores");
+                existingScores = await lookupDb.UserCsHistoryEntries.AsNoTracking().ToListAsync(CancellationToken.None);
+                _logger.LogInformation("Finished Getting scores");
+            }
 
             //Loop through each user in the DB
             var chunkSize = 25;
             var count = 0;
             var userChunks = users.Chunk(chunkSize);
-            var random = new Random();
-            var userIDs = users.SelectMany(x => x.EggIncAccounts.Select(y => y.Id)).OrderBy(x => random.Next()).ToList();
-            _logger.LogInformation("Getting scores");
-            var existingScores = await _db.UserCsHistoryEntries.ToListAsync(CancellationToken.None);
-            _logger.LogInformation("Finished Getting scores");
             foreach(var userchunk in userChunks) {
                 await WaitOnCoopsBeingCreated(cancellationToken);
                 if(cancellationToken.IsCancellationRequested) break;
                 StillAlive();
-                var scoresToAdd = new List<UserCsHistoryEntry>();
+                var scoresToAdd = new ConcurrentBag<UserCsHistoryEntry>();
+                var scoresToUpdate = new ConcurrentBag<(string ContractIdentifier, string CoopIdentifier, string EggIncId, double Cxp)>();
                 var skipped = 0;
+                // Network calls only below - no DB scope held while awaiting EggIncApi.
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = cancellationToken }, async (user, cancellationToken) => {
                     //Loop through each account of the user
                     foreach(var account in user.EggIncAccounts.Where(x => x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
@@ -72,8 +78,7 @@ namespace EGG9000.Bot.Automated {
                                     //If it does, update the score and coop name, and bump Created so a
                                     //changed score (e.g. a later replay observed under the same coop
                                     //identifier) still sorts as the most recent play.
-                                    existingScore.Cxp = score.Evaluation.Cxp;
-                                    existingScore.Created = DateTimeOffset.UtcNow;
+                                    scoresToUpdate.Add((score.Contract.Identifier, coopIdentifier, account.Id, score.Evaluation.Cxp));
                                 }
                             }
                         } catch(Exception ex) {
@@ -82,11 +87,21 @@ namespace EGG9000.Bot.Automated {
                         }
                     }
                 });
-                _db.UserCsHistoryEntries.AddRange(scoresToAdd);
-                await _db.SaveChangesAsync(CancellationToken.None);
+
+                using(var saveScope = _provider.CreateScope()) {
+                    var saveDb = saveScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                    saveDb.UserCsHistoryEntries.AddRange(scoresToAdd);
+                    foreach(var update in scoresToUpdate) {
+                        await saveDb.UserCsHistoryEntries
+                            .Where(x => x.ContractIdentifier == update.ContractIdentifier && x.CoopIdentifier == update.CoopIdentifier && x.EggIncId == update.EggIncId)
+                            .ExecuteUpdateAsync(s => s
+                                .SetProperty(x => x.Cxp, update.Cxp)
+                                .SetProperty(x => x.Created, DateTimeOffset.UtcNow), CancellationToken.None);
+                    }
+                    await saveDb.SaveChangesAsync(CancellationToken.None);
+                }
                 _logger.LogInformation("Saving Changes {count}/{total}, skipped {skipped}", (++count * chunkSize), users.Count, skipped);
             }
-            await _db.SaveChangesAsync(CancellationToken.None);
         }
     }
 }

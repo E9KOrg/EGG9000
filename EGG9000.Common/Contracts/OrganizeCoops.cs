@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.Contracts {
     public static class OrganizeCoops {
-        public static async Task<(List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded)> SortUsersIntoDay1Coops(List<DBUser> users, Contract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbGuild, SeasonInfo contractSeason = null, List<UserSeasonProgress> seasonProgresses = null, SocketGuild guild = null, int overrideNumber = 0) {
+        public static async Task<(List<PotentialCoopGroup> coopGroups, List<(string reason, UserByAccount account)> excluded)> SortUsersIntoDay1Coops(List<DBUser> users, DBContract contract, List<Coop> existingCoops, int SkipBG, List<UserCsHistoryEntry> userCsHistoryEntries, Guild dbGuild, SeasonInfo contractSeason = null, List<UserSeasonProgress> seasonProgresses = null, SocketGuild guild = null, int overrideNumber = 0) {
             var groups = new List<PotentialCoopGroup>();
             var excluded = new List<(string reason, UserByAccount account)>();
 
@@ -157,7 +157,7 @@ namespace EGG9000.Common.Contracts {
         }
 
         // Static helper on OrganizeCoops so both the site controller and the bot can load season data without duplicating the query
-        public static async Task<(SeasonInfo contractSeason, List<UserSeasonProgress> seasonProgresses)> LoadContractSeasonData(ApplicationDbContext db, Contract contract, List<DBUser> users) {
+        public static async Task<(SeasonInfo contractSeason, List<UserSeasonProgress> seasonProgresses)> LoadContractSeasonData(ApplicationDbContext db, DBContract contract, List<DBUser> users) {
             if(string.IsNullOrEmpty(contract.SeasonId)) return (null, []);
             var contractSeason = await db.SeasonInfos.FindAsync(contract.SeasonId);
             if(contractSeason == null) return (null, []);

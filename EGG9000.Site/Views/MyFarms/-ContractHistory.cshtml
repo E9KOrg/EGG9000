@@ -1,6 +1,6 @@
 ﻿@using System.Collections.Frozen
 @using Discord.WebSocket
-@model (CustomBackup backup, bool isAdmin, List<Contract> contracts, List<DBCustomEgg> CustomEggs, DBUser User, Ei.MyContracts scores, int index)
+@model (CustomBackup backup, bool isAdmin, List<DBContract> contracts, List<DBCustomEgg> CustomEggs, DBUser User, Ei.MyContracts scores, int index)
 @inject DiscordSocketClient discordClient
 @{
 	var backup = Model.backup;

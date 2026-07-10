@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -103,6 +104,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("rankup", "Customize this server's rank-up announcements")]
+        [StaffOnly(StaffTier.CluckingCoordinator)]
         public async Task Rankup() {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var g = await LoadGuild(Db, Context.Guild?.Id);

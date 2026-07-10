@@ -846,7 +846,7 @@ namespace EGG9000.Site.Controllers {
         public class CoopModel {
             public Ei.ContractCoopStatusResponse CoopStatus { get; set; }
             public Coop DbCoop { get; set; }
-            public Contract Contract { get; set; }
+            public DBContract Contract { get; set; }
             public List<CoopUserInfo> UserInfos { get; set; }
             public uint League { get; set; }
             public List<GoalDetails> GoalDetails { get; set; }

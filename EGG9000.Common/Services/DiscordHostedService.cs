@@ -292,7 +292,7 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, uint league, Contract contract, ILogger logger) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, uint league, DBContract contract, ILogger logger) {
             if(category is null || category.Id == 0) return null;
 
             var name = $"{contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(league).ToLower()}";
@@ -352,7 +352,7 @@ namespace EGG9000.Common.Services {
             return guild.GetChannel(channel.Id);
         }
 
-        public static async Task DeleteCoopThreadHeadersAsync(this Guild guild, DiscordSocketClient client, Contract contract, ILogger logger) {
+        public static async Task DeleteCoopThreadHeadersAsync(this Guild guild, DiscordSocketClient client, DBContract contract, ILogger logger) {
             List<SocketGuild> guilds = [
                 client.GetGuild(guild.DiscordSeverId),
                 .. guild.OverflowServers.Select(client.GetGuild).ToList()
@@ -408,7 +408,7 @@ namespace EGG9000.Common.Services {
             else return $"</{fixedSlashCommandName}:{command.Id}>";
         }
 
-        public static string GetE9KName(this Contract contract, bool toLower = true) {
+        public static string GetE9KName(this DBContract contract, bool toLower = true) {
             if(contract is null || string.IsNullOrEmpty(contract.Name)) return "unknown-contract";
             return MyRegex1().Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "");
         }

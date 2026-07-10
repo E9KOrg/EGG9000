@@ -200,6 +200,12 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 timings.Set("GetStatus");
 
+                // GetStatus and the EggIncApi calls further below (join/kick retry, creator-still-in
+                // check) are network-only stretches with no _db access in between. Release the pooled
+                // connection for their duration instead of holding it open-but-idle; EF reopens it
+                // lazily on the next _db access (GetCustomEggsAsync below).
+                await _db.Database.CloseConnectionAsync();
+
                 var statusReponse = new StatusResponse();
                 try {
                     statusReponse = await GetStatus(coop, coopThread, cancellationToken);
@@ -369,7 +375,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 foreach(var user in usersWithStatus) {
                     if(user.Backup != null) {
                         var awayTime = Research.GetTotalSiloCapacity(user.Backup);
-                        var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase));
+                        var farm = user.Backup?.Farms?.FirstOrDefault(x => x.CoopId != null && x.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase));
                         if(farm != null) {
                             _bugSnag.Breadcrumbs.Leave($"User: {user.DiscordUser?.Id}, {user.Backup?.EggIncId}");
                             user.FarmStats = farm.WithStats(user.Backup, coop, customEggs, contract: coop.Contract);
@@ -699,7 +705,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                             var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
                                             _queue.EnqueueLow(() => coopThread.SendMessageAsync(message));
                                             var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
-                                            var response = ChannelHelper.DetermineAndSend(_client.Gateway, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage });
+                                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage }));
                                         }
                                     }
 
@@ -1257,7 +1263,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Common.Database.Entities.Contract contract) {
+        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Common.Database.Entities.DBContract contract) {
             var table = new List<List<FixedWidthCell>> {new () {
                 new($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
                 new("Discord", CellAlignment.Center),

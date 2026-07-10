@@ -18,7 +18,6 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordExtensions;
-using Contract = EGG9000.Common.Database.Entities.Contract;
 
 namespace EGG9000.Bot.Automated {
     public class NewContracts(IServiceProvider provider, Words words, ContractUpdater contractUpdater, BotLogger botLogger) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
@@ -40,6 +39,9 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
 
+            // GetPeriodicalsAsync is network-only; release the pooled connection while it's in flight
+            // instead of holding it open-but-idle. EF reopens it lazily on the next _db access below.
+            await _db.Database.CloseConnectionAsync();
             var contractsResponse = await EggIncApi.GetPeriodicalsAsync();
 
             if(contractsResponse == null) {
@@ -87,7 +89,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 // If any eggs were previously "un-released" (didn't have a GuildContract in the db)
-                var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.Equals("customegg", StringComparison.CurrentCultureIgnoreCase)).ToListAsync(cancellationToken))
+                var dbContractEggs = (await _db.Contracts.AsQueryable().Where(c => c.egg.ToLower() == "customegg").ToListAsync(cancellationToken))
                     .Select(x => x.Details.CustomEggId.ToLower()).Distinct();
                 var newlyReleasedEggs = dbCustomEggs.Where(de => !de.Released && dbContractEggs.Contains(de.Identifier.ToLower()));
                 if(newlyReleasedEggs.Any()) {
@@ -122,7 +124,7 @@ namespace EGG9000.Bot.Automated {
                             contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
                         }
 
-                        contract = new Contract {
+                        contract = new DBContract {
                             ID = contractResponse.Identifier,
                             Created = DateTime.Now,
                             Description = contractResponse.Description,
@@ -204,7 +206,7 @@ namespace EGG9000.Bot.Automated {
                 ContractUpdater.ResetTimeStatic();
         }
 
-        private async Task AddContractChanelsIfNeeded(List<Guild> dbguilds, Contract contract, Ei.Contract contractResponse, ApplicationDbContext _db) {
+        private async Task AddContractChanelsIfNeeded(List<Guild> dbguilds, DBContract contract, Ei.Contract contractResponse, ApplicationDbContext _db) {
             foreach(var dbguild in dbguilds) {
                 var guild = _client.Guilds.FirstOrDefault(x => x.Id == dbguild.DiscordSeverId);
                 if(guild is null)
@@ -321,7 +323,7 @@ namespace EGG9000.Bot.Automated {
             await _contractUpdater.UpdateContractChannel(_db, targetGuildContract, guild, dbguild);
         }
 
-        private async Task OrganizeAndLaunch(Contract contract, SocketGuild guild, int skipbg, Guild dbguild) {
+        private async Task OrganizeAndLaunch(DBContract contract, SocketGuild guild, int skipbg, Guild dbguild) {
             await _botLogger.AddBoardingGroup(skipbg + 1, contract, dbguild);
 
             if(_debug) return;
@@ -342,6 +344,9 @@ namespace EGG9000.Bot.Automated {
                 _logger.LogInformation("{guild} BG{bg}, Grade {grade}, Count {count} for Contract {contract}", guild.Name, group.bg, group.Grade, group.PotentialCoops.Count(x => x.Users.Count > 2), contract.Name);
                 var coopsToCreate = group.PotentialCoops.Where(x => x.Users.Count > 1);
 
+                // CreateCoopsV2.Start opens its own short-lived scope per coop; this outer _db is unused
+                // during the parallel batch, so release its pooled connection instead of holding it open.
+                await _db.Database.CloseConnectionAsync();
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
                     try {
                         await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _provider, dbguild, (uint)skipbg + 1, contract.cc_only);
@@ -357,7 +362,7 @@ namespace EGG9000.Bot.Automated {
             await _botLogger.MarkAssigned(skipbg + 1, contract.ID, dbguild.Id);
         }
 
-        private void CheckUpdateInterval(List<Contract> existingContracts) {
+        private void CheckUpdateInterval(List<DBContract> existingContracts) {
             var dayOfWeek = DateTimeOffset.UtcNow.DayOfWeek;
             TimeSpan newUpdateInterval;
             switch(dayOfWeek) {
