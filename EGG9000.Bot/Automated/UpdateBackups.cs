@@ -134,6 +134,7 @@ namespace EGG9000.Bot.Automated {
                 await DiscoverUnknownContracts(account.Id, firstContact.Backup, knownContractIds, discoveredContractDefs);
 
                 var oldLevel = account.SubscriptionLevel;
+                var oldEnds = account.SubscriptionEnds;
                 var backup = new CustomBackup(firstContact.Backup, cachedContracts, account.Backup);
 
                 _logger.LogTrace($"Getting backups for {user.DiscordUsername} {account.Name ?? account.Id}");
@@ -142,8 +143,10 @@ namespace EGG9000.Bot.Automated {
                     // Backup setter auto-syncs account.SubscriptionLevel and account.SubscriptionEnds
                     account.Backup = backup;
 
-                    if(firstContact.Backup.SubInfo is null && account.Backup.GetLastBackupDateTime() > new DateTimeOffset(2026,6,11,0,0,0,DateTimeOffset.UtcNow.Offset)) {
-                        _logger.LogWarning($"No subscription info in backup for {user.DiscordUsername} {account.Id}, fetching from API. Last backup: {account.Backup?.GetLastBackupDateTime()}");
+                    // Pre-June-11 game clients soemtimes sent subInfo in backup, sometimes didn't.
+                    // For older backups fetch from the dedicated endpoint instead.
+                    // Newer clients reliably include SubInfo, so trust it as-is 
+                    if(account.Backup.GetLastBackupDateTime() < new DateTimeOffset(2026,6,11,0,0,0,DateTimeOffset.UtcNow.Offset)) {
                         var (subscription, subError) = await EggIncApi.GetUserSubscription(backup.EggIncId);
                         if(subscription is null) {
                             _logger.LogWarning($"Failed to fetch subscription for {user.DiscordUsername} {account.Id}: {subError}");
