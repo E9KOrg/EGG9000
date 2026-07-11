@@ -292,10 +292,10 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, uint league, DBContract contract, ILogger logger) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, uint league, DBContract contract, ILogger logger, string channelName) {
             if(category is null || category.Id == 0) return null;
 
-            var name = $"{contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(league).ToLower()}";
+            var name = channelName;
             if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
 
             //Wait on the Server's lock, timeout defined in DiscordHostedService

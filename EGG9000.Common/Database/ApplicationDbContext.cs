@@ -107,6 +107,7 @@ namespace EGG9000.Common.Database {
         public DbSet<UserCoopXref> UserCoopXrefs { get; set; }
         public DbSet<UserCoopStatus> UserCoopStatuses { get; set; }
         public DbSet<GuildContract> GuildContracts { get; set; }
+        public DbSet<CoopHeaderChannel> CoopHeaderChannels { get; set; }
         public DbSet<Demerit> Demerit { get; set; }
         public DbSet<Merit> Merit { get; set; }
         public DbSet<DBEvent> Events { get; set; }
@@ -278,6 +279,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<UserSnapShot>().HasKey(x => new { x.UserId, x.Date, x.EggIncID });
             builder.Entity<UserSeasonProgress>().HasKey(x => new { x.EggIncId, x.SeasonId });
             builder.Entity<GuildContract>().HasKey(x => new { x.ContractID, x.GuildID, x.League });
+            builder.Entity<CoopHeaderChannel>().HasKey(x => new { x.GuildId, x.ContractID, x.League, x.ServerId, x.ChannelIndex });
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
             builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
             builder.Entity<DBCustomEgg>().HasKey(x => new { x.Identifier });

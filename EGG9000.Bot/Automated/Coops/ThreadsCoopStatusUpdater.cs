@@ -39,12 +39,17 @@ namespace EGG9000.Bot.Automated.Coops {
         private static readonly TimeSpan interval = BuildConfig.IsDebug ? TimeSpan.FromMinutes(20) : TimeSpan.FromMinutes(15);
         private readonly Dictionary<ulong, SocketTextChannel> _demeritChannels = [];
         private static readonly Random rand = new();
+        private CoopMessageSender _coopMessageSender;
+        private ICoopCreationQueue _coopQueue;
         public class UserX {
             public SocketGuildUser SocketGuildUser { get; set; }
             public Guid DBUserId { get; set; }
         }
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
+            _coopMessageSender ??= _provider.GetRequiredService<CoopMessageSender>();
+            _coopQueue ??= _provider.GetRequiredService<ICoopCreationQueue>();
+
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
 
@@ -1094,7 +1099,9 @@ namespace EGG9000.Bot.Automated.Coops {
                         embedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
                     }
                     timings.Set(9);
-                    await UpdateChannel(msgs, embedBuilder.Build(), coopThread, coop, statusReponse.DiscordMessages);
+                    var headerRow = await _db.CoopHeaderChannels.FirstOrDefaultAsync(x => x.ChannelId == coop.ThreadParentChannel, cancellationToken);
+                    var headerWebhook = headerRow == null ? null : new HeaderChannelWebhook { WebhookId = headerRow.WebhookId, WebhookToken = headerRow.WebhookToken };
+                    await UpdateChannel(msgs, embedBuilder.Build(), coopThread, coop, statusReponse.DiscordMessages, headerWebhook);
                 }
 
 
@@ -1142,7 +1149,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-        private async Task UpdateChannel(List<string> msgs, Embed embed, IThreadChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
+        private async Task UpdateChannel(List<string> msgs, Embed embed, IThreadChannel coopChannel, Coop coop, List<IMessage> existingMessages, HeaderChannelWebhook headerWebhook) {
             var sw = new Stopwatch();
             sw.Restart();
             var times = new List<long>();
@@ -1156,24 +1163,26 @@ namespace EGG9000.Bot.Automated.Coops {
                 msgs.Add("\u17B5");
             }
             if(string.IsNullOrWhiteSpace(coop.UpdateMessagesId)) {
-                var UpdateMessagesID = new List<ulong>();
-                var sentPosts = new List<IUserMessage>();
+                var trackedMessages = new List<TrackedMessage>();
+                var sentPosts = new List<ulong>();
                 foreach(var msg in msgs) {
-                    IUserMessage post;
+                    TrackedMessage tracked;
                     if(msg == "@@@EMBED") {
-                        post = await _queue.EnqueueLowAsync(() => coopChannel.SendMessageAsync(embed: embed));
+                        tracked = await _coopMessageSender.SendAsync(coopChannel, headerWebhook, embed: embed);
                     } else {
-                        var msgCapture = msg;
-                        post = await _queue.EnqueueLowAsync(() => coopChannel.SendMessageAsync(msgCapture));
+                        tracked = await _coopMessageSender.SendAsync(coopChannel, headerWebhook, content: msg);
                     }
-                    UpdateMessagesID.Add(post.Id);
-                    sentPosts.Add(post);
+                    trackedMessages.Add(tracked);
+                    sentPosts.Add(tracked.MessageId);
                 }
-                coop.UpdateMessagesId = JsonConvert.SerializeObject(UpdateMessagesID);
+                coop.UpdateMessagesId = TrackedMessageSerializer.Serialize(trackedMessages);
                 var capturedChannel = coopChannel;
-                var capturedPosts = sentPosts;
-                _queue.EnqueueLow(async () => {
-                    foreach(var p in capturedPosts) await p.PinAsync();
+                var capturedPostIds = sentPosts;
+                _coopQueue.Enqueue(async () => {
+                    foreach(var id in capturedPostIds) {
+                        var m = (IUserMessage)await capturedChannel.GetMessageAsync(id);
+                        if(m != null) await m.PinAsync();
+                    }
                     try {
                         var messages = await capturedChannel.GetMessagesAsync().FlattenAsync();
                         await capturedChannel.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
@@ -1183,42 +1192,71 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 });
             } else {
-                var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId);
-                var NewUpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId);
+                var TrackedMessageIDs = TrackedMessageSerializer.Deserialize(coop.UpdateMessagesId);
+                var NewTrackedMessageIDs = TrackedMessageSerializer.Deserialize(coop.UpdateMessagesId);
 
                 if(coopChannel != null) {
 
                     var pinnedMessages = false;
                     for(var i = 0; i < msgs.Count; i++) {
-                        if(UpdateMessageIDs.Count > i) {
+                        if(TrackedMessageIDs.Count > i) {
                             try {
-                                var post = (RestUserMessage)existingMessages.FirstOrDefault(x => x.Id == UpdateMessageIDs[i]);
+                                var existingTracked = TrackedMessageIDs.ElementAtOrDefault(i);
+                                var post = (RestUserMessage)existingMessages.FirstOrDefault(x => x.Id == (existingTracked?.MessageId ?? 0));
+                                // Pin candidate id: the existing message when we're editing in place,
+                                // or the freshly-sent message's id when there was nothing to edit.
+                                // A brand-new message is never already pinned, unlike post?.IsPinned
+                                // which only tells us about a message we found in existingMessages.
+                                ulong pinCandidateId;
+                                bool needsPin;
                                 if(post == null) {
+                                    TrackedMessage newTracked;
                                     if(msgs[i] == "@@@EMBED") {
-                                        post = (RestUserMessage)await _queue.EnqueueLowAsync(() => coopChannel.SendMessageAsync(embed: embed));
+                                        newTracked = await _coopMessageSender.SendAsync(coopChannel, headerWebhook, embed: embed);
                                     } else {
-                                        var msgCapture = msgs[i];
-                                        post = (RestUserMessage)await _queue.EnqueueLowAsync(() => coopChannel.SendMessageAsync(msgCapture));
+                                        newTracked = await _coopMessageSender.SendAsync(coopChannel, headerWebhook, content: msgs[i]);
                                     }
-                                    NewUpdateMessageIDs.Remove(UpdateMessageIDs[i]);
-                                    NewUpdateMessageIDs.Add(post.Id);
+                                    NewTrackedMessageIDs.RemoveAll(x => x.MessageId == (existingTracked?.MessageId ?? 0));
+                                    NewTrackedMessageIDs.Add(newTracked);
+                                    pinCandidateId = newTracked.MessageId;
+                                    needsPin = true;
                                 } else {
-                                    var postCaptureModify = post;
+                                    var originalTrackedId = existingTracked.MessageId;
+                                    var replaced = false;
                                     if(msgs[i] == "@@@EMBED") {
-                                        _queue.EnqueueLow(() => postCaptureModify.ModifyWithTimeoutAsync(msg => { msg.Embed = embed; msg.Content = null; }));
+                                        var updatedTracked = await _coopMessageSender.EditAsync(coopChannel, existingTracked, headerWebhook, embed: embed);
+                                        if(updatedTracked.MessageId != originalTrackedId) {
+                                            NewTrackedMessageIDs.RemoveAll(x => x.MessageId == originalTrackedId);
+                                            NewTrackedMessageIDs.Add(updatedTracked);
+                                            existingTracked = updatedTracked;
+                                            replaced = true;
+                                        }
                                     } else {
                                         var changes = post.Content.CompareChanges(msgs[i]);
                                         if(changes > 0) {
                                             var msgCapture = msgs[i];
-                                            _queue.EnqueueLow(() => postCaptureModify.ModifyWithTimeoutAsync(msg => msg.Content = msgCapture));
-                                        } else {
+                                            var updatedTracked = await _coopMessageSender.EditAsync(coopChannel, existingTracked, headerWebhook, content: msgCapture);
+                                            if(updatedTracked.MessageId != originalTrackedId) {
+                                                NewTrackedMessageIDs.RemoveAll(x => x.MessageId == originalTrackedId);
+                                                NewTrackedMessageIDs.Add(updatedTracked);
+                                                existingTracked = updatedTracked;
+                                                replaced = true;
+                                            }
                                         }
                                     }
+                                    // A self-healed replacement (dead webhook lane) is a brand-new message,
+                                    // never already pinned, unlike post.IsPinned, which only describes the
+                                    // stale message we just deleted.
+                                    pinCandidateId = replaced ? existingTracked.MessageId : post.Id;
+                                    needsPin = replaced || !post.IsPinned;
                                 }
-                                if(!post.IsPinned) {
+                                if(needsPin) {
                                     try {
-                                        var postCapturePin = post;
-                                        _queue.EnqueueLow(() => postCapturePin.PinAsync());
+                                        var postCapturePinId = pinCandidateId;
+                                        _coopQueue.Enqueue(async () => {
+                                            var m = (IUserMessage)await coopChannel.GetMessageAsync(postCapturePinId);
+                                            if(m != null) await m.PinAsync();
+                                        });
                                         pinnedMessages = true;
                                     } catch(JsonReaderException) {
                                         _logger.LogWarning("JsonReaderException when pinning message in coop {coop}", coop.Name);
@@ -1231,26 +1269,26 @@ namespace EGG9000.Bot.Automated.Coops {
                                 _bugSnag.Notify(e);
                             }
                         } else {
+                            TrackedMessage newTracked;
                             if(msgs[i] == "@@@EMBED") {
-                                var post = await _queue.EnqueueLowAsync(() => coopChannel.SendMessageAsync(embed: embed));
-                                NewUpdateMessageIDs.Add(post.Id);
-                                pinnedMessages = true;
-                                var postCapture = post;
-                                _queue.EnqueueLow(() => postCapture.PinAsync());
+                                newTracked = await _coopMessageSender.SendAsync(coopChannel, headerWebhook, embed: embed);
                             } else {
                                 var msgCapture = msgs[i];
-                                var post = await _queue.EnqueueLowAsync(() => coopChannel.SendMessageAsync(msgCapture));
-                                NewUpdateMessageIDs.Add(post.Id);
-                                pinnedMessages = true;
-                                var postCapture = post;
-                                _queue.EnqueueLow(() => postCapture.PinAsync());
+                                newTracked = await _coopMessageSender.SendAsync(coopChannel, headerWebhook, content: msgCapture);
                             }
+                            NewTrackedMessageIDs.Add(newTracked);
+                            pinnedMessages = true;
+                            var postCapturePinId = newTracked.MessageId;
+                            _coopQueue.Enqueue(async () => {
+                                var m = (IUserMessage)await coopChannel.GetMessageAsync(postCapturePinId);
+                                if(m != null) await m.PinAsync();
+                            });
                         }
 
                     }
                     if(pinnedMessages) {
                         var capturedCoopChannelForDelete = coopChannel;
-                        _queue.EnqueueLow(async () => {
+                        _coopQueue.Enqueue(async () => {
                             try {
                                 var messages = await capturedCoopChannelForDelete.GetMessagesAsync().FlattenAsync();
                                 await capturedCoopChannelForDelete.DeleteMessagesBatchAsync(messages.Where(x => x.Type == MessageType.ChannelPinnedMessage));
@@ -1259,7 +1297,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
 
                 }
-                coop.UpdateMessagesId = JsonConvert.SerializeObject(NewUpdateMessageIDs);
+                coop.UpdateMessagesId = TrackedMessageSerializer.Serialize(NewTrackedMessageIDs);
             }
         }
 
@@ -1342,7 +1380,7 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private static async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop, CancellationToken cancellationToken) {
-            var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
+            var UpdateMessageIDs = TrackedMessageSerializer.Deserialize(coop.UpdateMessagesId).Select(x => x.MessageId).ToList();
 
             IEnumerable<IMessage> discordMessages;
             try {
