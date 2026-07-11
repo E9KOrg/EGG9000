@@ -1,51 +1,28 @@
+using Discord.Interactions;
 using Discord.WebSocket;
 
-using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 namespace EGG9000.Bot.Interactions {
-    public static partial class UserParams {
-        public static SocketGuildUser[] CoalesceGuildUsers(params SocketGuildUser[] users) =>
-            [.. users.Where(u => u is not null)];
-        public static SocketUser[] CoalesceUsers(params SocketUser[] users) =>
-            [.. users.Where(u => u is not null)];
+    // Discord's slash command schema has no array option type, so a real "tag several users"
+    // param has to be several individual User-type options under the hood (each gets Discord's
+    // own full-guild user search, unlike a free-text field which only autocompletes users visible
+    // in the current channel). [ComplexParameter] lets every command declare this once as a single
+    // `[ComplexParameter] UserSlots users` parameter instead of repeating 8 ctor params each time.
+    public class UserSlots {
+        public SocketGuildUser[] Users { get; }
 
-        private static readonly Regex MentionRx = MyRegex();
-
-        // Parses "<@123> <@456> 789" (mentions or raw IDs, separated by anything) into resolved
-        // SocketUser[]. Unknown IDs (not in cache) become null entries in `missing`. Use this to
-        // restore the pre-migration "free-form list of users" UX in a single text option, since
-        // the Discord slash schema has no array option type.
-        public static SocketUser[] ParseUsers(string input, DiscordSocketClient gateway, out List<ulong> missing) {
-            missing = [];
-            if(string.IsNullOrWhiteSpace(input)) return [];
-            var seen = new HashSet<ulong>();
-            var result = new List<SocketUser>();
-            foreach(Match m in MentionRx.Matches(input)) {
-                var raw = m.Groups["id"].Success ? m.Groups["id"].Value : m.Groups["id2"].Value;
-                if(!ulong.TryParse(raw, out var id) || !seen.Add(id)) continue;
-                var u = (SocketUser)gateway.GetUser(id);
-                if(u is null) missing.Add(id); else result.Add(u);
-            }
-            return [.. result];
+        [ComplexParameterCtor]
+        public UserSlots(
+            [Summary("user1")] SocketGuildUser user1,
+            [Summary("user2")] SocketGuildUser user2 = null,
+            [Summary("user3")] SocketGuildUser user3 = null,
+            [Summary("user4")] SocketGuildUser user4 = null,
+            [Summary("user5")] SocketGuildUser user5 = null,
+            [Summary("user6")] SocketGuildUser user6 = null,
+            [Summary("user7")] SocketGuildUser user7 = null,
+            [Summary("user8")] SocketGuildUser user8 = null) {
+            Users = new[] { user1, user2, user3, user4, user5, user6, user7, user8 }.Where(u => u is not null).ToArray();
         }
-
-        public static SocketGuildUser[] ParseGuildUsers(string input, SocketGuild guild, out List<ulong> missing) {
-            missing = [];
-            if(string.IsNullOrWhiteSpace(input) || guild is null) return [];
-            var seen = new HashSet<ulong>();
-            var result = new List<SocketGuildUser>();
-            foreach(Match m in MentionRx.Matches(input)) {
-                var raw = m.Groups["id"].Success ? m.Groups["id"].Value : m.Groups["id2"].Value;
-                if(!ulong.TryParse(raw, out var id) || !seen.Add(id)) continue;
-                var u = guild.GetUser(id);
-                if(u is null) missing.Add(id); else result.Add(u);
-            }
-            return [.. result];
-        }
-
-        [GeneratedRegex(@"<@!?(?<id>\d{15,21})>|\b(?<id2>\d{15,21})\b", RegexOptions.Compiled)]
-        private static partial Regex MyRegex();
     }
 }

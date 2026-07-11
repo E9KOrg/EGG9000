@@ -1,4 +1,5 @@
 using Discord;
+using EGG9000.Common.Helpers.Discord.ComponentsV2;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 

@@ -4,6 +4,7 @@ using Discord.Rest;
 using Discord.WebSocket;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord.ComponentsV2;
 using EGG9000.Common.Services;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

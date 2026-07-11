@@ -1,4 +1,8 @@
+// Because of namespacing rules around extensions, we have to keep this here,
+// but namespace it in Discord.
+#pragma warning disable IDE0130 // Namespace does not match folder structure
 namespace Discord {
+#pragma warning restore IDE0130 // Namespace does not match folder structure
     // Extends Discord.NET's ComponentBuilderV2 and ContainerBuilder with convenience overloads.
     // Discord.NET already provides ComponentContainerExtensions with generic WithTextDisplay,
     // WithSeparator, WithActionRow, WithSection(container, content, accessory, ...) etc - only add
@@ -30,6 +34,7 @@ namespace Discord {
             return container.WithTextDisplay(header);
         }
 
+#nullable enable
         public static T WithSection<T>(this T container, string text, string? thumbnailUrl = null) where T : IComponentContainer {
             var section = new SectionBuilder();
             section.AddComponent(new TextDisplayBuilder(text));
@@ -38,6 +43,7 @@ namespace Discord {
             container.AddComponent(section);
             return container;
         }
+#nullable disable
 
         public static T WithSection<T>(this T container, string text, ButtonBuilder button) where T : IComponentContainer {
             var section = new SectionBuilder();
