@@ -600,14 +600,13 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find contract from input. Please select a choice from the list"); });
                 return;
             }
-            var guildContract = await Db.GuildContracts.FirstAsync(gc => gc.GuildID == Context.Interaction.GuildId && gc.Contract == contract);
+            var dbguild = await Db.Guilds.FirstAsync(x => x.Id == user.GuildId);
+            var guildContract = await Db.GuildContracts.FirstOrDefaultAsync(gc => gc.GuildID == dbguild.Id && gc.Contract == contract);
 
             var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.HasActiveSubscription()).Count();
 
             var existContractXrefs = await Db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
             var activeXrefs = await Db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
-
-            var dbguild = await Db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             if(user.EggIncAccounts.Count == 1 || (contract.cc_only && subscriptionAccountsCount == 1)) {
 
                 EggIncAccount subAccountBypass = null;
