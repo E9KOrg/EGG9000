@@ -1,15 +1,16 @@
 @using EGG9000.Common.Contracts.Assignment
-@using EGG9000.Common.Database.Entities
 @using EGG9000.Common.Helpers
+@using EGG9000.Site.Models.MyFarms
 @using Microsoft.AspNetCore.Html
-@model (EggIncAccount account, int index, bool isSelf)
+@model MyFarms_Partial_ContractSettingsModel
 @{
     var account = Model.account;
     var index = Model.index;
     var isSelf = Model.isSelf;
     var s = account.Assignment ?? new AssignmentSettings();
 
-    var dis = isSelf ? "" : "disabled";
+    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
+    var dis = (isSelf || isAdmin) ? "" : "disabled";
 
     var colleggtibleOn = s.Get(PermanentRewardKind.Colleggtible).Mode == ForceMode.AssignIfMissing;
 
@@ -33,11 +34,19 @@
 }
 
 <div class="contract-settings" data-account-index="@index" data-isself="@(isSelf ? "1" : "0")" style="margin-top:20px;">
-    @if (!isSelf) {
+    @if (!isSelf && !isAdmin) {
         <div class="alert alert-secondary" style="padding:6px 10px;">Read-only: viewing another user's settings.</div>
+    } else if (isAdmin) {
+        <div class="alert alert-secondary" style="padding:6px 10px;">Caution: viewing another user's settings.</div>
     }
     <div class="card" style="margin-top:10px;">
-        <div class="card-header"><b>Assignment Rules</b></div>
+        <div class="card-header"><b>Assignment</b></div>
+        <!-- TODO: Add ability to select BG/UG, set guild. -->
+        <!--if (bgsEnabled) {
+        <div class="card-body">
+
+        </div>
+        }-->
         <div class="card-body">
             <div class="form-group">
                 <div style="font-weight:bold;">Rewards Filter</div>

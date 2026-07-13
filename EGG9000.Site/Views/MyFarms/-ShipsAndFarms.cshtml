@@ -8,7 +8,8 @@
 @using static EGG9000.Common.Helpers.MissionHelpers;
 @inject DiscordSocketClient DiscordClient
 @inject EGG9000.Site.Services.ArtifactImageRenderer ArtifactRenderer
-@model (int Index, CustomBackup Backup,  List<Coop> JoinedCoops, List<DBContract> Contracts, List<DBCustomEgg> CustomEggs)
+@using EGG9000.Site.Models.MyFarms
+@model MyFarms_Partial_ShipsAndFarmsModel
 
 @{
     string properCaseAndSuffix(string inputString, int number){

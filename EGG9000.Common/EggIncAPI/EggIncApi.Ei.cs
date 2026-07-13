@@ -284,7 +284,7 @@ namespace EGG9000.Common.EggIncAPI {
         }
 
 
-        public static async Task<ApiResult<CustomBackup>> GetBackupAsync(string EggIncId, FrozenSet<Ei.Contract> cachedContracts) {
+        public static async Task<ApiResult<CustomBackup>> GetBackupAsync(string EggIncId, FrozenSet<Contract> cachedContracts) {
             var firstContact = await FirstContact(EggIncId);
             if(firstContact.Success) {
                 return new CustomBackup(firstContact.Backup, cachedContracts, null);

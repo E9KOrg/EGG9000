@@ -193,30 +193,40 @@
 	}
 
 	function CreateChart(data) {
+		var isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+		var textColor = isDark ? '#e9ecef' : '#373d3f';
+		var gridColor = isDark ? '#444' : '#e0e0e0';
 		var options = {
 			chart: {
 				type: 'area',
 				stacked: false,
+				background: 'transparent',
 				zoom: {
 					autoScaleYaxis: true
 				}
 			},
+			theme: { mode: isDark ? 'dark' : 'light' },
 			dataLabels: {
 				enabled: false
 			},
 			series: seriesFor(currentScope(), data),
+			grid: { borderColor: gridColor },
+			xaxis: {
+				type: 'datetime',
+				labels: { style: { colors: textColor } }
+			},
 			yaxis: [{
 				seriesName: [COOPS_GLOBAL, COOPS_SERVER],
 				opposite: true,
-				title: { text: "Number of Co-ops" }
+				title: { text: "Number of Co-ops", style: { color: textColor } },
+				labels: { style: { colors: textColor } }
 			}, {
 				seriesName: [USERS_GLOBAL, USERS_SERVER],
-				title: { text: "Number of Active Users" }
+				title: { text: "Number of Active Users", style: { color: textColor } },
+				labels: { style: { colors: textColor } }
 			}],
-			xaxis: {
-				type: 'datetime'
-			},
 			tooltip: {
+				theme: isDark ? 'dark' : 'light',
 				x: {
 					format: 'dd MMM yyyy'
 				}

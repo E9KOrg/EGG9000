@@ -232,7 +232,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 if(coop.League != (uint)status.Grade && status.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset) {
-                    _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Ei.Contract.Types.PlayerGrade)coop.League, status.Grade);
+                    _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Contract.Types.PlayerGrade)coop.League, status.Grade);
                     coop.League = (uint)status.Grade;
                 }
                 if(coop.League == 0) {
@@ -245,7 +245,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var joinResponse = await EggIncApi.Post<JoinCoopResponse, JoinCoopRequest>(new JoinCoopRequest {
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
-                        UserId = coop.CreatorID, ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
+                        UserId = coop.CreatorID, ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Contract.Types.PlayerGrade)coop.League, Platform = Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
                     }, coop.CreatorID, false);
 
 
@@ -979,7 +979,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(lastMessage != "")
                         msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
 
-                    var gradeMessage = $"**Co-op Grade**: {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)coop.League)}{(coop.AnyLeague ? " (<:ultra:1131045418319495369> **Any-Grade**)" : "")}";
+                    var gradeMessage = $"**Co-op Grade**: {PlayerGradeDetails.GetEmoji((Contract.Types.PlayerGrade)(int)coop.League)}{(coop.AnyLeague ? " (<:ultra:1131045418319495369> **Any-Grade**)" : "")}";
 
                     var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                     var highestEBMessage = "";
@@ -991,7 +991,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
                         if(creator != null) {
                             var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
-                            createdByMessage += $"\n**Created By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)account.LastGrade)}";
+                            createdByMessage += $"\n**Created By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Contract.Types.PlayerGrade)(int)account.LastGrade)}";
                         }
                     }
 
@@ -1263,7 +1263,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Common.Database.Entities.DBContract contract) {
+        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, DBContract contract) {
             var table = new List<List<FixedWidthCell>> {new () {
                 new($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
                 new("Discord", CellAlignment.Center),
