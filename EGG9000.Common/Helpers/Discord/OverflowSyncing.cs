@@ -71,11 +71,12 @@ namespace EGG9000.Common.Helpers.Discord {
         /// Sync role memberships for users across main and overflow servers.
         /// </summary>
         private static async Task SyncRoleMembershipsAsync(SocketGuild mainServer, SocketGuild overflowServer, IEnumerable<IRole> rolesToSync, ILogger logger, CancellationToken cancellationToken) {
-            for (var i = 0; i < overflowServer.Users.Count; i++) {
+            var overflowUsers = overflowServer.Users.ToArray();
+            for (var i = 0; i < overflowUsers.Length; i++) {
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                var overflowUser = overflowServer.Users.ElementAt(i);
+                var overflowUser = overflowUsers[i];
                 var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
 
                 if (mainServerUser == null)
@@ -115,7 +116,8 @@ namespace EGG9000.Common.Helpers.Discord {
             if (originalRole?.Guild?.Id == default)
                 return;
 
-            var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            using var scope = provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == originalRole.Guild.Id);
 
             if (guild is null || guild.OverflowServers.Count == 0 || guild.RolesToSync is null || !guild.RolesToSync.Contains(originalRole.Id.ToString()))
@@ -200,10 +202,14 @@ namespace EGG9000.Common.Helpers.Discord {
             foreach(var permission in permissions) {
                 switch(permission.Type) {
                     case 1:
-                        var roleMap = roleMaps.FirstOrDefault(x => x.RoleID == permission.Id);
-                        if(roleMap != null) {
-                            var overflowRoleId = roleMap.Values.FirstOrDefault(x => x.GuildId == overflowServer.Id).RoleId;
-                            mappedPermissions.Add(new CommandPermissionRest { Id = overflowRoleId, Type = permission.Type, Permission = permission.Permission });
+                        if (permission.Id == mainServer.EveryoneRole.Id) {
+                            mappedPermissions.Add(new CommandPermissionRest { Id = overflowServer.EveryoneRole.Id, Type = permission.Type, Permission = permission.Permission });
+                        } else {
+                            var roleMap = roleMaps.FirstOrDefault(x => x.RoleID == permission.Id);
+                            var mapping = roleMap?.Values.FirstOrDefault(x => x.GuildId == overflowServer.Id);
+                            if (mapping is not null && mapping.Value.RoleId != 0) {
+                                mappedPermissions.Add(new CommandPermissionRest { Id = mapping.Value.RoleId, Type = permission.Type, Permission = permission.Permission });
+                            }
                         }
                         break;
                     case 2:
