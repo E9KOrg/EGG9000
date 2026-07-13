@@ -1482,7 +1482,7 @@ music
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
 
             var roleMaps = OverflowSyncing.GetRoleMaps([.. rolesToSync], overflowServers);
-            var output = await OverflowSyncing.HandleCommandPermissionSyncsAsync(guild, mainServer, overflowServers, roleMaps, access_token, _configuration.GetConnectionString("Token"));
+            var output = await OverflowSyncing.HandleCommandPermissionSyncsAsync(_discord, mainServer, overflowServers, roleMaps, access_token);
 
             return Content(output);
         }

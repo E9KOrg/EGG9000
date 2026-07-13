@@ -3,6 +3,8 @@ using Discord.WebSocket;
 
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Services;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -46,7 +48,7 @@ namespace EGG9000.Common.Helpers.Discord {
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                var overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
+                IRole overflowRole = overflowServer.Roles.FirstOrDefault(x => x.Name == role.Name);
                 var syncColors = overflowServer.Features.HasEnhancedRoleColors
                     ? role.Colors
                     : RoleColors.Solid(role.Colors.PrimaryColor);
@@ -150,55 +152,33 @@ namespace EGG9000.Common.Helpers.Discord {
         /// <summary>
         /// Sync application command permissions from the main guild to overflow guilds.
         /// </summary>
-        public static async Task<string> HandleCommandPermissionSyncsAsync(SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, List<RoleMap> roleMaps) {
+        public static async Task<string> HandleCommandPermissionSyncsAsync(DiscordSocketClient client, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, List<RoleMap> roleMaps, string accessToken) {
             var sb = new StringBuilder();
             
-            using var restClient = new DiscordRestApiClient(mainServer as DiscordSocketClient);
+            // Use the client directly instead of trying to extract from the guild
+            using var restClient = new DiscordRestApiClient(client);
 
-            var commands = await mainServer.GetApplicationCommandsAsync();
-            var overflowCommands = (await Task.WhenAll(overflowServers.Select(x => x.GetApplicationCommandsAsync()))).SelectMany(x => x).ToList();
+            var commands = await client.Rest.GetGlobalApplicationCommands();
+            var allPermissions = await restClient.GetApplicationCommandPermissionsAsync(mainServer.Id);
 
-            foreach (var command in commands) {
+            var allOverflowPermissions = overflowServers.Select(x => new { Overflow = x, Permissions =  restClient.GetApplicationCommandPermissionsAsync(x.Id).Result }).ToList();
+
+            foreach(var command in commands) {
                 try {
-                    var permissions = await restClient.GetApplicationCommandPermissionsAsync<GuildApplicationCommandPermissions>(mainServer.Id, command.Id);
-
+                    var permissions = allPermissions.FirstOrDefault(x => x.Id == command.Id);
                     if (permissions?.Permissions is null || permissions.Permissions.Count == 0)
                         continue;
 
                     foreach (var overflowServer in overflowServers) {
-                        var overflowPermissions = new GuildApplicationCommandPermissions {
-                            Permissions = []
-                        };
+                        var currentOverflowPermissions = allOverflowPermissions.FirstOrDefault(x => x.Overflow.Id == overflowServer.Id)?.Permissions.FirstOrDefault(x => x.Id == command.Id)?.Permissions;
+                        
+                        var mappedPermissions = MapPermissionsToOverflow(permissions.Permissions, mainServer, overflowServer, roleMaps);
 
-                        foreach (var p in permissions.Permissions) {
-                            var np = new Permission {
-                                Id = p.Type == 1 && p.Id != mainServer.EveryoneRole.Id.ToString() 
-                                    ? roleMaps.First(y => y.RoleID.ToString() == p.Id)
-                                        .Values.First(y => y.GuildId == overflowServer.Id).RoleId.ToString() 
-                                    : p.Id,
-                                PermissionBool = p.PermissionBool,
-                                Type = p.Type
-                            };
-                            
-                            if (np.Type == 3)
-                                continue;
-                            
-                            overflowPermissions.Permissions.Add(np);
-                        }
-
-                        var overflowCommand = overflowCommands.FirstOrDefault(x => x.Guild.Id == overflowServer.Id && x.Name == command.Name);
-
-                        if (overflowCommand == null) {
-                            sb.AppendLine($"WARNING: Command '{command.Name}' not found in overflow server {overflowServer.Name}");
-                            continue;
-                        }
-
-                        var currentOverflowPermissions = await restClient.GetApplicationCommandPermissionsAsync<GuildApplicationCommandPermissions>(overflowServer.Id, overflowCommand.Id);
-                        var match = PermissionsMatch(overflowPermissions.Permissions, currentOverflowPermissions?.Permissions);
-
+                        var match = PermissionsMatch(mappedPermissions, currentOverflowPermissions);
                         if (!match) {
-                            var payload = new { permissions = overflowPermissions.Permissions };
-                            await restClient.EditApplicationCommandPermissionsAsync<GuildApplicationCommandPermissions>(overflowServer.Id, overflowCommand.Id, payload);
+                            var payload = new { permissions = mappedPermissions };
+                            await restClient.EditApplicationCommandPermissionsAsync(overflowServer.Id, command.Id, payload, accessToken);
+                            await Task.Delay(500); // Small delay to avoid hitting rate limits
                             sb.AppendLine($"✓ Updated permissions for '{command.Name}' in {overflowServer.Name}");
                         } else {
                             sb.AppendLine($"• Skipped permissions for '{command.Name}' in {overflowServer.Name} (unchanged)");
@@ -209,13 +189,35 @@ namespace EGG9000.Common.Helpers.Discord {
                 }
             }
 
-            return sb.ToString();
+            return sb.ToString(); 
+        }
+             
+
+        private static List<CommandPermissionRest> MapPermissionsToOverflow(IReadOnlyCollection<CommandPermissionRest> permissions, SocketGuild mainServer, SocketGuild overflowServer, List<RoleMap> roleMaps) {
+            var mappedPermissions = new List<CommandPermissionRest>();
+            foreach(var permission in permissions) {
+                switch(permission.Type) {
+                    case 1:
+                        var roleMap = roleMaps.FirstOrDefault(x => x.RoleID == permission.Id);
+                        if(roleMap != null) {
+                            var overflowRoleId = roleMap.Values.FirstOrDefault(x => x.GuildId == overflowServer.Id).RoleId;
+                            mappedPermissions.Add(new CommandPermissionRest { Id = overflowRoleId, Type = permission.Type, Permission = permission.Permission });
+                        }
+                        break;
+                    case 2:
+                        mappedPermissions.Add(permission);
+                        break;
+                    case 3:
+                        break;
+                }
+            }
+            return mappedPermissions;
         }
 
         /// <summary>
         /// Compare two permission lists to see if they match.
         /// </summary>
-        private static bool PermissionsMatch(List<Permission> desired, List<Permission> current) {
+        private static bool PermissionsMatch(List<CommandPermissionRest> desired, IReadOnlyCollection<CommandPermissionRest> current) {
             if (desired is null && current is null)
                 return true;
 
@@ -226,7 +228,7 @@ namespace EGG9000.Common.Helpers.Discord {
                 return false;
 
             foreach (var permission in desired) {
-                if (!current.Any(x => x.Id == permission.Id && x.PermissionBool == permission.PermissionBool && x.Type == permission.Type)) {
+                if (!current.Any(x => x.Type == permission.Type && x.Permission == permission.Permission && x.Id == permission.Id)) {
                     return false;
                 }
             }
@@ -256,20 +258,20 @@ namespace EGG9000.Common.Helpers.Discord {
             }
             return roleMaps;
         }
-    }
+    }    //public class Permission {
+    //    public string Id { get; set; }
+    //    public int Type { get; set; }
+    //    public bool PermissionBool { get; set; }
+    //}
 
-    public class Permission {
-        public string Id { get; set; }
-        public int Type { get; set; }
-        public bool PermissionBool { get; set; }
-    }
+    //public class GuildApplicationCommandPermissions {
+    //    public string Id { get; set; }
+    //    public string ApplicationId { get; set; }
+    //    public string GuildId { get; set; }
+    //    public List<Permission> Permissions { get; set; }
+    //}
 
-    public class GuildApplicationCommandPermissions {
-        public string Id { get; set; }
-        public string ApplicationId { get; set; }
-        public string GuildId { get; set; }
-        public List<Permission> Permissions { get; set; }
-    }
+
 
     public class RoleMap {
         public ulong RoleID { get; set; }

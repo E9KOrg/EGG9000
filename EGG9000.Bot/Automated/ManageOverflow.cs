@@ -28,11 +28,18 @@ namespace EGG9000.Bot.Automated {
             await HandleOverflowServers(guilds, cancellationToken);
         }
 
+        public class BasicUserInfo {
+            public ulong DiscordId { get; set; }
+            public ulong GuildId { get; set; }
+            public Guid Id { get; set; }
+            public ulong? LastGuild { get; set; }
+        }
+
         /// <summary>
         /// Track member departures and returns across all guilds using REST lookups for accuracy.
         /// </summary>
         private async Task HandleMemberTracking(ApplicationDbContext db, List<Guild> guilds, CancellationToken cancellationToken) {
-            var users = await db.DBUsers.Select(x => new { x.Id, x.DiscordId, x.GuildId, x.LastGuild }).ToListAsync(CancellationToken.None);
+            var users = await db.DBUsers.Select(x => new BasicUserInfo { DiscordId = x.DiscordId, GuildId = x.GuildId, Id = x.Id, LastGuild = x.LastGuild }).ToListAsync(CancellationToken.None);
             
             foreach (var guild in guilds) {
                 if (cancellationToken.IsCancellationRequested) break;
@@ -57,7 +64,7 @@ namespace EGG9000.Bot.Automated {
         /// <summary>
         /// Handle members who have left the guild.
         /// </summary>
-        private async Task HandleMemberDepartures(ApplicationDbContext db, Guild guild, SocketGuild mainServer, dynamic users, CancellationToken cancellationToken) {
+        private async Task HandleMemberDepartures(ApplicationDbContext db, Guild guild, SocketGuild mainServer, List<BasicUserInfo> users, CancellationToken cancellationToken) {
             var members = users.Where(x => x.GuildId == guild.Id).ToList();
             var missingFromCache = members.Where(x => mainServer.GetUser(x.DiscordId) is null).ToList();
 
@@ -94,7 +101,7 @@ namespace EGG9000.Bot.Automated {
         /// <summary>
         /// Handle members who have returned to the guild.
         /// </summary>
-        private async Task HandleMemberReturns(ApplicationDbContext db, Guild guild, SocketGuild mainServer, dynamic users, CancellationToken cancellationToken) {
+        private async Task HandleMemberReturns(ApplicationDbContext db, Guild guild, SocketGuild mainServer, List<BasicUserInfo> users, CancellationToken cancellationToken) {
             var returnCandidates = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).ToList();
 
             if (returnCandidates.Count == 0)
@@ -170,7 +177,7 @@ namespace EGG9000.Bot.Automated {
                 await OverflowSyncing.HandleRoleSyncsAsync(guild, mainServer, overflowServers, _provider, _logger, cancellationToken);
 
                 // Sync application command permissions
-                await HandleApplicationCommandPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
+                //await HandleApplicationCommandPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
 
                 StillAlive();
             } catch (Exception ex) {
@@ -339,38 +346,39 @@ namespace EGG9000.Bot.Automated {
             await Task.CompletedTask;
         }
 
-        /// <summary>
-        /// Sync application command permissions from main to overflow servers.
-        /// </summary>
-        private async Task HandleApplicationCommandPermissionSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
-            try {
-                if (guild.RolesToSync is null || string.IsNullOrWhiteSpace(guild.RolesToSync)) {
-                    return;
-                }
+        ///// <summary>
+        ///// Sync application command permissions from main to overflow servers.
+        ///// </summary>
+        //private async Task HandleApplicationCommandPermissionSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+        //    try {
+        //        if (guild.RolesToSync is null || string.IsNullOrWhiteSpace(guild.RolesToSync)) {
+        //            return;
+        //        }
 
-                _logger.LogInformation("Syncing application command permissions for {guildName}", guild.Name);
+        //        _logger.LogInformation("Syncing application command permissions for {guildName}", guild.Name);
 
-                var rolesToSync = guild.RolesToSync.Split(",")
-                    .Select(roleIdStr => mainServer.Roles.FirstOrDefault(x => x.Id.ToString() == roleIdStr))
-                    .Where(x => x != null)
-                    .ToList();
+        //        var rolesToSync = guild.RolesToSync.Split(",")
+        //            .Select(roleIdStr =>(IRole)mainServer.Roles.FirstOrDefault(x => x.Id.ToString() == roleIdStr))
+        //            .Where(x => x != null)
+        //            .ToList();
 
-                if (rolesToSync.Count == 0) {
-                    _logger.LogWarning("No roles found to sync for {guildName}", guild.Name);
-                    return;
-                }
+        //        if (rolesToSync.Count == 0) {
+        //            _logger.LogWarning("No roles found to sync for {guildName}", guild.Name);
+        //            return;
+        //        }
 
-                var roleMaps = OverflowSyncing.GetRoleMaps(rolesToSync, overflowServers);
-                var syncResult = await OverflowSyncing.HandleCommandPermissionSyncsAsync(mainServer, overflowServers, roleMaps);
+        //        var roleMaps = OverflowSyncing.GetRoleMaps(rolesToSync, overflowServers);
+        //        // Pass the client to the syncing method
+        //        var syncResult = await OverflowSyncing.HandleCommandPermissionSyncsAsync(_client.Gateway, mainServer, overflowServers, roleMaps);
 
-                if (!string.IsNullOrEmpty(syncResult)) {
-                    _logger.LogInformation("Command permission sync result:\n{result}", syncResult);
-                }
+        //        if (!string.IsNullOrEmpty(syncResult)) {
+        //            _logger.LogInformation("Command permission sync result:\n{result}", syncResult);
+        //        }
 
-                StillAlive();
-            } catch (Exception ex) {
-                _logger.LogError(ex, "Error syncing application command permissions for {guildName}", guild.Name);
-            }
-        }
+        //        StillAlive();
+        //    } catch (Exception ex) {
+        //        _logger.LogError(ex, "Error syncing application command permissions for {guildName}", guild.Name);
+        //    }
+        //}
     }
 }

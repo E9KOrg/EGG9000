@@ -21,6 +21,10 @@
 		@if (Model.Guild.FAQTopicsEnabled) {
 			<a href="/admin/faqcustomization" class="btn btn-primary">Customize FAQ Topics</a>
 		}
+		@if (Model.Guild.Id == 656455567858073601 && (User.IsInRole("Admin") || User.IsInRole("GuildAdmin"))) {
+			<a href="/admin/sync" class="btn btn-primary">Sync Overflow Command Permissions</a>
+
+        }
 	</div>
 }
 @if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
