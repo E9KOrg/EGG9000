@@ -566,6 +566,11 @@ namespace EGG9000.Site.Controllers {
             if(guild == null) return StatusCode(503);
             await guild.DownloadUsersAsync();
             var leaderboard = await _getLeaderboard(guildId);
+
+            var membersOfGuildOnly = User.Claims.FirstOrDefault(x => x.Type == "MembersOfGuildOnly")?.Value;
+            if(!string.IsNullOrWhiteSpace(membersOfGuildOnly))
+                leaderboard = [.. leaderboard.Where(x => string.Equals(x.Account?.Guild?.Trim(), membersOfGuildOnly.Trim(), StringComparison.OrdinalIgnoreCase))];
+
             var result = leaderboard.Select(x => new LeaderboardApiItem {
                 DiscordName = x.DisplayName,
                 DiscordId = x.DisplayDiscordId,

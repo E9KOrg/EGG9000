@@ -1580,7 +1580,7 @@ music
         [Authorize(Roles = "Admin,GuildAdmin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateApiKey([FromForm] ulong? id, [FromForm] string label, [FromForm] string expiresAt) {
+        public async Task<IActionResult> CreateApiKey([FromForm] ulong? id, [FromForm] string label, [FromForm] string expiresAt, [FromForm] string membersOfGuildOnly) {
             var guildId = id ?? GetGuildID();
             if(!VerifyId(guildId)) return NotFound();
 
@@ -1600,7 +1600,8 @@ music
                 GuildId = guildId,
                 CreatedAt = DateTimeOffset.UtcNow,
                 ExpiresAt = expires,
-                Revoked = false
+                Revoked = false,
+                MembersOfGuildOnly = string.IsNullOrWhiteSpace(membersOfGuildOnly) ? null : membersOfGuildOnly.Trim()
             });
             await _db.SaveChangesAsync();
 
@@ -1618,6 +1619,19 @@ music
             var key = await _db.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.GuildId == resolvedGuildId);
             if(key == null) return NotFound();
             key.Revoked = true;
+            await _db.SaveChangesAsync();
+            return RedirectToAction("ApiKeys", new { id = resolvedGuildId });
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateApiKeyGuildFilter([FromForm] Guid id, [FromForm] ulong? guildId, [FromForm] string membersOfGuildOnly) {
+            var resolvedGuildId = guildId ?? GetGuildID();
+            if(!VerifyId(resolvedGuildId)) return NotFound();
+            var key = await _db.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.GuildId == resolvedGuildId);
+            if(key == null) return NotFound();
+            key.MembersOfGuildOnly = string.IsNullOrWhiteSpace(membersOfGuildOnly) ? null : membersOfGuildOnly.Trim();
             await _db.SaveChangesAsync();
             return RedirectToAction("ApiKeys", new { id = resolvedGuildId });
         }
