@@ -2,18 +2,19 @@ using EGG9000.Common.Helpers;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using System.Collections.Generic;
-
 namespace EGG9000.Test {
     [TestClass]
     public class CoopMessageSenderLaneTests {
-        private static readonly bool[] expected = [false, true, false, true, false, true];
         [TestMethod]
-        public void Lane_alternates_bot_then_webhook() {
-            var sender = new CoopMessageSender(null, null, null);
-            var results = new List<bool>();
-            for(var i = 0; i < 6; i++) results.Add(sender.NextLaneIsWebhook());
-            CollectionAssert.AreEqual(expected, results);
+        public void Lane_is_stable_for_the_same_thread_across_calls() {
+            Assert.AreEqual(CoopMessageSender.IsWebhookLane(1001ul), CoopMessageSender.IsWebhookLane(1001ul));
+            Assert.AreEqual(CoopMessageSender.IsWebhookLane(1000ul), CoopMessageSender.IsWebhookLane(1000ul));
+        }
+
+        [TestMethod]
+        public void Lane_is_keyed_by_thread_id_parity() {
+            Assert.IsFalse(CoopMessageSender.IsWebhookLane(1000ul));
+            Assert.IsTrue(CoopMessageSender.IsWebhookLane(1001ul));
         }
     }
 }

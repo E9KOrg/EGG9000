@@ -144,7 +144,10 @@ namespace EGG9000.Common.Services {
                             var last = _workers[^1];
                             _workers.RemoveAt(_workers.Count - 1);
                             last.Cts.Cancel();
-                            last.Cts.Dispose();
+                            // Don't dispose until the worker's current operation actually finishes - most
+                            // awaited Discord.Net calls won't observe this token mid-flight, so disposing
+                            // right away would ObjectDisposedException the worker on its next loop check.
+                            _ = last.Task.ContinueWith(_ => last.Cts.Dispose(), TaskScheduler.Default);
                             _logger.LogInformation("CoopCreationQueue scaled DOWN to {count} workers (depth={depth})", _workers.Count, depth);
                         }
                     } finally {

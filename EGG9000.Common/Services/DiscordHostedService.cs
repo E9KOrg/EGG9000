@@ -292,10 +292,10 @@ namespace EGG9000.Common.Services {
             return guild.GetInUseThreads(parentChannel).Count;
         }
 
-        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, uint league, DBContract contract, ILogger logger, string channelName) {
+        public static async Task<SocketGuildChannel> CreateCoopThreadHeaderAsync(this SocketGuild guild, SocketRole leagueRole, List<SocketRole> ultraRoles, Embed contractEmbed, SocketGuildChannel category, uint league, DBContract contract, ILogger logger, int channelIndex) {
             if(category is null || category.Id == 0) return null;
 
-            var name = channelName;
+            var name = contract.GetHeaderChannelName(league, channelIndex);
             if(guild.Channels.Any(c => c.Name == name)) return guild.Channels.First(c => c.Name == name);
 
             //Wait on the Server's lock, timeout defined in DiscordHostedService
@@ -411,6 +411,15 @@ namespace EGG9000.Common.Services {
         public static string GetE9KName(this DBContract contract, bool toLower = true) {
             if(contract is null || string.IsNullOrEmpty(contract.Name)) return "unknown-contract";
             return MyRegex1().Replace((toLower ? contract.Name.ToLower() : contract.Name).Split(":").Last().Trim().Replace(" ", "-"), "");
+        }
+
+        // Single source of truth for header channel names - CreateCoopThreads.cs and
+        // CreateCoopThreadHeaderAsync both call this instead of building the string
+        // independently, so the "does this channel already exist" check and the
+        // channel actually created can never mis-reference each other by name.
+        public static string GetHeaderChannelName(this DBContract contract, uint league, int channelIndex) {
+            var baseName = $"{contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(league).ToLower()}";
+            return channelIndex == 0 ? baseName : $"{baseName}-{channelIndex + 1}";
         }
 
         public static async Task<SocketTextChannel> GetParentChannelAsync(this IThreadChannel threadChannel) {
