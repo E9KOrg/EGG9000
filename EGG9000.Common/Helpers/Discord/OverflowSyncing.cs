@@ -71,11 +71,12 @@ namespace EGG9000.Common.Helpers.Discord {
         /// Sync role memberships for users across main and overflow servers.
         /// </summary>
         private static async Task SyncRoleMembershipsAsync(SocketGuild mainServer, SocketGuild overflowServer, IEnumerable<IRole> rolesToSync, ILogger logger, CancellationToken cancellationToken) {
-            for (var i = 0; i < overflowServer.Users.Count; i++) {
+            var overflowUsers = overflowServer.Users.ToArray();
+            for (var i = 0; i < overflowUsers.Length; i++) {
                 if (cancellationToken.IsCancellationRequested)
                     break;
 
-                var overflowUser = overflowServer.Users.ElementAt(i);
+                var overflowUser = overflowUsers[i];
                 var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
 
                 if (mainServerUser == null)
