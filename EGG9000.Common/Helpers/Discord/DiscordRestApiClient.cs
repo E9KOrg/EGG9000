@@ -24,14 +24,12 @@ namespace EGG9000.Common.Helpers.Discord {
 
 
         public DiscordRestApiClient(DiscordSocketClient client) {
-            if(client == null) throw new ArgumentNullException(nameof(client));
+            ArgumentNullException.ThrowIfNull(client);
 
-            if(client.CurrentUser != null) {
-                _applicationId = client.CurrentUser.Id;
-                _botToken = SecretsHelper.BotToken;
-            }
-
-            
+            _applicationId = client.CurrentUser?.Id ?? throw new InvalidOperationException("DiscordSocketClient.CurrentUser is not available yet.");
+            _botToken = SecretsHelper.BotToken;
+            if (string.IsNullOrWhiteSpace(_botToken))
+                throw new InvalidOperationException("Bot token is not configured.");
 
             _httpClient = new HttpClient();
             ConfigureHttpClient();
