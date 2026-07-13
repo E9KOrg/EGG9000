@@ -199,10 +199,14 @@ namespace EGG9000.Common.Helpers.Discord {
             foreach(var permission in permissions) {
                 switch(permission.Type) {
                     case 1:
-                        var roleMap = roleMaps.FirstOrDefault(x => x.RoleID == permission.Id);
-                        if(roleMap != null) {
-                            var overflowRoleId = roleMap.Values.FirstOrDefault(x => x.GuildId == overflowServer.Id).RoleId;
-                            mappedPermissions.Add(new CommandPermissionRest { Id = overflowRoleId, Type = permission.Type, Permission = permission.Permission });
+                        if (permission.Id == mainServer.EveryoneRole.Id) {
+                            mappedPermissions.Add(new CommandPermissionRest { Id = overflowServer.EveryoneRole.Id, Type = permission.Type, Permission = permission.Permission });
+                        } else {
+                            var roleMap = roleMaps.FirstOrDefault(x => x.RoleID == permission.Id);
+                            var mapping = roleMap?.Values.FirstOrDefault(x => x.GuildId == overflowServer.Id);
+                            if (mapping is not null && mapping.Value.RoleId != 0) {
+                                mappedPermissions.Add(new CommandPermissionRest { Id = mapping.Value.RoleId, Type = permission.Type, Permission = permission.Permission });
+                            }
                         }
                         break;
                     case 2:
