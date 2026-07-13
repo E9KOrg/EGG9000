@@ -3,7 +3,7 @@
 @using EGG9000.Common.Contracts.Assignment
 @using EGG9000.Common.Helpers
 @using EGG9000.Common.JsonData
-@using Microsoft.AspNetCore.Html
+@using EGG9000.Site.Models.MyFarms
 @using static EGG9000.Site.Controllers.MyFarmsController
 @inject DiscordSocketClient discordClient
 @{
@@ -32,7 +32,7 @@
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
 
     string emojiDelegage(Match match) {
-        return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' />";
+        return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' alt='emoji' />";
     };
 
     string accountName(string eggIncId){
