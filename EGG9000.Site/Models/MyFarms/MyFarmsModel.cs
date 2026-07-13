@@ -21,7 +21,9 @@ namespace EGG9000.Site.Models.MyFarms {
         FrozenSet<Ei.Contract> CachedContracts,
         Dictionary<string, (int Earned, int Max)> SeasonPEByEggIncId,
         Dictionary<string, List<MissingSeasonalPe>> MissingSeasonalPEByEggIncId
-    );
+    ) {
+        public EggIncAccount AccountAt(int index) => User.EggIncAccounts[index];
+    }
 
     public record MissingSeasonalPe(
         string SeasonName,
@@ -29,5 +31,11 @@ namespace EGG9000.Site.Models.MyFarms {
         double GoalCxp,
         int PeAmount,
         DateTimeOffset StartTime
+    );
+
+
+    public record MyFarms_Partial_BaseModel(
+        EggIncAccount account,
+        int index
     );
 }

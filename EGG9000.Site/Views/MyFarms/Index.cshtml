@@ -320,6 +320,7 @@
     </ul>
 }
 
+<!-- TODO: Split this up into another partial; this is wayyyyyy too long -->
 <div class="tab-content">
     @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
         var account = Model.User.EggIncAccounts[index];
@@ -552,7 +553,7 @@
                     @if (snapshots != null) {
                         <div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts, Model.SeasonPEByEggIncId.GetValueOrDefault(backup.EggIncId, (Earned: 0, Max: 0)), Model.MissingSeasonalPEByEggIncId.GetValueOrDefault(backup.EggIncId, new List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe>())));
+                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts, Model.SeasonPEByEggIncId.GetValueOrDefault(backup.EggIncId, (Earned: 0, Max: 0)), Model.MissingSeasonalPEByEggIncId.GetValueOrDefault(backup.EggIncId, new List<MissingSeasonalPe>())));
                             }
                         </div>
                         <div class="tab-pane" id="virtuestats@(index)" role="tabpanel">
@@ -590,7 +591,8 @@
                 </div>
                 <div class="tab-pane" id="contractsettings@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("_ContractSettings", (account, index, isSelf));
+                        var contractSettingsModel = new MyFarms_Partial_ContractSettingsModel(Model, index, isSelf);
+                        await Html.RenderPartialAsync("_ContractSettings", contractSettingsModel);
                     }
                     <hr style="border-color:#444; margin:24px 0;" />
                     @{

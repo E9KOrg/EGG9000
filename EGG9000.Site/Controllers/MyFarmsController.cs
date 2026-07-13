@@ -42,7 +42,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> Index() {
             var sw = new Stopwatch();
             sw.Start();
-            var loginuser = (await _userManager.GetUserAsync(User));
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
 
             if(NewCoopChecker.WaitingOnCoops) {
@@ -67,7 +67,7 @@ namespace EGG9000.Site.Controllers {
             var times = new TimingsFactory(_logger);
             times.Start();
 
-            var loginuser = (await _userManager.GetUserAsync(User));
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var loginUserId = ulong.Parse(logins.First().ProviderKey);
             var isSelf = loginUserId == discordId;
@@ -282,7 +282,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> ResearchTest() {
-            var loginuser = (await _userManager.GetUserAsync(User));
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
 
             var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
@@ -297,7 +297,7 @@ namespace EGG9000.Site.Controllers {
             public double Cost { get; set; }
         }
         public async Task<IActionResult> SubmitResearchCost([FromBody] SubmitResearchCostModel model) {
-            var loginuser = (await _userManager.GetUserAsync(User));
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
             var existing = await _db.ResearchCostSubmissions.FirstOrDefaultAsync(x => x.ID == model.Id && x.Level == model.Level && x.UserId == user.Id);

@@ -5,9 +5,9 @@ namespace EGG9000.Site.Models.MyFarms {
         bool isSelf
     ) : MyFarms_Partial_BaseModel(account, index) {
         public MyFarms_Partial_ContractSettingsModel(MyFarmsModel pageModel, int index, bool isSelf) : this(
-            pageModel.User.EggIncAccounts[index],
+            pageModel.AccountAt(index),
             index,
-            isSelf 
+            isSelf
         ) { }
     }
 }
