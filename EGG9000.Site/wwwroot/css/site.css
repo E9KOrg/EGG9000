@@ -33,6 +33,12 @@ a.navbar-brand {
     --bs-alert-border-color: #b6effb;
 }
 
+/* Alert backgrounds stay light-mode even in dark mode (see above), but Bootstrap's .text-muted
+   flips to a light gray in dark mode via --bs-secondary-color, which is unreadable against them. */
+[data-bs-theme="dark"] .alert .text-muted {
+    --bs-secondary-color: rgba(33, 37, 41, 0.75);
+}
+
 /* Provide sufficient contrast against white background */
 a {
   color: #0366d6;
