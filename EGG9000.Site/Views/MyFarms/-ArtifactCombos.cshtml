@@ -1,9 +1,10 @@
 ﻿@using Discord.WebSocket;
 @using EGG9000.Common.JsonData
 @using EGG9000.Common.Coops;
+@using EGG9000.Site.Models.MyFarms
 @inject DiscordSocketClient DiscordClient
 @inject EGG9000.Site.Services.ArtifactImageRenderer ArtifactRenderer
-@model (CustomBackup Backup, List<DBContract> Contracts, List<Coop> Coops, DBUser user, List<DBCustomEgg> CustomEggs)
+@model MyFarms_Partial_ArtifactCombosModel
 
 @{
     void rateRow(string label, double perSecond, string eggImg) {

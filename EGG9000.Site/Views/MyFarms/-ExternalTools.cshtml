@@ -1,8 +1,9 @@
 ﻿@using Discord.WebSocket
-@model (CustomBackup, DBUser)
+@using EGG9000.Site.Models.MyFarms
+@model MyFarms_Partial_ExternalToolsModel
 
 @{
-	var EggIncId = Model.Item1.EggIncId;
+	var EggIncId = Model.Backup.EggIncId;
 }
 
 <div x-data="externalToolsPage()">

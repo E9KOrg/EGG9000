@@ -2,24 +2,16 @@
 @using Discord.WebSocket
 @using EGG9000.Common.Contracts.Assignment
 @using EGG9000.Common.Helpers
-@using EGG9000.Common.JsonData
 @using EGG9000.Site.Models.MyFarms
 @using static EGG9000.Site.Controllers.MyFarmsController
 @inject DiscordSocketClient discordClient
 @{
     ViewData["Title"] = "Index";
 
-    List<DBContract> contracts = Model.Contracts;
-
     List<UserSnapShot> snapshots = Model.SnapShots;
 
     List<UserCoopXref> unjoinedCoops = Model.UnjoinedCoops.ToList();
 
-    List<EpicResearchItem> epicResearchConfig = Model.EpicResearchConfig;
-
-    Dictionary<string, List<EGG9000.Common.Database.Entities.DBContract>> uncompletePEs = Model.UncompletedPEContracts;
-
-    List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = Model.Scoring;
     Guild dbguild = Model.DBGuild;
 
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
@@ -457,18 +449,20 @@
             <div class="tab-content">
                 <div class="tab-pane" style="margin-top:20px" id="shipsfarms@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ShipsandFarms", (index, backup, Model.JoinedCoops, contracts, Model.CustomEggs));
+                        var shipsAndFarmsModel = new MyFarms_Partial_ShipsAndFarmsModel(Model, index);
+                        await Html.RenderPartialAsync("-ShipsandFarms", shipsAndFarmsModel);
                     }
                 </div>
-
-                 <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
+                <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup, account));
+                        var epicResearchModel = new MyFarms_Partial_EpicResearchModel(Model, index);
+                        await Html.RenderPartialAsync("-EpicResearch", epicResearchModel);
                     }
                 </div>
                 <div class="tab-pane" id="artifactcombos@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ArtifactCombos", (backup, contracts, Model.JoinedCoops, Model.User, Model.CustomEggs));
+                        var artifactCombosModel = new MyFarms_Partial_ArtifactCombosModel(Model, index);
+                        await Html.RenderPartialAsync("-ArtifactCombos", artifactCombosModel);
                     }
                 </div>
                 
@@ -553,32 +547,35 @@
                     @if (snapshots != null) {
                         <div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts, Model.SeasonPEByEggIncId.GetValueOrDefault(backup.EggIncId, (Earned: 0, Max: 0)), Model.MissingSeasonalPEByEggIncId.GetValueOrDefault(backup.EggIncId, new List<MissingSeasonalPe>())));
+                                var ebHistoryModel = new MyFarms_Partial_EBHistoryModel(Model, index, isAdmin);
+                                await Html.RenderPartialAsync("-EBHistory", ebHistoryModel);
                             }
                         </div>
                         <div class="tab-pane" id="virtuestats@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-VirtueStats", (backup, snapshots, isAdmin));
+                                var virtueStatsModel = new MyFarms_Partial_VirtueStatsModel(Model, index, isAdmin);
+                                await Html.RenderPartialAsync("-VirtueStats", virtueStatsModel);
                             }
                         </div>
                     }
                 }
                 <div class="tab-pane show active" id="contracthistory@(index)" role="tabpanel">
                     @{
-                        Ei.MyContracts scores = scoring.Any(x => x.EggIncId == backup.EggIncId) ? scoring.First(x => x.EggIncId == backup.EggIncId).MyContracts : null;
-                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.CustomEggs, Model.User, scores, index));
+                        var contractHistoryModel = new MyFarms_Partial_ContractHistoryModel(Model, index, isAdmin);
+                        await Html.RenderPartialAsync("-ContractHistory", contractHistoryModel);
                     }
                 </div>
 
                 <div class="tab-pane" id="externaltools@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ExternalTools", (backup, Model.User));
+                        var externalToolsModel = new MyFarms_Partial_ExternalToolsModel(Model, index);
+                        await Html.RenderPartialAsync("-ExternalTools", externalToolsModel);
                     }
                 </div>
 
                 <div class="tab-pane" id="earningsboostcalc@(index)" role="tabpanel">
                     @{
-                        var newModel = new EarningsBoostCalculatorModel();
+                        var newModel = new MyFarms_Partial_EBCalcModel();
                         newModel.Backup = backup;
                         newModel.CustomEggs = Model.CustomEggs;
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
@@ -586,7 +583,8 @@
                 </div>
                 <div class="tab-pane" id="colleggtibles@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-Colleggtibles", (backup, Model.CustomEggs));
+                        var colleggtiblesModel = new MyFarms_Partial_ColleggtiblesModel(Model, index);
+                        await Html.RenderPartialAsync("-Colleggtibles", colleggtiblesModel);
                     }
                 </div>
                 <div class="tab-pane" id="contractsettings@(index)" role="tabpanel">
@@ -596,13 +594,14 @@
                     }
                     <hr style="border-color:#444; margin:24px 0;" />
                     @{
-                        await Html.RenderPartialAsync("_TestAssignment", (account, index, contracts));
+                        var testAssignmentModel = new MyFarms_Partial_TestAssignmentModel(Model, index);
+                        await Html.RenderPartialAsync("_TestAssignment", testAssignmentModel);
                     }
                 </div>
                 <div class="tab-pane" id="inventory@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ArtifactInventory", account.Id);
-
+                        var artifactInventoryModel = new MyFarms_Partial_ArtifactInventoryModel(Model, index);
+                        await Html.RenderPartialAsync("-ArtifactInventory", artifactInventoryModel);
                     }
                 </div>
             </div>

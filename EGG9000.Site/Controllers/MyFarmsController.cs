@@ -268,17 +268,11 @@ namespace EGG9000.Site.Controllers {
 
             var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.UtcNow).FirstOrDefaultAsync();
 
-            return View(new EarningsBoostCalculatorModel {
+            return View(new MyFarms_Partial_EBCalcModel {
                 Backup = user.EggIncAccounts.First().Backup,
                 Event = boostEvent,
                 CustomEggs = await _db.GetCustomEggsAsync()
             });
-        }
-
-        public class EarningsBoostCalculatorModel {
-            public CustomBackup Backup { get; set; }
-            public DBEvent Event { get; set; }
-            public List<DBCustomEgg> CustomEggs { get; set; }
         }
 
         public async Task<IActionResult> ResearchTest() {
@@ -474,12 +468,6 @@ namespace EGG9000.Site.Controllers {
                     return Ok();
             }
             return BadRequest();
-        }
-
-        public async Task<IActionResult> CoopOptimizer([FromQuery] Guid CoopId) {
-            var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == CoopId);
-            var customEggs = await _db.GetCustomEggsAsync();
-            return View((coop, customEggs));
         }
     }
 }
