@@ -170,14 +170,8 @@ namespace EGG9000.Bot.Automated {
         /// </summary>
         private async Task SyncOverflowSettings(Guild guild, SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
             try {
-                // Sync channel permissions
-                await HandleChannelPermissionSyncs(mainServer, overflowServers, cancellationToken);
-
                 // Sync role configurations
                 await OverflowSyncing.HandleRoleSyncsAsync(guild, mainServer, overflowServers, _provider, _logger, cancellationToken);
-
-                // Sync application command permissions
-                //await HandleApplicationCommandPermissionSyncs(guild, mainServer, overflowServers, cancellationToken);
 
                 StillAlive();
             } catch (Exception ex) {
@@ -326,59 +320,5 @@ namespace EGG9000.Bot.Automated {
               && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
               && x.Coop.CoopEnds > now && !x.Coop.PseudoExpired;
 
-        /// <summary>
-        /// Handle role synchronization when a role is updated in real-time.
-        /// </summary>
-        private Task _client_RoleUpdated(SocketRole originalRole, SocketRole updatedRole) {
-            _ = Task.Run(async () => {
-                await OverflowSyncing.SyncRoleUpdateAsync(originalRole, updatedRole, _provider, _logger);
-            });
-
-            return Task.CompletedTask;
-        }
-
-        /// <summary>
-        /// Sync channel permissions from main to overflow servers.
-        /// </summary>
-        private async Task HandleChannelPermissionSyncs(SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
-            // Implementation existing channel sync logic here
-            // This method should remain in ManageOverflow as it's specific to channel management
-            await Task.CompletedTask;
-        }
-
-        ///// <summary>
-        ///// Sync application command permissions from main to overflow servers.
-        ///// </summary>
-        //private async Task HandleApplicationCommandPermissionSyncs(Guild guild, SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
-        //    try {
-        //        if (guild.RolesToSync is null || string.IsNullOrWhiteSpace(guild.RolesToSync)) {
-        //            return;
-        //        }
-
-        //        _logger.LogInformation("Syncing application command permissions for {guildName}", guild.Name);
-
-        //        var rolesToSync = guild.RolesToSync.Split(",")
-        //            .Select(roleIdStr =>(IRole)mainServer.Roles.FirstOrDefault(x => x.Id.ToString() == roleIdStr))
-        //            .Where(x => x != null)
-        //            .ToList();
-
-        //        if (rolesToSync.Count == 0) {
-        //            _logger.LogWarning("No roles found to sync for {guildName}", guild.Name);
-        //            return;
-        //        }
-
-        //        var roleMaps = OverflowSyncing.GetRoleMaps(rolesToSync, overflowServers);
-        //        // Pass the client to the syncing method
-        //        var syncResult = await OverflowSyncing.HandleCommandPermissionSyncsAsync(_client.Gateway, mainServer, overflowServers, roleMaps);
-
-        //        if (!string.IsNullOrEmpty(syncResult)) {
-        //            _logger.LogInformation("Command permission sync result:\n{result}", syncResult);
-        //        }
-
-        //        StillAlive();
-        //    } catch (Exception ex) {
-        //        _logger.LogError(ex, "Error syncing application command permissions for {guildName}", guild.Name);
-        //    }
-        //}
     }
 }

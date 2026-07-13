@@ -161,7 +161,9 @@ namespace EGG9000.Common.Helpers.Discord {
             var commands = await client.Rest.GetGlobalApplicationCommands();
             var allPermissions = await restClient.GetApplicationCommandPermissionsAsync(mainServer.Id);
 
-            var allOverflowPermissions = overflowServers.Select(x => new { Overflow = x, Permissions =  restClient.GetApplicationCommandPermissionsAsync(x.Id).Result }).ToList();
+            var overflowPermissionTasks = overflowServers
+                 .Select(async g => new { Overflow = g, Permissions = await restClient.GetApplicationCommandPermissionsAsync(g.Id) });
+            var allOverflowPermissions = (await Task.WhenAll(overflowPermissionTasks)).ToList();
 
             foreach(var command in commands) {
                 try {

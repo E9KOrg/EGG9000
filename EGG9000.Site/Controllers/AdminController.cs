@@ -1445,6 +1445,7 @@ music
             return Content("Success");
         }
 
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public IActionResult Sync() {
             var url = Url.ActionLink("DiscordReturn");
             return Redirect($"https://discordapp.com/api/oauth2/authorize?response_type=code&client_id={_configuration.GetConnectionString("ClientId")}&scope=identify%20guilds.join%20applications.commands.permissions.update&state=15773059ghq9183habn&redirect_uri={url}");
@@ -1472,6 +1473,7 @@ music
             }
         }
 
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> SyncCommandPermissions(string access_token) {
             var guild = await _db.Guilds.FirstAsync(x => x.Id == GetGuildID());
             if(guild.RolesToSync is null)

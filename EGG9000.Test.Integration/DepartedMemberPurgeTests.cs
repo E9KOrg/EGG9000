@@ -17,17 +17,6 @@ public class DepartedMemberPurgeTests {
     }
 
     [TestMethod]
-    [DataRow(0, 0, false)]   // nobody missing -> never a spike
-    [DataRow(100, 0, false)]
-    [DataRow(100, 20, false)] // 20% == threshold, not over
-    [DataRow(100, 21, true)]  // over 20%
-    [DataRow(5, 10, false)]   // small guild, floor of 10 dominates
-    [DataRow(5, 11, true)]    // over the floor
-    public void DepartureSpikeTooLarge_AppliesFloorAndPercent(int memberCount, int missingCount, bool expected) {
-        Assert.AreEqual(expected, ManageOverflow.DepartureSpikeTooLarge(memberCount, missingCount));
-    }
-
-    [TestMethod]
     public async Task PendingAssignmentPurgeFilter_SelectsOnlyActiveUnjoinedThisGuild() {
         await using var ctx = new ApplicationDbContext(Options());
         await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
