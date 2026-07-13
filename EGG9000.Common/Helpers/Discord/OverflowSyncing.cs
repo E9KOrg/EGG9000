@@ -115,7 +115,8 @@ namespace EGG9000.Common.Helpers.Discord {
             if (originalRole?.Guild?.Id == default)
                 return;
 
-            var db = provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            using var scope = provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == originalRole.Guild.Id);
 
             if (guild is null || guild.OverflowServers.Count == 0 || guild.RolesToSync is null || !guild.RolesToSync.Contains(originalRole.Id.ToString()))
