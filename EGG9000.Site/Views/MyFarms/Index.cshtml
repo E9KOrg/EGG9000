@@ -299,14 +299,16 @@
     <ul class="nav nav-tabs" role="tablist">
         @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
             var account = Model.User.EggIncAccounts[index];
+            var accountGrade = account.GetGrade();
             <li class="nav-item">
                 <a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-bs-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
+                    
                     @account.Backup.UserName
-                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;" />
+                    <img src="@PlayerGradeDetails.GetImage(accountGrade)" alt="Grade @PlayerGradeDetails.GetText(accountGrade)" style="max-height: 23px;" />
                     @if (account.Backup.PermitLevel == 0) {
-                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
+                        <img alt="Standard Permit" src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
                     } else {
-                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
+                        <img alt="Pro Permit" src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
                     }
                 </a>
             </li>
@@ -322,8 +324,9 @@
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
                 @if (Model.User.EggIncAccounts.Count == 1) {
+                    var accountGrade = account.GetGrade();
                     @:<span style="margin-right:10px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
-                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" alt="Grade @PlayerGradeDetails.GetText(account.GetGrade())" style="max-height: 23px;" />
+                    <img src="@PlayerGradeDetails.GetImage(accountGrade)" alt="Grade @PlayerGradeDetails.GetText(accountGrade)" style="max-height: 23px;" />
                     @if (backup.PermitLevel == 0) {
                         <img alt="Standard Permit" src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
                     } else {
