@@ -4,7 +4,6 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
-    <UserSecretsId>d18956af-d8a3-400e-b007-579cd7a4ad92</UserSecretsId>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <LangVersion>preview</LangVersion>
