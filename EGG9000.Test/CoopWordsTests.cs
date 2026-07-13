@@ -54,6 +54,20 @@ namespace EGG9000.Test {
             }
         }
 
+        [TestMethod]
+        public void Second_word_avoids_l_i_pair_when_first_word_ends_in_l_or_i() {
+            var words = new Common.Helpers.Words();
+            for(var i = 0; i < 500; i++) {
+                var first = words.GetRandomWord();
+                var last = char.ToLowerInvariant(first[^1]);
+                if(last != 'l' && last != 'i') continue;
+                var second = char.ToLowerInvariant(words.GetRandomSecondWord(first)[0]);
+                Assert.IsFalse(
+                    second == 'l' || second == 'i',
+                    $"'{first}' ends in l/i but next word starts with '{second}'");
+            }
+        }
+
         [GeneratedRegex("^[a-z]{3,5}$")]
         private static partial Regex MyRegex();
     }
