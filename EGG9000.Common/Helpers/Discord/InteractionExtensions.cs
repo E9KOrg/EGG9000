@@ -24,7 +24,7 @@ namespace EGG9000.Common.Helpers.Discord {
         }
 
         public static async Task RespondWithPremiumRequiredAsync(this SocketInteraction i, RequestOptions options = null) =>
-            await i.RespondAsyncGettingMessage("", embed: EmbedHelpers.MakeCustomEmbed(EmbedHelpers.EmbedType.Error, "How did you get here...?", "Nothing in E9K is behind a paywall. If you're seeing this, there's been an error."), options: options);
+            await i.RespondAsyncGettingMessage("", embed: EmbedHelpers.EmbedCustom(EmbedHelpers.EmbedType.Error, "How did you get here...?", "Nothing in E9K is behind a paywall. If you're seeing this, there's been an error."), options: options);
 
         public static async Task DeleteResponseFix(this SocketInteraction i) {
             if(i is null) return;
