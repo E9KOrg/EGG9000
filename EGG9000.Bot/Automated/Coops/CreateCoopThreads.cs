@@ -15,7 +15,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.CreateCoopsV2;
@@ -28,7 +30,8 @@ namespace EGG9000.Bot.Automated.Coops {
         private readonly CoopMessageSender _coopMessageSender = coopMessageSender;
         private static readonly TimeSpan DefaultThreadCreationDelay = TimeSpan.FromMilliseconds(6050);
 
-        private readonly Dictionary<string, int> CoopsTimeoutCounter = [];
+        private readonly Dictionary<string, (int Count, DateTimeOffset LastSeen)> CoopsTimeoutCounter = [];
+        private static readonly TimeSpan CoopsTimeoutCounterTtl = TimeSpan.FromMinutes(10);
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             ulong.TryParse(_configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
@@ -97,19 +100,20 @@ namespace EGG9000.Bot.Automated.Coops {
 
                     StillAlive();
                     if(coop.ContractID is null) {
-                        if(CoopsTimeoutCounter.ContainsKey(coop.Name)) {
-                            if(CoopsTimeoutCounter[coop.Name] > 60) {
+                        PruneCoopsTimeoutCounter();
+                        if(CoopsTimeoutCounter.TryGetValue(coop.Name, out var timeoutEntry)) {
+                            if(timeoutEntry.Count > 60) {
                                 _logger.LogWarning("Unable to create channel for coop {coop} because the contract is null", coop.Name);
-                                CoopsTimeoutCounter[coop.Name] = 0;
+                                CoopsTimeoutCounter[coop.Name] = (0, DateTimeOffset.UtcNow);
                             } else {
-                                CoopsTimeoutCounter[coop.Name]++;
+                                CoopsTimeoutCounter[coop.Name] = (timeoutEntry.Count + 1, DateTimeOffset.UtcNow);
                                 if(allCoops.All(x => CoopsTimeoutCounter.ContainsKey(x.Name))) {
                                     goto ExitWhile;
                                 }
                             }
                         } else {
                             _logger.LogWarning("Unable to create channel for coop {coop} because the contract is null", coop.Name);
-                            CoopsTimeoutCounter.Add(coop.Name, 1);
+                            CoopsTimeoutCounter.Add(coop.Name, (1, DateTimeOffset.UtcNow));
                         }
                         continue;
                     }
@@ -241,6 +245,13 @@ namespace EGG9000.Bot.Automated.Coops {
                 } else {
                     guildStats[key] = (guildStats[key].successes, guildStats[key].failures + 1, true);
                 }
+            }
+        }
+
+        private void PruneCoopsTimeoutCounter() {
+            var cutoff = DateTimeOffset.UtcNow - CoopsTimeoutCounterTtl;
+            foreach(var key in CoopsTimeoutCounter.Where(x => x.Value.LastSeen < cutoff).Select(x => x.Key).ToList()) {
+                CoopsTimeoutCounter.Remove(key);
             }
         }
 
@@ -381,7 +392,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         } else {
                             var overflowServer = _client.Guilds.First(x => x.Id == guild.OverflowServers.First());
                             var (headerChannel, webhook) = await GetOrCreateHeaderChannel(db, contractGroup.Key.League, overflowServer, mainServer, guildContract, 0);
-                            headerChannelsForGuild.HeaderChannels.Add(new ServerHeaderChannel { ContractId = contractGroup.Key.ContractID, HeaderChannel = headerChannel, ServerId = mainServer.Id, League = contractGroup.Key.League, Webhook = webhook });
+                            headerChannelsForGuild.HeaderChannels.Add(new ServerHeaderChannel { ContractId = contractGroup.Key.ContractID, HeaderChannel = headerChannel, ServerId = overflowServer.Id, League = contractGroup.Key.League, Webhook = webhook });
 
                         }
                     } else {
@@ -395,8 +406,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
         private async Task<(SocketGuildChannel Channel, HeaderChannelWebhook Webhook)> GetOrCreateHeaderChannel(ApplicationDbContext db, uint League, SocketGuild OverflowSocketGuild, SocketGuild MainSocketGuild, GuildContract GuildContract, int channelIndex) {
-            var baseName = $"{GuildContract.Contract.GetE9KName()}-{PlayerGradeDetails.GetNameFromLeague(League).ToLower()}";
-            var channelName = channelIndex == 0 ? baseName : $"{baseName}-{channelIndex + 1}";
+            var channelName = GuildContract.Contract.GetHeaderChannelName(League, channelIndex);
 
             var existingRow = await db.CoopHeaderChannels.FirstOrDefaultAsync(x =>
                 x.GuildId == MainSocketGuild.Id && x.ContractID == GuildContract.ContractID && x.League == League &&
@@ -416,7 +426,7 @@ namespace EGG9000.Bot.Automated.Coops {
             if(headerChannel != null) {
                 webhook = await GetOrCreateWebhookForChannel((SocketTextChannel)headerChannel);
             } else {
-                headerChannel = await CreateHeaderChannelInternal(db, League, OverflowSocketGuild, MainSocketGuild, GuildContract, channelName);
+                headerChannel = await CreateHeaderChannelInternal(db, League, OverflowSocketGuild, MainSocketGuild, GuildContract, channelIndex);
                 if(headerChannel == null) return (null, null);
                 webhook = await GetOrCreateWebhookForChannel((SocketTextChannel)headerChannel);
             }
@@ -424,6 +434,7 @@ namespace EGG9000.Bot.Automated.Coops {
             if(existingRow != null) {
                 // Row already tracked by this context - update in place instead of Add()ing a
                 // new entity with the same composite PK (would throw InvalidOperationException).
+                _logger.LogWarning("Header channel row for {guild}/{contract}/{league}/{server}/{index} is being recreated; overwriting WebhookId/WebhookToken. Coop messages still tracked against the old webhook will self-heal on their next edit.", MainSocketGuild.Id, GuildContract.ContractID, League, OverflowSocketGuild.Id, channelIndex);
                 existingRow.ChannelId = headerChannel.Id;
                 existingRow.WebhookId = webhook.WebhookId;
                 existingRow.WebhookToken = webhook.WebhookToken;
@@ -444,14 +455,29 @@ namespace EGG9000.Bot.Automated.Coops {
 
         private async Task<HeaderChannelWebhook> GetOrCreateWebhookForChannel(SocketTextChannel channel) {
             return await _queue.EnqueueLowAsync(async () => {
-                const string WebhookName = "EGG9000 Coop Messages";
-                var existing = (await channel.GetWebhooksAsync()).FirstOrDefault(w => w.Name == WebhookName);
-                var webhook = existing ?? await channel.CreateWebhookAsync(WebhookName);
+                // No separate webhook branding - name/avatar match the bot's own profile so
+                // webhook-lane messages look indistinguishable from bot-lane ones.
+                var botUser = _client.Gateway.CurrentUser;
+                var webhookName = botUser.Username;
+                var existing = (await channel.GetWebhooksAsync()).FirstOrDefault(w => w.Name == webhookName);
+                if(existing != null) {
+                    return new HeaderChannelWebhook { WebhookId = existing.Id, WebhookToken = existing.Token };
+                }
+                using var avatarStream = await DownloadBotAvatarAsync(botUser);
+                var webhook = await channel.CreateWebhookAsync(webhookName, avatarStream);
                 return new HeaderChannelWebhook { WebhookId = webhook.Id, WebhookToken = webhook.Token };
             });
         }
 
-        private async Task<SocketGuildChannel> CreateHeaderChannelInternal(ApplicationDbContext db, uint League, SocketGuild OverflowSocketGuild, SocketGuild MainSocketGuild, GuildContract GuildContract, string channelName) {
+        private async Task<Stream> DownloadBotAvatarAsync(SocketSelfUser botUser) {
+            var avatarUrl = botUser.GetAvatarUrl(size: 256) ?? botUser.GetDefaultAvatarUrl();
+            using var httpClient = new HttpClient();
+            var bytes = await httpClient.GetByteArrayAsync(avatarUrl);
+            return new MemoryStream(bytes);
+        }
+
+        private async Task<SocketGuildChannel> CreateHeaderChannelInternal(ApplicationDbContext db, uint League, SocketGuild OverflowSocketGuild, SocketGuild MainSocketGuild, GuildContract GuildContract, int channelIndex) {
+            var channelName = GuildContract.Contract.GetHeaderChannelName(League, channelIndex);
             var gradeRoleEnum = League switch {
                 5 => GuildChannelType.GradeAAA,
                 4 => GuildChannelType.GradeAA,
@@ -498,7 +524,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
                 return null;
             }
-            return await _queue.EnqueueLowAsync(() => OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger, channelName));
+            return await _queue.EnqueueLowAsync(() => OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger, channelIndex));
         }
 
 
