@@ -4,6 +4,8 @@ using System.Collections.Generic;
 namespace EGG9000.Site.Models.Admin {
     public class Admin_Slacker {
         public string DiscordUsername { get; set; }
+        public string EggIncId { get; set; }
+        public string AccountName { get; set; }
         public bool Standard { get; set; }
         public int AccountCount { get; set; }
         public IEnumerable<Admin_SlackerXref> UserCoopXrefs { get; set; }
@@ -11,6 +13,7 @@ namespace EGG9000.Site.Models.Admin {
     }
 
     public class Admin_SlackerXref {
+        public string EggIncId { get; set; }
         public float? Score { get; set; }
         public string ContractID { get; set; }
         public float? RunningScore { get; set; }
