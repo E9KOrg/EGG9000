@@ -49,7 +49,7 @@ namespace EGG9000.Site.Controllers {
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<ActionResult> LatestDemerits([FromQuery] int count = 100) {
             var guildId = GetGuildId();
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            var dbguild = await GetDbGuildByIdAsync(guildId);
             var demerits = await _db.Demerit.AsNoTracking().Include(d => d.User).Where(d => d.User.GuildId == guildId).OrderByDescending(d => d.When).Take(count + 1).ToListAsync();
             var limited = demerits.Count > count;
             if(limited) {
@@ -382,7 +382,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> Slackers() {
             var user = await GetCurrentDbUserAsync();
             var guildId = GetGuildId();
-            var guild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            var guild = await GetDbGuildByIdAsync(guildId);
             var scoreThreshold = guild.MinimumRunningScore;
             ViewBag.MinimumRunningScore = scoreThreshold;
 
@@ -473,7 +473,7 @@ namespace EGG9000.Site.Controllers {
                 x.TempDisabled
             }).ToListAsync();
 
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
+            var dbguild = await GetDbGuildByIdAsync(guildId);
             var scoreThreshold = dbguild.MinimumRunningScore;
 
 
@@ -765,19 +765,17 @@ namespace EGG9000.Site.Controllers {
             return View(matchingUsers.ToList());
         }
 
-        public async Task<ActionResult> DuplicateChannels() {
-
-
+        private async Task<List<Admin_CoopWithChannels>> GetCoopsWithDuplicateChannels(IEnumerable<SocketTextChannel> coopChannels) {
             var coops = await _db.Coops.Where(x => !x.ThreadArchived && !x.DeletedChannel).ToListAsync();
-
-            var coopChannels = _discord.Guilds.SelectMany(x => x.TextChannels);
-
-            var coopsWithChannels = coops.Select(c => new Admin_CoopWithChannels {
+            return [.. coops.Select(c => new Admin_CoopWithChannels {
                 Coop = c, MainChannel = coopChannels.FirstOrDefault(x => (x.Id == c.ThreadID && c.ThreadID != 0) || (x.Id == c.DiscordChannelId && c.DiscordChannelId != 0)),
                 ExtraChannels = [.. coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase))]
-            }).ToList();
+            }).Where(x => x.ExtraChannels.Any())];
+        }
 
-            return View(coopsWithChannels.Where(x => x.ExtraChannels.Any()).ToList());
+        public async Task<ActionResult> DuplicateChannels() {
+            var coopsWithChannels = await GetCoopsWithDuplicateChannels(_discord.Guilds.SelectMany(x => x.TextChannels));
+            return View(coopsWithChannels);
         }
 
 
@@ -788,19 +786,12 @@ namespace EGG9000.Site.Controllers {
         }
         public async Task<ActionResult> DeleteAllDuplicates() {
             var guildId = GetGuildId();
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
-
-
-            var coops = await _db.Coops.Where(x => !x.ThreadArchived && !x.DeletedChannel).ToListAsync();
+            var dbguild = await GetDbGuildByIdAsync(guildId);
 
             var coopChannels = _discord.Guilds.Where(x => x.Id == guildId || dbguild.OverflowServers.Any(y => y == x.Id)).SelectMany(x => x.TextChannels);
+            var coopsWithChannels = await GetCoopsWithDuplicateChannels(coopChannels);
 
-            var coopsWithChannels = coops.Select(c => new Admin_CoopWithChannels {
-                Coop = c, MainChannel = coopChannels.FirstOrDefault(x => (x.Id == c.ThreadID && c.ThreadID != 0) || (x.Id == c.DiscordChannelId && c.DiscordChannelId != 0)),
-                ExtraChannels = [.. coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase))]
-            }).ToList();
-
-            foreach(var channel in coopsWithChannels.Where(x => x.ExtraChannels.Any()).SelectMany(x => x.ExtraChannels)) {
+            foreach(var channel in coopsWithChannels.SelectMany(x => x.ExtraChannels)) {
                 await ((ITextChannel)channel).DeleteAsync();
             }
             return RedirectToAction("DuplicateChannels");
@@ -1025,8 +1016,7 @@ music
         }
 
         public async Task<IActionResult> ConfigureServer(ulong? id) {
-            id ??= GetGuildId();
-            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
+            var dbGuild = await GetDbGuildByIdAsync(id ?? GetGuildId());
             return View(dbGuild);
         }
 
@@ -1038,7 +1028,7 @@ music
                 return BadRequest();
             }
             var model = JsonConvert.DeserializeObject<Admin_SaveChannelDetailsObject>(json);
-            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
+            var dbGuild = await GetDbGuildByIdAsync(id);
             var invalidateApodGuildCache = (
                 (dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
                 != (model.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
@@ -1071,7 +1061,7 @@ music
             if(!VerifyId(id)) {
                 return NotFound();
             }
-            var dbGuild = await _db.Guilds.FirstAsync(x => x.Id == id);
+            var dbGuild = await GetDbGuildByIdAsync(id);
             dbGuild.RolesToSync = rolestosync;
             await _db.SaveChangesAsync();
 
@@ -1215,7 +1205,7 @@ music
         }
 
         public async Task<IActionResult> SyncCommandPermissions(string access_token) {
-            var guild = await _db.Guilds.FirstAsync(x => x.Id == GetGuildId());
+            var guild = await GetDbGuildByIdAsync(GetGuildId());
             if(guild.RolesToSync is null)
                 return Content("No roles found to sync");
             var roleids = guild.RolesToSync.Split(",");

@@ -15,12 +15,17 @@ namespace EGG9000.Site.Controllers {
             return ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
         }
 
-        protected async Task<DBUser> GetCurrentDbUserAsync() {
-            var db = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+        protected async Task<ulong> GetLoginDiscordIdAsync() {
             var userManager = HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
             var loginUser = await userManager.GetUserAsync(User);
             var logins = await userManager.GetLoginsAsync(loginUser);
-            return await db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            return ulong.Parse(logins.First().ProviderKey);
+        }
+
+        protected async Task<DBUser> GetCurrentDbUserAsync() {
+            var db = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            var discordId = await GetLoginDiscordIdAsync();
+            return await db.DBUsers.FirstAsync(x => x.DiscordId == discordId);
         }
 
         protected async Task<Guild> GetGuildAsync(ulong discordServerId) {
@@ -29,6 +34,11 @@ namespace EGG9000.Site.Controllers {
         }
 
         protected Task<Guild> GetCurrentGuildAsync() => GetGuildAsync(GetGuildId());
+
+        protected async Task<Guild> GetDbGuildByIdAsync(ulong id) {
+            var db = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            return await db.Guilds.FirstAsync(x => x.Id == id);
+        }
 
         protected IActionResult RedirectToLocalReferer() {
             var referer = Request.Headers["Referer"].ToString();

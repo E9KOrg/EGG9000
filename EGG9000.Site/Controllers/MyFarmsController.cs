@@ -18,7 +18,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -40,36 +39,28 @@ namespace EGG9000.Site.Controllers {
         private readonly ArtifactImageRenderer _artifactRenderer = artifactRenderer;
 
         public async Task<IActionResult> Index() {
-            var sw = new Stopwatch();
-            sw.Start();
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var discordId = await GetLoginDiscordIdAsync();
 
             if(NewCoopChecker.WaitingOnCoops) {
                 var weekAgo = DateTimeOffset.UtcNow.AddDays(-7);
-                var user = (await _databaseCache.GetDbUsers()).First(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+                var user = (await _databaseCache.GetDbUsers()).First(x => x.DiscordId == discordId);
                 var xrefs = await _db.UserCoopXrefs.Where(y => y.UserId == user.Id && y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop).Include(y => y.Coop).ThenInclude(x => x.Contract).ToListAsync();
                 user.UserCoopXrefs = xrefs;
-                _logger.LogInformation($"Time: {sw.ElapsedMilliseconds}");
                 return View("Temporary", user);
             }
 
-
-            _bugsnag.Breadcrumbs.Leave($"DiscordId: {logins.First().ProviderKey}, {logins.First().ProviderDisplayName}");
-            return await ViewUser(ulong.Parse(logins.First().ProviderKey));
+            _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
+            return await ViewUser(discordId);
         }
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
 
 
-            Console.WriteLine("ViewUser");
             var times = new TimingsFactory(_logger);
             times.Start();
 
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+            var loginUserId = await GetLoginDiscordIdAsync();
             var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
@@ -171,9 +162,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> InventoryOverlay(string eid) {
             if(string.IsNullOrWhiteSpace(eid)) return BadRequest(new { error = "Missing account id." });
 
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+            var loginUserId = await GetLoginDiscordIdAsync();
 
             var owner = await _db.DBUsers.FirstOrDefaultAsync(x => x.EIDs.Contains(eid));
             if(owner is null) return NotFound(new { error = "Account not found." });
