@@ -134,6 +134,9 @@ namespace EGG9000.Site.Controllers {
                 missingSeasonalPEByEggIncId[id] = [.. missing.OrderBy(m => m.StartTime)];
             }
 
+            user.LastBackupCheck = DateTime.UtcNow;
+
+
             var dbCustomEggs = _cache.GetOrCreate("CustomEggsCache", entry => {
                 entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(1);
                 return _db.CustomEggs.ToList();
@@ -149,9 +152,9 @@ namespace EGG9000.Site.Controllers {
                 var fetched = await Task.WhenAll(accountsNeedingBackup.Select(a => AccountRefresh.RefreshBackupAsync(a, cachedContracts, _logger)));
                 if(fetched.Any(b => b is not null)) {
                     user.UpdateAccounts();
-                    await _db.SaveChangesAsync();
                 }
             }
+            await _db.SaveChangesAsync();
 
             // Refresh fresh backups in the background (own DI scope) so the next load is current without blocking this render.
             RefreshBackupsInBackground(user.DiscordId);

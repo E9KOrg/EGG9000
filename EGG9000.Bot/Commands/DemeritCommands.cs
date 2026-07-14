@@ -161,7 +161,11 @@ namespace EGG9000.Bot.Commands {
             }
 
             xref.ForEach(x => x.NoDemerit = true);
-            await Db.SaveChangesAsyncRetry(2);
+            var (saved, _) = await Db.SaveChangesAsyncRetry(2, logger: _logger);
+            if(!saved) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Failed to save the no-demerit flag for {user.Mention}. Please try again."));
+                return;
+            }
             await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"{user.Mention} will not receive automated demerits in this co-op.");
         }
     }
