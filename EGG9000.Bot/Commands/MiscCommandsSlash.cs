@@ -52,7 +52,9 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("trackeb", "Track your EB since the last time you ran this command")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task TrackEB() {
-            await Context.Interaction.DeferAsync(ephemeral: Context.Interaction.IsDMInteraction ? false : true);
+            // TEMP: Eggday temporary fix to make command public. Remove after eggday is over.
+            await Context.Interaction.DeferAsync(ephemeral: false);
+            //await Context.Interaction.DeferAsync(ephemeral: Context.Interaction.IsDMInteraction ? false : true);
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });

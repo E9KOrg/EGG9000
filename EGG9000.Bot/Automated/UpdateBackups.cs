@@ -29,7 +29,7 @@ namespace EGG9000.Bot.Automated {
             var guilds = await _db.Guilds.ToListAsync();
             var guildIDs = guilds.Select(x => x.Id).ToHashSet();
 
-            var usersToCheck = await _db.DBUsers.Where(x => !x.StaleBackup && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(75).ToListAsync();
+            var usersToCheck = await _db.DBUsers.Where(x => !x.StaleBackup && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck == null  ? 0 : 1).ThenBy(x => x.LastBackupCheck).Take(75).ToListAsync();
             var longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
             _logger.LogInformation("Longest backup check ago: {offset}", (DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2));
 
