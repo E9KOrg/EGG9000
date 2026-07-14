@@ -218,7 +218,10 @@ namespace EGG9000.Common.Database {
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
-            Farms?.Where(x => !x.isVirtueEgg).ToList().ForEach(f => f.Artifacts?.ForEach(a => artifacts.FirstOrDefault(x => x.Artifact.Equals(a)).Count--));
+            Farms?.Where(x => !x.isVirtueEgg).ToList().ForEach(f => f.Artifacts?.ForEach(a => {
+                var artifact = artifacts.FirstOrDefault(x => x.Artifact.Equals(a));
+                if(artifact is not null) artifact.Count--;
+            }));
             return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
         }
 
