@@ -1,5 +1,6 @@
 @using EGG9000.Common.Database.Entities
-@model (EggIncAccount account, int index, List<DBContract> contracts)
+@using EGG9000.Site.Models.MyFarms
+@model MyFarms_Partial_TestAssignmentModel
 @{
     var index = Model.index;
     var contracts = (Model.contracts ?? new List<DBContract>()).OrderByDescending(c => c.Created).ToList();

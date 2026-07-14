@@ -1,5 +1,6 @@
 @using EGG9000.Common.Helpers
-@model (CustomBackup Backup, List<DBCustomEgg> CustomEggs)
+@using EGG9000.Site.Models.MyFarms
+@model MyFarms_Partial_ColleggtiblesModel
 
 @{
     var rows = ColleggtibleHelper.BuildRows(Model.Backup, Model.CustomEggs);

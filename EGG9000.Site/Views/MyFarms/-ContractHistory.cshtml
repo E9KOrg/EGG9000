@@ -1,6 +1,7 @@
 ﻿@using System.Collections.Frozen
 @using Discord.WebSocket
-@model (CustomBackup backup, bool isAdmin, List<DBContract> contracts, List<DBCustomEgg> CustomEggs, DBUser User, Ei.MyContracts scores, int index)
+@using EGG9000.Site.Models.MyFarms
+@model MyFarms_Partial_ContractHistoryModel
 @inject DiscordSocketClient discordClient
 @{
 	var backup = Model.backup;
