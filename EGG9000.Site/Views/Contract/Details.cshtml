@@ -1,7 +1,8 @@
 ﻿ @using static EGG9000.Common.Helpers.Prefarm
 @using Discord.WebSocket
 @using EGG9000.Common.EggIncAPI
-@model EGG9000.Site.Controllers.ContractController.CoopsViewModel
+@using EGG9000.Site.Models.Contract
+@model Contract_CoopsViewModel
 @{
     ViewData["Title"] = "Coops - " + Model.GuildContract.Contract.Name;
     var targetAmount = Model.GuildContract.Contract.Details.GradeSpecs[(int)Model.League - 1].Goals.Last().TargetAmount;

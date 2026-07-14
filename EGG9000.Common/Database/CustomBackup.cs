@@ -570,11 +570,12 @@ namespace EGG9000.Common.Database {
         public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy) * (Math.Pow(1.01, EggsOfTruth)); } }
 
         [IgnoreMember]
-        public double MER {
-            get {
-                var seQ = SoulEggs / 1e18; // Convert to quintillions
-                return Math.Round((91 * Math.Log10(seQ) + 200 - EggsOfProphecy) / 10, 2);
-            }
+        public double MER => Math.Round(MerValue(SoulEggs, EggsOfProphecy), 2);
+
+        public static double MerValue(double soulEggs, double eggsOfProphecy) {
+            if(soulEggs <= 0 || !double.IsFinite(soulEggs)) return 0.0;
+            var seQ = soulEggs / 1e18; // Convert to quintillions
+            return (91 * Math.Log10(seQ) + 200 - eggsOfProphecy) / 10;
         }
     }
 

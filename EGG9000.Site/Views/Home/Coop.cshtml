@@ -1,4 +1,5 @@
-﻿@model EGG9000.Site.Controllers.HomeController.CoopModel
+﻿@using EGG9000.Site.Models.Home
+@model Home_CoopModel
 @{
 	ViewData["Title"] = "Co-op";
 	bool inDb = Model.UserInfos.Any(x => x.Xref != null);
@@ -106,7 +107,7 @@
 			}
 		</div>
 		<div class="text-center" style="font-size: 60%;">
-			@if (Model.GoalDetails.Last().Status == EGG9000.Site.Controllers.HomeController.GoalStatus.Completed) {
+			@if (Model.GoalDetails.Last().Status == Home_GoalStatus.Completed) {
 				@:Finished
 			} else if (Model.CoopStatus.SecondsRemaining <= 0) {
 				@: Ended @TimeSpan.FromSeconds(-Model.CoopStatus.SecondsRemaining).Humanize(2).ShortenTime()
@@ -118,7 +119,7 @@
 				@: Farm expires in @TimeSpan.FromSeconds(Model.CoopStatus.SecondsRemaining).Humanize(2).ShortenTime()
 				if (Model.CoopStatus.SecondsRemaining > Model.GoalDetails.Last().TimeLeft.TotalSeconds) {
 					@:- Finishes in @Model.GoalDetails.Last().TimeLeft.Humanize(2).ShortenTime()
-				} else if (Model.GoalDetails.Last().Status != EGG9000.Site.Controllers.HomeController.GoalStatus.Never) {
+				} else if (Model.GoalDetails.Last().Status != Home_GoalStatus.Never) {
 					@:- Behind by @Model.GoalDetails.Last().TimeLeft.Subtract(TimeSpan.FromSeconds(Model.CoopStatus.SecondsRemaining)).Humanize(2).ShortenTime()
 				}
 			}
