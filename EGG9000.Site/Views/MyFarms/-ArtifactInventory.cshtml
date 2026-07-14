@@ -1,4 +1,5 @@
-@model string
+@using EGG9000.Site.Models.MyFarms
+@model MyFarms_Partial_ArtifactInventoryModel
 
 @*
     The inventory image is heavy to generate, so we don't render it on page load. The container below
@@ -13,6 +14,6 @@
             <li>Every artifact you own, grouped by rarity</li>
             <li>Hover over an artifact or stone to see what it is</li>
         </ul>
-        <div class="afx-inventory" data-eid="@Model">Open this tab to load your inventory.</div>
+        <div class="afx-inventory" data-eid="@Model.AccountId">Open this tab to load your inventory.</div>
     </div>
 </div>

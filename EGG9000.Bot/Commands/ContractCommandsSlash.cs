@@ -121,7 +121,7 @@ namespace EGG9000.Bot.Commands {
             public Coop FoundCoop { get; set; } = null;
         }
 
-        public static async Task<PotentialCoopResponse> FindPotentialCoopForUser(EggIncAccount account, Common.Database.Entities.DBContract contract, Guild guild, DiscordSocketClient _client, ApplicationDbContext db, FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
+        public static async Task<PotentialCoopResponse> FindPotentialCoopForUser(EggIncAccount account, DBContract contract, Guild guild, DiscordSocketClient _client, ApplicationDbContext db, FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
 
             var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).Where(x => x.EggIncId == account.Id).ToListAsync();
             var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && (int)r.Coop.Status > 2 && (int)r.Coop.Status < 13 && r.Coop.CoopEnds > DateTimeOffset.UtcNow);

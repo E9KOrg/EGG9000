@@ -4,6 +4,7 @@ using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData;
+using EGG9000.Site.Models.MyFarms;
 using EGG9000.Site.Services;
 using Ei;
 using Humanizer;
@@ -41,7 +42,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> Index() {
             var sw = new Stopwatch();
             sw.Start();
-            var loginuser = (await _userManager.GetUserAsync(User));
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
 
             if(NewCoopChecker.WaitingOnCoops) {
@@ -66,7 +67,7 @@ namespace EGG9000.Site.Controllers {
             var times = new TimingsFactory(_logger);
             times.Start();
 
-            var loginuser = (await _userManager.GetUserAsync(User));
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var loginUserId = ulong.Parse(logins.First().ProviderKey);
             var isSelf = loginUserId == discordId;
@@ -108,7 +109,7 @@ namespace EGG9000.Site.Controllers {
             var latestSeason = seasonInfos.OrderByDescending(x => x.StartTime).FirstOrDefault();
             ViewBag.LatestSeasonPeCxpByGrade = latestSeason is null
                 ? []
-                : Enum.GetValues<Ei.Contract.Types.PlayerGrade>()
+                : Enum.GetValues<Contract.Types.PlayerGrade>()
                     .ToDictionary(g => g, g => latestSeason.GetMaxPeCxp(g));
             var seasonPEByEggIncId = new Dictionary<string, (int Earned, int Max)>();
             var missingSeasonalPEByEggIncId = new Dictionary<string, List<MissingSeasonalPe>>();
@@ -121,7 +122,7 @@ namespace EGG9000.Site.Controllers {
                     var sp = seasonProgresses.FirstOrDefault(x => x.EggIncId == id && x.SeasonId == info.Id);
                     var totalCxp = sp?.TotalCxp ?? 0;
                     var grade = sp is not null
-                        ? (Ei.Contract.Types.PlayerGrade)sp.StartingGrade
+                        ? (Contract.Types.PlayerGrade)sp.StartingGrade
                         : account.GetGrade();
                     if(grade == Ei.Contract.Types.PlayerGrade.GradeUnset) continue;
                     earned += info.GetPeEarned(grade, totalCxp);
@@ -209,8 +210,8 @@ namespace EGG9000.Site.Controllers {
         private void RefreshBackupsInBackground(ulong discordId) {
             _ = Task.Run(async () => {
                 try {
-                    FrozenSet<Ei.Contract> cachedContracts;
-                    List<EGG9000.Common.Database.Entities.EggIncAccount> probeAccounts;
+                    FrozenSet<Contract> cachedContracts;
+                    List<EggIncAccount> probeAccounts;
                     using(var lookupScope = _scopeFactory.CreateScope()) {
                         var lookupDb = lookupScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                         cachedContracts = await lookupDb.CachedEiContractsAsync();
@@ -245,31 +246,8 @@ namespace EGG9000.Site.Controllers {
             });
         }
 
-        public record MyFarmsModel(
-            DBUser User,
-            List<Common.Database.Entities.DBContract> Contracts,
-            List<Demerit> Demerits,
-            List<Merit> Merits,
-            /*List<Backup> RawBackups*/
-            List<UserSnapShot> SnapShots,
-            List<UserCoopXref> UnjoinedCoops,
-            List<Coop> JoinedCoops,
-            List<EpicResearchItem> EpicResearchConfig,
-            List<(string EggIncId, MyContracts MyContracts)> Scoring,
-            Guild DBGuild,
-            Dictionary<string, List<Common.Database.Entities.DBContract>> UncompletedPEContracts,
-            List<DBCustomEgg> CustomEggs,
-            bool IsSelf,
-            FrozenSet<Ei.Contract> CachedContracts,
-            Dictionary<string, (int Earned, int Max)> SeasonPEByEggIncId,
-            Dictionary<string, List<MissingSeasonalPe>> MissingSeasonalPEByEggIncId
-        );
-
-        public record MissingSeasonalPe(string SeasonName, double CurrentCxp, double GoalCxp, int PeAmount, DateTimeOffset StartTime);
-
         public async Task<IActionResult> EarningsBoostCalculator() {
-            var loginuser = (await _userManager.GetUserAsync(User));
-
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
 
@@ -290,21 +268,15 @@ namespace EGG9000.Site.Controllers {
 
             var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.UtcNow).FirstOrDefaultAsync();
 
-            return View(new EarningsBoostCalculatorModel {
+            return View(new MyFarms_Partial_EBCalcModel {
                 Backup = user.EggIncAccounts.First().Backup,
                 Event = boostEvent,
                 CustomEggs = await _db.GetCustomEggsAsync()
             });
         }
 
-        public class EarningsBoostCalculatorModel {
-            public CustomBackup Backup { get; set; }
-            public DBEvent Event { get; set; }
-            public List<DBCustomEgg> CustomEggs { get; set; }
-        }
-
         public async Task<IActionResult> ResearchTest() {
-            var loginuser = (await _userManager.GetUserAsync(User));
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
 
             var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
@@ -319,7 +291,7 @@ namespace EGG9000.Site.Controllers {
             public double Cost { get; set; }
         }
         public async Task<IActionResult> SubmitResearchCost([FromBody] SubmitResearchCostModel model) {
-            var loginuser = (await _userManager.GetUserAsync(User));
+            var loginuser = await _userManager.GetUserAsync(User);
             var logins = await _userManager.GetLoginsAsync(loginuser);
             var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
             var existing = await _db.ResearchCostSubmissions.FirstOrDefaultAsync(x => x.ID == model.Id && x.Level == model.Level && x.UserId == user.Id);
@@ -446,7 +418,7 @@ namespace EGG9000.Site.Controllers {
             return RedirectToLocalReferer();
         }
 
-        public Dictionary<string, List<Common.Database.Entities.DBContract>> GetUncompletedPEContracts(DBUser user, List<Common.Database.Entities.DBContract> contracts) {
+        public Dictionary<string, List<DBContract>> GetUncompletedPEContracts(DBUser user, List<DBContract> contracts) {
             return user.EggIncAccounts.ToDictionary(
                 account => account.Id,
                 account => account.Backup.ArchivedFarms
@@ -496,12 +468,6 @@ namespace EGG9000.Site.Controllers {
                     return Ok();
             }
             return BadRequest();
-        }
-
-        public async Task<IActionResult> CoopOptimizer([FromQuery] Guid CoopId) {
-            var coop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsSplitQuery().FirstOrDefaultAsync(x => x.Id == CoopId);
-            var customEggs = await _db.GetCustomEggsAsync();
-            return View((coop, customEggs));
         }
     }
 }
