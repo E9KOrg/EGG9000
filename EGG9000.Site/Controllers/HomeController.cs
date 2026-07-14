@@ -48,7 +48,7 @@ namespace EGG9000.Site.Controllers {
 
             var a = await _db.UserLogins.FirstOrDefaultAsync(x => x.ProviderKey == id);
             var user = await _userManager.Users.FirstAsync(x => x.Id == a.UserId);
-            var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(id));
+            var dbuser = await _db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(id));
             if(dbuser.GuildId != 1108127105088241746) {
                 return NotFound();
             }
@@ -108,7 +108,7 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CleanCoopPins() {
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && !x.ThreadArchived).ToListAsync();
+            var coops = await _db.Coops.Where(x => x.ThreadID != 0 && !x.ThreadArchived).ToListAsync();
 
             var retryPolicy = Policy.Handle<Exception>().WaitAndRetryAsync([
                 TimeSpan.FromSeconds(1),
@@ -162,13 +162,14 @@ namespace EGG9000.Site.Controllers {
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CheckDiscord() {
             ViewBag.Discord = _discord;
-            return View(await _db.DBUsers.AsQueryable().ToListAsync());
+            return View(await _db.DBUsers.AsNoTracking().ToListAsync());
         }
 
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateDiscord() {
-            var Model = await _db.DBUsers.AsQueryable().ToListAsync();
-            foreach(var user in Model.Where(x => x.Registered < DateTimeOffset.UtcNow.AddDays(-14))) {
+            var cutoff = DateTimeOffset.UtcNow.AddDays(-14);
+            var Model = await _db.DBUsers.Where(x => x.Registered < cutoff).ToListAsync();
+            foreach(var user in Model) {
                 var guilds = _discord.Guilds.Where(x => x.Users.Any(y => y.Id == user.DiscordId));
                 if(user.GuildId == 0 && guilds.Count() == 1) {
                     user.GuildId = guilds.First().Id;
@@ -193,7 +194,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
-            var dbguild = await _db.Guilds.AsQueryable().FirstAsync(x => x.Id == guildid);
+            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildid);
 
             var guild = _discord.Guilds.First(g => g.Id == guildid);
             // Membership is the DB GuildId, not the live Discord cache. The site runs its own bare
@@ -233,19 +234,10 @@ namespace EGG9000.Site.Controllers {
             if(NewCoopChecker.WaitingOnCoops) {
                 return View("LeaderboardTemporaryDown");
             }
-            var user = await GetCurrentDbUserAsync();
-
             ViewBag.Oldest = oldest;
             ViewBag.SortBy = sortby;
 
-            if(guildid == 0 || !User.IsInRole("Admin")) {
-                guildid = user.GuildId;
-            }
-
-            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
-
-            var leaderboard = await _getLeaderboard(guildid);
-
+            var leaderboard = (await ResolveGuildLeaderboardAsync(guildid)).Board;
 
             if(oldest) {
                 return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
@@ -290,7 +282,7 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> FAQ() {
             var guildId = GetGuildId();
-            var guild = await _db.Guilds.AsQueryable().FirstAsync(x => x.DiscordSeverId == guildId);
+            var guild = await GetGuildAsync(guildId);
 
             var topics = await _db.QueryFAQTopicsAsync(guild, false, "");
 
@@ -303,29 +295,15 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> CraftingLevelLeaderboard([FromQuery] ulong guildid = 0) {
-            var user = await GetCurrentDbUserAsync();
-            if(guildid == 0 || !User.IsInRole("Admin")) {
-                guildid = user.GuildId;
-            }
-            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
-            var leaderboard = await _getLeaderboard(guildid);
+            var leaderboard = (await ResolveGuildLeaderboardAsync(guildid)).Board;
             leaderboard = [.. leaderboard.OrderByDescending(x => x.TotalCraftingXP).Where(x => x.TotalCraftingXP > 0)];
             return View(leaderboard);
         }
 
         public async Task<IActionResult> CSLeaderboard(string cstype = "total", [FromQuery] ulong guildid = 0) {
-            var user = await GetCurrentDbUserAsync();
-
             ViewBag.CSType = cstype;
 
-            if(guildid == 0 || !User.IsInRole("Admin")) {
-                guildid = user.GuildId;
-            }
-
-            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
-
-            var leaderboard = await _getLeaderboard(guildid);
-
+            var leaderboard = (await ResolveGuildLeaderboardAsync(guildid)).Board;
 
             switch(cstype) {
                 case "season":
@@ -387,7 +365,7 @@ namespace EGG9000.Site.Controllers {
                 var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow));
                 // Snapshots from 16th @ Midnight (after event is over)
 
-                var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
+                var preEggDaySnapshots = await _db.UserSnapShots.Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
                 timings.Set("preEggDaySnapshots");
 
 
@@ -396,7 +374,7 @@ namespace EGG9000.Site.Controllers {
                     postEggDaySnapshots = [.. accounts.Where(x => preEggDaySnapshots.Any(y => y.EggIncID == x.Account.Id)).Select(x => new UserSnapShot { EarningsBonus = x.Account.Backup.EarningsBonus, EggIncID = x.Account.Id, EggsOfProphecy = x.Account.Backup.EggsOfProphecy, Prestiges = x.Account.Backup.NumPrestiges, SoulEggs = x.Account.Backup.SoulEggs, UserId = x.User.Id, Date = DateTime.Now })];
                 } else {
                     var eggDayDateEnd = eggDayDate.AddDays(1).Date;
-                    postEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date >= eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
+                    postEggDaySnapshots = await _db.UserSnapShots.Where(x => eggincids.Contains(x.EggIncID) && x.Date >= eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
                 }
                 timings.Set("postEggDaySnapshots");
                 // Snapshots from 14th @ Midnight (before event started)
@@ -460,12 +438,12 @@ namespace EGG9000.Site.Controllers {
             if(User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
 
 
-                var snapshots = (await _db.UserSnapShots.AsQueryable().Where(x => x.Date < new DateTime(2021, 07, 14)).OrderByDescending(x => x.Date).ToListAsync()).GroupBy(x => x.EggIncID).Select(x => x.First()).ToList();
+                var snapshots = (await _db.UserSnapShots.Where(x => x.Date < new DateTime(2021, 07, 14)).OrderByDescending(x => x.Date).ToListAsync()).GroupBy(x => x.EggIncID).Select(x => x.First()).ToList();
                 ViewBag.Snapshots = snapshots;
                 ViewBag.Oldest = oldest;
                 ViewBag.SortBy = sortby;
 
-                var guild = await _db.Guilds.AsQueryable().FirstAsync();
+                var guild = await _db.Guilds.FirstAsync();
 
                 var leaderboard = await _getLeaderboard(guild.Id);
 
@@ -537,39 +515,44 @@ namespace EGG9000.Site.Controllers {
             return Json(result);
         }
 
-        [Authorize]
-        public async Task<IActionResult> Comparison() {
-
+        private async Task<(DBUser User, ulong Guildid, List<LeaderboardUser> Board)> ResolveGuildLeaderboardAsync(ulong guildid) {
             var user = await GetCurrentDbUserAsync();
+            if(guildid == 0 || !User.IsInRole("Admin")) {
+                guildid = user.GuildId;
+            }
+            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
+            return (user, guildid, await _getLeaderboard(guildid));
+        }
 
+        private async Task<(List<T> All, List<T> Mine, List<string> MyNames)> BuildComparison<T>(Func<LeaderboardUser, T> project, Func<IEnumerable<LeaderboardUser>, IEnumerable<LeaderboardUser>> filter = null) {
+            var user = await GetCurrentDbUserAsync();
             await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
 
-            var leaderboard = await _getLeaderboard(user.GuildId);
+            IEnumerable<LeaderboardUser> leaderboard = await _getLeaderboard(user.GuildId);
+            if(filter is not null) leaderboard = filter(leaderboard);
 
-            var myEbsWithRole = new List<Tuple<double, string>>();
-            var myAccountNames = new List<string>();
-            var allEbData = new List<Tuple<double, string>>();
-
+            var all = new List<T>();
+            var mine = new List<T>();
+            var myNames = new List<string>();
             foreach(var u in leaderboard) {
-                // Add all users data.
-                allEbData.Add(new Tuple<double, string>(
-                    u.Backup.EarningsBonus,
-                    SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
-                    ));
-
-                // Add logged in users data.
+                all.Add(project(u));
                 if(u.User.Id == user.Id) {
-                    myEbsWithRole.Add(new Tuple<double, string>(
-                        u.Backup.EarningsBonus,
-                        SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank
-                    ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
+                    mine.Add(project(u));
+                    myNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
                 }
             }
+            return (all, mine, myNames);
+        }
 
-            ViewBag.ListOfEb = allEbData;
-            ViewBag.MyEbs = myEbsWithRole;
-            ViewBag.MyNames = myAccountNames;
+        [Authorize]
+        public async Task<IActionResult> Comparison() {
+            var (all, mine, myNames) = await BuildComparison(u => new Tuple<double, string>(
+                u.Backup.EarningsBonus,
+                SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank));
+
+            ViewBag.ListOfEb = all;
+            ViewBag.MyEbs = mine;
+            ViewBag.MyNames = myNames;
             ViewBag.AllRoles = SIPrefix.GetAllFarmerRoles();
 
             return View();
@@ -577,77 +560,29 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize]
         public async Task<IActionResult> GradeComparison() {
-            var user = await GetCurrentDbUserAsync();
+            var (all, mine, myNames) = await BuildComparison(u => new Tuple<int, double>(
+                (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
+                u?.Backup?.TotalCS ?? 0));
 
-            await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
-
-            var leaderboard = await _getLeaderboard(user.GuildId);
-
-            var myGradeData = new List<Tuple<int, double>>();
-            var myAccountNames = new List<string>();
-            var allGradeData = new List<Tuple<int, double>>();
-            var allGrades = new List<int> { 0, 1, 2, 3, 4, 5 };
-
-            foreach(var u in leaderboard) {
-                // Add all users data.
-                allGradeData.Add(new(
-                    (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
-                    u?.Backup?.TotalCS ?? 0
-                ));
-
-                // Add logged in users data.
-                if(u.User.Id == user.Id) {
-                    myGradeData.Add(new(
-                        (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
-                        u?.Backup?.TotalCS ?? 0
-                    ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
-                }
-            }
-
-            ViewBag.MyGradeData = myGradeData;
-            ViewBag.MyNames = myAccountNames;
-            ViewBag.AllGradeData = allGradeData;
-            ViewBag.AllGrades = allGrades;
+            ViewBag.MyGradeData = mine;
+            ViewBag.MyNames = myNames;
+            ViewBag.AllGradeData = all;
+            ViewBag.AllGrades = new List<int> { 0, 1, 2, 3, 4, 5 };
 
             return View();
         }
 
         [Authorize]
         public async Task<IActionResult> CraftingLevelComparison() {
-            var user = await GetCurrentDbUserAsync();
+            var (all, mine, myNames) = await BuildComparison(u => new Tuple<int, double>(
+                (int)u?.Account?.Backup.GetCraftingLevel(),
+                (double)(u?.Account?.Backup?.CraftingXP)),
+                leaderboard => leaderboard.Where(x => x.TotalCraftingXP > 0));
 
-            await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
-
-            var leaderboard = await _getLeaderboard(user.GuildId);
-            leaderboard = [.. leaderboard.Where(x => x.TotalCraftingXP > 0)]; //Ignore 0-xp accounts
-
-            var myCraftingData = new List<Tuple<int, double>>();
-            var myAccountNames = new List<string>();
-            var allCraftingData = new List<Tuple<int, double>>();
-            var allCraftingLevels = Enumerable.Range(1, 31).ToList();
-
-            foreach(var u in leaderboard) {
-                // Add all users data.
-                allCraftingData.Add(new(
-                    (int)u?.Account?.Backup.GetCraftingLevel(),
-                    (double)(u?.Account?.Backup?.CraftingXP)
-                ));
-
-                // Add logged in users data.
-                if(u.User.Id == user.Id) {
-                    myCraftingData.Add(new(
-                        (int)u?.Account?.Backup.GetCraftingLevel(),
-                        (double)(u?.Account?.Backup?.CraftingXP)
-                    ));
-                    myAccountNames.Add(u.Account.Name ?? u.Backup?.UserName ?? u.DiscordUser?.Username ?? u.User.DiscordUsername);
-                }
-            }
-
-            ViewBag.MyCraftingData = myCraftingData;
-            ViewBag.MyNames = myAccountNames;
-            ViewBag.AllCraftingData = allCraftingData;
-            ViewBag.AllCraftingLevels = allCraftingLevels;
+            ViewBag.MyCraftingData = mine;
+            ViewBag.MyNames = myNames;
+            ViewBag.AllCraftingData = all;
+            ViewBag.AllCraftingLevels = Enumerable.Range(1, 31).ToList();
 
             return View();
         }
@@ -672,7 +607,7 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> ViewBackup(string id) {
-            var user = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.Id.ToString() == id || x.DiscordUsername == id);
+            var user = await _db.DBUsers.FirstOrDefaultAsync(x => x.Id.ToString() == id || x.DiscordUsername == id);
             if(user == null) {
                 return NotFound();
             }
@@ -689,8 +624,8 @@ namespace EGG9000.Site.Controllers {
             CoopId = CoopId.ToLower();
             var model = new Home_CoopModel {
 
-                DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).AsQueryable().FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.ILike(x.Name, CoopId)),
-                Contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractId),
+                DbCoop = await _db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).Include(x => x.Contract).FirstOrDefaultAsync(x => x.ContractID == ContractId && EF.Functions.ILike(x.Name, CoopId)),
+                Contract = await _db.Contracts.FirstOrDefaultAsync(x => x.ID == ContractId),
                 CustomEggs = await _db.GetCustomEggsAsync()
             };
 
@@ -699,14 +634,6 @@ namespace EGG9000.Site.Controllers {
 
             if(model.CoopStatus == null && model.DbCoop?.LastStatusUpdate != null) {
                 model.CoopStatus = model.DbCoop.LastStatusUpdate;
-            }
-
-            if(model.CoopStatus.Participants.Any(x => x.UserName == "[departed]")) {
-                var cd = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
-                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? [], await _db.GetCustomEggsAsync(), _discord, model.CoopStatus);
-
-                var missing = cd.CoopParticipants.Where(x => !x.Joined).ToList();
-                var departed = model.CoopStatus.Participants.Where(x => x.UserName == "[departed]").ToList();
             }
 
             model.UserInfos = [];
@@ -773,7 +700,7 @@ namespace EGG9000.Site.Controllers {
             model.UserInfos.ForEach(x => x.Share = x.Projected / projected);
 
             model.CoopDetails = new CoopDetails(model.DbCoop, model.Contract, model.DbCoop?.League ?? (uint)model.CoopStatus.Grade,
-                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? [], await _db.GetCustomEggsAsync(), _discord, model.CoopStatus);
+                model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? [], model.CustomEggs, _discord, model.CoopStatus);
 
             return View(model);
         }
@@ -888,31 +815,8 @@ music
 29 https://discord.com/channels/656455567858073601/793591029353676851/1130563391027675260";
 
             var easterCacheKey = $"HalloweenEggs";
-            Dictionary<RestGuildUser, int> eggsFound;
-            if(!_cache.TryGetValue(easterCacheKey, out eggsFound)) {
-
-
-                var regex = MyRegex();
-                var matches = regex.Matches(links);
-                eggsFound = [];
-                foreach(Match match in matches) {
-                    var guild = await _discord.Rest.GetGuildAsync(ulong.Parse(match.Groups[1].Value));
-                    var channel = await guild.GetTextChannelAsync(ulong.Parse(match.Groups[2].Value));
-                    var message = await channel.GetMessageAsync(ulong.Parse(match.Groups[3].Value));
-                    var reactions = message.Reactions;
-                    var userReactions = await message.GetReactionUsersAsync(reactions.First(x => x.Key.Name.Contains("Hallowegg")).Key, 9999).FlattenAsync();
-                    foreach(var user in userReactions) {
-                        if(user.Username == "melina8irbie")
-                            continue;
-                        var existingUser = eggsFound.Any(x => x.Key.Id == user.Id);
-                        if(existingUser) {
-                            eggsFound[eggsFound.First(x => x.Key.Id == user.Id).Key]++;
-                        } else {
-                            var guildUser = await guild.GetUserAsync(user.Id);
-                            eggsFound.Add(guildUser, 1);
-                        }
-                    }
-                }
+            if(!_cache.TryGetValue(easterCacheKey, out Dictionary<RestGuildUser, int> eggsFound)) {
+                eggsFound = await EggHuntScanner.CountReactionsAsync(_discord.Rest, links, "Hallowegg", user => user.Username == "melina8irbie");
                 _cache.Set(easterCacheKey, eggsFound, TimeSpan.FromMinutes(10));
             }
             return View(eggsFound);
@@ -998,37 +902,11 @@ music
 15 https://discord.com/channels/656455567858073601/947948999128789042/948973482681696316";
 
             var easterCacheKey = $"EasterEggs";
-            Dictionary<RestGuildUser, int> eggsFound;
-            if(!_cache.TryGetValue(easterCacheKey, out eggsFound)) {
-
-
-                var regex = MyRegex();
-                var matches = regex.Matches(links);
-                eggsFound = [];
-                foreach(Match match in matches) {
-                    var guild = await _discord.Rest.GetGuildAsync(ulong.Parse(match.Groups[1].Value));
-                    var channel = await guild.GetTextChannelAsync(ulong.Parse(match.Groups[2].Value));
-                    var message = await channel.GetMessageAsync(ulong.Parse(match.Groups[3].Value));
-                    var reactions = message.Reactions;
-                    var userReactions = await message.GetReactionUsersAsync(reactions.First(x => x.Key.Name.Contains("EASTER")).Key, 9999).FlattenAsync();
-                    foreach(var user in userReactions) {
-                        if(user.Username == "TreeGoat")
-                            continue;
-                        var existingUser = eggsFound.Any(x => x.Key.Id == user.Id);
-                        if(existingUser) {
-                            eggsFound[eggsFound.First(x => x.Key.Id == user.Id).Key]++;
-                        } else {
-                            var guildUser = await guild.GetUserAsync(user.Id);
-                            eggsFound.Add(guildUser, 1);
-                        }
-                    }
-                }
+            if(!_cache.TryGetValue(easterCacheKey, out Dictionary<RestGuildUser, int> eggsFound)) {
+                eggsFound = await EggHuntScanner.CountReactionsAsync(_discord.Rest, links, "EASTER", user => user.Username == "TreeGoat");
                 _cache.Set(easterCacheKey, eggsFound, TimeSpan.FromMinutes(10));
             }
             return View(eggsFound);
         }
-
-        [GeneratedRegex(@"(\d+)/(\d+)/(\d+)")]
-        private static partial Regex MyRegex();
     }
 }

@@ -20,8 +20,15 @@ namespace EGG9000.Site.Controllers {
             var userManager = HttpContext.RequestServices.GetRequiredService<UserManager<ApplicationUser>>();
             var loginUser = await userManager.GetUserAsync(User);
             var logins = await userManager.GetLoginsAsync(loginUser);
-            return await db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            return await db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
         }
+
+        protected async Task<Guild> GetGuildAsync(ulong discordServerId) {
+            var db = HttpContext.RequestServices.GetRequiredService<ApplicationDbContext>();
+            return await db.Guilds.FirstAsync(x => x.DiscordSeverId == discordServerId);
+        }
+
+        protected Task<Guild> GetCurrentGuildAsync() => GetGuildAsync(GetGuildId());
 
         protected IActionResult RedirectToLocalReferer() {
             var referer = Request.Headers["Referer"].ToString();

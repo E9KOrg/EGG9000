@@ -82,13 +82,13 @@ namespace EGG9000.Site.Controllers {
             // MyContracts scores are cached (1h) and _db-free, so kick them off concurrently with the DB queries below.
             var scoresTask = GetScores(user, scoring);
 
-            var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
+            var Contracts = await _db.Contracts.AsNoTracking().ToListAsync();
 
-            var Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
-            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
-            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsSplitQuery().ToListAsync();
+            var Demerits = await _db.Demerit.AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
+            var Merits = await _db.Merit.AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
+            var Snapshots = await _db.UserSnapShots.AsNoTracking().Where(x => x.UserId == user.Id).ToListAsync();
+            var xrefs = await _db.UserCoopXrefs.AsNoTracking().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
+            var coops = await _db.Coops.AsNoTracking().Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsSplitQuery().ToListAsync();
             var erItems = EiEpicResearch.Get().epicResearchItems;
             var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
@@ -262,9 +262,9 @@ namespace EGG9000.Site.Controllers {
             }
 
             var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == FarmType.Contract).Select(f => f.ContractId)).ToList();
-            ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => contractIDs.Contains(x.ID)).ToListAsync();
+            ViewBag.Contracts = await _db.Contracts.Where(x => contractIDs.Contains(x.ID)).ToListAsync();
 
-            var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.UtcNow).FirstOrDefaultAsync();
+            var boostEvent = await _db.Events.Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.UtcNow).FirstOrDefaultAsync();
 
             return View(new MyFarms_Partial_EBCalcModel {
                 Backup = user.EggIncAccounts.First().Backup,
