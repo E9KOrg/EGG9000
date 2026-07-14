@@ -47,6 +47,7 @@ namespace EGG9000.Bot.Commands {
                     await AccountRefresh.ApplyExtrasAsync(dbuser, account, db, logger);
                     await EnforceUltraAsync(_client, dbGuild, socketGuild, dbuser, account, logger, oldLevel);
                 }
+                dbuser.LastBackupCheck = DateTime.UtcNow;
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
             } else {
