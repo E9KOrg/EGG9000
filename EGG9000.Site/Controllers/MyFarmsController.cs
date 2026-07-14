@@ -73,7 +73,7 @@ namespace EGG9000.Site.Controllers {
             // MyContracts scores are cached (1h) and _db-free, so kick them off concurrently with the DB queries below.
             var scoresTask = GetScores(user, scoring);
 
-            var Contracts = await _db.Contracts.AsNoTracking().ToListAsync();
+            var Contracts = await _db.CachedDbContractsAsync();
 
             var Demerits = await _db.Demerit.AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var Merits = await _db.Merit.AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
@@ -81,17 +81,19 @@ namespace EGG9000.Site.Controllers {
             var xrefs = await _db.UserCoopXrefs.AsNoTracking().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             var coops = await _db.Coops.AsNoTracking().Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsSplitQuery().ToListAsync();
             var erItems = EiEpicResearch.Get().epicResearchItems;
-            var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
+            var DbGuild = _db.CachedGuilds.FirstOrDefault(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
             var eggIncIds = user.EggIncAccounts.Select(a => a.Id).Distinct().ToList();
             var seasonProgresses = await _db.UserSeasonProgresses
                 .Where(x => eggIncIds.Contains(x.EggIncId))
                 .ToListAsync();
+            var seasonProgressByKey = new Dictionary<(string, string), UserSeasonProgress>();
+            foreach(var sp in seasonProgresses) seasonProgressByKey.TryAdd((sp.EggIncId, sp.SeasonId), sp);
             // Every started season that awards PE, not only the ones the player already has progress in.
             // A season the player never touched has no UserSeasonProgress row, but they can still be
             // missing all of its PE - default that case to 0 CXP at the account's current grade.
-            var seasonInfos = (await _db.SeasonInfos.ToListAsync())
+            var seasonInfos = (await _db.CachedSeasonInfosAsync())
                 .Where(x => x.StartTime <= DateTimeOffset.UtcNow)
                 .ToList();
 
@@ -110,7 +112,7 @@ namespace EGG9000.Site.Controllers {
                 var max = 0;
                 var missing = new List<MissingSeasonalPe>();
                 foreach(var info in seasonInfos) {
-                    var sp = seasonProgresses.FirstOrDefault(x => x.EggIncId == id && x.SeasonId == info.Id);
+                    var sp = seasonProgressByKey.GetValueOrDefault((id, info.Id));
                     var totalCxp = sp?.TotalCxp ?? 0;
                     var grade = sp is not null
                         ? (Contract.Types.PlayerGrade)sp.StartingGrade
@@ -397,16 +399,21 @@ namespace EGG9000.Site.Controllers {
         }
 
         public Dictionary<string, List<DBContract>> GetUncompletedPEContracts(DBUser user, List<DBContract> contracts) {
+            var contractsById = new Dictionary<string, DBContract>(StringComparer.CurrentCultureIgnoreCase);
+            foreach(var c in contracts) contractsById[c.ID] = c;
+            var pePossibleContracts = contracts.Where(c => c.Details.GetPossiblePE() > 0).ToList();
+
             return user.EggIncAccounts.ToDictionary(
                 account => account.Id,
-                account => account.Backup.ArchivedFarms
-                    .Where(f =>
-                        f.PEPossible > 0 && f.PEGained < f.PEPossible
-                    )
-                    .Select(f => contracts.FirstOrDefault(c => c.ID.Equals(f.ContractId, StringComparison.CurrentCultureIgnoreCase)))
-                    .Concat(contracts.Where(c => c.Details.GetPossiblePE() > 0 && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
-                    .Where(x => x is not null)
-                    .ToList()
+                account => {
+                    var archivedContractIds = account.Backup.ArchivedFarms.Select(f => f.ContractId).ToHashSet();
+                    return account.Backup.ArchivedFarms
+                        .Where(f => f.PEPossible > 0 && f.PEGained < f.PEPossible)
+                        .Select(f => contractsById.GetValueOrDefault(f.ContractId))
+                        .Concat(pePossibleContracts.Where(c => !archivedContractIds.Contains(c.ID)))
+                        .Where(x => x is not null)
+                        .ToList();
+                }
             );
         }
 

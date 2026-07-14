@@ -142,8 +142,12 @@ namespace EGG9000.Common.Database {
             }
         }
 
+        public const string EiContractsCacheKey = "DbContext-EiContracts";
+        public const string DbContractsCacheKey = "DbContext-DbContracts";
+        public const string SeasonInfosCacheKey = "DbContext-SeasonInfos";
+
         public async Task<FrozenSet<Ei.Contract>> CachedEiContractsAsync() {
-            return await _cache.GetOrCreateAsync("DbContext-EiContracts", async entry => {
+            return await _cache.GetOrCreateAsync(EiContractsCacheKey, async entry => {
                 var dbcontracts = await Contracts.ToListAsync();
                 var (eiContracts, _) = await EggIncAPI.EggIncApi.GetContractsArchive(EggIncAPI.EggIncApi.UserId);
 
@@ -156,14 +160,39 @@ namespace EGG9000.Common.Database {
 
         }
 
+        public async Task<System.Collections.Generic.List<DBContract>> CachedDbContractsAsync() {
+            return await _cache.GetOrCreateAsync(DbContractsCacheKey, async entry => {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+                return await Contracts.AsNoTracking().ToListAsync();
+            });
+        }
+
+        public async Task<System.Collections.Generic.List<SeasonInfo>> CachedSeasonInfosAsync() {
+            return await _cache.GetOrCreateAsync(SeasonInfosCacheKey, async entry => {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+                return await SeasonInfos.AsNoTracking().ToListAsync();
+            });
+        }
+
+        private static readonly string[] _contractCacheKeys = [EiContractsCacheKey, DbContractsCacheKey, SeasonInfosCacheKey];
+
         public void ExpireCachedEiContracts() {
-            _cache.Remove("DbContext-EiContracts");
+            foreach(var key in _contractCacheKeys) _cache.Remove(key);
+        }
+
+        // Drops the contract/season caches in this process, then broadcasts the same expiry to every other
+        // process (bot <-> site) so a newly-ingested contract or season is visible everywhere immediately
+        // instead of waiting out the 1h TTL.
+        public async Task ExpireCachedEiContractsAsync(MassTransit.IPublishEndpoint publishEndpoint) {
+            ExpireCachedEiContracts();
+            foreach(var key in _contractCacheKeys)
+                await publishEndpoint.Publish(new Consumers.ExpireCacheMessage(key));
         }
 
         // Registers contract definitions fetched by identifier (get_contracts_info) that the periodicals
         // feed never delivered to us (e.g. single-player contracts), so they exist in the DB and resolve
         // in CachedEiContractsAsync for everyone. Inserts the row only; fires no channel/coop automation.
-        public async Task<int> RegisterMissingContractsAsync(System.Collections.Generic.IEnumerable<Ei.Contract> contractDefs, CancellationToken ct = default) {
+        public async Task<int> RegisterMissingContractsAsync(System.Collections.Generic.IEnumerable<Ei.Contract> contractDefs, MassTransit.IPublishEndpoint publishEndpoint = null, CancellationToken ct = default) {
             var defs = contractDefs
                 .Where(c => c is not null && !string.IsNullOrEmpty(c.Identifier))
                 .GroupBy(c => c.Identifier)
@@ -197,7 +226,8 @@ namespace EGG9000.Common.Database {
             }
 
             await SaveChangesAsync(ct);
-            ExpireCachedEiContracts();
+            if(publishEndpoint is not null) await ExpireCachedEiContractsAsync(publishEndpoint);
+            else ExpireCachedEiContracts();
             return missing.Count;
         }
 
