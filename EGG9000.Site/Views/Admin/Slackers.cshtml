@@ -60,10 +60,10 @@
 		<li>The running score contracts are in different orders for different people</li>
 		<li>If the first two columns are gray it means they haven't had a score in a month</li>
 		@{
-			var currentScores = Model.Select(x => new { User = x, RunningScore = x.UserCoopXrefs.Where(x => x.Score.HasValue).OrderByDescending(x => x.Date).FirstOrDefault()?.RunningScore });
+			var currentScores = Model.Select(x => new { Account = x, RunningScore = x.UserCoopXrefs.Where(x => x.Score.HasValue).OrderByDescending(x => x.Date).FirstOrDefault()?.RunningScore });
 		}
-		<li>@currentScores.Count(x => x.RunningScore < threshold) users below @threshold.ToString("#.#########") (@currentScores.Count(x => x.RunningScore < threshold && x.User.Standard) standard)</li>
-		<li>@currentScores.Count(x => x.RunningScore < 0.1) users below 0.1 (@currentScores.Count(x => x.RunningScore < 0.1 && x.User.Standard) standard)</li>
+		<li>@currentScores.Count(x => x.RunningScore < threshold) accounts below @threshold.ToString("#.#########") (@currentScores.Count(x => x.RunningScore < threshold && x.Account.Standard) standard)</li>
+		<li>@currentScores.Count(x => x.RunningScore < 0.1) accounts below 0.1 (@currentScores.Count(x => x.RunningScore < 0.1 && x.Account.Standard) standard)</li>
 	</ul>
 </p>
 <button type="button" onclick="$('tr:not(.current)').toggle()">Toggle currently below threshold </button>
@@ -75,13 +75,14 @@
 		</tr>
 	</thead>
 	<tbody>
-		@foreach(var slacker in Model.OrderBy(x => x.DiscordUsername)) {
+		@foreach(var slacker in Model.OrderBy(x => x.DiscordUsername).ThenBy(x => x.AccountName)) {
 			var xrefs = slacker.UserCoopXrefs.Where(x => x.Score.HasValue).OrderByDescending(x => x.Date);
 			var lastContractTime = DateTimeOffset.Now - xrefs.First().Date;
 			var longTime = lastContractTime.TotalDays > 35;
 			var firstXrefWithRunning = xrefs.First(x => x.RunningScore.HasValue);
+			var accountLabel = slacker.AccountCount > 1 ? $"{slacker.DiscordUsername} ({slacker.AccountName})" : slacker.DiscordUsername;
 			<tr class="@(firstXrefWithRunning.RunningScore < threshold ? "current" : "")">
-					<td style="white-space: nowrap" class="@(longTime ? "bg-secondary" : (firstXrefWithRunning.RunningScore < threshold ? "bg-danger" : "" ))">@slacker.DiscordUsername</td>
+					<td style="white-space: nowrap" class="@(longTime ? "bg-secondary" : (firstXrefWithRunning.RunningScore < threshold ? "bg-danger" : "" ))">@accountLabel</td>
 					<td  class="@(longTime ? "bg-secondary" : "")">@(lastContractTime.Humanize())</td>
 				@foreach(var xref in xrefs.Take(20)) {
 					if (xref?.RunningScore != null) {
