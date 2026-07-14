@@ -661,7 +661,6 @@
                 let newUrl;
                 const hash = $(this).attr("href");
 
-                console.log(hash.substring(1, 5));
                 if (hash.substring(1, 5) == "user")
                     return;
                 newUrl = url.split("#")[0] + hash;

@@ -76,25 +76,6 @@ Sort By:
 <a class="btn btn-primary" href="?sortby=eov">Total Eggs Of Virtue</a>
 <a class="btn btn-primary" href="?sortby=tepershift">TE/Shift</a>
 
-
-
-@*<div class="dropdown" style="display: inline-block;">
-  <button class="btn btn-secondary dropdown-toggle" type="button" data-toggle="dropdown" aria-expanded="false">
-    Sort by
-  
-  <div class="dropdown-menu">
-<a class="dropdown-item" href="?sortby=se"><img src="~/images/Egg_soul.png" />Soul Eggs</a>
-<a class="dropdown-item" href="?sortby=pe"><img src="~/images/Egg_of_Prophecy.png" />Prophecy Egg</a>
-<a class="dropdown-item" href="?sortby=start">First Contract</a>
-<a class="dropdown-item" href="?sortby=permit">Permit</a>
-<a class="dropdown-item" href="?sortby=mer">MER</a>
-<a class="dropdown-item" href="?sortby=shifts">Shifts</a>
-<a class="dropdown-item" href="?sortby=eot"><img src="~/images/egg_truth.png" />Truth Egg</a>
-<a class="dropdown-item" href="?sortby=eott"><img src="~/images/egg_truth.png" alt="Eggs of Truth" /> w/Unclaimed</a>
-<a class="dropdown-item" href="?sortby=eov">Total Eggs Of Virtue</a>
-<a class="dropdown-item" href="?sortby=tepershift">TE/Shift</a>
-  </div>
-</div>*@
 <div class="row">
 	<div class="col">
 		<table class="table table-striped table-sm">
@@ -116,15 +97,12 @@ Sort By:
 					<th>EB</th>
 					<th>Shifts</th>
 					<th></th>
-					@* <th title="Server Coops/All Coops">Coops</th> *@
 					@if (ViewBag.Oldest) {
 						<th>Joined</th>
 					}
 					@if (ViewBag.SortBy == "start") {
 						<th>Started</th>
 					}
-					@* <th>BG</th> *@
-					@*<th>Registered</th>*@
 				</tr>
 			</thead>
 			<tbody>
@@ -153,9 +131,9 @@ Sort By:
 
 			<td align="right"> @i </td>
 
-			<td style="max-width: 150px; text-overflow: ellipsis; line-break: strict;">
+			<td class="lb-name-cell">
 				@if (isMe) {
-					<div id="@account.Backup.EggIncId" style="position: relative; top: -40px;"></div>
+					<div id="@account.Backup.EggIncId" class="lb-anchor-offset"></div>
 				}
 				@if (isAdmin) {
 					<a href="/Home/ViewUser/@(account.User.Id)">
@@ -204,20 +182,12 @@ Sort By:
 				}
 				<img src="@PlayerGradeDetails.GetImage(account.Account.GetGrade())" />
 			</td>
-			@* <td align="right" class="monospace">
-			 	@{
-			 		var totalCoops = ((account.Backup.ArchivedFarms?.Count ?? 0) + (account.Backup.Farms.Where(x => !string.IsNullOrEmpty(x.ContractId)).Count()));
-			 		MonoSpace($"{account.TotalContracts}/{totalCoops}{(totalCoops < 100 ? " " : "")}");
-			 	}
-			 </td>*@
 			@if (ViewBag.Oldest) {
 				<td>@account.User.Registered.Value.ToString("yyyy-MM-dd")</td>
 			}
 			@if (ViewBag.SortBy == "start") {
 				<td>@(account.Started.ToString("yyyy-MM-dd"))</td>
 			}
-			@* <td>@account.Account.Group</td>*@
-			@*<td>@account.User.CreateOn.ToString("yyyy-MM-dd")</td>*@
 		</tr>
 	}
 }

@@ -199,7 +199,6 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.ClientSecret = Configuration.GetConnectionString("ClientSecret");
         options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents {
             OnTicketReceived = context => {
-                Console.WriteLine("est");
                 return Task.FromResult(0);
             }
         };
