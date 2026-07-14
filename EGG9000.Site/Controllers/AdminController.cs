@@ -513,20 +513,19 @@ namespace EGG9000.Site.Controllers {
             Console.WriteLine($"Processing {contractid}");
             var contract = await _db.Contracts.FirstAsync(x => x.ID == contractid);
             var scores = ContractScoring.GetContractScores(contractCoops, contract, _logger);
-            var userXrefs = await _db.UserCoopXrefs.Where(x => x.Score != null && x.Coop.ContractID != contractid && x.CreatedOn < contract.GoodUntil)
-                .GroupBy(x => x.UserId).Select(x => new { Key = x.Key, Last3Score = x.OrderByDescending(y => y.CreatedOn).Take(3) }).ToListAsync();
+            var accountXrefs = await _db.UserCoopXrefs.Where(x => x.Score != null && x.Coop.ContractID != contractid && x.CreatedOn < contract.GoodUntil)
+                .GroupBy(x => x.EggIncId).Select(x => new { Key = x.Key, Last3Score = x.OrderByDescending(y => y.CreatedOn).Take(3) }).ToListAsync();
             foreach(var score in scores) {
                 score.xref.Score = score.Score;
                 score.xref.SoulPower = score.SoulPower;
-                var xrefs = userXrefs.FirstOrDefault(x => x.Key == score.UserId)?.Last3Score.ToList() ?? [];
+                var xrefs = accountXrefs.FirstOrDefault(x => x.Key == score.xref.EggIncId)?.Last3Score.ToList() ?? [];
                 xrefs.Add(score.xref);
                 if(xrefs.Count == 4) {
-                    var firstXref = xrefs.First();
                     score.xref.RunningScore = xrefs.Average(x => x.Score);
-                    var eggIncAccount = firstXref.User?.EggIncAccounts?.FirstOrDefault(a => a.Id == firstXref.EggIncId);
+                    var eggIncAccount = score.xref.User?.EggIncAccounts?.FirstOrDefault(a => a.Id == score.xref.EggIncId);
                     if(eggIncAccount != null) {
-                        eggIncAccount.LatestRunningScore = xrefs.Average(x => x.Score) ?? 0;
-                        firstXref.User.UpdateAccounts();
+                        eggIncAccount.LatestRunningScore = score.xref.RunningScore ?? 0;
+                        score.xref.User.UpdateAccounts();
                     }
                 }
             }
@@ -614,10 +613,10 @@ namespace EGG9000.Site.Controllers {
 
             var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && x.Created > DateTimeOffset.UtcNow.AddMonths(-6)).ToListAsync();
 
-            var userXrefs = coops.SelectMany(x => x.UserCoopsXrefs).Where(x => x.JoinedCoop).GroupBy(x => x.UserId);
+            var accountXrefs = coops.SelectMany(x => x.UserCoopsXrefs).Where(x => x.JoinedCoop).GroupBy(x => x.EggIncId);
 
-            foreach(var userXref in userXrefs) {
-                var xrefs = userXref.OrderByDescending(x => x.CreatedOn).ToList();
+            foreach(var accountXref in accountXrefs) {
+                var xrefs = accountXref.OrderByDescending(x => x.CreatedOn).ToList();
                 foreach(var xref in xrefs) {
                     var lastFourXrefs = xrefs.Where(x => x.CreatedOn <= xref.CreatedOn && x.Score.HasValue).Take(4).ToList();
                     if(lastFourXrefs.Count == 4 && xref.Score.HasValue) {
