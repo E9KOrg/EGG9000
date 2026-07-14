@@ -5,21 +5,23 @@
     var demerits = (List<Demerit>)ViewBag.Demerits;
     var merits = (List<Merit>)ViewBag.Merits;
 
-    var users = Model.Select(x => {
-        var standardPermitIDs = x.EggIncAccounts.Where(z => z.Backup.PermitLevel == 0).Select(z => z.Id);
-        var userXrefs = xrefs.Where(y => y.UserId == x.Id && standardPermitIDs.Contains(y.EggIncId));
+    var users = Model.SelectMany(x =>
+        x.EggIncAccounts.Where(z => z.Backup.PermitLevel == 0).Select(account => {
+            var accountXrefs = xrefs.Where(y => y.UserId == x.Id && y.EggIncId == account.Id);
             return new {
-            x.Id,
-            x.DiscordUsername,
-            Backups = x.EggIncAccounts.Select(x => x.Backup),
-            x.Registered,
-            Xrefs = userXrefs.Where(y => y.UserId == x.Id),
-            Demerits = demerits.Where(y => y.UserId == x.Id),
-            Merits = merits.Where(y => y.UserId == x.Id),
-            LastRunnningScore = userXrefs.Where(y => y.UserId == x.Id).OrderBy(y => y.CreatedOn).LastOrDefault()?.RunningScore ?? 0,
-            x.DiscordId
-        };
-    });
+                x.Id,
+                x.DiscordUsername,
+                AccountName = account.Name,
+                MultiAccount = x.EggIncAccounts.Count > 1,
+                Backups = x.EggIncAccounts.Select(a => a.Backup),
+                x.Registered,
+                Xrefs = accountXrefs,
+                Demerits = demerits.Where(y => y.UserId == x.Id),
+                Merits = merits.Where(y => y.UserId == x.Id),
+                LastRunnningScore = accountXrefs.OrderBy(y => y.CreatedOn).LastOrDefault()?.RunningScore ?? 0,
+                x.DiscordId
+            };
+        }));
 }
 <style>
     .container {
@@ -45,8 +47,9 @@
     </thead>
     <tbody>
         @foreach(var user in users.OrderByDescending(x => x.LastRunnningScore)) {
+            var accountLabel = user.MultiAccount ? $"{user.DiscordUsername} ({user.AccountName})" : user.DiscordUsername;
             <tr>
-                <td><a href="/MyFarms/ViewUser?discordId=@(user.DiscordId)">@user.DiscordUsername</a></td>
+                <td><a href="/MyFarms/ViewUser?discordId=@(user.DiscordId)">@accountLabel</a></td>
                 <td>@user.DiscordId</td>
                 <td>@user.Backups.Count(x => x.PermitLevel == 0) of @user.Backups.Count()</td>
                 <td>@user.Registered.Value.ToString("yyyy-M-d")</td>
@@ -54,7 +57,7 @@
                 <td>@user.Demerits.Count()</td>
                 <td>@user.Merits.Count()</td>
                 <td>@user.Xrefs.OrderBy(x => x.CreatedOn).LastOrDefault()?.RunningScore</td>
-                @foreach(var xref in user.Xrefs.OrderByDescending(x => x.CreatedOn).Take(10)) {
+                @foreach(var xref in user.Xrefs.Where(x => x.Score.HasValue).OrderByDescending(x => x.CreatedOn).Take(10)) {
                     <td>@Math.Log10(xref.Score.Value)</td>
                 }
             </tr>
