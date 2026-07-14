@@ -7,6 +7,8 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
 
+using Humanizer;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -144,7 +146,7 @@ namespace EGG9000.Common.Services {
 
             var embedBuilder = new EmbedBuilder()
                 .WithTitle($"{status.ContractName}, BG{status.Num}")
-                .WithDescription($"{body}\n\n-# Last updated {lastUpdated}")
+                .WithDescription(allMatch ? $"{body}\n\n-# Time to complete {(status.Since - DateTimeOffset.UtcNow).Humanize().ShortenTime()}" : $"{body}\n\n-# Last updated {lastUpdated}")
                 .WithColor(complete ? Color.Green : new Color(255, 255, 0));
 
             if(!string.IsNullOrEmpty(status.EggImageUrl))
