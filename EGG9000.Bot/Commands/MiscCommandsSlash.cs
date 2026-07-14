@@ -219,7 +219,9 @@ namespace EGG9000.Bot.Commands {
                     var messageToPing = await thread.SendMessageAsync(".");
                     await messageToPing.ModifyAsync(x => x.Content = staffTag);
                     await messageToPing.DeleteAsync();
-                    await thread.SendMessageAsync(text: $"{Context.User.Mention}", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
+
+                    var staffPingEmbed = EmbedCustom(EmbedHelpers.EmbedType.UnStyled, "CallStaff", message);
+                    await thread.SendMessageAsync(text: $"{Context.User.Mention}", embed: staffPingEmbed);
 
                     var response = await ChannelHelper.DetermineAndSend(_client, guildFind, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message + " " + thread.Mention });
 

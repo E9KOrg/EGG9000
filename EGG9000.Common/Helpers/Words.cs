@@ -19,15 +19,19 @@ namespace EGG9000.Common.Helpers {
         }
 
         // Pick a second word that does not start with the first word's last character (avoids
-        // double-letter mashups like "BankKite"). The old version allocated a full filtered copy of
-        // the ~1600-word list on every coop creation; rejection sampling is allocation-free and the
-        // excluded letter only trims a few percent, so it converges in ~1 try. Bounded retries guard
-        // the degenerate case where the pool somehow lacks any other starting letter.
+        // double-letter mashups like "BankKite"). When the first word ends in 'l' or 'i', both 'l'
+        // and 'i' are excluded from the start (avoids ambiguous l/i pairings). Rejection sampling is
+        // allocation-free and the excluded letters trim a few percent, so it converges in ~1 try.
+        // Bounded retries guard the degenerate case where the pool lacks any allowed starting letter.
         public string GetRandomSecondWord(string firstWord) {
-            var exclude = char.ToLowerInvariant(firstWord.Last());
+            var last = char.ToLowerInvariant(firstWord.Last());
+            var excludeLiPair = last == 'l' || last == 'i';
             for(var attempt = 0; attempt < 16; attempt++) {
                 var candidate = WordList[_rnd.Next(WordList.Count)];
-                if(candidate.Length == 0 || char.ToLowerInvariant(candidate[0]) != exclude)
+                if(candidate.Length == 0) return FirstCharToUpper(candidate);
+                var first = char.ToLowerInvariant(candidate[0]);
+                var blocked = excludeLiPair ? (first == 'l' || first == 'i') : first == last;
+                if(!blocked)
                     return FirstCharToUpper(candidate);
             }
             return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);

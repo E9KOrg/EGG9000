@@ -1,5 +1,6 @@
 @using EGG9000.Common.JsonData
-@model (List<EpicResearchItem> epicResearchConfig, CustomBackup backup, EggIncAccount account);
+@using EGG9000.Site.Models.MyFarms
+@model MyFarms_Partial_EpicResearchModel
 @{
 	foreach (var research in Model.epicResearchConfig) {
 		if (research.title == "Hyperloop") {

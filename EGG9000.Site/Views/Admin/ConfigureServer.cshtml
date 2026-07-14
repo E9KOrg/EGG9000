@@ -106,19 +106,36 @@
 	.custom-input {
 		display: inline-block;
 		padding: 4px;
-		border: 1px solid #007bff;
+		border: 1px solid #ced4da;
 		border-radius: 3px;
 		color: #333;
 		background-color: #fff;
-		transition: border-color 0.3s;
+		margin-right: 6px;
+	}
+
+	.custom-input:focus {
+		outline: none;
+		box-shadow: none;
+		border-color: #86b7fe;
 	}
 
 	[data-bs-theme="dark"] .custom-input {
-		border-color: #343a40;
+		border-color: #495057;
 		color: #fff;
 		background-color: #343a40;
 	}
 
+	[data-bs-theme="dark"] .custom-input:focus {
+		border-color: #6c757d;
+	}
+
+	.card-body > div {
+		margin-bottom: 6px;
+	}
+
+	.card-body > div:last-child {
+		margin-bottom: 0;
+	}
 </style>
 <h2>Configure Server</h2>
 
@@ -207,7 +224,7 @@
 					}
 				</td>
 				@if(role != null) {
-					<td style="color: @role.Colors.PrimaryColor.ToString();">
+					<td style="color: @(role.Colors.PrimaryColor.ToString() != "#000000" ? role.Colors.PrimaryColor.ToString() : "inherit");">
 						@discord.GetGuild(Model.Id).GetRole(@detail.Id)?.Name
 					</td>
 				} else {

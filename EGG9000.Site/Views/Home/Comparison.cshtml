@@ -93,7 +93,7 @@ var ebOptions = {
         ]
     }],
     theme: {
-        mode: getCookie('Egg9000Theme') == 'bootstrap-dark' ? 'dark' : 'light'
+        mode: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light'
     },
     annotations: {
         points: [
