@@ -13,10 +13,10 @@ namespace EGG9000.Test {
             (ContainerComponent)built.Components.First();
 
         private static string HeaderText(ContainerComponent container) =>
-            ((TextDisplayComponent)container.Components.Last()).Content;
+            ((TextDisplayComponent)container.Components.First()).Content;
 
         private static string BodyText(ContainerComponent container) {
-            var section = (SectionComponent)container.Components.First();
+            var section = (SectionComponent)container.Components.Last();
             return ((TextDisplayComponent)section.Components.First()).Content;
         }
 
