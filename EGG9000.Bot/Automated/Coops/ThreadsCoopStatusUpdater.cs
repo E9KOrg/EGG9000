@@ -657,7 +657,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 // assigned but not joined can never join, so once past the kick window we still
                                 // need to drop their xref to free the spot for /findcoopforuser.
                                 var hoursToKick = coop.Contract.cc_only ? 24 : 18;
-                                if(user is not null && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-hoursToKick)) {
+                                if(user is not null && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-hoursToKick) && !userFarmDetails.Xref.NoDemerit) {
                                     var accountName = user.EggIncAccounts.Count > 1 ? $" ({user.EggIncAccounts.Where(a => a.Id == userFarmDetails.Xref.EggIncId).FirstOrDefault()?.Backup?.UserName})" : "";
                                     var kickReason = discordUser != null
                                         ? $"Failed to join {coop.Contract.Name} within {hoursToKick} hours{accountName}, you have been removed from the co-op and your space might be filled."
