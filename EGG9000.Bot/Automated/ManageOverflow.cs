@@ -166,11 +166,10 @@ namespace EGG9000.Bot.Automated {
         }
 
         /// <summary>
-        /// Sync channel permissions, role configurations, and command permissions from main to overflow servers.
+        /// Sync role configurations from main to overflow servers.
         /// </summary>
         private async Task SyncOverflowSettings(Guild guild, SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
             try {
-                // Sync role configurations
                 await OverflowSyncing.HandleRoleSyncsAsync(guild, mainServer, overflowServers, _provider, _logger, cancellationToken);
 
                 StillAlive();

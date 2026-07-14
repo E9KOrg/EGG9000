@@ -41,10 +41,6 @@ namespace EGG9000.Common.Helpers.Discord {
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bot", _botToken);
         }
 
-        public class LowercaseNamingPolicy : JsonNamingPolicy {
-            public override string ConvertName(string name) => name.ToLower();
-        }
-
         private static void AddBearerAuth(HttpRequestMessage request, string accessToken) {
             if(string.IsNullOrWhiteSpace(accessToken)) {
                 throw new ArgumentNullException(nameof(accessToken));

@@ -54,7 +54,7 @@ namespace EGG9000.Common.Helpers.Discord {
                     : RoleColors.Solid(role.Colors.PrimaryColor);
 
                 if (overflowRole is null) {
-                    overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: syncColors);
+                    overflowRole = await overflowServer.CreateRoleAsync(role.Name, permissions: role.Permissions, color: syncColors);
                     logger?.LogInformation("Created role {roleName} in {serverName}", role.Name, overflowServer.Name);
                 } else if (!role.Permissions.Equals(overflowRole.Permissions) || overflowRole.Color != role.Color) {
                     await overflowRole.ModifyAsync(x => {
@@ -120,7 +120,11 @@ namespace EGG9000.Common.Helpers.Discord {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var guild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == originalRole.Guild.Id);
 
-            if (guild is null || guild.OverflowServers.Count == 0 || guild.RolesToSync is null || !guild.RolesToSync.Contains(originalRole.Id.ToString()))
+            if (guild is null || guild.OverflowServers.Count == 0 || string.IsNullOrWhiteSpace(guild.RolesToSync))
+                return;
+
+            var roleIds = guild.RolesToSync.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (!roleIds.Contains(originalRole.Id.ToString()))
                 return;
 
             var client = provider.GetService<DiscordHostedService>();
@@ -266,20 +270,7 @@ namespace EGG9000.Common.Helpers.Discord {
             }
             return roleMaps;
         }
-    }    //public class Permission {
-    //    public string Id { get; set; }
-    //    public int Type { get; set; }
-    //    public bool PermissionBool { get; set; }
-    //}
-
-    //public class GuildApplicationCommandPermissions {
-    //    public string Id { get; set; }
-    //    public string ApplicationId { get; set; }
-    //    public string GuildId { get; set; }
-    //    public List<Permission> Permissions { get; set; }
-    //}
-
-
+    }
 
     public class RoleMap {
         public ulong RoleID { get; set; }
