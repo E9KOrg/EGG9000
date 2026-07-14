@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.RespondAsync("", embed: failureEmbed, ephemeral: true);
                 return;
             }
-            var explainEmbed = EmbedHelpers.MakeCustomEmbed(EmbedHelpers.EmbedType.Success, "APOD Explanation", explanation);
+            var explainEmbed = EmbedHelpers.EmbedCustom(EmbedHelpers.EmbedType.Success, "APOD Explanation", explanation);
             await Context.Interaction.RespondAsync("", embed: explainEmbed, ephemeral: true);
         }
 
