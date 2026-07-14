@@ -4,12 +4,11 @@
 @{
 	ViewData["Title"] = "CSLeaderboard";
 
-	var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
-	var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
+	var discordId = User.DiscordId();
 
 	var myAccounts = Model.Where(x => x.DisplayDiscordId.ToString() == discordId);
 	// Read/staff tier - gates only the clickable player-name link to MyFarms on this read-only page.
-	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+	var isAdmin = User.IsStaff();
 }
 
 

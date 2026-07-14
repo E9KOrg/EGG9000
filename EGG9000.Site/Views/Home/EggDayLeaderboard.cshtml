@@ -4,8 +4,7 @@
 @{
 	ViewData["Title"] = "Leaderboard";
 
-	var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
-	var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
+	var discordId = User.DiscordId();
 
 	var myAccounts = Model.Where(x => x.UserAccount.User.DiscordId.ToString() == discordId);
 	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
