@@ -121,7 +121,7 @@ namespace EGG9000.Site.Controllers {
 
                 foreach(var coop in guildGroup.OrderBy(x => rnd.Next())) {
                     var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
-                    var channel = coop.ThreadID != 0 ? guild.GetThreadChannel(coop.ThreadID) : guild.GetTextChannel(coop.DiscordChannelId);
+                    var channel = guild.GetThreadChannel(coop.ThreadID);
                     if(channel == null) {
                         continue;
                     }

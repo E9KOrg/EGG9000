@@ -13,7 +13,7 @@ using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     [Index(nameof(Status))]
-    [Index(nameof(DiscordChannelId), nameof(ThreadArchived), nameof(CoopEnds), nameof(ThreadID))]
+    [Index(nameof(ThreadArchived), nameof(CoopEnds), nameof(ThreadID))]
     [Index(nameof(ThreadID), nameof(Created))]
     [Index(nameof(ThreadID))]
     public class Coop {
@@ -43,7 +43,6 @@ namespace EGG9000.Common.Database.Entities {
         public bool AnyLeague { get; set; }
         public bool SuccessfullyStarted { get; set; }
 
-        public ulong DiscordChannelId { get; set; } // V2 - Comment out
         public ulong GuildId { get; set; }
         public ulong OverflowGuildId { get; set; }
         public string UpdateMessagesId { get; set; }
