@@ -1,5 +1,6 @@
 using Discord.Interactions;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -143,17 +144,12 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("nodemerit", "Stops user from getting demerit in co-op")]
+        [ChannelContext(Coop = true)]
         public async Task NoDemerit([Summary("user")] SocketGuildUser user) {
             await Context.Interaction.DeferAsync();
             List<UserCoopXref> xref;
-            var targetCoop = await Db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == Context.Channel.Id);
 
-            if(targetCoop == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("This command can only be used in a co-op channel"));
-                return;
-            }
-
-            xref = await Db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == targetCoop.Id).ToListAsync();
+            xref = await Db.UserCoopXrefs.AsQueryable().Where(xref => xref.User.DiscordId == user.Id && xref.CoopId == CoopChannel.Id).ToListAsync();
 
             if(xref.Count == 0) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Unable to find user reference in co-op"));

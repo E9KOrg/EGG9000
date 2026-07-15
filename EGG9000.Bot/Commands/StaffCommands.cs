@@ -180,29 +180,19 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("pingeveryoneincoop", "Ping everyone in a co-op with a message")]
+        [ChannelContext(CoopWithUsers = true)]
         public async Task PingEveryoneInCoop([Summary("message")] string message) {
-            var coop = await Db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == Context.Interaction.ChannelId);
-            if(coop == null) {
-                await Context.Interaction.RespondAsyncGettingMessage($"Error finding co-op for this thread", ephemeral: true);
-                return;
-            }
-
             await Context.Interaction.RespondAsyncGettingMessage($"Pinging now", ephemeral: true);
 
-            var pings = String.Join(" ", coop.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
+            var pings = string.Join(" ", CoopChannel.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
 
             await Context.Channel.SendMessageAsync($"{pings} {message}");
         }
 
         [SlashCommand("fixjoinissue", "Fix where the server doesn't show them as joined")]
+        [ChannelContext(Coop = true)]
         public async Task FixJoinIssue([Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Summary("useraccount")] string useraccount) {
             await Context.Interaction.DeferAsync(ephemeral: true);
-
-            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id);
-            if(coop == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
-                return;
-            }
 
             var userid = useraccount.Split("|")[0];
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
@@ -215,16 +205,16 @@ namespace EGG9000.Bot.Commands {
 
             var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
 
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                ContractIdentifier = CoopChannel.ContractID,
+                CoopIdentifier = CoopChannel.Name.ToLower(),
                 UserId = account.Id,
-                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
+                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)CoopChannel.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
             }, account.Id);
 
 
             var updateResponse = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                ContractIdentifier = CoopChannel.ContractID,
+                CoopIdentifier = CoopChannel.Name.ToLower(),
                 Eop = 1, SoulPower = 24, UserId = account.Id, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = account.Backup.DeviceId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
                 ProductionParams = new Ei.FarmProductionParams {
                     FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0

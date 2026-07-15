@@ -35,14 +35,10 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("deletecoop", "Delete co-op channel from discord and database ")]
         [DefaultMemberPermissions(Discord.GuildPermission.Administrator | Discord.GuildPermission.ManageChannels | Discord.GuildPermission.ManageRoles)]
         [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
+        [Interactions.ChannelContext(Coop = true)]
         public async Task DeleteCoop() {
             await Context.Interaction.DeferAsync();
-            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id);
-            if(coop == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Unable to find co-op, is this being run in a co-op thread?"));
-                return;
-            }
-            Db.Remove(coop);
+            Db.Remove(CoopChannel);
             await Db.SaveChangesAsync();
             await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedSuccess("Coop deleted from DB."));
             await ((SocketThreadChannel)Context.Channel).ModifyAsync(c => {
