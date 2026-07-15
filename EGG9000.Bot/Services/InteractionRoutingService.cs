@@ -115,7 +115,7 @@ namespace EGG9000.Bot.Services {
         }
 
         private Task OnInteractionCreated(IDiscordInteraction interaction) {
-            var ctx = new SocketInteractionContext(_discord.Gateway, (SocketInteraction)interaction);
+            var ctx = new E9KInteractionContext(_discord.Gateway, (SocketInteraction)interaction);
             _ = Task.Run(async () => {
                 var acquired = await _semaphore.WaitAsync(TimeSpan.FromSeconds(2.5));
                 if(!acquired) {
