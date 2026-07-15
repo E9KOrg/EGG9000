@@ -396,7 +396,7 @@ namespace EGG9000.Site.Controllers {
                 var eggincids = accounts.Select(x => x.Account.Id).ToList();
 
 
-                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow));
+                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow)).ToUniversalTime();
                 // Snapshots from 16th @ Midnight (after event is over)
 
                 var preEggDaySnapshots = await _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
