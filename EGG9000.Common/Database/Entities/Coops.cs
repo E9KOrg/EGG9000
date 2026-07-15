@@ -50,7 +50,6 @@ namespace EGG9000.Common.Database.Entities {
         public string CreatorID { get; set; }
         public DateTimeOffset? LastUpdateToChannel { get; set; }
         public DateTimeOffset? WarningForDeleteChannel { get; set; }
-        public uint FindChannelErrors { get; set; } = 0; // V2 - Comment out
         public ulong Group { get; set; }
         public bool AddedFromBackup { get; set; } = false;
 
