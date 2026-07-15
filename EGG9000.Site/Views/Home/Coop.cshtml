@@ -27,7 +27,7 @@
 	var projectPercentEveryone = Model.CoopDetails.CoopParticipants.Sum(x => x.Projected) / targetAmount * 100;
 	var projectPercentEveryoneStr = PercentString(projectPercentEveryone);
 
-	var discordChannelDeleted = ((Model.CoopDetails.Coop?.ThreadID != 0 ? Model.CoopDetails.Coop?.ThreadArchived : Model.CoopDetails.Coop?.DeletedChannel)) ?? true;
+	var discordChannelDeleted = (Model.CoopDetails.Coop?.ThreadArchived) ?? true;
 
 
 	var projectPercentWidth = Math.Min(projectPercent, 100) - percent;

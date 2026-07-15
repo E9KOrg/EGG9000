@@ -184,7 +184,7 @@ namespace EGG9000.Site.Controllers {
                 })],
                 Guild = guild,
                 ContractsToScore = contractsToScore,
-                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.UtcNow)
+                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && x.CoopEnds > DateTimeOffset.UtcNow)
             });
         }
 
@@ -500,7 +500,7 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> DeleteOutsideCoopMessage() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
-            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && !x.DeletedChannel && !x.ThreadArchived).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && !x.ThreadArchived).ToListAsync();
 
             var coopsToFix = coops.Where(x => x.UserCoopsXrefs.Any(y => y.OutsideCoop));
 
@@ -665,7 +665,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> Sleepers() {
             var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
             var demeritExpires = DateTimeOffset.UtcNow.AddDays(-2);
-            var sleepers = await _db.UserCoopXrefs.AsQueryable().Where(x => x.User.GuildId == guildId && !x.Coop.DeletedChannel && !x.Coop.ThreadArchived).Select(x => new SleeperDetail {
+            var sleepers = await _db.UserCoopXrefs.AsQueryable().Where(x => x.User.GuildId == guildId && !x.Coop.ThreadArchived).Select(x => new SleeperDetail {
                 DiscordName = x.User.DiscordUsername,
                 CurrentSleep = x.HoursSleeping - (x.SiloTimeHours ?? 0),
                 TotalCoopSleep = x.TotalHoursSleeping,
@@ -712,7 +712,7 @@ namespace EGG9000.Site.Controllers {
                 var overflowGuild = _discord.Guilds.First(x => x.Id == overflowGuildId);
                 await overflowGuild.DownloadUsersAsync();
                 var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7);
-                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => !x.Coop.DeletedChannel && !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop).Select(x => new Ghost {
+                var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop).Select(x => new Ghost {
                     Coop = x.Coop.Name,
                     DiscordId = x.User.DiscordId,
                     CoopChannel = x.Coop.ThreadID,
@@ -910,7 +910,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<ActionResult> DuplicateChannels() {
 
 
-            var coops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived && !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived).ToListAsync();
 
             var coopChannels = _discord.Guilds.SelectMany(x => x.TextChannels);
 
@@ -933,7 +933,7 @@ namespace EGG9000.Site.Controllers {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildId);
 
 
-            var coops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived && !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.AsQueryable().Where(x => !x.ThreadArchived).ToListAsync();
 
             var coopChannels = _discord.Guilds.Where(x => x.Id == guildId || dbguild.OverflowServers.Any(y => y == x.Id)).SelectMany(x => x.TextChannels);
 

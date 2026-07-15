@@ -48,7 +48,7 @@
         CoopId = (isAdmin || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Id : Guid.Empty,
         HoursToFinish = c.TimeRemaining.TotalHours,
         DiscordChannelId = c.Coop.ThreadID.ToString(),
-        DeletedChannel = (c.Coop.ThreadID != 0 ? c.Coop.ThreadArchived : c.Coop.DeletedChannel),
+        DeletedChannel = c.Coop.ThreadArchived,
         OverflowGuildId = c.Coop.OverflowGuildId.ToString()
     });
 

@@ -473,7 +473,7 @@ namespace EGG9000.Bot.Commands {
         public async Task CoopStats() {
             var command = Context.Interaction;
             await command.DeferAsync();
-            var coops = await Db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
+            var coops = await Db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
             var stats = new StringBuilder();
             stats.AppendLine($"**Coop Threads Last Updated**");
             var coopGroups = coops.Where(x => x.LastUpdateToChannel is not null).GroupBy(x => Math.Ceiling((DateTimeOffset.UtcNow - x.LastUpdateToChannel.Value).TotalHours));

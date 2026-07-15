@@ -176,7 +176,7 @@ namespace EGG9000.Bot.Commands {
                     infoSeparatorAdded = true;
                 }
 
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived).ToListAsync();
                 var xrefsShortened = false;
                 if(xrefs.Count > 4) {
                     xrefs = [.. xrefs.OrderByDescending(x => x.CreatedOn).Take(4)];

@@ -285,7 +285,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             if(extraRoles.Count > 0) {
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived).ToListAsync();
 
                 //Handle the case where users rank up, and need to still see existing coops
                 var lostXrefs = xrefs.Where(x => extraGrades.Any(eg => eg.grade == (Ei.Contract.Types.PlayerGrade)x.Coop.League));
