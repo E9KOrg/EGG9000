@@ -88,6 +88,24 @@ namespace EGG9000.Common.Helpers {
             return result;
         }
 
+        // Sends without touching the DbContext. Applies blocked status to the passed dbUser in memory.
+        // Should be safe to run many of these concurrently against one shared context.
+        public static async Task<DMResult> BoolSendDmDeferred(IUser dmUser, Embed embed, MessageComponent components, DBUser dbUser) {
+            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
+            var result = DMResult.Success;
+            try {
+                var dmChannel = await dmUser.CreateDMChannelAsync();
+                if(dmChannel is null) return DMResult.DiscordError;
+                await dmChannel.SendMessageAsync(embed: embed, components: components);
+            } catch(HttpException ex) {
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
+            } catch(Exception) {
+                return DMResult.DiscordError;
+            }
+            dbUser?.UpdateDMStatus(result);
+            return result;
+        }
+
         public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
             var tokenSource2 = new CancellationTokenSource();
             var token2 = tokenSource2.Token;
