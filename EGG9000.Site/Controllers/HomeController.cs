@@ -417,11 +417,13 @@ namespace EGG9000.Site.Controllers {
         }
 
         private async Task<List<UserSnapShot>> LoadEggDaySnapshotsAsync(List<string> eggincids, System.Linq.Expressions.Expression<Func<UserSnapShot, bool>> dateFilter, bool descending) {
-            var grouped = _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID)).Where(dateFilter).GroupBy(x => x.EggIncID);
-            var picked = descending
-                ? grouped.Select(g => g.OrderByDescending(y => y.Date).First())
-                : grouped.Select(g => g.OrderBy(y => y.Date).First());
-            return await picked.ToListAsync();
+            var groups = _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID)).Where(dateFilter).GroupBy(x => x.EggIncID);
+            return await groups.Select(g => g
+                .Where(y => y.Date == (descending ? g.Max(y => y.Date) : g.Min(y => y.Date)))
+                .Select(y => new UserSnapShot {
+                    EggIncID = y.EggIncID, UserId = y.UserId, Date = y.Date, EarningsBonus = y.EarningsBonus,
+                    SoulEggs = y.SoulEggs, Prestiges = y.Prestiges, EggsOfProphecy = y.EggsOfProphecy
+                }).First()).ToListAsync();
         }
 
         private async Task<List<UserSnapShot>> LoadPostEggDaySnapshotsAsync(List<string> eggincids, List<UserByAccount> accounts, List<UserSnapShot> preEggDaySnapshots, DateTimeOffset eggDayDate) {
