@@ -389,9 +389,9 @@ namespace EGG9000.Site.Controllers {
 
                 var accounts = users.SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount { User = u, Account = a })).ToList();
                 var eggincids = accounts.Select(x => x.Account.Id).ToList();
-                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow));
+                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow)).ToUniversalTime();
 
-                var preEggDaySnapshots = await LoadEggDaySnapshotsAsync(eggincids, x => x.Date < eggDayDate, descending: true);
+                var preEggDaySnapshots = await LoadEggDaySnapshotsAsync(eggincids, x => x.Date < eggDayDate.AddDays(-1), descending: true);
                 timings.Set("preEggDaySnapshots");
 
                 var postEggDaySnapshots = await LoadPostEggDaySnapshotsAsync(eggincids, accounts, preEggDaySnapshots, eggDayDate);
