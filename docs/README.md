@@ -15,7 +15,6 @@ The system serves multiple Discord guilds. Each guild has its own configuration,
 | **EGG9000.Bot** | Discord slash-command bot. Co-ops, merits, artifacts, player info. Background jobs sync data from the Egg Inc API. | [bot.md](./bot.md) |
 | **EGG9000.Site** | ASP.NET Core MVC dashboard. Leaderboards, co-op views, farm views, admin tools, donations. | [site.md](./site.md) |
 | **EGG9000.Common** | Shared class library. EF Core entities, PostgreSQL context, Egg Inc API client, MassTransit consumers, game-logic helpers. | [common.md](./common.md) |
-| **EGG9000.APILinkSite** | Legacy API link endpoint. Being phased out; no new dependencies. | (no doc) |
 | **EGG9000.Test** | MSTest unit tests (`TestCategory=Unit`). | (no doc) |
 | **EGG9000.Test.Integration** | Testcontainers Postgres integration tests plus live API canary (`Integration` / `Network`). | [ci.md](./ci.md) |
 

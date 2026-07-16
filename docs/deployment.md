@@ -111,4 +111,3 @@ Rollback is the same procedure with the previous image tag.
 
 ## Legacy
 
-`deploy/systemd/` contains stale blue-green LXC units from the removed deployment model. Pending removal; do not use.

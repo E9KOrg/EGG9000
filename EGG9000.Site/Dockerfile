@@ -1,7 +1,7 @@
 # Multi-stage build for ASP.NET Core 10 web application
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 WORKDIR /app
-EXPOSE 8080
+EXPOSE 5013
 
 # Install curl for Docker health checks
 RUN apt-get update \

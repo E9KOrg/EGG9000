@@ -13,7 +13,6 @@ Module docs live in `/docs` (README, bot, common, site, deployment, dev-setup, c
 | `EGG9000.Bot` | Console | Discord bot: slash commands, background jobs, co-op management. DI in `BotHostFactory.cs`. |
 | `EGG9000.Site` | ASP.NET Core | Dashboard: co-op views, leaderboards, admin, donations. |
 | `EGG9000.Common` | Class lib | EF Core, entities, Egg Inc API client, helpers, services. |
-| `EGG9000.APILinkSite` | ASP.NET Core | Legacy, being phased out. No new dependencies on it. |
 | `EGG9000.Test` | MSTest | Unit tests (`TestCategory=Unit`). |
 | `EGG9000.Test.Integration` | MSTest | Testcontainers Postgres: migrations, model drift, DI wiring (`Integration`); live API canary (`Network`). |
 
@@ -60,7 +59,6 @@ Batch verification: make related changes, then build/test once. CI is `.github/w
 ## Other rules
 
 - Register services in `BotHostFactory.cs` (Bot) / `Program.cs` (Site). Constructor injection, no static state.
-- No new dependencies on `EGG9000.APILinkSite`.
 - EI ID screenshot reading (`EIIDScreenShots`) glyph-matches against `EGG9000.Bot/Fonts/always together.otf`; the font must ship with the bot.
 - Match the style of surrounding code. No dead code, no decorative formatting.
 - Never commit secrets, credentials, internal hostnames, or tokens. Secrets flow through Docker secrets or user secrets only.
