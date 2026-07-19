@@ -161,6 +161,7 @@ namespace EGG9000.Bot.Automated {
                     await _db.SaveChangesAsync();
 
                     LastCompleted = DateTime.Now;
+                    _logger.LogInformation("Completed");
                     if(Restarted) {
                         Restarted = false;
                         await _client.SendDMToKendrome($"{GetType().Name} successfully restarted.");
