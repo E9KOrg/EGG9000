@@ -67,7 +67,8 @@ Composite keys (`OnModelCreating`): `UserCoopXref` (UserId, CoopId, EggIncId), `
 
 | Pattern | Used for |
 |---|---|
-| MessagePack + LZ4 (`MessagePackCompression.Lz4BlockArray`, `DBUser.lz4Options`) | `DBUser`: accounts (`_contractRegistrationByte`), ship DMs, coop settings; `UserCoopXref`: last status, sleep tracking, coop settings; `UpcomingContract` user registers; `NasaApod` posted-to list; `DBCustomEgg` icon/modifiers |
+| MessagePack + LZ4 (`MessagePackCompression.Lz4BlockArray`, `DBUser.lz4Options`) | `DBUser`: accounts (`_contractRegistrationByte`), ship DMs, coop settings; `UserCoopXref`: last status, sleep tracking, coop settings; `UpcomingContract` user registers |
+| MessagePack (default options, no LZ4) | `NasaApod` posted-to list; `DBCustomEgg` icon/modifiers |
 | GZip JSON | `Coop.LastStatusUpdate` (`ContractCoopStatusResponse` serialized to JSON, GZip into `_StatusCompressed`); the setter skips the column rewrite when bytes are unchanged, the hottest write on Coops during launches |
 | Plain JSON strings (Newtonsoft) | `DBContract` goals/`_response`, `Guild` channel details/coop settings/event customizations/FAQ topics/overflow servers, `SeasonInfo.GoalsJson`, `UserSnapShot.VirtueStatsJson` |
 
@@ -102,7 +103,7 @@ Do not add a new serialization format; reuse one of these.
 | `SeasonInfo` / `UserSeasonProgress` | Contract seasons + per-account CXP progress | `SeasonInfo`: `Id`, `StartTime`, `GoalsJson`; progress keyed (EggIncId, SeasonId) with `TotalCxp`, `StartingGrade` |
 | `ApiKey` / `ApiKeyRequestLog` / `ApiKeyDailyUsage` | Site API key auth + usage tracking | `KeyHash` (unique), `GuildId`, `Revoked`; request log keeps endpoint/IP/success; daily usage keyed (ApiKeyId, Date) |
 | `ResearchCostSubmission` | Crowd-sourced research cost data | `ID`, `Level`, `Cost`, `UserId` |
-| `NasaApod` | NASA APOD cache | `DateString` key data, media URLs, posted-to blob |
+| `NasaApod` | NASA APOD cache | Guid `ID` key, `DateString` (SQL default), media URLs, posted-to blob |
 | `ApplicationUser` | Identity user for the Site | `IdentityUser` + `DarkMode` |
 | `GuildConfigAttribute.cs` | Not an entity: `[GuildConfig]` attribute + reflection helper marking user-configurable `Guild` props |
 | `ILastModified` (`Database/ILastModified.cs`) | Timestamp interface consumed by the context |
@@ -191,7 +192,7 @@ Versions: `ClientVersion` / `AppVersion` / `AppBuild` are static fields that mus
 |---|---|
 | `DiscordHostedService` | Composition wrapper holding a `DiscordSocketClient` (gateway) plus a `DiscordRestClient`; forwards guild/channel/user lookups, resolves configured channels/categories from `Guild` config, `RestartAsync()` |
 | `PeriodicBackgroundService` | Abstract `BackgroundService` base: optional initial delay, non-overlapping `PeriodicTimer` loop around `DoWorkAsync` |
-| `DiscordQueueService` / `IDiscordQueue` / `DiscordQueueOptions` | Priority write queue for Discord operations: HIGH tier for interaction responses, LOW for background jobs; `Channel<T>`-backed dynamically scaled worker pools, caller-info tags on every item for error attribution, Bugsnag reporting; options bound from the `DiscordQueue` config section |
+| `DiscordQueueService` / `IDiscordQueue` / `DiscordQueueOptions` | Priority write queue for Discord operations: HIGH tier for interaction responses, LOW for background jobs; `Channel<T>`-backed dynamically scaled worker pools, caller-info tags on every item for error attribution, Bugsnag reporting; options come from `DiscordQueueOptions` class defaults (no config binding is registered) |
 | `RuntimeMetrics` | Static interlocked counters (DB queries, API calls/failures, commands, Discord ops) surfaced by `/a sysload` and the metrics publisher |
 | `BotLogger` | Guild-log channel writer plus boarding-group status embeds (`AddBoardingGroup`, `RefreshBoardingGroup`, `MarkAssigned`) |
 
@@ -212,7 +213,7 @@ Versions: `ClientVersion` / `AppVersion` / `AppBuild` are static fields that mus
 | Game data / math | `EggIncStatics`, `EggIncArtifacts`, `ArtifactHelpers`, `EggIncHabSpace`, `Research`, `CraftHelper`, `Prefarm`, `VirtueHelper`, `MissionHelpers` (ship emoji, tank capacity, `NeedsFuel`), `Colleggtibles`, `ColleggtibleHelper`, `ContractHistory`, `UserFarmDetails`, `SeasonalPeOption`, `RedoLeggacyOption` |
 | Ranks | `RankRegistry` (canonical 52-rank registry from `farmer-ranks.json`), `SIPrefix` (EB -> rank name, derives from `RankRegistry`) |
 | Assignment / coops | `ContractSettingsHelpers`, `CreateCoopsV2`, `GradeSync` (grade update guards), `KnownIds` |
-| Accounts / API | `AccountRefresh`, `SubscriptionHelper`, `SiteApiClient` (bot -> site internal base URL, env override with public fallback), `EIIDScreenShots` (Tesseract OCR of EI ID screenshots) |
+| Accounts / API | `AccountRefresh`, `SubscriptionHelper`, `SiteApiClient` (bot -> site internal base URL, env override with public fallback), `EIIDScreenShots` (EI ID screenshot reading via font glyph matching) |
 | Discord | `DiscordHelpers`, `DiscordMessageSplitter`, `DiscordSafe`, `FixedWidthTable`, `RoleToggle`, `ShipReturnDmBuilder`, `Discord/` (`InteractionExtensions` in `EGG9000.Common.Helpers.Discord`, `EmbedHelpers`, `ChannelHelper`, `DiscordRest`, `OverflowSyncing`, `ComponentsV2/` builder extensions) |
 | Messaging / text | `MessageFormatter` (`{{...}}` substitution for FAQ and rank-up text), `RankupMessageHelper`, `RankupMessageSeed`, `FAQHelper`, `EditFaqValidation`, `EventHelpers`, `NasaHelper`, `BotText`, `Words`, `Colors`, `StringExtensions`, `StringPadBothExtension`, `TimespanStringParser` |
 | Imaging | `ArtifactImaging/` (`ArtifactDisplay` shared name/rarity/effect labels + tooltip markup, `ArtifactOverlayManifest` percent-coord hotspot DTOs), `AfxSets/` (artifact-set image build/render/hash + explorer links), `IRenderConfig` |

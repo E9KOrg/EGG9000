@@ -35,7 +35,7 @@ Commands are Discord.NET `InteractionService` modules.
 
 ### Access gates
 
-`Interactions/StaffGate.cs` defines `StaffTier` and `[StaffOnly(tier)]`, a precondition usable on modules and methods. Unlike `[DefaultMemberPermissions]` (top-level slash commands only), it also protects component and modal handlers.
+`Interactions/StaffGate.cs` defines `StaffTier` and `[StaffOnly(tier)]`, a precondition usable on modules and methods. Unlike `[DefaultMemberPermissions]` (top-level slash commands only), it can also cover component and modal handlers. The precondition check currently short-circuits to success outside Debug builds, so effective gating in shipped builds comes from `[DefaultMemberPermissions]`.
 
 | Tier | Discord permission equivalent |
 |---|---|
@@ -63,30 +63,32 @@ Tables below use these tier names. Commands without `[StaffOnly]` are gated by t
 | Command | File | DM | Description |
 |---|---|---|---|
 | `/ping` | Ping.cs | yes | Liveness check |
-| `/register` | RegisterCommandsSlash.cs | no | Register your Egg Inc account |
+| `/register` | RegisterCommandsSlash.cs | default | Register your Egg Inc account |
 | `/updateid` | RegisterCommandsSlash.cs | yes | Update your Egg Inc ID |
-| `/moveserver` | RegisterCommandsSlash.cs | no | Move registration to a different guild |
-| `/accept` | RegisterCommandsSlash.cs | no | Accept server rules |
+| `/moveserver` | RegisterCommandsSlash.cs | default | Move registration to a different guild |
+| `/accept` | RegisterCommandsSlash.cs | default | Accept server rules |
 | `/userstatus` | UserStatusCommands.cs | yes | Your registration/co-op status |
-| `/fixfullcooperror` | ContractCommandsSlash.cs | no | Self-service fix for the "co-op full" error |
-| `/createcoop` | ContractCommandsSlash.cs | no | Create a co-op for a contract |
+| `/fixfullcooperror` | ContractCommandsSlash.cs | default | Self-service fix for the "co-op full" error |
+| `/createcoop` | ContractCommandsSlash.cs | default | Create a co-op for a contract |
 | `/mycontractsettings` | ContractSettings.cs | yes | Manage your contract settings |
-| `/coopsettings` | CoopSettings.cs | no | Co-op notification preferences |
-| `/showeb` / `/hideeb` | CoopSettings.cs | no | Add/remove EB in your server nickname |
+| `/coopsettings` | CoopSettings.cs | default | Co-op notification preferences |
+| `/showeb` / `/hideeb` | CoopSettings.cs | default | Add/remove EB in your server nickname |
 | `/merits` | MeritCommands.cs | yes | List your merits |
 | `/demerits` | DemeritCommands.cs | yes | List your demerits |
 | `/faq` | FAQCommandSlash.cs | yes | Topic explanations |
 | `/starttestprocess` | MiscCommandsSlash.cs | yes | Egg Inc ID screenshot OCR flow |
 | `/trackeb` | MiscCommandsSlash.cs | yes | EB change since last run |
 | `/nextrank` | MiscCommandsSlash.cs | yes | SE/PE needed for next rank |
-| `/callstaff` | MiscCommandsSlash.cs | no | Request staff help |
-| `/apod` | NasaCommands.cs | no | NASA Astronomy Picture of the Day |
+| `/callstaff` | MiscCommandsSlash.cs | default | Request staff help |
+| `/apod` | NasaCommands.cs | default | NASA Astronomy Picture of the Day |
 | `/viewinventory` | Informational/ArtifactCommands.cs | yes | Your artifact inventory |
-| `/savedafsets` | Informational/ArtifactCommands.cs | no | Your saved artifact sets |
+| `/savedafsets` | Informational/ArtifactCommands.cs | default | Your saved artifact sets |
 | `/chasing` | Informational/ChasingCommand.cs | yes | Players ahead of and behind you |
 | `/craft` / `/craftedcount` | Informational/CraftCommand.cs | yes | Crafting requirements / craft counts |
-| `/ebhistory` | Informational/EBHistoryCommand.cs | no | Key points in your EB history |
+| `/ebhistory` | Informational/EBHistoryCommand.cs | default | Key points in your EB history |
 | `/formulae mer` / `llc` / `eb` | Informational/FormulaCommands.cs | yes | Game formula calculators |
+
+DM column: "yes" means an explicit `[CommandContextType(Guild, BotDm)]`; "default" means no context attribute, so Discord registers the command in all contexts (guild-dependent commands handle non-guild use at runtime).
 
 ### Staff commands (flat)
 
@@ -186,7 +188,7 @@ Subscribes to gateway `MessageReceived`:
 ## Gateway events (`Services/DiscordUserService.cs`)
 
 - `UserJoined`: roles, welcome, co-op channel access, overflow handling, disabled/banned warnings.
-- `UserLeft`: resets registration flags, records last guild.
+- `UserLeft`: resets registration flags (`AcceptedRules`, `GuildId`).
 - `ChannelDestroyed` / `ThreadDeleted`: marks co-op/contract channels and threads deleted in DB.
 
 ## Automated jobs (`Automated/`)
@@ -209,7 +211,7 @@ All extend `_UpdaterBase<T>`: fixed interval or Cronos cron (Central Standard Ti
 | `NewContracts` | 1 min, self-tunes 15 s to 10 min | none | Detects new contracts, creates guild contract records, custom eggs |
 | `RefreshNasaApod` | 15 min | none | Caches NASA APOD, posts to configured channels |
 | `RemoveTempRoles` | 5 min | none | Removes expired temporary roles |
-| `ShipReturnDM` | 15 s, self-tunes up to 1 min | none | DMs users when ships return |
+| `ShipReturnDM` | 1 min, tightens to the exact time of the next due DM when under 5 min | none | DMs users when ships return |
 | `StaffCoopsMessage` | 30 min | none | Staff co-op activity summary |
 | `ThreadsCoopStatusUpdater` | 15 min (Debug 20 min) | 5 min | Polls the Egg Inc API, updates co-op thread status embeds |
 | `UpdateBackups` | 1 min | none | Fetches up to 75 fresh plus 5 stale user backups per run |
@@ -226,7 +228,7 @@ Outside `_UpdaterBase`:
 
 ## Cron jobs (`Jobs/` via `Services/JobService.cs`)
 
-`JobService` reflection-discovers `[Job("cron")]` methods (Cronos, seconds field, Central Standard Time), runs them on schedule, skips still-running jobs, and exposes run/stop/start used by the `/bot` service commands.
+`JobService` reflection-discovers `[Job("cron")]` methods (Cronos, seconds field, Central Standard Time), runs them on schedule, skips still-running jobs, and exposes run/stop operations backing the `/bot` service commands (start/restart reuse run).
 
 | Method | Cron | Purpose |
 |---|---|---|

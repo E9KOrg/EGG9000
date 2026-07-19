@@ -12,7 +12,7 @@
 #   .\publish-docker.ps1 -Bot -Push
 #
 # Stream to a remote host without a registry:
-#   .\publish-docker.ps1 -RemoteHost 192.168.1.66 -RemoteUser david
+#   .\publish-docker.ps1 -RemoteHost <host> -RemoteUser <user>
 
 param(
     [switch]$Bot,

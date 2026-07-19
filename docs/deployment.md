@@ -33,7 +33,7 @@ Set both in the host environment or a local `.env` (gitignored). The app-side co
 
 ### Environment keys
 
-The compose `x-environment` anchor declares the expected `ConnectionStrings__*` keys (`DefaultConnection`, `ClientId`, `Token`, `ClientSecret`, `BugSnagApiKey`, `RabbitMQServer`) with placeholder values. Real values come from Docker secrets at runtime (below) or host-side env overrides. Never commit real values.
+The compose `x-environment` anchor declares the expected `ConnectionStrings__*` keys (`DefaultConnection`, `ClientId`, `Token`, `ClientSecret`, `BugSnagApiKey`, `RabbitMQServer`) with placeholder values. Real values come from Docker secrets at runtime (below) or host-side env overrides. The `bot` service additionally bind-mounts the host's `UserSecrets/DEV9001` directory read-only, so user-secrets values act as a live config fallback inside that container (site has no such mount). Never commit real values.
 
 ## Images (Dockerfiles)
 
@@ -42,7 +42,7 @@ Both are multi-stage: `mcr.microsoft.com/dotnet/aspnet:10.0` base, `mcr.microsof
 | Dockerfile | Extras |
 |---|---|
 | `EGG9000.Bot/Dockerfile` | Bakes git metadata (`GIT_MESSAGE`, `GIT_HASH`, `GIT_AUTHOR`, `GIT_TIMESTAMP`, `GIT_BRANCH`, `GIT_REMOTE` build args) into `version.txt` for the bot's version reporting. |
-| `EGG9000.Site/Dockerfile` | Installs `curl` in the base stage for the compose healthcheck. `EXPOSE 8080` is vestigial; the site listens on 5013 via `ASPNETCORE_URLS`. |
+| `EGG9000.Site/Dockerfile` | Installs `curl` in the base stage for the compose healthcheck; `EXPOSE 5013`. The listen port is hardcoded in `Program.cs` (`UseUrls`); the compose `ASPNETCORE_URLS` is redundant. |
 
 ## Building and publishing (`publish-docker.ps1`)
 
@@ -108,6 +108,4 @@ Rollback is the same procedure with the previous image tag.
 - Bugsnag captures unhandled exceptions in Release builds.
 - Site exposes prometheus-net `/metrics`, restricted to the global `Admin` role.
 - Scheduled jobs log to the `AutomationLogs` table (rows older than 7 days are purged automatically).
-
-## Legacy
 

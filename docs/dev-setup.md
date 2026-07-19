@@ -66,7 +66,7 @@ The site listens on `http://0.0.0.0:5013`.
 
 ### Debug login (site)
 
-`/Home/DebugLogin?id={discordId}` signs you in without Discord OAuth. It returns 404 unless the build is `Debug` or `DEV9002`, and the Discord ID must already exist as a registered user in the DB. Local development only.
+`/Home/DebugLogin?id={discordId}` signs you in without Discord OAuth. It returns 404 unless the build is `Debug` or `DEV9002`; the Discord ID must exist as a registered user in the main guild and already have an Identity login row (a prior real OAuth sign-in). Local development only.
 
 ## Tests
 

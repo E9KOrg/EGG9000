@@ -18,8 +18,6 @@ Binds `http://0.0.0.0:5013` (set in `Program.cs`; the compose file also sets `AS
 | Imaging | SixLabors.ImageSharp + ImageSharp.Drawing |
 | Logging | NLog; Bugsnag error reporting in Release |
 
-`Docker.DotNet` is still referenced in the csproj but nothing uses it; it is removable.
-
 ## Startup (`Program.cs`)
 
 1. NLog setup, `SecretsHelper.Initialize` (config keys or Docker secrets).
@@ -86,6 +84,7 @@ Auth column: `Anonymous` = `[AllowAnonymous]`; `Cookie` = any authenticated user
 | `Index`, `Privacy`, `Invite`, `Error`, `ClearCookies` | Anonymous | Landing, static pages, cookie reset |
 | `Alive`, `AliveDiscord` | Anonymous | DB / Discord-connection liveness probes |
 | `Embed` | Anonymous | Discord link-preview shell page |
+| `DebugLogin` | Anonymous, but 404 outside Debug/DEV9002 builds | Local dev sign-in as a given Discord id (registered palace users with an Identity login row only) |
 | `Coop` (`/coop/{ContractId}/{CoopId}`) | Anonymous | Public co-op detail page |
 | `Leaderboard`, `EggDayLeaderboard`, `Enlightenment`, `Comparison`, `GradeComparison`, `CraftingLevelComparison` | Cookie | Leaderboards and comparison views |
 | `FAQ`, `CSLeaderboard`, `CraftingLevelLeaderboard`, `Results`, `Boosts` | Cookie | FAQ, contract-score/crafting boards, results, active boosts |
@@ -135,7 +134,7 @@ Class-gated to `Staff` (all four tiers). Sensitive actions elevate per-action:
 | Admin | `RestartBot` (publishes `RestartMessage` on the bus), `LookForLargeJump`, `UserPermissions`, `EditUsers`, `SetRole`, `SetCustomName` |
 | Admin,GuildAdmin | `RemoveDemerit`, `ApiKeys`, `CreateApiKey`, `RevokeApiKey`, `ApiKeyRequestLog` |
 | Admin,GuildAdmin,GuildLesserAdmin | `LatestDemerits`, `EventCustomization`, `SaveEventCustomization`, `FAQCustomization`, `SaveFAQTopic`, `DeleteFAQTopic`, `RemoveServer` |
-| Staff (class gate) | Dashboards and reports: `Index`, `GetGraphs`, `Contract`, `ContractScores`, `CalculateScore`, `ReCalculateRunningScore`, `Slackers`, `Sleepers`, `Ghosts`, `DeleteGhost`, `Leechers`, `SearchID`, `DuplicateChannels`, `Deleteduplicate`, `DeleteAllDuplicates`, `AutomatedTasks`, seasonal hunt admin pages, `ConfigureServer`, `SaveChannelDetails`, `SaveRolesToSync`, `StandardPermit`, `InactivePlayers`, `NonServerUsers`, `SaveNotes`, `Sync`/`DiscordReturn`/`SyncCommandPermissions`, `Guilds`, `CheckCoopCreators`, `AddGuildToDb`, `DeleteOutsideCoopMessage` |
+| Staff (class gate) | Dashboards and reports: `Index`, `GetGraphs`, `Contract`, `ContractScores`, `CalculateScore`, `ReCalculateRunningScore`, `Slackers`, `Sleepers`, `Ghosts`, `DeleteGhost`, `Leechers`, `SearchID`, `DuplicateChannels`, `Deleteduplicate`, `DeleteAllDuplicates`, `AutomatedTasks`, seasonal hunt admin pages, `ConfigureServer`, `SaveChannelDetails`, `SaveRolesToSync`, `StandardPermit`, `InactivePlayers`, `NonServerUsers`, `SaveNotes`, `SaveFAQ`, `Sync`/`DiscordReturn`/`SyncCommandPermissions`, `Guilds`, `CheckCoopCreators`, `AddGuildToDb`, `DeleteOutsideCoopMessage`, lookup helpers `GetGuildID`/`VerifyId` |
 
 API key management (`ApiKeys` pages) shows keys once at creation, stores only the SHA256 hash, and exposes a per-key request log.
 
@@ -172,7 +171,7 @@ Class `[AllowAnonymous]`; every endpoint Release-gates on the internal `authenti
 
 | Component | Purpose |
 |---|---|
-| `Services/NewCoopChecker.cs` | Every 30s counts co-ops waiting on creation/threads; sets a backpressure flag that makes heavy admin graph pages return 503 during creation storms |
+| `Services/NewCoopChecker.cs` | Every 30s counts co-ops waiting on creation/threads; sets a backpressure flag with hysteresis (on above 20, off below 10). While set, heavy admin graph pages return 503 and `Home/Leaderboard` / `MyFarms/Index` serve temporary fallback views |
 | `UserCacheRefreshService`, `ActiveCoopsCacheRefreshService` (Common) | Refresh `DatabaseCache` (users 60s, active co-ops 5min) |
 | `ExpireCacheConsumer` (Common) | Bus-triggered cache invalidation |
 | `UpdateApiVersionsConsumer` (Common) | Broadcast Egg Inc client-version updates to every running instance (temporary per-instance queue) |
@@ -186,7 +185,7 @@ Class `[AllowAnonymous]`; every endpoint Release-gates on the internal `authenti
 
 ## Views
 
-`Views/Home` (leaderboards, comparisons, co-op page, seasonal hunts), `Views/Contract` (list, details, score graph, recent-scores grid), `Views/MyFarms` (dashboard `Index` plus tab partials: artifact inventory/combos/sets, colleggtibles, contract history, EB history, epic research, ships and farms, virtue stats, contract settings, test assignment), `Views/Admin` (reports, config, API keys, permissions), `Views/Donation`, `Views/Shared` (layout, login partial, ApexCharts). Identity UI lives in `Areas/Identity/Pages/Account` (Discord login, external-login callback, `ErrorAccountNotFound`, access denied, logout).
+`Views/Home` (leaderboards, comparisons, co-op page, seasonal hunts), `Views/Contract` (list, details, score graph, recent-scores grid), `Views/MyFarms` (dashboard `Index` plus tab partials: artifact inventory/combos/sets, colleggtibles, contract history, EB history, epic research, ships and farms, virtue stats, contract settings, test assignment, external tools), `Views/Admin` (reports, config, API keys, permissions), `Views/Donation`, `Views/Shared` (layout, login partial, ApexCharts). Identity UI lives in `Areas/Identity/Pages/Account` (Discord login, external-login callback, `ErrorAccountNotFound`, access denied, logout).
 
 ## Database
 
