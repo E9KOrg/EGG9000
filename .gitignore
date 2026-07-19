@@ -271,15 +271,3 @@ __pycache__/
 **/appsettings.Local.json
 **/appsettings.*.local.json
 /EGG9000.Bot/Test.cs
-.vscode/settings.json
-.claude/
-CLAUDE.md
-CLAUDE.local.md
-AGENTS.local.md
-.superpowers/
-.cursor/
-.cursorrules
-.aider*
-.windsurf/
-.mcp.json
-/dist/

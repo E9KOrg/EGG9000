@@ -1,0 +1,5 @@
+Task 1: complete (working tree, no commits - entities + migration 20260703024523_AddApiKeyRequestLogging)
+Task 2: complete (working tree, no commits - handler write path, fixed test-helper bug in plan's literal test code, 204/204 tests pass)
+Task 3: complete (working tree, no commits - CleanApiKeyRequestLogs.cs, registered in BotHostFactory.cs not Program.cs per repo DI-extraction convention)
+Task 4: complete (working tree, no commits - usage summary + spike flag + InternalsVisibleTo fix, 209/209 tests pass)
+Task 5: complete (working tree, no commits - drill-down action + view)
