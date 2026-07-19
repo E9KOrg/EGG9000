@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
 
             // Users who leave their server have GuildId reset to 0, which would drop them from the
             // GuildId > 0 set below even while they are still in an active coop. Without their backup

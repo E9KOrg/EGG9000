@@ -279,7 +279,7 @@ namespace EGG9000.Bot.Commands {
         [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
         public async Task RenameCoop([Summary("correctcoopname")] string correctcoopname) {
             await Context.Interaction.DeferAsync();
-            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id);
             if(targetCoop == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
                 return;
@@ -346,7 +346,7 @@ namespace EGG9000.Bot.Commands {
         public async Task UpdateChannel() {
             var command = Context.Interaction;
             await command.DeferAsync(ephemeral: true);
-            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(targetCoop != null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
                 var guild = gateway.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);
