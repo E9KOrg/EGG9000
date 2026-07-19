@@ -29,14 +29,27 @@
     <LangVersion>preview</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="tessdata\**" />
+    <Content Remove="tessdata\**" />
+    <EmbeddedResource Remove="tessdata\**" />
+    <None Remove="tessdata\**" />
+  </ItemGroup>
+  <ItemGroup>
     <Content Remove="nlog.config" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Dockerfile" />
   </ItemGroup>
   <ItemGroup>
+    <None Remove="Views\Home\ViewUser.cshtml.old" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Views\Home\ViewUser.cshtml.old" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="AspNet.Security.OAuth.Discord" Version="10.0.0" />
     <PackageReference Include="Bugsnag.AspNet.Core" Version="4.1.1" />
+    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
     <PackageReference Include="Humanizer" Version="3.0.10" />
     <PackageReference Include="MassTransit.RabbitMQ" Version="[8.5.9]" />
     <PackageReference Include="MessagePack" Version="3.1.7" />
