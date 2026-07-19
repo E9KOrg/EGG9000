@@ -1080,14 +1080,17 @@ namespace EGG9000.Bot.Commands {
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = false,
-                RequestingUserId = coop.CreatorID
+                RequestingUserId = coop.CreatorID,
+                Rinfo = EggIncApi.GetInfo(coop.CreatorID)
             }, coop.CreatorID);
 
-            if(response.Success) {
-                await Context.Interaction.ModifyOriginalResponseAsync($"{coop.Name} is now private.");
-            } else {
-                await Context.Interaction.ModifyOriginalResponseAsync($"{coop.Name} should now be private.");
-            }
+            var titleVerbiage = response.Success ? "Success" : "Partial Success";
+            var verbiage = response.Success ? "is now private." : "**may** now be private.\n-# (API success was false)";
+            var embedType = response.Success ? EmbedHelpers.EmbedType.Success : EmbedHelpers.EmbedType.Warning;
+            await Context.Interaction.ModifyOriginalResponseAsync(x => {
+               x.Content = "";
+               x.Embed =  EmbedCustom(embedType, titleVerbiage, $"{coop.Name} {verbiage}");
+            });
         }
 
         [SlashCommand("deletecontract", "Delete a contract channel (Please use this instead of deleting the channel in discord)")]
