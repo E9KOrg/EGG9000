@@ -1,4 +1,5 @@
 ﻿using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -6,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Npgsql;
 
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,6 +37,14 @@ namespace EGG9000.Common.Helpers {
                         await Task.Delay(100, cancellationToken);
                     }
                 }
+            }
+        }
+
+        extension(DBUser user) {
+            public EggIncAccount ResolveAutocompleteAccount(string useraccount) {
+                var parts = useraccount?.Split('|');
+                if(parts is null || parts.Length < 2 || !int.TryParse(parts[1], out var index) || index < 0) return null;
+                return user?.EggIncAccounts?.ElementAtOrDefault(index);
             }
         }
     }
