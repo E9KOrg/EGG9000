@@ -26,7 +26,7 @@ namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         RoleManager<IdentityRole> roleManager, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache,
-        IServiceScopeFactory scopeFactory, ArtifactImageRenderer artifactRenderer) : Controller {
+        IServiceScopeFactory scopeFactory, ArtifactImageRenderer artifactRenderer) : E9KControllerBase {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -283,9 +283,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> EarningsBoostCalculator() {
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var user = await _db.DBUsers.AsQueryable().FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            var user = await GetCurrentDbUserAsync();
 
             //Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
             var cachedContracts = await _db.CachedEiContractsAsync();
@@ -312,10 +310,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> ResearchTest() {
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-
-            var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            var user = await GetCurrentDbUserAsync();
             ViewBag.CustomEggs = await _db.GetCustomEggsAsync();
             ViewBag.ResearchCostSubmissions = await _db.ResearchCostSubmissions.ToListAsync();
             return View(user.EggIncAccounts.First().Backup);
@@ -327,9 +322,7 @@ namespace EGG9000.Site.Controllers {
             public double Cost { get; set; }
         }
         public async Task<IActionResult> SubmitResearchCost([FromBody] SubmitResearchCostModel model) {
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var user = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            var user = await GetCurrentDbUserAsync();
             var existing = await _db.ResearchCostSubmissions.FirstOrDefaultAsync(x => x.ID == model.Id && x.Level == model.Level && x.UserId == user.Id);
             if(existing is null) {
                 existing = new ResearchCostSubmission {
@@ -355,9 +348,7 @@ namespace EGG9000.Site.Controllers {
 
         [HttpPost]
         public async Task<IActionResult> SaveContractSetting([FromBody] SaveContractSettingModel m) {
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            var dbuser = await GetCurrentDbUserAsync();
 
             if(m.AccountIndex < 0 || m.AccountIndex >= dbuser.EggIncAccounts.Count) return BadRequest();
 
@@ -390,9 +381,7 @@ namespace EGG9000.Site.Controllers {
 
         [HttpPost]
         public async Task<IActionResult> TestAssignment([FromBody] TestAssignmentModel m) {
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var dbuser = await _db.DBUsers.FirstAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+            var dbuser = await GetCurrentDbUserAsync();
 
             if(m.AccountIndex < 0 || m.AccountIndex >= dbuser.EggIncAccounts.Count) return BadRequest();
             var account = dbuser.EggIncAccounts[m.AccountIndex];
@@ -474,16 +463,6 @@ namespace EGG9000.Site.Controllers {
             _db.Remove(merit);
             await _db.SaveChangesAsync();
             return RedirectToLocalReferer();
-        }
-
-        // Redirect back to the Referer only when it points at this same host, to avoid an open
-        // redirect from a forged Referer header. Falls back to the site root.
-        private IActionResult RedirectToLocalReferer() {
-            var referer = Request.Headers["Referer"].ToString();
-            if(Uri.TryCreate(referer, UriKind.Absolute, out var uri) && uri.Host == Request.Host.Host) {
-                return Redirect(uri.PathAndQuery);
-            }
-            return Redirect("~/");
         }
 
         public async Task<IActionResult> SendTestDM([FromQuery] string target) {
