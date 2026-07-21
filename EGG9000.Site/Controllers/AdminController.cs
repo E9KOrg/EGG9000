@@ -177,7 +177,7 @@ namespace EGG9000.Site.Controllers {
                 })],
                 Guild = guild,
                 ContractsToScore = contractsToScore,
-                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && !x.DeletedChannel && x.CoopEnds > DateTimeOffset.UtcNow)
+                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && x.CoopEnds > DateTimeOffset.UtcNow)
             });
         }
 
@@ -429,13 +429,12 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> DeleteOutsideCoopMessage() {
             var guildId = GetGuildId();
-            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && !x.DeletedChannel && !x.ThreadArchived).ToListAsync();
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == guildId && !x.ThreadArchived).ToListAsync();
 
             var coopsToFix = coops.Where(x => x.UserCoopsXrefs.Any(y => y.OutsideCoop));
 
             foreach(var coop in coopsToFix) {
-                var channel = coop.ThreadID != 0 ? _discord.Guilds.First(x => x.Id == coop.OverflowGuildId).GetTextChannel(coop.ThreadID) :
-                    _discord.Guilds.First(x => x.Id == coop.OverflowGuildId).GetTextChannel(coop.DiscordChannelId);
+                var channel = _discord.Guilds.First(x => x.Id == coop.OverflowGuildId).GetTextChannel(coop.ThreadID);
                 var messages = await channel.GetMessagesAsync().FlattenAsync();
                 foreach(var message in messages.Where(x => x.Content.Contains("has joined another co-op named . Please use the command"))) {
                     Console.WriteLine($"Deleting message from {coop.Name}");
@@ -579,13 +578,13 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> Sleepers() {
             var guildId = GetGuildId();
             var demeritExpires = DateTimeOffset.UtcNow.AddDays(-2);
-            var sleepers = await _db.UserCoopXrefs.Where(x => x.User.GuildId == guildId && !x.Coop.DeletedChannel && !x.Coop.ThreadArchived).Select(x => new Admin_SleeperDetail {
+            var sleepers = await _db.UserCoopXrefs.Where(x => x.User.GuildId == guildId && !x.Coop.ThreadArchived).Select(x => new Admin_SleeperDetail {
                 DiscordName = x.User.DiscordUsername,
                 CurrentSleep = x.HoursSleeping - (x.SiloTimeHours ?? 0),
                 TotalCoopSleep = x.TotalHoursSleeping,
                 CoopName = x.Coop.Name,
                 ContractName = x.Coop.Contract.Name,
-                DiscordChannelId = x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId,
+                DiscordChannelId = x.Coop.ThreadID,
                 GuildId = guildId,
                 Demerits = x.User.Demerits.Where(y => y.When > demeritExpires).ToList(),
                 FreshEgg = x.User.Registered > DateTimeOffset.UtcNow.AddDays(-7)
@@ -613,10 +612,10 @@ namespace EGG9000.Site.Controllers {
                 var overflowGuild = _discord.Guilds.First(x => x.Id == overflowGuildId);
                 await overflowGuild.DownloadUsersAsync();
                 var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7);
-                var xrefs = await _db.UserCoopXrefs.Where(x => !x.Coop.DeletedChannel && !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop).Select(x => new Admin_Ghost {
+                var xrefs = await _db.UserCoopXrefs.Where(x => !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop).Select(x => new Admin_Ghost {
                     Coop = x.Coop.Name,
                     DiscordId = x.User.DiscordId,
-                    CoopChannel = x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId,
+                    CoopChannel = x.Coop.ThreadID,
                     UserName = x.User.DiscordUsername,
                     CoopId = x.CoopId,
                     UserId = x.UserId,
@@ -779,10 +778,10 @@ namespace EGG9000.Site.Controllers {
         }
 
         private async Task<List<Admin_CoopWithChannels>> GetCoopsWithDuplicateChannels(IEnumerable<SocketTextChannel> coopChannels) {
-            var coops = await _db.Coops.Where(x => !x.ThreadArchived && !x.DeletedChannel).ToListAsync();
+            var coops = await _db.Coops.Where(x => !x.ThreadArchived).ToListAsync();
             return [.. coops.Select(c => new Admin_CoopWithChannels {
-                Coop = c, MainChannel = coopChannels.FirstOrDefault(x => (x.Id == c.ThreadID && c.ThreadID != 0) || (x.Id == c.DiscordChannelId && c.DiscordChannelId != 0)),
-                ExtraChannels = [.. coopChannels.Where(x => x.Id != c.ThreadID && x.Id != c.DiscordChannelId && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase))]
+                Coop = c, MainChannel = coopChannels.FirstOrDefault(x => x.Id == c.ThreadID && c.ThreadID != 0),
+                ExtraChannels = [.. coopChannels.Where(x => x.Id != c.ThreadID && StripEmoji(x.Name).Equals(c.Name, StringComparison.CurrentCultureIgnoreCase))]
             }).Where(x => x.ExtraChannels.Any())];
         }
 
@@ -1309,7 +1308,7 @@ music
         [Authorize(Roles = "Admin,GuildAdmin")]
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> CreateApiKey([FromForm] ulong? id, [FromForm] string label, [FromForm] string expiresAt) {
+        public async Task<IActionResult> CreateApiKey([FromForm] ulong? id, [FromForm] string label, [FromForm] string expiresAt, [FromForm] string membersOfGuildOnly) {
             var guildId = id ?? GetGuildId();
             if(!VerifyId(guildId)) return NotFound();
 
@@ -1329,7 +1328,8 @@ music
                 GuildId = guildId,
                 CreatedAt = DateTimeOffset.UtcNow,
                 ExpiresAt = expires,
-                Revoked = false
+                Revoked = false,
+                MembersOfGuildOnly = string.IsNullOrWhiteSpace(membersOfGuildOnly) ? null : membersOfGuildOnly.Trim()
             });
             await _db.SaveChangesAsync();
 
@@ -1349,6 +1349,24 @@ music
             key.Revoked = true;
             await _db.SaveChangesAsync();
             return RedirectToAction("ApiKeys", new { id = resolvedGuildId });
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateApiKeyGuildFilter([FromForm] Guid id, [FromForm] ulong? guildId, [FromForm] string membersOfGuildOnly) {
+            var resolvedGuildId = guildId ?? GetGuildId();
+            if(!VerifyId(resolvedGuildId)) return NotFound();
+            var key = await _db.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.GuildId == resolvedGuildId);
+            if(key == null) return NotFound();
+            key.MembersOfGuildOnly = string.IsNullOrWhiteSpace(membersOfGuildOnly) ? null : membersOfGuildOnly.Trim();
+            await _db.SaveChangesAsync();
+            return RedirectToAction("ApiKeys", new { id = resolvedGuildId });
+        }
+
+        public class ApiKeyRequestLogViewModel {
+            public string KeyLabel { get; set; }
+            public List<ApiKeyRequestLog> Entries { get; set; }
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]

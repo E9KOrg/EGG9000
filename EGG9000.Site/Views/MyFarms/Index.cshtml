@@ -34,6 +34,7 @@
 
     var inDB = Model.User.DiscordId > 0;
 
+    var latestBackupAtRender = Model.User.EggIncAccounts.Count == 0 ? 0 : Model.User.EggIncAccounts.Max(a => a.Backup?.LastBackupTime ?? 0);
 }
 
 <style>
@@ -256,6 +257,7 @@
     </div>
 }
 
+<div id="myfarms-content">
 <div>
     @if (isLesserAdmin || isAdmin) {
         if (Model.User.TempDisabled) {
@@ -595,6 +597,7 @@
         </div>
     }
 </div>
+</div>
 
 @section Scripts {
     <script src="~/js/artifact-overlay.js" asp-append-version="true"></script>
@@ -632,10 +635,18 @@
             });
         }
 
+        function hydrateMyFarmsContent() {
+            updateLastBackupTime();
+            wireContractSettings();
+            wireTestAssignment();
+            if (window.ArtifactOverlay) window.ArtifactOverlay.scan();
+        }
+        window.hydrateMyFarmsContent = hydrateMyFarmsContent;
+
         $(document).ready(() => {
             let url = location.href.replace(/\/$/, "");
 
-            updateLastBackupTime();
+            hydrateMyFarmsContent();
 
             if (location.hash) {
                 const hash = url.split("#");
@@ -657,7 +668,9 @@
 
             }
 
-            $('a[data-bs-toggle="tab"]').on("click", function () {
+            // Delegated on document, not the tab links themselves - survives a background content
+            // swap (BackupFreshness poll) without needing to be rebound.
+            $(document).on("click", 'a[data-bs-toggle="tab"]', function () {
                 let newUrl;
                 const hash = $(this).attr("href");
 
@@ -667,7 +680,7 @@
                 history.replaceState(null, null, newUrl);
             });
 
-            $("[id^='ArchivedFarmsSearch']").keyup(function () {
+            $(document).on("keyup", "[id^='ArchivedFarmsSearch']", function () {
                 var terms = $(this).val().split(" ");
                 var showAll = $(this).val().trim().length == 0;
                 var index = $(this).attr('id').replace("ArchivedFarmsSearch", "");
@@ -691,9 +704,6 @@
             });
 
             setInterval(updateLastBackupTime, 1000);
-
-            wireContractSettings();
-            wireTestAssignment();
         });
 
         function rewardGroupValue(group) {
@@ -978,5 +988,51 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function swapMyFarmsContent(discordId) {
+            var current = document.getElementById('myfarms-content');
+            var activeOuterTab = current.querySelector('.nav-tabs > li > a.active');
+            var activeInnerTab = current.querySelector('.tab-pane.active .nav-tabs > li > a.active, .tab-pane.active .nav-link.active');
+
+            return fetch('/MyFarms/RefreshContent?discordId=' + discordId)
+                .then(function(r) { return r.ok ? r.text() : null; })
+                .then(function(html) {
+                    if(!html) return;
+                    var fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('myfarms-content');
+                    if(!fresh) return;
+
+                    current.innerHTML = fresh.innerHTML;
+                    hydrateMyFarmsContent();
+
+                    [activeOuterTab, activeInnerTab].forEach(function(tab) {
+                        if(!tab) return;
+                        var href = tab.getAttribute('href');
+                        var replacement = href ? current.querySelector('a[href="' + href + '"]') : null;
+                        if(replacement) bootstrap.Tab.getOrCreateInstance(replacement).show();
+                    });
+                });
+        }
+
+        (function() {
+            var discordId = @Model.User.DiscordId;
+            var since = @latestBackupAtRender;
+            var maxAttempts = 6;
+
+            function poll(attempt) {
+                if(attempt > maxAttempts) return;
+                fetch('/MyFarms/BackupFreshness?discordId=' + discordId)
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) {
+                        if(data && data.latest > since) {
+                            swapMyFarmsContent(discordId);
+                        } else {
+                            setTimeout(function() { poll(attempt + 1); }, 4000);
+                        }
+                    })
+                    .catch(function() { setTimeout(function() { poll(attempt + 1); }, 4000); });
+            }
+
+            setTimeout(function() { poll(1); }, 4000);
+        })();
     </script>
 }

@@ -55,7 +55,24 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
+            var model = await BuildViewUserModel(discordId);
+            return View("Index", model);
+        }
 
+        [HttpGet]
+        public async Task<IActionResult> RefreshContent(ulong discordId) {
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+
+            var isStaff = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+            if(discordId != loginUserId && !isStaff) return Forbid();
+
+            var model = await BuildViewUserModel(discordId);
+            return PartialView("Index", model);
+        }
+
+        private async Task<MyFarmsModel> BuildViewUserModel(ulong discordId) {
 
             var times = new TimingsFactory(_logger);
             times.Start();
@@ -156,7 +173,7 @@ namespace EGG9000.Site.Controllers {
 
 
             Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return View("Index", new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId));
+            return new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId);
         }
 
         // Lazily renders the artifact-inventory image plus its hover-target manifest for one account. The
@@ -182,6 +199,22 @@ namespace EGG9000.Site.Controllers {
             if(!render.Ok) return Json(new { error = render.Error });
 
             return Json(new { imageB64 = Convert.ToBase64String(render.Jpeg), manifest = render.Manifest });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> BackupFreshness(ulong discordId) {
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+
+            var isStaff = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+            if(discordId != loginUserId && !isStaff) return Forbid();
+
+            var user = await _db.DBUsers.AsNoTracking().FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            if(user is null) return NotFound();
+
+            var latest = user.EggIncAccounts.Count == 0 ? 0 : user.EggIncAccounts.Max(a => a.Backup?.LastBackupTime ?? 0);
+            return Json(new { latest });
         }
 
         private async Task GetScores(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
