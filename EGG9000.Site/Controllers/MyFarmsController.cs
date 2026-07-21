@@ -193,6 +193,26 @@ namespace EGG9000.Site.Controllers {
             return Json(new { imageB64 = Convert.ToBase64String(render.Jpeg), manifest = render.Manifest });
         }
 
+        // Lets the page poll whether RefreshBackupsInBackground has landed a newer backup than what was
+        // rendered, so it can reload once instead of showing stale data until the next manual refresh.
+        // Read-only, no side effects; same owner-or-staff gate as InventoryOverlay. Returns only a
+        // timestamp, never account content.
+        [HttpGet]
+        public async Task<IActionResult> BackupFreshness(ulong discordId) {
+            var loginuser = await _userManager.GetUserAsync(User);
+            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+
+            var isStaff = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+            if(discordId != loginUserId && !isStaff) return Forbid();
+
+            var user = await _db.DBUsers.AsNoTracking().FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            if(user is null) return NotFound();
+
+            var latest = user.EggIncAccounts.Count == 0 ? 0 : user.EggIncAccounts.Max(a => a.Backup?.LastBackupTime ?? 0);
+            return Json(new { latest });
+        }
+
         private async Task GetScores(DBUser user, List<(string EggIncId, MyContracts MyContracts)> scoring) {
             // MyContracts scores per account (cached 1h, network-only on miss). Never touches _db, so it is safe
             // to run concurrently with the controller's DB queries.

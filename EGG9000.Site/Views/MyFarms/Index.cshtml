@@ -34,6 +34,7 @@
 
     var inDB = Model.User.DiscordId > 0;
 
+    var latestBackupAtRender = Model.User.EggIncAccounts.Count == 0 ? 0 : Model.User.EggIncAccounts.Max(a => a.Backup?.LastBackupTime ?? 0);
 }
 
 <style>
@@ -997,5 +998,28 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        (function() {
+            var discordId = @Model.User.DiscordId;
+            var since = @latestBackupAtRender;
+            var attempts = 0;
+            var maxAttempts = 6;
+            var poll = setInterval(function() {
+                attempts++;
+                if(attempts > maxAttempts) {
+                    clearInterval(poll);
+                    return;
+                }
+                fetch('/MyFarms/BackupFreshness?discordId=' + discordId)
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) {
+                        if(data && data.latest > since) {
+                            clearInterval(poll);
+                            location.reload();
+                        }
+                    })
+                    .catch(function() {});
+            }, 4000);
+        })();
     </script>
 }
