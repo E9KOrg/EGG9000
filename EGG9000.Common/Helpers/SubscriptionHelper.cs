@@ -20,12 +20,19 @@ namespace EGG9000.Common.Helpers {
             var standardRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.StandardSubscription)?.Id ?? default;
             var proRoleId = dbGuild.ChannelDetails?.FirstOrDefault(x => x.ChannelType == GuildChannelType.ProSubscription)?.Id ?? default;
 
+            // guild can itself be a gateway cache miss too (e.g. a background job racing guild sync
+            // right after startup/reconnect), same silent-skip risk as the member lookup below, so
+            // fall back to a REST-fetched guild instead of bailing out entirely.
+            IGuild resolvedGuild = guild is not null
+                ? guild
+                : (dbGuild.Id != default ? await gateway.Rest.GetGuildAsync(dbGuild.Id) : null);
+
             // GetUser only hits the gateway member cache; a cache miss (member not downloaded
             // since startup, evicted, or joined after the last full download) would otherwise
             // silently skip role enforcement, so fall back to a REST fetch.
-            IGuildUser discordUser = guild is null
+            IGuildUser discordUser = resolvedGuild is null
                 ? null
-                : guild.GetUser(user.DiscordId) ?? await ((IGuild)guild).GetUserAsync(user.DiscordId);
+                : guild?.GetUser(user.DiscordId) ?? await resolvedGuild.GetUserAsync(user.DiscordId);
             if(discordUser is not null) {
                 var changed = false;
                 if(await CheckRole(standardRoleId, user, false, discordUser, logger)) {

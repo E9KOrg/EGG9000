@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -118,17 +119,13 @@ namespace EGG9000.Common.Helpers {
         private class ShipsSentByLevel {
             public Dictionary<(Spaceship, DurationType, uint), int> ShipCounts { get; private set; }
 
-            public ShipsSentByLevel(Ei.Backup backup) {
+            public ShipsSentByLevel(Backup backup) {
                 ShipCounts = [];
 
                 if(backup?.ArtifactsDb?.MissionArchive is not null) {
                     foreach(var mission in backup.ArtifactsDb.MissionArchive) {
                         var key = (mission.Ship, mission.DurationType, mission.Level);
-                        if(ShipCounts.ContainsKey(key)) {
-                            ShipCounts[key]++;
-                        } else {
-                            ShipCounts[key] = 1;
-                        }
+                        CollectionsMarshal.GetValueRefOrAddDefault(ShipCounts, key, out _)++;
                     }
                 }
             }
@@ -170,7 +167,7 @@ namespace EGG9000.Common.Helpers {
         // its crafting history (simulated per-craft odds from crafting XP/level at the time of each
         // craft). LLC = owned - expected; large positive LLC without a matching launch/craft history is
         // the cheat signal, unlike the raw fairness score which just measures rare-artifact ownership.
-        public static LegendaryLuckResult GetLegendaryLuckCoefficient(EggIncAccount account, Ei.Backup freshBackup, List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> shipCoefficientTable) {
+        public static LegendaryLuckResult GetLegendaryLuckCoefficient(EggIncAccount account, Backup freshBackup, List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> shipCoefficientTable) {
             var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
             var shipsSent = new ShipsSentByLevel(freshBackup);
 

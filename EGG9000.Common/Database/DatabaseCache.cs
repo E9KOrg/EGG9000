@@ -23,7 +23,7 @@ namespace EGG9000.Common.Database {
             _lastCacheUpdateUser = DateTimeOffset.UtcNow;
             _cachedUsers = [.. db.DBUsers.AsNoTracking()];
 
-            _cachedActiveCoops = [.. db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived)];
+            _cachedActiveCoops = [.. db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.ThreadArchived)];
         }
 
         private volatile List<DBUser> _cachedUsers;
@@ -65,7 +65,7 @@ namespace EGG9000.Common.Database {
             try {
                 var db = await _dbContextFactory.CreateDbContextAsync();
                 _logger.LogInformation("Refreshing active coops cache");
-                var coops = await db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.DeletedChannel && !c.ThreadArchived).ToListAsync();
+                var coops = await db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.ThreadArchived).ToListAsync();
                 _cachedActiveCoops = coops;
             } catch(Exception e) {
                 _logger.LogError(e, "Error refreshing active coops cache");

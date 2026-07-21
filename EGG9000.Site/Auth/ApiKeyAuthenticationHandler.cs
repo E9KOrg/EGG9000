@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -44,10 +45,12 @@ namespace EGG9000.Site.Auth {
             if(!valid)
                 return AuthenticateResult.Fail("Invalid or expired API key.");
 
-            var claims = new[] {
-                new Claim("GuildId", key.GuildId.ToString()),
-                new Claim("ApiKeyId", key.Id.ToString())
+            var claims = new List<Claim> {
+                new("GuildId", key.GuildId.ToString()),
+                new("ApiKeyId", key.Id.ToString())
             };
+            if(!string.IsNullOrWhiteSpace(key.MembersOfGuildOnly))
+                claims.Add(new Claim("MembersOfGuildOnly", key.MembersOfGuildOnly));
             var identity = new ClaimsIdentity(claims, SchemeName);
             var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), SchemeName);
             return AuthenticateResult.Success(ticket);

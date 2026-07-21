@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
+using EGG9000.Site.Models.Contract;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -19,12 +20,12 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
-    public class ContractController(ApplicationDbContext _db, DiscordSocketClient _discord, Bugsnag.IClient _bugsnag, IServiceProvider _provider, ILogger<ContractController> _logger) : Controller {
+    public class ContractController(ApplicationDbContext _db, DiscordSocketClient _discord, Bugsnag.IClient _bugsnag, IServiceProvider _provider, ILogger<ContractController> _logger) : E9KControllerBase {
         public async Task<IActionResult> Index() {
-            var guildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+            var guildId = GetGuildId();
             var contracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => x.GuildID == guildId && x.Contract.Created > DateTimeOffset.UtcNow.AddMonths(-2)).OrderByDescending(x => x.Contract.Created).ToListAsync();
             var dbguild = await _db.Guilds.FindAsync(guildId);
-            return View((contracts, dbguild));
+            return View(new Contract_IndexModel(contracts, dbguild));
         }
 
         public IActionResult Coop() {
@@ -138,7 +139,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> StartCoops([FromBody] List<CoopStart> coops, [FromQuery] ulong GuildId, [FromQuery] string ContractID, [FromQuery] int bg, [FromQuery] Ei.Contract.Types.PlayerGrade Grade) {
+        public async Task<IActionResult> StartCoops([FromBody] List<Contract_CoopStart> coops, [FromQuery] ulong GuildId, [FromQuery] string ContractID, [FromQuery] int bg, [FromQuery] Ei.Contract.Types.PlayerGrade Grade) {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
             var userIds = coops.SelectMany(x => x.Users.Select(y => y.DatabaseId)).ToList();
             var useRoles = dbguild.DisableBG;
@@ -172,19 +173,10 @@ namespace EGG9000.Site.Controllers {
             return await ReloadGrade(GuildId, ContractID, Grade.ToString(), bg, 0);
         }
 
-        public class CoopStart {
-            public List<CoopUser> Users { get; set; }
-        }
-        public class CoopUser {
-            public string EggIncId { get; set; }
-            public Guid DatabaseId { get; set; }
-            public uint Group { get; set; }
-        }
-
         public async Task<IActionResult> Details([FromQuery] ulong GuildId, [FromQuery] string ContractID, [FromQuery] uint League) {
             // Admins may view any guild; everyone else is scoped to the guild on their own claim.
             if(!User.IsInRole("Admin")) {
-                var claimGuildId = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+                var claimGuildId = GetGuildId();
                 if(GuildId != claimGuildId) {
                     return NotFound();
                 }
@@ -199,7 +191,7 @@ namespace EGG9000.Site.Controllers {
 
                 ViewBag.Discord = _discord;
 
-                return View(new CoopsViewModel {
+                return View(new Contract_CoopsViewModel {
                     GuildContract = guildContract,
                     CoopsBreakdown = coopsBreakdown,
                     League = League
@@ -213,7 +205,7 @@ namespace EGG9000.Site.Controllers {
             var claimsIdentity = (ClaimsIdentity)User.Identity;
             var discordId = ulong.Parse(claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value);
 
-            var scores = await _db.UserCoopXrefs.Where(x => x.Coop.ContractID == ContractID && x.User.GuildId == GuildId && x.Score.HasValue).Select(x => new ScoreGraphItem {
+            var scores = await _db.UserCoopXrefs.Where(x => x.Coop.ContractID == ContractID && x.User.GuildId == GuildId && x.Score.HasValue).Select(x => new Contract_ScoreGraphItem {
                 Score = x.Score,
                 RunningScore = x.RunningScore,
                 CurrentUser = x.User.DiscordId == discordId,
@@ -221,13 +213,6 @@ namespace EGG9000.Site.Controllers {
             }).ToListAsync();
 
             return View(scores);
-        }
-
-        public class ScoreGraphItem {
-            public bool CurrentUser { get; set; }
-            public float? Score { get; set; }
-            public float? RunningScore { get; set; }
-            public double? SoulPower { get; set; }
         }
 
 
@@ -245,7 +230,7 @@ namespace EGG9000.Site.Controllers {
             var discordUser = guild.Users.First(x => x.Id == dbuser.DiscordId);
             var guildId = targetCoop.OverflowGuildId > 0 ? targetCoop.OverflowGuildId : targetCoop.GuildId;
 
-            var channel = targetCoop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID) : (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
+            var channel = (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID);
             var eggIncName = dbuser.EggIncAccounts.First(x => x.Id == EggIncId).Name;
             var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, _db, discordUser, dbuser, channel, null);
 
@@ -270,7 +255,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
-        public async Task<IActionResult> RemoveXref([FromBody] RemoveXrefModel model) {
+        public async Task<IActionResult> RemoveXref([FromBody] Contract_RemoveXrefModel model) {
             var xref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.UserId == model.UserId && x.CoopId == model.CoopId && x.EggIncId == model.EggIncId);
             if(xref == null) {
                 return Json(new { error = $"Unable to find xref." });
@@ -282,25 +267,11 @@ namespace EGG9000.Site.Controllers {
             return Json(new { Success = true });
         }
 
-        public class RemoveXrefModel {
-            public Guid UserId { get; set; }
-            public Guid CoopId { get; set; }
-            public string EggIncId { get; set; }
-        }
-
-        public class CoopsViewModel {
-            public List<Coop> Coops { get; set; }
-            public GuildContract GuildContract { get; set; }
-            public CoopsBreakdown CoopsBreakdown { get; set; }
-            public List<UserPreFarm> UserPreFarms { get; set; }
-            public uint League { get; set; }
-        }
-
         public async Task<IActionResult> RecentScoresGrid([FromQuery] ulong guildid = default) {
             _logger.LogInformation("Test");
             var times = new TimingsFactory(_logger).Start();
             if(guildid == default) {
-                guildid = ulong.Parse(((ClaimsIdentity)User.Identity).Claims.First(x => x.Type == "GuildId").Value);
+                guildid = GetGuildId();
             }
 
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildid);
@@ -335,7 +306,7 @@ namespace EGG9000.Site.Controllers {
 
                 return details.CoopParticipants.Where(p => p.DBUser is not null && p.DBUser.GuildId == guildid).Select(p => {
                     var role = groupRoles.Length > 0 ? dbguild.GroupRoles.Split(",").FirstOrDefault(gr => guild.GetUser(p.DBUser.DiscordId)?.Roles.Any(r => r.Id.ToString() == gr) ?? false) : "";
-                    return new ScoreGridItem {
+                    return new Contract_ScoreGridItem {
                         Name = p.Name,
                         RoleId = role,
                         ContractId = contract.ID,
@@ -346,24 +317,12 @@ namespace EGG9000.Site.Controllers {
             times.Set("Setup Grid Items");
             var roles = dbguild.DisableBG ? dbguild.GroupRoles.Split(",").Select(x => guild.GetRole(ulong.Parse(x))).ToArray() : [null];
 
-            var scoreGridContracts = contracts.Where(x => scoreGridItems.Any(y => y.ContractId == x.ID)).OrderByDescending(x => x.Created).Select(x => new ScoreGridContract {
+            var scoreGridContracts = contracts.Where(x => scoreGridItems.Any(y => y.ContractId == x.ID)).OrderByDescending(x => x.Created).Select(x => new Contract_ScoreGridContract {
                 ContractId = x.ID.ToString(),
                 ContractName = x.Name
             }).ToArray();
             times.Finished();
-            return View((scoreGridContracts, scoreGridItems, roles));
-        }
-
-        public record ScoreGridItem {
-            public string ContractId { get; set; }
-            public double Score { get; set; }
-            public string Name { get; set; }
-            public string RoleId { get; set; }
-        }
-
-        public record ScoreGridContract {
-            public string ContractId { get; set; }
-            public string ContractName { get; set; }
+            return View(new Contract_RecentScoresGridModel(scoreGridContracts, scoreGridItems, roles));
         }
     }
 }

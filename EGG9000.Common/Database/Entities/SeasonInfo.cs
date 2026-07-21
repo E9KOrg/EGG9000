@@ -43,13 +43,13 @@ namespace EGG9000.Common.Database.Entities {
             _goals ??= JsonConvert.DeserializeObject<Dictionary<int, List<SeasonPeGoal>>>(GoalsJson ?? "{}") ?? [];
 
         // Season goals are set based on the starting grade, so even if player is demoted or promoted during the season, the goals will stay at what starting grade was.
-        public int GetPeEarned(Ei.Contract.Types.PlayerGrade grade, double totalCxp) {
+        public int GetPeEarned(Contract.Types.PlayerGrade grade, double totalCxp) {
             if(!Goals.TryGetValue((int)grade, out var gradeGoals))
                 return 0;
             return gradeGoals.Where(g => totalCxp >= g.Cxp).Sum(g => g.PeAmount);
         }
 
-        public int GetMaxPe(Ei.Contract.Types.PlayerGrade grade) {
+        public int GetMaxPe(Contract.Types.PlayerGrade grade) {
             if(!Goals.TryGetValue((int)grade, out var gradeGoals))
                 return 0;
             return gradeGoals.Sum(g => g.PeAmount);
@@ -57,13 +57,13 @@ namespace EGG9000.Common.Database.Entities {
 
         // CS (season Cxp) at which the grade earns all of its PE - the highest PE-goal Cxp. 0 when the
         // grade has no PE goals.
-        public double GetMaxPeCxp(Ei.Contract.Types.PlayerGrade grade) {
+        public double GetMaxPeCxp(Contract.Types.PlayerGrade grade) {
             if(!Goals.TryGetValue((int)grade, out var gradeGoals) || gradeGoals.Count == 0)
                 return 0;
             return gradeGoals.Max(g => g.Cxp);
         }
 
-        public IEnumerable<SeasonPeGoal> GetUnearnedGoals(Ei.Contract.Types.PlayerGrade grade, double totalCxp) =>
+        public IEnumerable<SeasonPeGoal> GetUnearnedGoals(Contract.Types.PlayerGrade grade, double totalCxp) =>
             Goals.TryGetValue((int)grade, out var gradeGoals)
                 ? gradeGoals.Where(g => totalCxp < g.Cxp)
                 : [];

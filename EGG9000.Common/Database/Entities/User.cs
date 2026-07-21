@@ -2,8 +2,6 @@
 
 using Ei;
 
-using MassTransit;
-
 using MessagePack;
 
 using Microsoft.EntityFrameworkCore;
@@ -316,7 +314,7 @@ namespace EGG9000.Common.Database.Entities {
             public long ShipReturnTime { get; set; }
         }
 
-        public static bool MatchRewards(Ei.Contract.Types.GradeSpec gradeSpec, RewardType selectReward, byte completedRewards) {
+        public static bool MatchRewards(Contract.Types.GradeSpec gradeSpec, RewardType selectReward, byte completedRewards) {
             return selectReward switch {
                 RewardType.Artifact => gradeSpec.Goals.Skip(completedRewards).Any(g => g.RewardType == RewardType.Artifact || g.RewardType == RewardType.ArtifactCase),
                 RewardType.PiggyMultiplier => gradeSpec.Goals.Skip(completedRewards).Any(g => g.RewardType == RewardType.PiggyMultiplier || g.RewardType == RewardType.PiggyLevelBump || g.RewardType == RewardType.PiggyFill),
@@ -324,7 +322,7 @@ namespace EGG9000.Common.Database.Entities {
             };
         }
 
-        public static bool MatchLastReward(Ei.Contract.Types.GradeSpec gradeSpec, RewardType selectReward) {
+        public static bool MatchLastReward(Contract.Types.GradeSpec gradeSpec, RewardType selectReward) {
             var lastGoal = gradeSpec.Goals.LastOrDefault();
             if(lastGoal == null) return false;
             var lastType = lastGoal.RewardType;
@@ -367,7 +365,7 @@ namespace EGG9000.Common.Database.Entities {
         [Key(7)]
         public bool RedoLeggacy { get; set; }
         [Key(8)]
-        public Ei.Contract.Types.PlayerGrade LastGrade { get; set; }
+        public Contract.Types.PlayerGrade LastGrade { get; set; }
         [Key(9)]
         public DateTimeOffset PromotionTime { get; set; }
         [Key(10)]
@@ -463,7 +461,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
 
-        public Ei.Contract.Types.PlayerGrade GetGrade() {
+        public Contract.Types.PlayerGrade GetGrade() {
             if(Backup is null)
                 return LastGrade;
 

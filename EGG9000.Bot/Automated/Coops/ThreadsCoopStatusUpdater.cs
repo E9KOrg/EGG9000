@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
 
             // Users who leave their server have GuildId reset to 0, which would drop them from the
             // GuildId > 0 set below even while they are still in an active coop. Without their backup
@@ -232,7 +232,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
                 if(coop.League != (uint)status.Grade && status.Grade != Ei.Contract.Types.PlayerGrade.GradeUnset) {
-                    _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Ei.Contract.Types.PlayerGrade)coop.League, status.Grade);
+                    _logger.LogInformation("Updating co-op league: {coopName} from {oldLeague} to {newLeague}", coop.Name, (Contract.Types.PlayerGrade)coop.League, status.Grade);
                     coop.League = (uint)status.Grade;
                 }
                 if(coop.League == 0) {
@@ -245,7 +245,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     var joinResponse = await EggIncApi.Post<JoinCoopResponse, JoinCoopRequest>(new JoinCoopRequest {
                         ContractIdentifier = coop.ContractID,
                         CoopIdentifier = coop.Name.ToLower(),
-                        UserId = coop.CreatorID, ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
+                        UserId = coop.CreatorID, ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Contract.Types.PlayerGrade)coop.League, Platform = Platform.Droid, SecondsRemaining = coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
                     }, coop.CreatorID, false);
 
 
@@ -657,7 +657,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                 // assigned but not joined can never join, so once past the kick window we still
                                 // need to drop their xref to free the spot for /findcoopforuser.
                                 var hoursToKick = coop.Contract.cc_only ? 24 : 18;
-                                if(user is not null && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-hoursToKick)) {
+                                if(user is not null && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-hoursToKick) && !userFarmDetails.Xref.NoDemerit) {
                                     var accountName = user.EggIncAccounts.Count > 1 ? $" ({user.EggIncAccounts.Where(a => a.Id == userFarmDetails.Xref.EggIncId).FirstOrDefault()?.Backup?.UserName})" : "";
                                     var kickReason = discordUser != null
                                         ? $"Failed to join {coop.Contract.Name} within {hoursToKick} hours{accountName}, you have been removed from the co-op and your space might be filled."
@@ -705,7 +705,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                             var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
                                             _queue.EnqueueLow(() => coopThread.SendMessageAsync(message));
                                             var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
-                                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage }));
+                                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage }, _logger, db: _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>()));
                                         }
                                     }
 
@@ -979,7 +979,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(lastMessage != "")
                         msgs.AddRange(DiscordMessageSplitter.SplitMessage(lastMessage, "\n"));
 
-                    var gradeMessage = $"**Co-op Grade**: {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)coop.League)}{(coop.AnyLeague ? " (<:ultra:1131045418319495369> **Any-Grade**)" : "")}";
+                    var gradeMessage = $"**Co-op Grade**: {PlayerGradeDetails.GetEmoji((Contract.Types.PlayerGrade)(int)coop.League)}{(coop.AnyLeague ? " (<:ultra:1131045418319495369> **Any-Grade**)" : "")}";
 
                     var highestEB = coopDetails.CoopParticipants.Where(x => x.Backup is not null).OrderByDescending(x => x.Backup.EarningsBonus).FirstOrDefault();
                     var highestEBMessage = "";
@@ -991,7 +991,7 @@ namespace EGG9000.Bot.Automated.Coops {
                         var creator = users.FirstOrDefault(x => x.Backup?.EggIncId == coop.CreatorID);
                         if(creator != null) {
                             var account = creator.User.EggIncAccounts.First(x => x.Id == coop.CreatorID);
-                            createdByMessage += $"\n**Created By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)(int)account.LastGrade)}";
+                            createdByMessage += $"\n**Created By**: {creator.User.DiscordUsername} {PlayerGradeDetails.GetEmoji((Contract.Types.PlayerGrade)(int)account.LastGrade)}";
                         }
                     }
 
@@ -1263,7 +1263,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, Common.Database.Entities.DBContract contract) {
+        public static List<string> GetStatusStringAsync(CoopDetails coopDetails, DBContract contract) {
             var table = new List<List<FixedWidthCell>> {new () {
                 new($"{coopDetails.CoopParticipants.Count}/{contract.MaxUsers}"),
                 new("Discord", CellAlignment.Center),

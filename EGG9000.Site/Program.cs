@@ -291,7 +291,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         });
 
         // Re-exposes bot runtime snapshots (received below) as bot_* gauges on /metrics.
-        services.AddSingleton<EGG9000.Site.Services.BotMetricsExporter>();
+        services.AddSingleton<BotMetricsExporter>();
 
         services.AddMassTransit(x => {
             x.AddConsumer<ExpireCacheConsumer>();

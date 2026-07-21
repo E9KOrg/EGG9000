@@ -140,7 +140,7 @@ namespace EGG9000.Common.Database.Entities {
         public string RolesToSync { get; set; }
         [GuildConfig("Disable Boarding Groups", "Toggles", GuildConfigKind.Bool, Description = "Disable boarding-group staggering")]
         public bool DisableBG { get; set; }
-        [GuildConfig("Allow Guilds", "Toggles", GuildConfigKind.Bool, Description = "Let in-game guild members team up")]
+        [GuildConfig("Allow Guilds", "Toggles", GuildConfigKind.Bool, Description = "Let members group into guilds in Contract Settings")]
         public bool AllowGuilds { get; set; }
         [GuildConfig("Group Roles", "Lists", GuildConfigKind.CsvRoles, Description = "Boarding-group roles")]
         public string GroupRoles { get; set; }
