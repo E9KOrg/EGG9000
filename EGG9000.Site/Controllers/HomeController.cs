@@ -128,7 +128,7 @@ namespace EGG9000.Site.Controllers {
                         legitAuthorIds.Add(webhookId);
                     }
 
-                    var channel = coop.ThreadID != 0 ? guild.GetThreadChannel(coop.ThreadID) : guild.GetTextChannel(coop.DiscordChannelId);
+                    var channel = guild.GetThreadChannel(coop.ThreadID);
                     if(channel == null) {
                         continue;
                     }

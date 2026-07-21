@@ -282,7 +282,11 @@ namespace EGG9000.Bot.Automated.Coops {
 
         private Task RateLimit(IRateLimitInfo info, string threadName, ulong channelId) {
             lock(__headerChannelLock) {
-                _lastRateLimitInfoByChannel[channelId] = info;
+                _lastRateLimitInfoByChannel[channelId] = (info, DateTimeOffset.UtcNow);
+                var cutoff = DateTimeOffset.UtcNow - RateLimitInfoTtl;
+                foreach(var key in _lastRateLimitInfoByChannel.Where(x => x.Value.LastSeen < cutoff).Select(x => x.Key).ToList()) {
+                    _lastRateLimitInfoByChannel.Remove(key);
+                }
             }
             _logger.LogWarning("Rate Limit for {thread}- Limit:{Limit} Remaining:{Remaining} RetryAfter:{RetryAfter} Reset:{Reset} ResetAfter:{After}",
                                threadName,
@@ -317,7 +321,8 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private readonly object __headerChannelLock = new();
-        private readonly Dictionary<ulong, IRateLimitInfo> _lastRateLimitInfoByChannel = [];
+        private readonly Dictionary<ulong, (IRateLimitInfo Info, DateTimeOffset LastSeen)> _lastRateLimitInfoByChannel = [];
+        private static readonly TimeSpan RateLimitInfoTtl = TimeSpan.FromMinutes(10);
 
         private async Task<SocketGuildChannel> GetHeaderChannelAndWait(List<HeaderChannelsForGuild> headerChannels, Coop coop) {
             SocketGuildChannel headerChannel;
@@ -344,7 +349,7 @@ namespace EGG9000.Bot.Automated.Coops {
         internal DateTimeOffset CalculateNextAllowedTime(ulong channelId, DateTimeOffset lastAccessed) {
             IRateLimitInfo info;
             lock(__headerChannelLock) {
-                _lastRateLimitInfoByChannel.TryGetValue(channelId, out info);
+                info = _lastRateLimitInfoByChannel.TryGetValue(channelId, out var entry) ? entry.Info : null;
             }
 
             // No response seen yet for this channel - use the fixed default so the first
