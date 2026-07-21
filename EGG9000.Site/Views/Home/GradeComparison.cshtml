@@ -48,7 +48,7 @@
                         </tr>
                         <tr>
                             <td>Median Total CS:</td>
-                            <td>@($"{allGradeData.Select(o => o.Item2).OrderByDescending(o => o).ToList()[allGradeData.Select(o => o.Item2).ToList().Count() / 2]:n0}")</td>
+                            <td>@($"{ArgumentsHelper.Median(allGradeData.Select(o => o.Item2)):n0}")</td>
                         </tr>
                         <tr>
                             <td>Combined Server Total CS:</td>
