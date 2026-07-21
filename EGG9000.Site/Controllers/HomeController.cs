@@ -122,7 +122,7 @@ namespace EGG9000.Site.Controllers {
 
                 foreach(var coop in guildGroup.OrderBy(x => rnd.Next())) {
                     var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
-                    var channel = coop.ThreadID != 0 ? guild.GetThreadChannel(coop.ThreadID) : guild.GetTextChannel(coop.DiscordChannelId);
+                    var channel = guild.GetThreadChannel(coop.ThreadID);
                     if(channel == null) {
                         continue;
                     }
@@ -330,42 +330,26 @@ namespace EGG9000.Site.Controllers {
             ViewBag.Year = yearInt;
             ViewBag.Oldest = oldest;
             ViewBag.SortBy = sortby;
+            ViewBag.prefix = prefix;
 
             if(guildid == 0 || !User.IsInRole("Admin")) {
                 guildid = user.GuildId;
             }
 
-
             var cacheKey = $"EGL{guildid}-{yearInt}";
             if(!_cache.TryGetValue(cacheKey, out List<Home_EggDayResults> results)) {
                 var users = await _db.DBUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).ToListAsync();
-
                 timings.Set("Users");
-                var accounts = users.SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
-                    User = u,
-                    Account = a,
-                })).ToList();
 
-
+                var accounts = users.SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount { User = u, Account = a })).ToList();
                 var eggincids = accounts.Select(x => x.Account.Id).ToList();
+                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow)).ToUniversalTime();
 
-
-                var eggDayDate = new DateTimeOffset(yearInt, 07, 14, 11, 0, 0, TimeZoneInfo.FindSystemTimeZoneById("Central Standard Time").GetUtcOffset(DateTimeOffset.UtcNow));
-                // Snapshots from 16th @ Midnight (after event is over)
-
-                var preEggDaySnapshots = await _db.UserSnapShots.Where(x => eggincids.Contains(x.EggIncID) && x.Date < eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderByDescending(y => y.Date).First()).ToListAsync();
+                var preEggDaySnapshots = await LoadEggDaySnapshotsAsync(eggincids, x => x.Date < eggDayDate.AddDays(-1), descending: true);
                 timings.Set("preEggDaySnapshots");
 
-
-                List<UserSnapShot> postEggDaySnapshots;
-                if(DateTimeOffset.UtcNow.Date > eggDayDate && DateTimeOffset.UtcNow.Date < eggDayDate.AddDays(1)) {
-                    postEggDaySnapshots = [.. accounts.Where(x => preEggDaySnapshots.Any(y => y.EggIncID == x.Account.Id)).Select(x => new UserSnapShot { EarningsBonus = x.Account.Backup.EarningsBonus, EggIncID = x.Account.Id, EggsOfProphecy = x.Account.Backup.EggsOfProphecy, Prestiges = x.Account.Backup.NumPrestiges, SoulEggs = x.Account.Backup.SoulEggs, UserId = x.User.Id, Date = DateTime.Now })];
-                } else {
-                    postEggDaySnapshots = await _db.UserSnapShots.Where(x => eggincids.Contains(x.EggIncID) && x.Date >= eggDayDate).GroupBy(x => x.EggIncID).Select(x => x.OrderBy(y => y.Date).First()).ToListAsync();
-                }
+                var postEggDaySnapshots = await LoadPostEggDaySnapshotsAsync(eggincids, accounts, preEggDaySnapshots, eggDayDate);
                 timings.Set("postEggDaySnapshots");
-                // Snapshots from 14th @ Midnight (before event started)
-
 
                 results = [.. postEggDaySnapshots.Select(x => {
                     var user = accounts.First(y => y.Account.Id == x.EggIncID);
@@ -386,39 +370,66 @@ namespace EGG9000.Site.Controllers {
                 _cache.Set(cacheKey, results, TimeSpan.FromMinutes(5));
             }
 
-
-
-            results = [.. results.OrderByDescending(x => x.EBGain)];
-
-
-            switch(sortby) {
-                case "prestige":
-                    results = [.. results.OrderByDescending(x => x.PrestigeCount)];
-                    break;
-                case "se":
-                    results = [.. results.OrderByDescending(x => x.SEGain)];
-                    break;
-                case "seper":
-                    results = [.. results.OrderByDescending(x => x.SEGainPercent)];
-                    break;
-                case "ebper":
-                    results = [.. results.OrderByDescending(x => x.EBGainPercent)];
-                    break;
-                default:
-                    results = [.. results.OrderByDescending(x => x.EBGain)];
-                    break;
-            }
-
+            results = sortby switch {
+                "prestige" => [.. results.OrderByDescending(x => x.PrestigeCount)],
+                "se" => [.. results.OrderByDescending(x => x.SEGain)],
+                "seper" => [.. results.OrderByDescending(x => x.SEGainPercent)],
+                "ebper" => [.. results.OrderByDescending(x => x.EBGainPercent)],
+                _ => [.. results.OrderByDescending(x => x.EBGain)]
+            };
 
             if(prefix > 0) {
                 results = [.. results.Where(x => SIPrefix.GetPrefixFromEB(x.StartEB).Base == prefix)];
             }
 
-            ViewBag.sortby = sortby;
-            ViewBag.prefix = prefix;
+            return View(results);
+        }
 
-            return View(results.ToList());
+        private async Task<List<UserSnapShot>> LoadEggDaySnapshotsAsync(List<string> eggincids, System.Linq.Expressions.Expression<Func<UserSnapShot, bool>> dateFilter, bool descending) {
+            var groups = _db.UserSnapShots.AsQueryable().Where(x => eggincids.Contains(x.EggIncID)).Where(dateFilter).GroupBy(x => x.EggIncID);
+            return await groups.Select(g => g
+                .Where(y => y.Date == (descending ? g.Max(y => y.Date) : g.Min(y => y.Date)))
+                .Select(y => new UserSnapShot {
+                    EggIncID = y.EggIncID, UserId = y.UserId, Date = y.Date, EarningsBonus = y.EarningsBonus,
+                    SoulEggs = y.SoulEggs, Prestiges = y.Prestiges, EggsOfProphecy = y.EggsOfProphecy
+                }).First()).ToListAsync();
+        }
 
+        private async Task<List<UserSnapShot>> LoadPostEggDaySnapshotsAsync(List<string> eggincids, List<UserByAccount> accounts, List<UserSnapShot> preEggDaySnapshots, DateTimeOffset eggDayDate) {
+            var duringEvent = DateTimeOffset.UtcNow >= eggDayDate && DateTimeOffset.UtcNow < eggDayDate.AddDays(1);
+            if(duringEvent) {
+                var preIds = preEggDaySnapshots.Select(y => y.EggIncID).ToHashSet();
+                return [.. accounts.Where(x => preIds.Contains(x.Account.Id)).Select(x => new UserSnapShot {
+                    EggIncID = x.Account.Id,
+                    UserId = x.User.Id,
+                    Date = DateTime.Now,
+                    EarningsBonus = x.Account.Backup.EarningsBonus,
+                    SoulEggs = x.Account.Backup.SoulEggs,
+                    Prestiges = x.Account.Backup.NumPrestiges,
+                    EggsOfProphecy = x.Account.Backup.EggsOfProphecy
+                })];
+            }
+            return await LoadEggDaySnapshotsAsync(eggincids, x => x.Date >= eggDayDate, descending: false);
+        }
+
+        private static List<Home_EggDayResults> BuildEggDayResults(List<UserByAccount> accounts, List<UserSnapShot> preEggDaySnapshots, List<UserSnapShot> postEggDaySnapshots) {
+            var accountById = accounts.ToDictionary(x => x.Account.Id);
+            var preById = preEggDaySnapshots.ToDictionary(x => x.EggIncID);
+
+            return [.. postEggDaySnapshots
+                .Where(post => preById.ContainsKey(post.EggIncID) && accountById.ContainsKey(post.EggIncID))
+                .Select(post => {
+                    var pre = preById[post.EggIncID];
+                    return new Home_EggDayResults {
+                        UserAccount = accountById[post.EggIncID],
+                        EBGain = post.EarningsBonus - pre.EarningsBonus,
+                        EBGainPercent = (post.EarningsBonus - pre.EarningsBonus) / pre.EarningsBonus,
+                        SEGain = post.SoulEggs - pre.SoulEggs,
+                        SEGainPercent = (post.SoulEggs - pre.SoulEggs) / pre.SoulEggs,
+                        PrestigeCount = post.Prestiges - pre.Prestiges,
+                        StartEB = pre.EarningsBonus
+                    };
+                })];
         }
 
         public async Task<IActionResult> Results([FromQuery] bool oldest = false, [FromQuery] string sortby = "") {
@@ -488,6 +499,11 @@ namespace EGG9000.Site.Controllers {
             if(guild == null) return StatusCode(503);
             await guild.DownloadUsersAsync();
             var leaderboard = await _getLeaderboard(guildId);
+
+            var membersOfGuildOnly = User.Claims.FirstOrDefault(x => x.Type == "MembersOfGuildOnly")?.Value;
+            if(!string.IsNullOrWhiteSpace(membersOfGuildOnly))
+                leaderboard = [.. leaderboard.Where(x => string.Equals(x.Account?.Guild?.Trim(), membersOfGuildOnly.Trim(), StringComparison.OrdinalIgnoreCase))];
+
             var result = leaderboard.Select(x => new Home_LeaderboardApiItem {
                 DiscordName = x.DisplayName,
                 DiscordId = x.DisplayDiscordId,
