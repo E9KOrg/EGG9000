@@ -1002,24 +1002,23 @@
         (function() {
             var discordId = @Model.User.DiscordId;
             var since = @latestBackupAtRender;
-            var attempts = 0;
             var maxAttempts = 6;
-            var poll = setInterval(function() {
-                attempts++;
-                if(attempts > maxAttempts) {
-                    clearInterval(poll);
-                    return;
-                }
+
+            function poll(attempt) {
+                if(attempt > maxAttempts) return;
                 fetch('/MyFarms/BackupFreshness?discordId=' + discordId)
                     .then(function(r) { return r.ok ? r.json() : null; })
                     .then(function(data) {
                         if(data && data.latest > since) {
-                            clearInterval(poll);
                             location.reload();
+                        } else {
+                            setTimeout(function() { poll(attempt + 1); }, 4000);
                         }
                     })
-                    .catch(function() {});
-            }, 4000);
+                    .catch(function() { setTimeout(function() { poll(attempt + 1); }, 4000); });
+            }
+
+            setTimeout(function() { poll(1); }, 4000);
         })();
     </script>
 }

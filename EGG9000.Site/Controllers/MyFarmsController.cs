@@ -193,10 +193,6 @@ namespace EGG9000.Site.Controllers {
             return Json(new { imageB64 = Convert.ToBase64String(render.Jpeg), manifest = render.Manifest });
         }
 
-        // Lets the page poll whether RefreshBackupsInBackground has landed a newer backup than what was
-        // rendered, so it can reload once instead of showing stale data until the next manual refresh.
-        // Read-only, no side effects; same owner-or-staff gate as InventoryOverlay. Returns only a
-        // timestamp, never account content.
         [HttpGet]
         public async Task<IActionResult> BackupFreshness(ulong discordId) {
             var loginuser = await _userManager.GetUserAsync(User);
