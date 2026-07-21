@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
             using var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && x.DiscordChannelId == 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
+            var coops = await _db.Coops.AsQueryable().Where(x => x.ThreadID != 0 && !x.ThreadArchived && x.CoopEnds.HasValue && x.CoopEnds.Value.AddDays(7) > DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
 
             // Users who leave their server have GuildId reset to 0, which would drop them from the
             // GuildId > 0 set below even while they are still in an active coop. Without their backup
@@ -705,7 +705,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                             var message = $"It looks like {discordUser?.Mention ?? user.DiscordUsername} has joined another co-op named {farm.CoopId}.";
                                             _queue.EnqueueLow(() => coopThread.SendMessageAsync(message));
                                             var logMessage = $"Outside co-op detected for {discordUser?.Mention ?? user.DiscordUsername} they joined *{farm.CoopId}*, but were assigned to <#{coopThread.Id}>";
-                                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage }));
+                                            _queue.EnqueueLow(() => ChannelHelper.DetermineAndSend(_client.Gateway, findGuild, GuildChannelType.OutsideCoopLog, new() { Text = logMessage }, _logger, db: _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>()));
                                         }
                                     }
 

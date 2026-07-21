@@ -3,6 +3,7 @@ using System;
 using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260713212939_AddApiKeyMembersOfGuildOnly")]
+    partial class AddApiKeyMembersOfGuildOnly
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -229,6 +232,15 @@ namespace EGG9000.Common.Migrations
                     b.Property<int?>("CurrentUsers")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("DeletedChannel")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("DiscordChannelId")
+                        .HasColumnType("numeric(20,0)");
+
+                    b.Property<long>("FindChannelErrors")
+                        .HasColumnType("bigint");
+
                     b.Property<bool>("Finished")
                         .HasColumnType("boolean");
 
@@ -303,9 +315,9 @@ namespace EGG9000.Common.Migrations
                     b.HasIndex("ThreadID", "Created");
 
                     b.HasIndex("GuildId", "ContractID", "League")
-                        .HasFilter("NOT \"Finished\" AND NOT \"ThreadArchived\"");
+                        .HasFilter("NOT \"Finished\" AND NOT \"DeletedChannel\" AND NOT \"ThreadArchived\"");
 
-                    b.HasIndex("ThreadArchived", "CoopEnds", "ThreadID");
+                    b.HasIndex("DiscordChannelId", "ThreadArchived", "CoopEnds", "ThreadID");
 
                     b.ToTable("Coops");
                 });

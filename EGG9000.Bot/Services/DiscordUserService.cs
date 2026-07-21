@@ -48,7 +48,7 @@ namespace EGG9000.Bot.Services {
 
         private async Task HandleThreadDeleted(SocketThreadChannel arg) {
             var db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
+            var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id);
             if(coop is not null && coop.ThreadID != 0) {
                 _logger.LogInformation($"Marking thread archived due to thread deletion for {coop.Name}");
                 coop.ThreadArchived = true;
@@ -68,13 +68,10 @@ namespace EGG9000.Bot.Services {
                     await db.SaveChangesAsync();
                     return;
                 }
-                var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id || x.DiscordChannelId == arg.Id);
+                var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == arg.Id);
                 if(coop is not null && coop.ThreadID != 0) {
                     _logger.LogInformation($"Marking thread archived due to channel deletion for {coop.Name}");
                     coop.ThreadArchived = true;
-                    await db.SaveChangesAsync();
-                } else if(coop is not null && coop.DiscordChannelId != 0) {
-                    coop.DeletedChannel = true;
                     await db.SaveChangesAsync();
                 }
             } catch(Exception e) {
@@ -136,7 +133,7 @@ namespace EGG9000.Bot.Services {
                     try {
                         var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
                         foreach(var xref in xrefs) {
-                            var coopChannel = xref.Coop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID) : (SocketTextChannel)_discord.GetChannel(xref.Coop.DiscordChannelId);
+                            var coopChannel = (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID);
                             if(coopChannel is null) continue;
                             await coopChannel.AddPermissionOverwriteAsync(user, new OverwritePermissions(viewChannel: PermValue.Allow));
                             xref.AddedToChannel = true;
