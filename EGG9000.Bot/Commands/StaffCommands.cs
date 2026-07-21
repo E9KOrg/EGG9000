@@ -201,7 +201,11 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var account = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+            var account = dbUser.ResolveAutocompleteAccount(useraccount);
+            if(account is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                return;
+            }
 
             var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
 

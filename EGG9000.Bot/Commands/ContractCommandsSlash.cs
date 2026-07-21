@@ -243,7 +243,11 @@ namespace EGG9000.Bot.Commands {
             var guid = Guid.Parse(userid);
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
             var dbGuild = await Db.Guilds.FirstOrDefaultAsync(x => x.Id == Context.Interaction.GuildId || x.OverflowServersJson.Contains(Context.Interaction.GuildId.ToString()));
-            var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+            var account = dbuser.ResolveAutocompleteAccount(useraccount);
+            if(account is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                return;
+            }
 
             var xref = await Db.UserCoopXrefs.Include(x => x.User).Where(xref => xref.UserId == guid && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
             if(xref == null) {
@@ -343,7 +347,11 @@ namespace EGG9000.Bot.Commands {
             var contract = await Db.Contracts.FirstOrDefaultAsync(c => c.ID == contractid);
             var userid = useraccount.Split("|")[0];
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
-            var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+            var account = dbuser.ResolveAutocompleteAccount(useraccount);
+            if(account is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                return;
+            }
 
             var newCoopResponse = await ContractCommandsSlash.FindPotentialCoopForUser(account, contract, guildRef, _gateway, Db, priority);
 
@@ -445,9 +453,13 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == userid);
-            var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
-            var xref = await Db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && (x.Coop.ThreadID == Context.Channel.Id) && !x.JoinedCoop);
-            xref ??= await Db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && (x.Coop.ThreadID == Context.Channel.Id));
+            var account = dbuser.ResolveAutocompleteAccount(useraccount);
+            if(account is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                return;
+            }
+            var xref = await Db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == Context.Channel.Id && !x.JoinedCoop);
+            xref ??= await Db.UserCoopXrefs.Include(x => x.Coop).FirstOrDefaultAsync(x => x.User.DiscordId == dbuser.DiscordId && x.Coop.ThreadID == Context.Channel.Id);
 
             var discordUser = _gateway.GetUser(dbuser.DiscordId);
             var coopChannel = _gateway.GetChannel(coop.ThreadID);
@@ -525,7 +537,11 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == userid);
-            var account = dbuser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+            var account = dbuser.ResolveAutocompleteAccount(useraccount);
+            if(account is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                return;
+            }
 
             var discordUser = _gateway.GetUser(dbuser.DiscordId);
             var coopChannel = _gateway.GetChannel(coop.ThreadID);
@@ -550,8 +566,17 @@ namespace EGG9000.Bot.Commands {
         public async Task RemoveFromCoop([Summary("useraccount")][Autocomplete(typeof(RemoveFromCoopAutoComplete))] string useraccount) {
             await Context.Interaction.DeferAsync();
             var targetCoop = CoopChannel;
-            var userid = Guid.Parse(useraccount.Split("|")[0]);
-            var xref = await Db.UserCoopXrefs.Include(x => x.User).Where(xref => xref.UserId == userid && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).FirstOrDefaultAsync();
+
+            var parts = useraccount.Split("|");
+            if(parts.Length < 2 || !Guid.TryParse(parts[0], out var userid) || !int.TryParse(parts[1], out var accountIndex)) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                return;
+            }
+            var xrefs = await Db.UserCoopXrefs.Include(x => x.User).Where(xref => xref.UserId == userid && xref.CoopId == targetCoop.Id).OrderBy(x => x.JoinedCoop).ToListAsync();
+            var dbUser = xrefs.FirstOrDefault()?.User;
+            var xref = accountIndex >= 0
+                ? xrefs.FirstOrDefault(x => x.EggIncId == dbUser?.EggIncAccounts?.ElementAtOrDefault(accountIndex)?.Id)
+                : xrefs.FirstOrDefault(x => dbUser?.EggIncAccounts?.Any(a => a.Id == x.EggIncId) != true);
 
             if(xref == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Unable to find user in co-op"); });
@@ -946,7 +971,11 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var account = dbUser.EggIncAccounts.OrderByDescending(x => x.Backup?.EarningsBonus).ToList()[int.Parse(useraccount.Split("|")[1])];
+            var account = dbUser.ResolveAutocompleteAccount(useraccount);
+            if(account is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); });
+                return;
+            }
             var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbUser.Id && x.CoopId == coop.Id && x.EggIncId == account.Id);
 
             if(xref == null) {
@@ -1017,14 +1046,17 @@ namespace EGG9000.Bot.Commands {
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
                 Public = false,
-                RequestingUserId = coop.CreatorID
+                RequestingUserId = coop.CreatorID,
+                Rinfo = EggIncApi.GetInfo(coop.CreatorID)
             }, coop.CreatorID);
 
-            if(response.Success) {
-                await Context.Interaction.ModifyOriginalResponseAsync($"{coop.Name} is now private.");
-            } else {
-                await Context.Interaction.ModifyOriginalResponseAsync($"{coop.Name} should now be private.");
-            }
+            var titleVerbiage = response.Success ? "Success" : "Partial Success";
+            var verbiage = response.Success ? "is now private." : "**may** now be private.\n-# (API success was false)";
+            var embedType = response.Success ? EmbedHelpers.EmbedType.Success : EmbedHelpers.EmbedType.Warning;
+            await Context.Interaction.ModifyOriginalResponseAsync(x => {
+               x.Content = "";
+               x.Embed =  EmbedCustom(embedType, titleVerbiage, $"{coop.Name} {verbiage}");
+            });
         }
 
         [SlashCommand("deletecontract", "Delete a contract channel (Please use this instead of deleting the channel in discord)")]
