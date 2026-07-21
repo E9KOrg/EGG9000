@@ -1,11 +1,8 @@
 @using EGG9000.Site.Models.MyFarms
 @model MyFarms_Partial_EBHistoryModel
 @{
-    double merValue(double se, double pe) =>
-        (se > 0 && double.IsFinite(se)) ? (91.0 * Math.Log10(se / 1e18) + 200.0 - pe) / 10.0 : 0.0;
-
     string calculateMER(double se, ulong pe) {
-        var result = merValue(se, (double)pe);
+        var result = EGG9000.Common.Database.CustomBackup.MerValue(se, pe);
         return String.Format(result % 1 == 0 ? "{0:0}" : "{0:0.00}", result);
     }
 
@@ -28,7 +25,7 @@
         seStr = se.ToEggString(numberOfDecimalPlaces: 3),
         pe,
         eot,
-        mer = merValue(se, pe)
+        mer = EGG9000.Common.Database.CustomBackup.MerValue(se, pe)
     };
 
     var ebStatsPoints = collapsedSnapshots
