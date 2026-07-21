@@ -1400,7 +1400,7 @@ music
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CreateApiKey([FromForm] ulong? id, [FromForm] string label, [FromForm] string expiresAt, [FromForm] string membersOfGuildOnly) {
-            var guildId = id ?? GetGuildID();
+            var guildId = id ?? GetGuildId();
             if(!VerifyId(guildId)) return NotFound();
 
             // Generate a cryptographically random 32-byte key, prefix with "egg_".
@@ -1446,7 +1446,7 @@ music
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UpdateApiKeyGuildFilter([FromForm] Guid id, [FromForm] ulong? guildId, [FromForm] string membersOfGuildOnly) {
-            var resolvedGuildId = guildId ?? GetGuildID();
+            var resolvedGuildId = guildId ?? GetGuildId();
             if(!VerifyId(resolvedGuildId)) return NotFound();
             var key = await _db.ApiKeys.FirstOrDefaultAsync(k => k.Id == id && k.GuildId == resolvedGuildId);
             if(key == null) return NotFound();
