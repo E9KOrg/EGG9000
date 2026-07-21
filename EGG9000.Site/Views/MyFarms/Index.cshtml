@@ -2,24 +2,15 @@
 @using Discord.WebSocket
 @using EGG9000.Common.Contracts.Assignment
 @using EGG9000.Common.Helpers
-@using EGG9000.Common.JsonData
-@using Microsoft.AspNetCore.Html
-@using static EGG9000.Site.Controllers.MyFarmsController
+@using EGG9000.Site.Models.MyFarms
 @inject DiscordSocketClient discordClient
 @{
     ViewData["Title"] = "Index";
-
-    List<DBContract> contracts = Model.Contracts;
 
     List<UserSnapShot> snapshots = Model.SnapShots;
 
     List<UserCoopXref> unjoinedCoops = Model.UnjoinedCoops.ToList();
 
-    List<EpicResearchItem> epicResearchConfig = Model.EpicResearchConfig;
-
-    Dictionary<string, List<EGG9000.Common.Database.Entities.DBContract>> uncompletePEs = Model.UncompletedPEContracts;
-
-    List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = Model.Scoring;
     Guild dbguild = Model.DBGuild;
 
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
@@ -32,7 +23,7 @@
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
 
     string emojiDelegage(Match match) {
-        return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' />";
+        return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' alt='emoji' />";
     };
 
     string accountName(string eggIncId){
@@ -43,8 +34,11 @@
 
     var inDB = Model.User.DiscordId > 0;
 
+    var latestBackupAtRender = Model.User.EggIncAccounts.Count == 0 ? 0 : Model.User.EggIncAccounts.Max(a => a.Backup?.LastBackupTime ?? 0);
 }
+
 <style>
+    <!-- TODO: Figure out what portion of this needs to be 'here', versus extracted -->
     .card-header img {
         height: 50px;
         margin: -31px -8px -25px -22px;
@@ -245,8 +239,9 @@
         }
         <div class="font-weight-bold" style="margin-top:10px;">
             @foreach (var xref in unjoinedCoops) {
+                    var egg = EggIncStatics.GetEggByContract(xref.Coop.Contract, Model.CustomEggs);
                 <div>
-                    <img style="max-height: 30px;" src="@(EggIncStatics.GetEggByContract(xref.Coop.Contract, Model.CustomEggs).image)" />
+                    <img style="max-height: 30px;" src="@(egg.image)" alt="@(egg.name)" />
                     @if(Model.User.EggIncAccounts.Count > 1) {
                         <span>@xref.Coop.Contract.Name - @xref.Coop.Name (@accountName(xref.EggIncId))</span>
                     } else {
@@ -255,7 +250,7 @@
                     @if(xref.Coop.ThreadID != 0)
                     {
                         <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.ThreadID/">
-                            <img src="/images/discordicon.png" style="max-height: 1em;" />
+                            <img alt="Discord" src="/images/discordicon.png" style="max-height: 1em;" />
                         </a>
                     }
                 </div>
@@ -272,7 +267,7 @@
             <span><b>It looks like you've blocked DMs from EGG9000</b>.<br />This can either be due to Server Privacy settings, or directly blocking the bot.<br />This may lead to missed communications - please resolve this.</span>
             <div class="font-weight-bold" style="margin-top:10px;">
                 <a href="https://support.discord.com/hc/en-us/articles/217916488-Blocking-Privacy-Settings-">
-                    <img style="max-height: 30px" src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"/> 
+                    <img style="max-height: 30px" alt="Discord" src="/images/discordicon.png"/> 
                     See this Discord support article for help fixing this issue.
                 </a>
             </div>
@@ -280,6 +275,7 @@
     </div>
 }
 
+<div id="myfarms-content">
 <div>
     @if (isLesserAdmin || isAdmin) {
         if (Model.User.TempDisabled) {
@@ -305,14 +301,16 @@
     <ul class="nav nav-tabs" role="tablist">
         @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
             var account = Model.User.EggIncAccounts[index];
+            var accountGrade = account.GetGrade();
             <li class="nav-item">
                 <a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-bs-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
+                    
                     @account.Backup.UserName
-                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;" />
+                    <img src="@PlayerGradeDetails.GetImage(accountGrade)" alt="Grade @PlayerGradeDetails.GetText(accountGrade)" style="max-height: 23px;" />
                     @if (account.Backup.PermitLevel == 0) {
-                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
+                        <img alt="Standard Permit" src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
                     } else {
-                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
+                        <img alt="Pro Permit" src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
                     }
                 </a>
             </li>
@@ -320,6 +318,7 @@
     </ul>
 }
 
+<!-- TODO: Split this up into another partial; this is wayyyyyy too long -->
 <div class="tab-content">
     @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
         var account = Model.User.EggIncAccounts[index];
@@ -327,12 +326,13 @@
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
                 @if (Model.User.EggIncAccounts.Count == 1) {
+                    var accountGrade = account.GetGrade();
                     @:<span style="margin-right:10px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
-                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;" />
+                    <img src="@PlayerGradeDetails.GetImage(accountGrade)" alt="Grade @PlayerGradeDetails.GetText(accountGrade)" style="max-height: 23px;" />
                     @if (backup.PermitLevel == 0) {
-                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
+                        <img alt="Standard Permit" src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
                     } else {
-                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
+                        <img alt="Pro Permit" src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
                     }
                 }
                 <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId', 'copy-notification-eid-@index')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
@@ -456,18 +456,20 @@
             <div class="tab-content">
                 <div class="tab-pane" style="margin-top:20px" id="shipsfarms@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ShipsandFarms", (index, backup, Model.JoinedCoops, contracts, Model.CustomEggs));
+                        var shipsAndFarmsModel = new MyFarms_Partial_ShipsAndFarmsModel(Model, index);
+                        await Html.RenderPartialAsync("-ShipsandFarms", shipsAndFarmsModel);
                     }
                 </div>
-
-                 <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
+                <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup, account));
+                        var epicResearchModel = new MyFarms_Partial_EpicResearchModel(Model, index);
+                        await Html.RenderPartialAsync("-EpicResearch", epicResearchModel);
                     }
                 </div>
                 <div class="tab-pane" id="artifactcombos@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ArtifactCombos", (backup, contracts, Model.JoinedCoops, Model.User, Model.CustomEggs));
+                        var artifactCombosModel = new MyFarms_Partial_ArtifactCombosModel(Model, index);
+                        await Html.RenderPartialAsync("-ArtifactCombos", artifactCombosModel);
                     }
                 </div>
                 
@@ -552,32 +554,35 @@
                     @if (snapshots != null) {
                         <div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts, Model.SeasonPEByEggIncId.GetValueOrDefault(backup.EggIncId, (Earned: 0, Max: 0)), Model.MissingSeasonalPEByEggIncId.GetValueOrDefault(backup.EggIncId, new List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe>())));
+                                var ebHistoryModel = new MyFarms_Partial_EBHistoryModel(Model, index, isAdmin);
+                                await Html.RenderPartialAsync("-EBHistory", ebHistoryModel);
                             }
                         </div>
                         <div class="tab-pane" id="virtuestats@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-VirtueStats", (backup, snapshots, isAdmin));
+                                var virtueStatsModel = new MyFarms_Partial_VirtueStatsModel(Model, index, isAdmin);
+                                await Html.RenderPartialAsync("-VirtueStats", virtueStatsModel);
                             }
                         </div>
                     }
                 }
                 <div class="tab-pane show active" id="contracthistory@(index)" role="tabpanel">
                     @{
-                        Ei.MyContracts scores = scoring.Any(x => x.EggIncId == backup.EggIncId) ? scoring.First(x => x.EggIncId == backup.EggIncId).MyContracts : null;
-                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.CustomEggs, Model.User, scores, index));
+                        var contractHistoryModel = new MyFarms_Partial_ContractHistoryModel(Model, index, isAdmin);
+                        await Html.RenderPartialAsync("-ContractHistory", contractHistoryModel);
                     }
                 </div>
 
                 <div class="tab-pane" id="externaltools@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ExternalTools", (backup, Model.User));
+                        var externalToolsModel = new MyFarms_Partial_ExternalToolsModel(Model, index);
+                        await Html.RenderPartialAsync("-ExternalTools", externalToolsModel);
                     }
                 </div>
 
                 <div class="tab-pane" id="earningsboostcalc@(index)" role="tabpanel">
                     @{
-                        var newModel = new EarningsBoostCalculatorModel();
+                        var newModel = new MyFarms_Partial_EBCalcModel();
                         newModel.Backup = backup;
                         newModel.CustomEggs = Model.CustomEggs;
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
@@ -585,27 +590,31 @@
                 </div>
                 <div class="tab-pane" id="colleggtibles@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-Colleggtibles", (backup, Model.CustomEggs));
+                        var colleggtiblesModel = new MyFarms_Partial_ColleggtiblesModel(Model, index);
+                        await Html.RenderPartialAsync("-Colleggtibles", colleggtiblesModel);
                     }
                 </div>
                 <div class="tab-pane" id="contractsettings@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("_ContractSettings", (account, index, isSelf));
+                        var contractSettingsModel = new MyFarms_Partial_ContractSettingsModel(Model, index, isSelf);
+                        await Html.RenderPartialAsync("_ContractSettings", contractSettingsModel);
                     }
                     <hr style="border-color:#444; margin:24px 0;" />
                     @{
-                        await Html.RenderPartialAsync("_TestAssignment", (account, index, contracts));
+                        var testAssignmentModel = new MyFarms_Partial_TestAssignmentModel(Model, index);
+                        await Html.RenderPartialAsync("_TestAssignment", testAssignmentModel);
                     }
                 </div>
                 <div class="tab-pane" id="inventory@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ArtifactInventory", account.Id);
-
+                        var artifactInventoryModel = new MyFarms_Partial_ArtifactInventoryModel(Model, index);
+                        await Html.RenderPartialAsync("-ArtifactInventory", artifactInventoryModel);
                     }
                 </div>
             </div>
         </div>
     }
+</div>
 </div>
 
 @section Scripts {
@@ -644,10 +653,18 @@
             });
         }
 
+        function hydrateMyFarmsContent() {
+            updateLastBackupTime();
+            wireContractSettings();
+            wireTestAssignment();
+            if (window.ArtifactOverlay) window.ArtifactOverlay.scan();
+        }
+        window.hydrateMyFarmsContent = hydrateMyFarmsContent;
+
         $(document).ready(() => {
             let url = location.href.replace(/\/$/, "");
 
-            updateLastBackupTime();
+            hydrateMyFarmsContent();
 
             if (location.hash) {
                 const hash = url.split("#");
@@ -669,7 +686,9 @@
 
             }
 
-            $('a[data-bs-toggle="tab"]').on("click", function () {
+            // Delegated on document, not the tab links themselves - survives a background content
+            // swap (BackupFreshness poll) without needing to be rebound.
+            $(document).on("click", 'a[data-bs-toggle="tab"]', function () {
                 let newUrl;
                 const hash = $(this).attr("href");
 
@@ -680,7 +699,7 @@
                 history.replaceState(null, null, newUrl);
             });
 
-            $("[id^='ArchivedFarmsSearch']").keyup(function () {
+            $(document).on("keyup", "[id^='ArchivedFarmsSearch']", function () {
                 var terms = $(this).val().split(" ");
                 var showAll = $(this).val().trim().length == 0;
                 var index = $(this).attr('id').replace("ArchivedFarmsSearch", "");
@@ -704,9 +723,6 @@
             });
 
             setInterval(updateLastBackupTime, 1000);
-
-            wireContractSettings();
-            wireTestAssignment();
         });
 
         function rewardGroupValue(group) {
@@ -991,5 +1007,51 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function swapMyFarmsContent(discordId) {
+            var current = document.getElementById('myfarms-content');
+            var activeOuterTab = current.querySelector('.nav-tabs > li > a.active');
+            var activeInnerTab = current.querySelector('.tab-pane.active .nav-tabs > li > a.active, .tab-pane.active .nav-link.active');
+
+            return fetch('/MyFarms/RefreshContent?discordId=' + discordId)
+                .then(function(r) { return r.ok ? r.text() : null; })
+                .then(function(html) {
+                    if(!html) return;
+                    var fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('myfarms-content');
+                    if(!fresh) return;
+
+                    current.innerHTML = fresh.innerHTML;
+                    hydrateMyFarmsContent();
+
+                    [activeOuterTab, activeInnerTab].forEach(function(tab) {
+                        if(!tab) return;
+                        var href = tab.getAttribute('href');
+                        var replacement = href ? current.querySelector('a[href="' + href + '"]') : null;
+                        if(replacement) bootstrap.Tab.getOrCreateInstance(replacement).show();
+                    });
+                });
+        }
+
+        (function() {
+            var discordId = @Model.User.DiscordId;
+            var since = @latestBackupAtRender;
+            var maxAttempts = 6;
+
+            function poll(attempt) {
+                if(attempt > maxAttempts) return;
+                fetch('/MyFarms/BackupFreshness?discordId=' + discordId)
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) {
+                        if(data && data.latest > since) {
+                            swapMyFarmsContent(discordId);
+                        } else {
+                            setTimeout(function() { poll(attempt + 1); }, 4000);
+                        }
+                    })
+                    .catch(function() { setTimeout(function() { poll(attempt + 1); }, 4000); });
+            }
+
+            setTimeout(function() { poll(1); }, 4000);
+        })();
     </script>
 }

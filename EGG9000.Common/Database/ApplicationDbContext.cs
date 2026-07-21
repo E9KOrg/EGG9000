@@ -301,7 +301,7 @@ namespace EGG9000.Common.Database {
             builder.Entity<GuildContract>().HasIndex(x => x.DiscordChannelId);
 
             builder.Entity<Coop>().HasIndex(x => new { x.GuildId, x.ContractID, x.League })
-                .HasFilter("NOT \"Finished\" AND NOT \"DeletedChannel\" AND NOT \"ThreadArchived\"");
+                .HasFilter("NOT \"Finished\" AND NOT \"ThreadArchived\"");
 
             // DEV test-harness coops are excluded from every Coop query by default so they can never
             // trigger real thread/API creation or status polling. The harness opts back in where it

@@ -47,6 +47,7 @@ namespace EGG9000.Bot.Commands {
                     await AccountRefresh.ApplyExtrasAsync(dbuser, account, db, logger);
                     await EnforceUltraAsync(_client, dbGuild, socketGuild, dbuser, account, logger, oldLevel);
                 }
+                dbuser.LastBackupCheck = DateTime.UtcNow;
                 dbuser.UpdateAccounts();
                 await db.SaveChangesAsync();
             } else {
@@ -175,14 +176,14 @@ namespace EGG9000.Bot.Commands {
                     infoSeparatorAdded = true;
                 }
 
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived).ToListAsync();
                 var xrefsShortened = false;
                 if(xrefs.Count > 4) {
                     xrefs = [.. xrefs.OrderByDescending(x => x.CreatedOn).Take(4)];
                     xrefsShortened = true;
                 }
 
-                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{(x.Coop.ThreadID != 0 ? x.Coop.ThreadID : x.Coop.DiscordChannelId)}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
+                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.ThreadID}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
                 if(coopsString != "") {
                     AddInfoSeparatorIfNeeded();
                     lastBuilder.AddField($"Coops {(xrefsShortened ? "(Shortened List)" : "")}", coopsString);

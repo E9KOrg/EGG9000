@@ -25,7 +25,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var inCoopChannel = await Db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == Context.Interaction.ChannelId || x.Coop.DiscordChannelId == Context.Interaction.ChannelId));
+            var inCoopChannel = await Db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.ThreadID == Context.Interaction.ChannelId);
 
 
             if(inCoopChannel) {
@@ -106,7 +106,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var dbGuild = Db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
-            var xref = await Db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
+            var xref = await Db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && x.Coop.ThreadID == component.ChannelId);
             var props = MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild), "CSCoopOnly", "This Co-op", true, false, Db, dbuser);
             await component.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
         }
@@ -126,7 +126,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.CoopSetting[settingName] = !dbuser.CoopSetting[settingName];
             dbuser.CoopSetting = dbuser.CoopSetting;
 
-            var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
+            var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && x.Coop.ThreadID == component.ChannelId);
             if(xref is not null) {
                 var setting = xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild);
                 setting[settingName] = dbuser.CoopSetting[settingName];
@@ -150,7 +150,7 @@ namespace EGG9000.Bot.Commands {
 
             var settingName = data.Split(",")[0];
 
-            var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
+            var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && x.Coop.ThreadID == component.ChannelId);
             var setting = xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild);
             setting[settingName] = !setting[settingName];
             xref.CoopSetting = setting;

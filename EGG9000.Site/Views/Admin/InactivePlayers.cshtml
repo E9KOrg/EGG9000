@@ -1,7 +1,8 @@
 ﻿@using Discord.WebSocket
 @using EGG9000.Common.Helpers
 @inject DiscordSocketClient _discord
-@model (List<DBUser> users, IReadOnlyCollection<SocketGuildUser> guildUsers, List<UserCoopXref> xrefs)
+@using EGG9000.Site.Models.Admin
+@model Admin_InactivePlayersModel
 @{
 	var users = Model.users.Select(u => {
 		return (User: u, Xref: Model.xrefs.FirstOrDefault(x => x.UserId == u.Id), GuildUser: Model.guildUsers.FirstOrDefault(gu => gu.Id == u.DiscordId));

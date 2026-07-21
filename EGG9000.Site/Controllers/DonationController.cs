@@ -45,7 +45,7 @@ namespace EGG9000.Site.Controllers {
             StripeConfiguration.ApiKey = apiKey;
 
             var json = await new StreamReader(Request.Body).ReadToEndAsync();
-            Stripe.Event stripeEvent;
+            Event stripeEvent;
             try {
                 // Verifies the Stripe-Signature header against the webhook signing secret. Throws on
                 // a forged/replayed/tampered payload, which is the only authentication this endpoint has.
