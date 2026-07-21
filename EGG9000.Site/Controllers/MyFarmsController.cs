@@ -397,7 +397,8 @@ namespace EGG9000.Site.Controllers {
                 .FirstOrDefaultAsync();
 
             var contractFacts = Common.Contracts.Assignment.Facts.ContractFactsBuilder.Build(contract, season);
-            var accountFacts = Common.Contracts.Assignment.Facts.AccountFactsBuilder.Build(dbuser, account, contract, [], latest, season, seasonProgresses);
+            var existingCoops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.UtcNow.AddDays(-60)).ToListAsync();
+            var accountFacts = Common.Contracts.Assignment.Facts.AccountFactsBuilder.Build(dbuser, account, contract, existingCoops, latest, season, seasonProgresses);
 
             // Only means anything under YesOtherAccountMatch; on any other redo mode nothing reads the flag.
             var siblingMatchApplies = m.SimulateSiblingAssigned

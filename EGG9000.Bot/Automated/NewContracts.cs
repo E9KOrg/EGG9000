@@ -223,13 +223,10 @@ namespace EGG9000.Bot.Automated {
                         _ = SetupGuildContractAsync(inFlightKey, dbguild, contract.ID, contractResponse, guild);
                     }
                 } else if(!dbguild.DisableBG && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
-                    var contractDate = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(guildContract.Created, "Pacific Standard Time");
-                    // Only Ultra contracts launched on a Friday get a 4th boarding group (they share the launch slot with normal contracts); everything else caps at BG3
-                    var maxBoardingGroup = (contract.cc_only && contractDate.DayOfWeek == DayOfWeek.Friday) ? 4 : 3;
+                    var maxBoardingGroup = BoardingGroupLaunch.MaxBoardingGroup(guildContract.Created, contract.cc_only);
                     if(guildContract.BoardingGroup < maxBoardingGroup) {
-                        var nextLaunch = contractDate - contractDate.TimeOfDay + TimeSpan.FromHours(9 + guildContract.BoardingGroup * 8);
-                        var currentTime = TimeZoneInfo.ConvertTimeBySystemTimeZoneId(DateTimeOffset.UtcNow, "Pacific Standard Time");
-                        if(nextLaunch < currentTime) {
+                        var (launched, _) = BoardingGroupLaunch.GetLaunchInfo(guildContract.Created, contract.cc_only, guildContract.BoardingGroup + 1, DateTimeOffset.UtcNow);
+                        if(launched) {
                             guildContract.BoardingGroup++;
                             await _db.SaveChangesAsync();
                             if(!_debug) _ = OrganizeAndLaunch(contract, guild, guildContract.BoardingGroup - 1, dbguild);

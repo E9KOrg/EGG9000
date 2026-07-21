@@ -932,8 +932,13 @@ namespace EGG9000.Bot.Commands {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("This command must be used in a server."); });
                 return;
             }
+            if(dbguild.RemoveTestAssignment) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Test Assignment is disabled on this server."); });
+                return;
+            }
 
             var (season, seasonProgresses) = await OrganizeCoops.LoadContractSeasonData(Db, contract, [dbUser]);
+            var existingCoops = await Db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.UtcNow.AddDays(-60)).ToListAsync();
 
             var accountInputs = new List<(AccountFacts facts, AssignmentSettings settings)>();
             foreach(var account in dbUser.EggIncAccounts) {
@@ -941,7 +946,7 @@ namespace EGG9000.Bot.Commands {
                     .Where(h => h.EggIncId == account.Id && h.ContractIdentifier == contract.ID)
                     .OrderByDescending(h => h.Created)
                     .FirstOrDefaultAsync();
-                accountInputs.Add((AccountFactsBuilder.Build(dbUser, account, contract, [], latest, season, seasonProgresses), account.Assignment));
+                accountInputs.Add((AccountFactsBuilder.Build(dbUser, account, contract, existingCoops, latest, season, seasonProgresses), account.Assignment));
             }
             var contractFacts = ContractFactsBuilder.Build(contract, season);
             var decisions = AssignmentEvaluator.EvaluateUser(accountInputs, contractFacts, dbguild?.RuleOverrides, dbguild?.DisableBG ?? false, verbose: true, explainAll: true);
