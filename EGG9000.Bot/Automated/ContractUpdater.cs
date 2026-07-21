@@ -229,7 +229,7 @@ namespace EGG9000.Bot.Automated {
                     if(!dbGuild.RemoveFindCoopSpot) builder.WithButton("Find Coop Spot", customId: $"FindCoopSpot");
                     findSpotButton = builder.Build();
                 } else {
-                    var bgsLaunched = dbGuild.DisableBG || BoardingGroupLaunch.AllBoardingGroupsLaunched(guildContract.Created, guildContract.CcOnly, DateTimeOffset.UtcNow);
+                    var bgsLaunched = dbGuild.DisableBG || BoardingGroupLaunch.AllBoardingGroupsLaunched(guildContract.Contract.Created, guildContract.CcOnly, DateTimeOffset.UtcNow);
                     var coopButtonEligible = guildContract.Contract.GoodUntil > DateTimeOffset.UtcNow && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS);
                     var builder = new ComponentBuilder();
                     if(!dbGuild.RemoveTestAssignment) builder.WithButton("Test Assignment", customId: "TestAssignment");
