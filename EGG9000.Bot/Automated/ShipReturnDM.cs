@@ -94,6 +94,9 @@ namespace EGG9000.Bot.Automated {
                             _logger.LogInformation("Sending ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.UtcNow - shipReturnTime).Humanize().ShortenTime());
                         }
 
+                        shipDm.Sent = true;
+                        user.ShipDMs = user.ShipDMs;
+                        touched = true;
                         pending.Add(new PendingSend(user, shipDm, discordUser, embed, components));
                     } catch(Exception e) {
                         _bugSnag.Notify(e);
@@ -102,23 +105,25 @@ namespace EGG9000.Bot.Automated {
                 }
             }
 
+            if(touched) await _db.SaveChangesAsync(CancellationToken.None);
+
             var sendTasks = pending.Select(async p => {
                 var result = await _queue.EnqueueLowAsync(() => BoolSendDmDeferred(p.DiscordUser, p.Embed, p.Components, p.User));
                 return (p, result);
             });
             var sendResults = await Task.WhenAll(sendTasks);
 
+            var retryTouched = false;
             foreach(var (p, result) in sendResults) {
-                if(ShipReturnDmBuilder.ShouldMarkSent(result)) {
-                    p.ShipDm.Sent = true;
+                if(!ShipReturnDmBuilder.ShouldMarkSent(result)) {
+                    p.ShipDm.Sent = false;
                     p.User.ShipDMs = p.User.ShipDMs;
-                    touched = true;
-                } else {
+                    retryTouched = true;
                     _logger.LogWarning("ShipReturnDM to {user} failed transiently ({result}); will retry next tick", p.User.DiscordUsername, result);
                 }
             }
 
-            if(touched) await _db.SaveChangesAsync(CancellationToken.None);
+            if(retryTouched) await _db.SaveChangesAsync(CancellationToken.None);
 
             var timespan = await UpdateNextShipDM(users, _db, _logger);
             ChangeUpdateInterval(timespan);
