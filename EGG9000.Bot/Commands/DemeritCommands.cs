@@ -146,7 +146,7 @@ namespace EGG9000.Bot.Commands {
         public async Task NoDemerit([Summary("user")] SocketGuildUser user) {
             await Context.Interaction.DeferAsync();
             List<UserCoopXref> xref;
-            var targetCoop = await Db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
+            var targetCoop = await Db.Coops.AsQueryable().FirstAsync(x => x.ThreadID == Context.Channel.Id);
 
             if(targetCoop == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("This command can only be used in a co-op channel"));
