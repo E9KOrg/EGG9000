@@ -446,7 +446,7 @@ namespace EGG9000.Site.Controllers {
             return await LoadEggDaySnapshotsAsync(eggincids, x => x.Date >= eggDayDate, descending: false);
         }
 
-        private static List<EggDayResults> BuildEggDayResults(List<UserByAccount> accounts, List<UserSnapShot> preEggDaySnapshots, List<UserSnapShot> postEggDaySnapshots) {
+        private static List<Home_EggDayResults> BuildEggDayResults(List<UserByAccount> accounts, List<UserSnapShot> preEggDaySnapshots, List<UserSnapShot> postEggDaySnapshots) {
             var accountById = accounts.ToDictionary(x => x.Account.Id);
             var preById = preEggDaySnapshots.ToDictionary(x => x.EggIncID);
 
@@ -454,7 +454,7 @@ namespace EGG9000.Site.Controllers {
                 .Where(post => preById.ContainsKey(post.EggIncID) && accountById.ContainsKey(post.EggIncID))
                 .Select(post => {
                     var pre = preById[post.EggIncID];
-                    return new EggDayResults {
+                    return new Home_EggDayResults {
                         UserAccount = accountById[post.EggIncID],
                         EBGain = post.EarningsBonus - pre.EarningsBonus,
                         EBGainPercent = (post.EarningsBonus - pre.EarningsBonus) / pre.EarningsBonus,
