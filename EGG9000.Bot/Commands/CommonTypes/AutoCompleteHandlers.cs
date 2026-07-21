@@ -283,7 +283,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
                     users = [.. users.Where(x => x.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase))];
                 }
-                return [.. users.DistinctBy(x => x.EggIncId).Take(25).Select(x => new AutocompleteResult(x.DiscordUsername + " - " + (x.User?.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)"), x.UserId.ToString()))];
+                return [.. users.DistinctBy(x => x.EggIncId).Take(25).Select(x => new AutocompleteResult(x.DiscordUsername + " - " + (x.User?.EggIncAccounts.FirstOrDefault(a => a.Id == x.EggIncId)?.Backup?.UserName ?? "(No Name)"), $"{x.UserId}|{x.User?.EggIncAccounts?.FindIndex(a => a.Id == x.EggIncId) ?? -1}"))];
             }
 
             public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
@@ -310,7 +310,7 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                         .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League })];
                 } else {
                     coops = [.. activeCoops
-                        .Where(x => x.Name?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true && !x.ThreadArchived && x.GuildId == guild.Id && !x.DeletedChannel)
+                        .Where(x => x.Name?.Contains(filter, StringComparison.OrdinalIgnoreCase) == true && !x.ThreadArchived && x.GuildId == guild.Id)
                         .Take(25).Select(x => new CoopMin { Name = x.Name, Id = x.Id, Contract = x.Contract?.Name, League = x.League })];
                 }
 

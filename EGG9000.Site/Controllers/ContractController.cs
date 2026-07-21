@@ -230,7 +230,7 @@ namespace EGG9000.Site.Controllers {
             var discordUser = guild.Users.First(x => x.Id == dbuser.DiscordId);
             var guildId = targetCoop.OverflowGuildId > 0 ? targetCoop.OverflowGuildId : targetCoop.GuildId;
 
-            var channel = targetCoop.ThreadID != 0 ? (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID) : (SocketTextChannel)_discord.GetChannel(targetCoop.DiscordChannelId);
+            var channel = (SocketThreadChannel)_discord.GetChannel(targetCoop.ThreadID);
             var eggIncName = dbuser.EggIncAccounts.First(x => x.Id == EggIncId).Name;
             var xref = await CreateCoopsV2.MoveUser(targetCoop, UserId, EggIncId, eggIncName, _db, discordUser, dbuser, channel, null);
 
