@@ -120,7 +120,7 @@ namespace EGG9000.Bot.Automated {
             var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
             var description = $"**Size** {guildContract.Contract.Details.MaxCoopSize}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
             description += $"**{(validFor > TimeSpan.Zero ? "  Expires " : " Expired ")}** {DiscordHelpers.TimeStamper(validFor)}";
-            if(guildContract.BoardingGroup < 3)
+            if(guildContract.BoardingGroup < BoardingGroupLaunch.MaxBoardingGroup(guildContract.CcOnly))
                 description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
 
             var embedBuilder = new EmbedBuilder().WithDescription(description);
@@ -229,7 +229,7 @@ namespace EGG9000.Bot.Automated {
                     if(!dbGuild.RemoveFindCoopSpot) builder.WithButton("Find Coop Spot", customId: $"FindCoopSpot");
                     findSpotButton = builder.Build();
                 } else {
-                    var bgsLaunched = dbGuild.DisableBG || (DateTimeOffset.UtcNow > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18));
+                    var bgsLaunched = dbGuild.DisableBG || BoardingGroupLaunch.AllBoardingGroupsLaunched(guildContract.Created, guildContract.CcOnly, DateTimeOffset.UtcNow);
                     var coopButtonEligible = guildContract.Contract.GoodUntil > DateTimeOffset.UtcNow && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS);
                     var builder = new ComponentBuilder();
                     if(!dbGuild.RemoveTestAssignment) builder.WithButton("Test Assignment", customId: "TestAssignment");

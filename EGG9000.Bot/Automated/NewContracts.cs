@@ -223,7 +223,7 @@ namespace EGG9000.Bot.Automated {
                         _ = SetupGuildContractAsync(inFlightKey, dbguild, contract.ID, contractResponse, guild);
                     }
                 } else if(!dbguild.DisableBG && contract.ContractTime >= TimeSpan.FromHours(MIN_HOURS_TO_CREATE_COOPS)) {
-                    var maxBoardingGroup = BoardingGroupLaunch.MaxBoardingGroup(guildContract.Created, contract.cc_only);
+                    var maxBoardingGroup = BoardingGroupLaunch.MaxBoardingGroup(contract.cc_only);
                     if(guildContract.BoardingGroup < maxBoardingGroup) {
                         var (launched, _) = BoardingGroupLaunch.GetLaunchInfo(guildContract.Created, contract.cc_only, guildContract.BoardingGroup + 1, DateTimeOffset.UtcNow);
                         if(launched) {

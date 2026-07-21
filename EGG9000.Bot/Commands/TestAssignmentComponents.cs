@@ -33,8 +33,16 @@ namespace EGG9000.Bot.Commands {
             } else if(group == 0) {
                 bgLine = "**BG:** Not set";
             } else {
-                var (launched, launchTime) = BoardingGroupLaunch.GetLaunchInfo(guildContract.Created, guildContract.CcOnly, group, nowUtc);
-                bgLine = $"**BG:** BG{group} — {(launched ? "already launched" : $"launches <t:{launchTime.ToUnixTimeSeconds()}:t>")}";
+                var pickupBg = decision.Assigned
+                    ? BoardingGroupLaunch.NextPickupBoardingGroup(guildContract.Created, guildContract.CcOnly, group, nowUtc)
+                    : null;
+                if(pickupBg is int bg) {
+                    var (_, launchTime) = BoardingGroupLaunch.GetLaunchInfo(guildContract.Created, guildContract.CcOnly, bg, nowUtc);
+                    bgLine = $"**BG:** BG{bg} — launches <t:{launchTime.ToUnixTimeSeconds()}:t>";
+                } else {
+                    var (launched, launchTime) = BoardingGroupLaunch.GetLaunchInfo(guildContract.Created, guildContract.CcOnly, group, nowUtc);
+                    bgLine = $"**BG:** BG{group} — {(launched ? "already launched" : $"launches <t:{launchTime.ToUnixTimeSeconds()}:t>")}";
+                }
             }
             container.WithTextDisplay(bgLine);
             container.WithSeparator();
