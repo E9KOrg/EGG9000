@@ -203,22 +203,13 @@ namespace EGG9000.Site.Controllers {
             // ManageOverflow owns reconciling GuildId against true Discord membership; the board just
             // trusts it. DiscordUser is still resolved below for the display name only.
             var allUsers = await _databaseCache.GetDbUsers();
-            var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled).Select(x => new {
-                x.DiscordId,
-                x.DiscordUsername,
-                x.GuildId,
-                x.Id,
-                x._CustomBackups,
-                x._eggIncIds,
-                x.Registered,
-                DBUser = x
-            });
+            var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled);
 
-            var accounts = rawusers.SelectMany(x => x.DBUser.EggIncAccounts.Select(y => new LeaderboardUser {
-                User = x.DBUser,
+            var accounts = rawusers.SelectMany(dbu => dbu.EggIncAccounts.Select(y => new LeaderboardUser {
+                User = dbu,
                 Backup = y.Backup,
-                DiscordUser = guild.Users.FirstOrDefault(du => du.Id == x.DiscordId),
-                TotalContracts = x.DBUser.GuildCoops,
+                DiscordUser = guild.Users.FirstOrDefault(du => du.Id == dbu.DiscordId),
+                TotalContracts = dbu.GuildCoops,
                 TotalCS = y.Backup?.TotalCS ?? 0,
                 SeasonCS = y.Backup?.SeasonCS ?? 0,
                 TotalCraftingXP = y.Backup?.CraftingXP ?? 0,
@@ -333,10 +324,7 @@ namespace EGG9000.Site.Controllers {
                 yearInt = maxYearInt;
             }
 
-            var yearList = new List<int>();
-            for(var i = 2023; i <= maxYearInt; i++) {
-                yearList.Add(i);
-            }
+            var yearList = Enumerable.Range(2023, maxYearInt - 2023 + 1).ToList();
 
             ViewBag.Years = yearList;
             ViewBag.Year = yearInt;
@@ -647,15 +635,9 @@ namespace EGG9000.Site.Controllers {
 
             model.CoopStatus = await EggIncApi.GetCoopStatus(ContractId, CoopId.ToLower(), EIID: model.DbCoop?.CreatorID, xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger);
 
-            if(model.CoopStatus == null && model.DbCoop?.LastStatusUpdate != null) {
-                model.CoopStatus = model.DbCoop.LastStatusUpdate;
-            }
+            model.CoopStatus ??= model.DbCoop?.LastStatusUpdate;
 
             model.UserInfos = [];
-
-            if(model.CoopStatus == null) {
-                model.CoopStatus = model.DbCoop.LastStatusUpdate;
-            }
 
             var backupsNeeded = model.CoopStatus.Contributors.ToList();
             if(model.DbCoop != null) {
@@ -718,22 +700,6 @@ namespace EGG9000.Site.Controllers {
                 model.DbCoop?.UserCoopsXrefs.SelectMany(y => y.User.EggIncAccounts.Select(b => new UserWithBackup { Backup = b.Backup, User = y.User })).ToList() ?? [], model.CustomEggs, _discord, model.CoopStatus);
 
             return View(model);
-        }
-
-        private uint GetLeague(List<Home_CoopUserInfo> userInfos, string CoopId, string ContractId) {
-            var farms = userInfos.SelectMany(x => x.Backup?.Farms.Where(y => y.CoopId == CoopId) ?? []);
-            if(farms.Count() > 0 && farms.Any(f => f.League == 1))
-                return 1;
-            var archivedFarms = userInfos.SelectMany(x => x.Backup?.ArchivedFarms.Where(y => y.CoopId == CoopId) ?? []);
-            if(archivedFarms.Count() > 0 && farms.Any(f => f.League == 1))
-                return 1;
-            archivedFarms = userInfos.SelectMany(x => x.Backup?.ArchivedFarms.Where(y => y.ContractId == ContractId) ?? []);
-            if(archivedFarms.Count() > 0 && farms.Any(f => f.League == 1))
-                return 1;
-            if(userInfos.All(ui => ui.Backup?.Farms.Any(f => f.League == 1 && f.ContractId == ContractId) ?? false)) {
-                return 1;
-            }
-            return 0;
         }
 
         [Authorize(Roles = "Admin")]
