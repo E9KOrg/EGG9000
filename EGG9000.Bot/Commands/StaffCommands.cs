@@ -56,32 +56,6 @@ namespace EGG9000.Bot.Commands {
     public class StaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
 
-        [SlashCommand("clearcustomeggs", "Clear ALL custom eggs from the DB, and remove Emoji.")]
-        [StaffOnly(StaffTier.Admin)]
-        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
-        public async Task ClearCustomEggs() {
-            await Context.Interaction.DeferAsync();
-
-            var customEggs = await Db.GetCustomEggsAsync();
-
-            foreach(var egg in customEggs) {
-                // DEV9K Overflow Server in dev/debug, Cluckingham Overflow 4 in release
-                var emojiServer = (BuildConfig.IsDev9002 || BuildConfig.IsDebug)
-                    ? _client.GetGuild(1130233910966620290)
-                    : _client.GetGuild(1147264073659064420);
-                if(emojiServer != null) {
-                    var emote = await emojiServer.GetEmoteAsync(egg.EmojiId);
-                    await emojiServer.DeleteEmoteAsync(emote);
-                }
-
-                Db.CustomEggs.Remove(egg);
-            }
-            await Db.SaveChangesAsync();
-            Db._cache.InvalidateCustomEggs();
-
-            await Context.Interaction.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await Db.GetCustomEggsAsync()).Count}");
-        }
-
         [SlashCommand("as", "Log a Message")]
         [StaffOnly(StaffTier.Admin)]
         [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]

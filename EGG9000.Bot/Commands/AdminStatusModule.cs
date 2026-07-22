@@ -25,64 +25,6 @@ using static EGG9000.Common.Helpers.Prefarm;
 namespace EGG9000.Bot.Commands {
     public partial class BotGroupModule {
 
-        [SlashCommand("botstatus", "One-look bot/DB/deploy/load status")]
-        public async Task BotStatus() {
-            await Context.Interaction.DeferAsync(ephemeral: true);
-            var stats = serviceProvider.GetRequiredService<CoopStatsCache>();
-
-            var buildConfig = BuildConfig.Current switch {
-                BuildConfiguration.Debug => "Debug",
-                BuildConfiguration.Dev9001 => "DEV9001",
-                BuildConfiguration.Dev9002 => "DEV9002",
-                BuildConfiguration.Release => "Release",
-                _ => "Unknown"
-            };
-
-            var proc = Process.GetCurrentProcess();
-            var uptime = (DateTime.Now - proc.StartTime).Humanize();
-
-            var updaters = serviceProvider.GetServices<IHostedService>().OfType<IUpdaterService>().ToList();
-            var runningServices = updaters.Count(x => x.Running());
-
-            var sw = Stopwatch.StartNew();
-            await Db.Database.ExecuteSqlRawAsync("SELECT 1");
-            var pingMs = sw.ElapsedMilliseconds;
-
-            var trackerEntries = Db.ChangeTracker.Entries().ToList();
-            var pending = trackerEntries.Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
-
-            var workingMb = proc.WorkingSet64 / 1_048_576.0;
-            var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
-            var cacheCount = Db._cache is MemoryCache mc ? mc.Count : -1;
-
-            var statsAge = stats.LastRefresh is { } t ? (DateTimeOffset.UtcNow - t).Humanize().ShortenTime() : "never";
-            var server = Context.Guild?.Id is ulong gid ? stats.GetServerStats(gid) : null;
-
-            var rows = new List<List<FixedWidthCell>> {
-                new() { new("Build"), new(buildConfig, CellAlignment.Right) },
-                new() { new("Uptime"), new(uptime, CellAlignment.Right) },
-                null,
-                new() { new("Services Up"), new($"{runningServices}/{updaters.Count}", CellAlignment.Right) },
-                null,
-                new() { new("DB Ping"), new($"{pingMs} ms", CellAlignment.Right) },
-                new() { new("Tracked"), new($"{trackerEntries.Count}", CellAlignment.Right) },
-                new() { new("Pending"), new($"{pending}", CellAlignment.Right) },
-                null,
-                new() { new("Working Set"), new($"{workingMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC Heap"), new($"{gcHeapMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC (0/1/2)"), new($"{GC.CollectionCount(0)} / {GC.CollectionCount(1)} / {GC.CollectionCount(2)}", CellAlignment.Right) },
-                new() { new("Cache"), new(cacheCount >= 0 ? $"{cacheCount}" : "n/a", CellAlignment.Right) },
-                new() { new("Stats Age"), new(statsAge, CellAlignment.Right) },
-                null,
-                new() { new("Active Contracts"), new($"{server?.ActiveContracts ?? 0}", CellAlignment.Right) },
-                new() { new("Active Coops"), new($"{server?.ActiveCoops ?? 0}", CellAlignment.Right) },
-                new() { new("Pending Threads"), new($"{server?.PendingThreads ?? 0}", CellAlignment.Right) },
-                new() { new("Players In Coops"), new($"{server?.UsersAssigned ?? 0}", CellAlignment.Right) },
-            };
-
-            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = $"```\n{GetTable(rows)}```"; });
-        }
-
         // Live /a sysload sessions, keyed by message id. Tracks current section + cancellation
         // source so refresh re-renders the right section and Stop / dismiss / 30s cap can cancel.
         private sealed class SysLoadSession {
