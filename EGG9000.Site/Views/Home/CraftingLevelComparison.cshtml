@@ -48,7 +48,7 @@
                         </tr>
                         <tr>
                             <td>Median Total Crafting XP:</td>
-                            <td>@($"{allCraftingData.Select(o => o.Item2).OrderByDescending(o => o).ToList()[allCraftingData.Select(o => o.Item2).ToList().Count() / 2]:n0}")</td>
+                            <td>@($"{ArgumentsHelper.Median(allCraftingData.Select(o => o.Item2)):n0}")</td>
                         </tr>
                         <tr>
                             <td>Combined Server Total Crafting XP:</td>

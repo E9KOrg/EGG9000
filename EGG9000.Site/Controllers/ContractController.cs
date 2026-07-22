@@ -44,38 +44,11 @@ namespace EGG9000.Site.Controllers {
             DBContract contract;
 
             if(string.IsNullOrWhiteSpace(contractid) || contractid == "test") {
-                contract = new DBContract();
-                var eicontract = new Ei.Contract();
-                foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
-                    var gradeSpec = new Ei.Contract.Types.GradeSpec {
-                        Grade = grade
-                    };
-                    gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
-                    eicontract.GradeSpecs.Add(gradeSpec);
-                }
-                eicontract.Name = "test";
-                eicontract.Identifier = "test";
-                eicontract.MaxCoopSize = 10;
-                eicontract.Egg = Ei.Egg.Edible;
-                contract.OverwriteDetails(eicontract);
+                contract = BuildTestContract(false);
             } else if(contractid == "sub") {
-                contract = new DBContract();
-                var eicontract = new Ei.Contract();
-                foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
-                    var gradeSpec = new Ei.Contract.Types.GradeSpec {
-                        Grade = grade
-                    };
-                    gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
-                    eicontract.GradeSpecs.Add(gradeSpec);
-                }
-                eicontract.Name = "test";
-                eicontract.Identifier = "test";
-                eicontract.MaxCoopSize = 10;
-                eicontract.Egg = Ei.Egg.Edible;
-                eicontract.CcOnly = true;
-                contract.OverwriteDetails(eicontract);
+                contract = BuildTestContract(true);
             } else {
-                contract = (await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid));
+                contract = await GetLatestContractAsync(contractid);
             }
 
             var users = await _db.DBUsers.Where(x => x.GuildId == GuildId && !x.TempDisabled).ToListAsync();
@@ -89,8 +62,31 @@ namespace EGG9000.Site.Controllers {
             return (coopGroups, contract);
         }
 
+        private Task<DBContract> GetLatestContractAsync(string contractid) {
+            return _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == contractid);
+        }
+
+        private static DBContract BuildTestContract(bool ccOnly) {
+            var contract = new DBContract();
+            var eicontract = new Ei.Contract();
+            foreach(Ei.Contract.Types.PlayerGrade grade in Enum.GetValues(typeof(Ei.Contract.Types.PlayerGrade))) {
+                var gradeSpec = new Ei.Contract.Types.GradeSpec {
+                    Grade = grade
+                };
+                gradeSpec.Goals.Add(new Ei.Contract.Types.Goal { RewardType = Ei.RewardType.EggsOfProphecy });
+                eicontract.GradeSpecs.Add(gradeSpec);
+            }
+            eicontract.Name = "test";
+            eicontract.Identifier = "test";
+            eicontract.MaxCoopSize = 10;
+            eicontract.Egg = Ei.Egg.Edible;
+            eicontract.CcOnly = ccOnly;
+            contract.OverwriteDetails(eicontract);
+            return contract;
+        }
+
         public async Task<IActionResult> Day1CoopsFillLate([FromQuery] ulong GuildId, [FromQuery] string contractid, [FromQuery] int skipbg) {
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
+            var dbguild = await GetDbGuildByIdAsync(GuildId);
             var guild = _discord.GetGuild(GuildId);
             var t = await _GetGroups(GuildId, contractid, skipbg, dbguild, guild, 0);
 
@@ -103,12 +99,13 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> ReloadGrade([FromQuery] ulong GuildId, [FromQuery] string ContractID, [FromQuery] string Grade, [FromQuery] int bg, [FromQuery] int count) {
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
+            var dbguild = await GetDbGuildByIdAsync(GuildId);
             var guild = _discord.GetGuild(GuildId);
             var t = await _GetGroups(GuildId, ContractID, 0, dbguild, guild, count);
 
+            var groupRoles = dbguild.GroupRoles.Split(",");
             var boardingGroups = t.Item1.coopGroups.GroupBy(x => x.BoardingGroup).Select(x => new {
-                BoardingGroup = new { Value = x.Key, Name = dbguild.DisableBG ? guild.GetRole(ulong.Parse(dbguild.GroupRoles.Split(",")[x.Key])).Name : x.Key.ToString() },
+                BoardingGroup = new { Value = x.Key, Name = dbguild.DisableBG ? guild.GetRole(ulong.Parse(groupRoles[x.Key])).Name : x.Key.ToString() },
                 Grades = x.Where(y => (y.PotentialCoops?.Count ?? 0) > 0).Select(y => new {
                     Grade = y.Grade.ToString(),
                     GradeImage = PlayerGradeDetails.GetImage(y.Grade),
@@ -140,7 +137,7 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> StartCoops([FromBody] List<Contract_CoopStart> coops, [FromQuery] ulong GuildId, [FromQuery] string ContractID, [FromQuery] int bg, [FromQuery] Ei.Contract.Types.PlayerGrade Grade) {
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == GuildId);
+            var dbguild = await GetDbGuildByIdAsync(GuildId);
             var userIds = coops.SelectMany(x => x.Users.Select(y => y.DatabaseId)).ToList();
             var useRoles = dbguild.DisableBG;
             var roles = useRoles ? dbguild.GroupRoles.Split(",") : [];
@@ -148,7 +145,7 @@ namespace EGG9000.Site.Controllers {
                 User = x,
                 Account = y
             })).ToList();
-            var contract = await _db.Contracts.OrderBy(x => x.Created).LastAsync(x => x.ID == ContractID);
+            var contract = await GetLatestContractAsync(ContractID);
             var _words = new Words();
 
             await Parallel.ForEachAsync(coops, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coopStart, token) => {
@@ -200,7 +197,7 @@ namespace EGG9000.Site.Controllers {
         }
 
         public async Task<IActionResult> ScoreGraph([FromQuery] ulong GuildId, [FromQuery] string ContractID) {
-            var contract = await _db.Contracts.AsQueryable().FirstOrDefaultAsync(x => x.ID == ContractID);
+            var contract = await _db.Contracts.FirstOrDefaultAsync(x => x.ID == ContractID);
             ViewBag.Contract = contract;
             var claimsIdentity = (ClaimsIdentity)User.Identity;
             var discordId = ulong.Parse(claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value);
@@ -218,10 +215,10 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> MoveToCoop([FromQuery] Guid CoopId, [FromQuery] Guid UserId, [FromQuery] string EggIncId) {
-            var targetCoop = await _db.Coops.Include(x => x.Contract).AsQueryable().FirstAsync(x => x.Id == CoopId);
-            var dbuser = await _db.DBUsers.AsQueryable().FirstAsync(x => x.Id == UserId);
+            var targetCoop = await _db.Coops.Include(x => x.Contract).FirstAsync(x => x.Id == CoopId);
+            var dbuser = await _db.DBUsers.FirstAsync(x => x.Id == UserId);
 
-            var existingXref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.Coop.Created > DateTimeOffset.UtcNow.AddMonths(-6) && x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatusEnum.Failed);
+            var existingXref = await _db.UserCoopXrefs.FirstOrDefaultAsync(x => x.Coop.Created > DateTimeOffset.UtcNow.AddMonths(-6) && x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatusEnum.Failed);
             if(existingXref != null) {
                 return Json(new { error = $"{dbuser.DiscordUsername} has already been assigned a co-op." });
             }
@@ -241,7 +238,7 @@ namespace EGG9000.Site.Controllers {
             _db.Add(xref);
             await _db.SaveChangesAsync();
 
-            var guildContract = await _db.GuildContracts.AsQueryable().FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.GuildID == guild.Id && x.League == targetCoop.League);
+            var guildContract = await _db.GuildContracts.FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.GuildID == guild.Id && x.League == targetCoop.League);
 
             if(guildContract != null) {
                 var guildContractChannel = (SocketTextChannel)_discord.GetChannel(guildContract.DiscordChannelId);
@@ -256,25 +253,22 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<IActionResult> RemoveXref([FromBody] Contract_RemoveXrefModel model) {
-            var xref = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.UserId == model.UserId && x.CoopId == model.CoopId && x.EggIncId == model.EggIncId);
+            var xref = await _db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == model.UserId && x.CoopId == model.CoopId && x.EggIncId == model.EggIncId);
             if(xref == null) {
                 return Json(new { error = $"Unable to find xref." });
             }
             _db.Remove(xref);
             await _db.SaveChangesAsync();
-            var xref2 = await _db.UserCoopXrefs.AsQueryable().FirstOrDefaultAsync(x => x.UserId == model.UserId && x.CoopId == model.CoopId && x.EggIncId == model.EggIncId);
-            Console.WriteLine($"xref2 {xref2}");
             return Json(new { Success = true });
         }
 
         public async Task<IActionResult> RecentScoresGrid([FromQuery] ulong guildid = default) {
-            _logger.LogInformation("Test");
             var times = new TimingsFactory(_logger).Start();
             if(guildid == default) {
                 guildid = GetGuildId();
             }
 
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildid);
+            var dbguild = await GetDbGuildByIdAsync(guildid);
             times.Set("Get Guild");
             var contracts = await _db.Contracts.OrderByDescending(x => x.Created).Take(10).ToListAsync();
             times.Set("Get Contracts");
