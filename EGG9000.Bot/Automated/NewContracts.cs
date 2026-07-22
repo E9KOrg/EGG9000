@@ -38,6 +38,7 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
+            var cachesChanged = false;
 
             // GetPeriodicalsAsync is network-only; release the pooled connection while it's in flight
             // instead of holding it open-but-idle. EF reopens it lazily on the next _db access below.
@@ -147,8 +148,10 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsync(CancellationToken.None);
 
                         needsUpdate = true;
+                        cachesChanged = true;
                         _logger.LogInformation("Contract {contractid} added", contract.ID);
                     } else if(json != contract._response || contract.Created < DateTime.Now.AddMonths(-3)) {
+                        cachesChanged = true;
                         if(contract.Created < DateTime.Now.AddMonths(-3)) {
                             contract.Created = DateTimeOffset.UtcNow;
                             var guildContracts = contract.GuildContracts.Where(x => x.ContractID == contract.ID);
@@ -191,17 +194,22 @@ namespace EGG9000.Bot.Automated {
                         var existingSeason = await _db.SeasonInfos.FindAsync(proto.Id);
                         if(existingSeason == null) {
                             _db.SeasonInfos.Add(newInfo);
+                            cachesChanged = true;
                             _logger.LogInformation("New season {seasonId} added to DB", proto.Id);
-                        } else {
+                        } else if(existingSeason.Name != newInfo.Name || existingSeason.StartTime != newInfo.StartTime || existingSeason.GoalsJson != newInfo.GoalsJson) {
                             existingSeason.Name = newInfo.Name;
                             existingSeason.StartTime = newInfo.StartTime;
                             existingSeason.GoalsJson = newInfo.GoalsJson;
+                            cachesChanged = true;
                         }
                     }
                 }
             }
 
             await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+
+            if(cachesChanged)
+                await _db.ExpireCachedEiContractsAsync(_provider.GetRequiredService<MassTransit.IPublishEndpoint>());
 
             if(needsUpdate)
                 ContractUpdater.ResetTimeStatic();
