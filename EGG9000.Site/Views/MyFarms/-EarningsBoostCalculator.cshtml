@@ -9,7 +9,7 @@
         max-height: 20px;
     }
 </style>
-<div x-data="earningsBoostCalc()" data-earnings-boost-config="@Json.Serialize(new {
+<div x-data="earningsBoostCalc()" data-earnings-boost-config="@System.Net.WebUtility.HtmlEncode(Json.Serialize(new {
     boostValue = Model.Event?.Multiplier ?? 1,
     farms = Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
         var farm = x.WithStats(Model.Backup, null, Model.CustomEggs);
@@ -20,7 +20,7 @@
             IncomeRunning = farm.MaxRunningBonus * farm.Income * (Model.Event?.Multiplier ?? 1)
         };
     })
-})">
+}).ToString())">
     <div class="d-flex align-items-center gap-2" style="padding-top:10px">
         <div class="form-group">
             <label style="margin-right:5px;">Farm</label>
