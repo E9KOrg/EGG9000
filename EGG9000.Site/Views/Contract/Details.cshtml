@@ -14,8 +14,7 @@
 
     var guildContract = Model.GuildContract;
     var guild = discord.Guilds.First(x => x.Id == Model.GuildContract.GuildID);
-    var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
-    var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
+    var discordId = User.DiscordId();
 
     var count = currentCoops.Count;
     var ebrgx = new Regex(@"\(.+?\)");
@@ -633,12 +632,7 @@
                     if (!confirm('Are you sure you want to start this co-op?')) return;
                     const prefarms = coop.Users.map(u => ({ EggIncId: u.EggIncId, DatabaseId: u.DatabaseId, Name: u.Name }));
                     try {
-                        const r = await fetch('/contract/startcoop?GuildId=@Model.GuildContract.GuildID&ContractID=@Model.GuildContract.ContractID&League=@Model.GuildContract.League', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(prefarms)
-                        });
-                        const data = await r.json();
+                        const data = await postJson('/contract/startcoop?GuildId=@Model.GuildContract.GuildID&ContractID=@Model.GuildContract.ContractID&League=@Model.GuildContract.League', prefarms);
                         if (data.error) { alert(data.message); return; }
                         this.ActiveCoops.unshift(coop);
                         coop.Name = data.coopName;
@@ -664,12 +658,7 @@
                 async removeXref(user, coop) {
                     if (!confirm('Are you sure you want to remove ' + user.Name + ' from the co-op?')) return;
                     try {
-                        const r = await fetch('/contract/removexref', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ UserId: user.UserId, EggIncId: user.EggIncId, CoopId: coop.CoopId })
-                        });
-                        const data = await r.json();
+                        const data = await postJson('/contract/removexref', { UserId: user.UserId, EggIncId: user.EggIncId, CoopId: coop.CoopId });
                         if (data.error) { alert(data.message); return; }
                         const idx = coop.Users.indexOf(user);
                         if (idx > -1) coop.Users.splice(idx, 1);

@@ -35,7 +35,6 @@
             <tr>
                 <th>Name</th>
                 <th>EB</th>
-                @*<th>Started</th>*@
             <th>🐔</th>
             <th>🐔 Space</th>
             <th>🐔 Rate</th>
@@ -46,7 +45,6 @@
             @foreach(var account in accounts) {
                 <tr>
                     <td id="@(isAdmin ? account.Backup.EggIncId : "")">@account.DisplayName</td>
-                    @*<td>@((account.Farm.Started - DateTimeOffset.Now).Humanize())</td>*@
                     <td>@account.Backup.EarningsBonus.ToEggString()</td>
                     <td>@account.Farm.NumChickens.ToEggString()</td>
                     <td>@account.FarmStats.HabSpace.ToEggString()</td>
