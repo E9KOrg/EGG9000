@@ -9,7 +9,18 @@
         max-height: 20px;
     }
 </style>
-<div x-data="earningsBoostCalc()">
+<div x-data="earningsBoostCalc()" data-earnings-boost-config="@Html.Raw(System.Net.WebUtility.HtmlEncode(Json.Serialize(new {
+    boostValue = Model.Event?.Multiplier ?? 1,
+    farms = Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
+        var farm = x.WithStats(Model.Backup, null, Model.CustomEggs);
+        var name = x.FarmType == Ei.FarmType.Home ? "Home" : $"{x.ContractId} ({x.CoopId})";
+        return new {
+            Name = name,
+            Income = farm.Income * (Model.Event?.Multiplier ?? 1),
+            IncomeRunning = farm.MaxRunningBonus * farm.Income * (Model.Event?.Multiplier ?? 1)
+        };
+    })
+}).ToString()))">
     <div class="d-flex align-items-center gap-2" style="padding-top:10px">
         <div class="form-group">
             <label style="margin-right:5px;">Farm</label>
@@ -109,7 +120,7 @@
 <script type="text/javascript">
     document.addEventListener('alpine:init', () => {
         Alpine.data('earningsBoostCalc', () => ({
-            boostValue: @(Model.Event?.Multiplier ?? 1),
+            boostValue: 1,
             farms: [],
             selectedFarm: null,
             selectedFarmIndex: 0,
@@ -121,20 +132,9 @@
             calculating: false,
 
             init() {
-                const _farmsRaw = @Html.Raw(
-                    Json.Serialize(
-                        Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
-                        var farm = x.WithStats(Model.Backup, null, Model.CustomEggs);
-                            var name = x.FarmType == Ei.FarmType.Home ? "Home" : $"{x.ContractId} ({x.CoopId})";
-                            return new {
-                                Name = name,
-                                Income = farm.Income * (Model.Event?.Multiplier ?? 1),
-                                IncomeRunning = farm.MaxRunningBonus * farm.Income * (Model.Event?.Multiplier ?? 1)
-                            };
-                        })
-                    )
-                );
-                this.farms = _farmsRaw;
+                const config = JSON.parse(this.$el.dataset.earningsBoostConfig);
+                this.boostValue = config.boostValue;
+                this.farms = config.farms;
                 this.selectedFarm = this.farms[0] || { name: '', income: 0, incomeRunning: 0 };
                 this.startCalculate();
             },

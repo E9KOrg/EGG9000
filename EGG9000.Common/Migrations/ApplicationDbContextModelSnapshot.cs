@@ -47,6 +47,10 @@ namespace EGG9000.Common.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("MembersOfGuildOnly")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<bool>("Revoked")
                         .HasColumnType("boolean");
 
@@ -225,15 +229,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<int?>("CurrentUsers")
                         .HasColumnType("integer");
 
-                    b.Property<bool>("DeletedChannel")
-                        .HasColumnType("boolean");
-
-                    b.Property<decimal>("DiscordChannelId")
-                        .HasColumnType("numeric(20,0)");
-
-                    b.Property<long>("FindChannelErrors")
-                        .HasColumnType("bigint");
-
                     b.Property<bool>("Finished")
                         .HasColumnType("boolean");
 
@@ -308,9 +303,9 @@ namespace EGG9000.Common.Migrations
                     b.HasIndex("ThreadID", "Created");
 
                     b.HasIndex("GuildId", "ContractID", "League")
-                        .HasFilter("NOT \"Finished\" AND NOT \"DeletedChannel\" AND NOT \"ThreadArchived\"");
+                        .HasFilter("NOT \"Finished\" AND NOT \"ThreadArchived\"");
 
-                    b.HasIndex("DiscordChannelId", "ThreadArchived", "CoopEnds", "ThreadID");
+                    b.HasIndex("ThreadArchived", "CoopEnds", "ThreadID");
 
                     b.ToTable("Coops");
                 });

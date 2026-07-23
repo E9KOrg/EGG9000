@@ -271,3 +271,4 @@ __pycache__/
 **/appsettings.Local.json
 **/appsettings.*.local.json
 /EGG9000.Bot/Test.cs
+.vscode/settings.json
