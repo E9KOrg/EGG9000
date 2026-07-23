@@ -43,6 +43,11 @@ namespace EGG9000.Site.Controllers {
         private readonly DatabaseCache _databaseCache = databaseCache;
 
         [AllowAnonymous]
+        public async Task<IActionResult> TestBugsink() {
+            throw new Exception("This is a test exception for Bugsink!");
+        }
+
+        [AllowAnonymous]
         public async Task<IActionResult> DebugLogin([FromQuery] string id) {
             if(!BuildConfig.IsDebug && !BuildConfig.IsDev9002) return NotFound();
 
