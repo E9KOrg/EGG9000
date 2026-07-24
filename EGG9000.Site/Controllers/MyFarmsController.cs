@@ -79,7 +79,7 @@ namespace EGG9000.Site.Controllers {
 
             var loginUserId = await GetLoginDiscordIdAsync();
             var isSelf = loginUserId == discordId;
-            var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).ThenInclude(x => x.Contract).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordUsername: {user.DiscordUsername}");
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
