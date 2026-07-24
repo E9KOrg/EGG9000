@@ -339,6 +339,10 @@
 			</label>
 			<br />
 			<label>
+					<input class="custom-input" type="checkbox" value="true" id="RemoveTestAssignment" checked="@Model.RemoveTestAssignment" /> Remove <button class="btn btn-primary btn-sm" disabled>Test Assignment</button> buttons from Co-op channels
+			</label>
+			<br />
+			<label>
 				<input class="custom-input" type="checkbox" value="true" id="AddOutsideCoops" checked="@Model.AddOutsideCoops" /> Add Outside Co-ops from Backups
 			</label>
 		</div>
@@ -415,6 +419,7 @@
 						GroupRoles: GetCategoryJoins(".GroupRole"),
 						PublicScoreGrid: $("#PublicScoreGrid").is(":checked"),
 						RemoveFindCoopSpot: $("#RemoveFindCoopSpot").is(":checked"),
+						RemoveTestAssignment: $("#RemoveTestAssignment").is(":checked"),
 						CoopNamePrefix: $("#CoopNamePrefix").val(),
 						MinimumRunningScore: $("#MinimumRunningScore").val(),
 						AddOutsideCoops: $("#AddOutsideCoops").is(":checked"),

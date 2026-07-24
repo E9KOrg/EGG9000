@@ -4,6 +4,8 @@ using Discord.WebSocket;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Contracts;
+using EGG9000.Common.Contracts.Assignment;
+using EGG9000.Common.Contracts.Assignment.Facts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
@@ -901,6 +903,92 @@ namespace EGG9000.Bot.Commands {
                     await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = acceptComponent; x.Embed = embedBuilder.Build(); });
                     break;
             }
+        }
+
+        [ComponentInteraction("TestAssignment", ignoreGroupNames: true)]
+        public async Task TestAssignment() {
+            var component = (SocketMessageComponent)Context.Interaction;
+            await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
+
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
+            if(dbUser is null || dbUser.GuildId != Context.Interaction.GuildId) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Could not find your record - are you registered correctly?"); });
+                return;
+            }
+            if(dbUser.EggIncAccounts.Count == 0) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("You have no linked Egg, Inc. accounts."); });
+                return;
+            }
+
+            var guildContract = await Db.GuildContracts.Include(gc => gc.Contract)
+                .FirstOrDefaultAsync(c => c.GuildID == Context.Interaction.GuildId && c.DiscordChannelId == Context.Interaction.ChannelId);
+            if(guildContract is null) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("This command must be used in a contract channel."); });
+                return;
+            }
+            var contract = guildContract.Contract;
+            var dbguild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == Context.Interaction.GuildId);
+            if(dbguild is null) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("This command must be used in a server."); });
+                return;
+            }
+            if(dbguild.RemoveTestAssignment) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Test Assignment is disabled on this server."); });
+                return;
+            }
+
+            var (season, seasonProgresses) = await OrganizeCoops.LoadContractSeasonData(Db, contract, [dbUser]);
+            var existingCoops = await Db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.UtcNow.AddDays(-60)).ToListAsync();
+
+            var accountInputs = new List<(AccountFacts facts, AssignmentSettings settings)>();
+            foreach(var account in dbUser.EggIncAccounts) {
+                var latest = await Db.UserCsHistoryEntries
+                    .Where(h => h.EggIncId == account.Id && h.ContractIdentifier == contract.ID)
+                    .OrderByDescending(h => h.Created)
+                    .FirstOrDefaultAsync();
+                accountInputs.Add((AccountFactsBuilder.Build(dbUser, account, contract, existingCoops, latest, season, seasonProgresses), account.Assignment));
+            }
+            var contractFacts = ContractFactsBuilder.Build(contract, season);
+            var decisions = AssignmentEvaluator.EvaluateUser(accountInputs, contractFacts, dbguild?.RuleOverrides, dbguild?.DisableBG ?? false, verbose: true, explainAll: true);
+
+            const int AccountsPerMessage = 3; // ~10-12 components/account; 3 accounts + action row stays well under Discord's 40-component-per-message cap
+            var nowUtc = DateTimeOffset.UtcNow;
+            var accountChunks = dbUser.EggIncAccounts
+                .Select((account, i) => (account, decision: decisions[i].decision))
+                .Chunk(AccountsPerMessage)
+                .ToList();
+
+            for(var chunkIndex = 0; chunkIndex < accountChunks.Count; chunkIndex++) {
+                var builder = new ComponentBuilderV2();
+                foreach(var (account, decision) in accountChunks[chunkIndex]) {
+                    builder.AddComponent(TestAssignmentComponents.BuildAccountBlock(dbUser, account, contractFacts, decision, dbguild, guildContract, nowUtc));
+                }
+
+                var isLastChunk = chunkIndex == accountChunks.Count - 1;
+                if(isLastChunk) {
+                    builder.WithActionRow(row => row.WithButton("Manage Settings", $"TestAssignmentManageSettings:{dbUser.DiscordId}", ButtonStyle.Secondary));
+                }
+
+                if(chunkIndex == 0) {
+                    await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = builder.Build(); });
+                } else {
+                    await component.FollowupAsync(components: builder.Build(), flags: MessageFlags.ComponentsV2, ephemeral: true);
+                }
+            }
+        }
+
+        [ComponentInteraction("TestAssignmentManageSettings:*", ignoreGroupNames: true)]
+        public async Task TestAssignmentManageSettings(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+            var discordId = ulong.Parse(data);
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            if(dbUser is null) {
+                await component.RespondAsync(embed: EmbedError("Could not find your record - are you registered correctly?"), ephemeral: true);
+                return;
+            }
+            // A brand new ephemeral message, not an update of the Test Assignment message: that message
+            // is flagged ComponentsV2, and Discord will not allow downgrading it back to V1 components.
+            await component.RespondAsync(text: "Select which account you would like to manage", components: ContractSettingsCommands.GetAccountButtons(dbUser, "MCSMenu"), ephemeral: true);
         }
 
         [ComponentInteraction("AcceptCoopOffer:*", ignoreGroupNames: true)]

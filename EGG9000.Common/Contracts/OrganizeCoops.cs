@@ -53,7 +53,7 @@ namespace EGG9000.Common.Contracts {
                         group.PotentialCoops = _SortUsersIntoDay1Coops(accounts, 0, grade, contract.Details, [], true, AllowGuilds: dbGuild.AllowGuilds, overrideNumber, roleid);
                     }
                 } else {
-                    var bgLimit = contract.Details.CcOnly ? 4 : 3;
+                    var bgLimit = BoardingGroupLaunch.MaxBoardingGroup(contract.Details.CcOnly);
                     for(var bg = bgLimit; bg >= 1; bg--) {
                         var group = new PotentialCoopGroup {
                             BoardingGroup = bg, Grade = grade
