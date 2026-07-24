@@ -267,10 +267,10 @@
 								pastXrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Score.HasValue && x.EggIncId == backup.EggIncId);
 							}
 							UserFarmDetails userFarmDetails = null;
-							if (xref is not null && xref.Coop.Contract is not null) {
-								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
-							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
+							if (xref is not null && contract is not null) {
+								userFarmDetails = GetCoopParticipants(xref.Coop, contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
+							}
 							var score = Model.scores?.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract?.Identifier) == farm.ContractId)?.Evaluation;
 							<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
 								<td>@(score?.Cxp.ToString() ?? "")</td>
