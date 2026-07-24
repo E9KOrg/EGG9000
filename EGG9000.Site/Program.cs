@@ -55,7 +55,7 @@ builder.Host.UseNLog();
 
 builder.WebHost.UseSentry(options => {
     // You can load the DSN from configuration or hardcode it for testing
-    options.Dsn = SecretsHelper.GetConfigOrSecret(builder.Configuration, "ConnectionStrings:BugsInkURL", "bugsink_url");
+    options.Dsn = SecretsHelper.GetConfigOrSecret(builder.Configuration, "ConnectionStrings:BugsInkURL", "bugsink_url") ?? "";
     options.SendDefaultPii = true;
     options.TracesSampleRate = 0.0;
 
