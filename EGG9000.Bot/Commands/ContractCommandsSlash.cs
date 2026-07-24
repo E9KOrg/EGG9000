@@ -33,7 +33,7 @@ namespace EGG9000.Bot.Commands {
         static async internal Task _fixFullCoopError(SocketInteraction command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
             var status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
-            if(status is null) { //Safeguarding
+            if(status is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is unresponsive, please try again in a minute or two."); });
                 return;
             }
@@ -309,7 +309,6 @@ namespace EGG9000.Bot.Commands {
                 _ => default
             });
             if(gradeRole != null) {
-                //Get the main guild
                 var mainGuild = _gateway.Guilds.FirstOrDefault(g => g.Id == dbGuild.DiscordSeverId);
                 var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
 

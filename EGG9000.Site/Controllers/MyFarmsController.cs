@@ -175,7 +175,7 @@ namespace EGG9000.Site.Controllers {
 
 
             Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId);
+            return new MyFarmsModel(user, Contracts, Demerits, Merits, Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId);
         }
 
         // Lazily renders the artifact-inventory image plus its hover-target manifest for one account. The
@@ -278,7 +278,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> EarningsBoostCalculator() {
             var user = await GetCurrentDbUserAsync();
 
-            //Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
+            // Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
             var cachedContracts = await _db.CachedEiContractsAsync();
             var freshBackups = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
                 var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, cachedContracts);

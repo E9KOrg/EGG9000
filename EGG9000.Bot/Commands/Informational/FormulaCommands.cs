@@ -27,7 +27,6 @@ namespace EGG9000.Bot.Commands.Informational {
 
         public enum MERChoice {
             [ChoiceDisplay("Current")] Current = 0,
-            //[ChoiceDisplay("20")] Twenty = 20,
             [ChoiceDisplay("30")] Thirty = 30,
             [ChoiceDisplay("40")] Forty = 40,
             [ChoiceDisplay("50")] Fifty = 50
@@ -123,7 +122,6 @@ namespace EGG9000.Bot.Commands.Informational {
 
             var shipCoefficientTable = await GetShipDataTable(_cache, _logger);
 
-            //Catch the case where the cache is invalidated, and the API returns an error
             if(shipCoefficientTable is null) {
                 return EmbedError($"Ship coefficients were not cached, and Menno's API did not respond to refresh them. Please try again later.");
             }

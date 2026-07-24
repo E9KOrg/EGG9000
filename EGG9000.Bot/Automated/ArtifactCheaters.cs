@@ -193,7 +193,6 @@ namespace EGG9000.Bot.Automated {
 
                 var doesCheaterChannelExist = ChannelHelper.DetermineChannelType(dbGuild, clientGuild, GuildChannelType.CheaterThread);
 
-                //Only run through if the channel exists
                 if(doesCheaterChannelExist is null) continue;
 
                 var identifier = string.IsNullOrEmpty(outlier.Backup?.UserName) ? (string.IsNullOrEmpty(outlier.Name) ? outlier.Id : outlier.Name) : outlier.Backup.UserName;

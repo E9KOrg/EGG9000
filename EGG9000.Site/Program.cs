@@ -282,7 +282,6 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         var bugsnagConfig = new Bugsnag.Configuration(bugsnagKey);
         var bs = new Bugsnag.Client(bugsnagConfig);
         services.AddSingleton<Bugsnag.IClient>(bs);
-        // Test Bugsnag is working
         if(bs != null) {
             try {
                 bs.Notify(new Exception("Bugsnag test - startup successful"));

@@ -50,10 +50,9 @@ namespace EGG9000.Common.Services {
         private static readonly ConcurrentDictionary<ulong, SemaphoreSlim> _serverSemaphores = new();
         private static readonly TimeSpan _semaphoreTimeoutTime = TimeSpan.FromMinutes(1);
 
-        // The gateway socket client, for use by command modules and extension methods
         public DiscordSocketClient Gateway => _gateway;
 
-        // Forwarding properties so _UpdaterBase and background jobs (_client.Guilds, _client.GetGuild etc.) work unchanged
+        // Forwarding properties so callers written against the raw socket client keep working unchanged
         public IReadOnlyCollection<SocketGuild> Guilds => _gateway.Guilds;
         public SocketGuild GetGuild(ulong id) => _gateway.GetGuild(id);
         public SocketUser GetUser(ulong id) => _gateway.GetUser(id);
@@ -61,7 +60,7 @@ namespace EGG9000.Common.Services {
         public ConnectionState ConnectionState => _gateway.ConnectionState;
         public Task SendDMToKendrome(string message) => _gateway.SendDMToKendrome(message);
 
-        // REST client, for callers that need guild/member lookups not available on the socket client
+        // REST client, for lookups not available on the socket client
         public DiscordRestClient Rest => _rest;
 
         // Application emotes - used by NewContracts.cs and FAQCommandSlash.cs
@@ -113,14 +112,12 @@ namespace EGG9000.Common.Services {
             }
 
             try {
-                //Logout subtasks
                 await _gateway.LogoutAsync();
                 await _gateway.StopAsync();
                 _logger.Log(LogLevel.Information, "Waiting on Discord Disconnect");
                 while(_gateway.ConnectionState == ConnectionState.Connected) { }
                 _logger.Log(LogLevel.Information, "Discord Disconnected...");
 
-                //Log back in
                 await _gateway.LoginAsync(TokenType.Bot, _configuration["ConnectionStrings:Token"]);
                 await _gateway.StartAsync();
                 _logger.Log(LogLevel.Information, "Waiting on Discord Connect");
@@ -308,7 +305,6 @@ namespace EGG9000.Common.Services {
                 logger.LogInformation("CreateCoopThreadHeaderAsync: Semaphore for guild {guild} timed out after after {unlockTime} minutes.", guild.Name, DiscordHostedService.GetSemaphoreTimeout().TotalMinutes);
             }
 
-            //Check again
             if(guild.Channels.Any(c => c.Name == name)) {
                 if(ownershipAcquired) guild.GetServerSemaphore().Release();
                 return guild.Channels.First(c => c.Name == name);
@@ -361,8 +357,7 @@ namespace EGG9000.Common.Services {
             foreach(var sg in guilds) {
                 var channels = sg.TextChannels.Where(c => c.Name.StartsWith(contract.GetE9KName(), StringComparison.CurrentCultureIgnoreCase) && MyRegex().IsMatch(c.Name));
 
-                // Safety measure - there should never be more than 5 channels in the same guild,
-                // so if this happens, the pattern matching failed.
+                // There should never be more than 5 channels in the same guild; if there are, the pattern matching failed
                 if(channels.Count() > 5) {
                     logger.LogError("Pattern matching failed for {guild} with the following channels: {channels} (They were not deleted)", sg.Name, String.Join(",", channels.Select(x => x.Name)));
                     continue;
@@ -426,7 +421,6 @@ namespace EGG9000.Common.Services {
 #pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
             var emojiName = newEgg.GetEmojiName();
             var existingEmotes = await _client.Gateway.GetApplicationEmotesAsync();
-            // Download the image from aux
             var imageUrl = newEgg.Icon.Url.ToString();
             byte[] imageBytes;
             using var _httpClient = new HttpClient();
@@ -434,34 +428,28 @@ namespace EGG9000.Common.Services {
             response.EnsureSuccessStatusCode();
             imageBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
 
-            // Check if the image is larger than 256KB, if so scale it down
-            // Because of file headers, etc. we aim to mutate down to 200KB
-            // If that is STILL too big, repeatedly scale by 0.9x until the file is small enough
+            // Discord's application emote upload limit is 256KB; target 200KB to leave headroom for file overhead,
+            // repeatedly scaling down by 0.9x if still too big
             const int maxSizeInBytes = 200 * 1024;
             const double scaleFactorStep = 0.9;
 
             while(imageBytes.Length > maxSizeInBytes) {
                 using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
 
-                // Calculate the new size to maintain aspect ratio
                 var scaleFactor = Math.Sqrt((double)maxSizeInBytes / imageBytes.Length) * scaleFactorStep;
                 var newWidth = (int)(image.Width * scaleFactor);
                 var newHeight = (int)(image.Height * scaleFactor);
 
-                // Resize the image
                 image.Mutate(x => x.Resize(newWidth, newHeight));
 
-                // Save the resized image to a byte array
                 using var ms = new MemoryStream();
                 image.Save(ms, new PngEncoder());
                 imageBytes = ms.ToArray();
             }
 
-            // Convert the image to a stream, then to a Discord Image
             using var imageStream = new MemoryStream(imageBytes);
             var discordImage = new Image(imageStream);
 
-            // Upload the image as a GuildEmote
             var newAppEmote = await _client.Gateway.CreateApplicationEmoteAsync(emojiName, discordImage);
 
             if(emoteToReplace != null && newAppEmote != null) {

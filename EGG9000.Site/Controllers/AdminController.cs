@@ -1198,7 +1198,6 @@ music
         public async Task<IActionResult> DiscordReturn() {
             string code = Request.Query["code"];
 
-            // Get Access Token from authorization code by making an HTTP POST request
             var url = "https://discordapp.com/api/oauth2/token";
             var parameters = $"client_id={_configuration.GetConnectionString("ClientId")}&client_secret={_configuration.GetConnectionString("ClientSecret")}&grant_type=authorization_code&code={code}&redirect_uri={Url.ActionLink("DiscordReturn")}";
 

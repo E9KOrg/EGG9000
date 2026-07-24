@@ -119,7 +119,8 @@ namespace EGG9000.Bot.Automated {
                     var json = JsonConvert.SerializeObject(contractResponse);
 
                     if(contract == null) {
-                        // Kevin being bad causing problems - Fallback leggacy detection
+                        // The API sometimes omits the leggacy flag on an actual Kevin update; fall back
+                        // to detecting it by response diff instead of trusting the flag alone.
                         if(!contractResponse.Leggacy) {
                             _logger.LogWarning("Contract {contractid} is not marked as leggacy, checking if it is actually new or if it's just a Kevin update without the flag", contractResponse.Identifier);
                             contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
@@ -183,7 +184,7 @@ namespace EGG9000.Bot.Automated {
                     await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
                 }
 
-                // Upsert all season definitions (self-heals past seasons)
+                // Self-heals past seasons that were missed or changed.
                 var (seasonInfos, seasonInfosError) = await EggIncApi.GetSeasonInfosAsync();
                 if(seasonInfos == null) {
                     _logger.LogWarning("Failed to fetch season infos: {error}", seasonInfosError);

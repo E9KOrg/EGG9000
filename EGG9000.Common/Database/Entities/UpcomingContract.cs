@@ -8,7 +8,7 @@ using static EGG9000.Common.Database.Entities.DBUser;
 
 namespace EGG9000.Common.Database.Entities {
     public class UpcomingContract {
-        public Guid ID { get; set; }  //identifier
+        public Guid ID { get; set; }
 
         public ulong GuildID { get; set; }
         public DateTimeOffset TargetDate { get; set; }

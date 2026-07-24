@@ -153,20 +153,9 @@ namespace EGG9000.Common.Database {
         [IgnoreMember]
         public int EggsOfTruthTotal { get { return VirtueEggsDelivered?.Select(x => VirtueHelper.CurrentLevel(x)).Sum() ?? 0; } }
 
-        /*
-        * The previous formula used here was off by a level or two
-        * 
-        * This formula is tracking the data from:
-        * https://egg-inc.fandom.com/wiki/Piggy_Bank
-        * 
-        * Each time the Piggy Bank is cracked it gains a bonus, 
-        * starting at 2% on the first level, 25% on the second level, 
-        * and 10n+10% after that point (e.g. level 6 would have a 70% bonus
-        * 
-        * NumPiggyBreaks = 1 for a new account, so condition is < 2 => 2% => 1.02
-        * 'Second level' would be NumPiggyBreaks = 2; < 3 => 25% => 1.25
-        * Otherwise => (10 * n + 10)% => ( ([that percentage] / 100) + 1) to determine the scalar
-        */
+        // Bonus schedule per https://egg-inc.fandom.com/wiki/Piggy_Bank: 2% at level 1, 25% at
+        // level 2, then 10n+10% after. NumPiggyBreaks starts at 1 for a new account, hence the
+        // < 2 / < 3 offsets below.
         [IgnoreMember]
         public ulong TotalGEInPiggyBank {
             get {
@@ -268,7 +257,6 @@ namespace EGG9000.Common.Database {
             var inVirtueDimension = currentFarm is not null && (int)currentFarm.EggType >= 50 && (int)currentFarm.EggType <= 54;
             var activeTankArtifacts = inVirtueDimension && backup.Virtue?.Afx is not null ? backup.Virtue.Afx : backup.Artifacts;
             TankLevel = activeTankArtifacts.TankLevel;
-            //GradeProgress = backup.Contracts.LastCpi?.GradeProgress ?? 0;
             ClientVersion = (byte)backup.Version;
 
             // CS is written out-of-band by AccountRefresh.ApplyExtrasAsync (from get_contract_player_info),
@@ -387,7 +375,6 @@ namespace EGG9000.Common.Database {
                 return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0 };
             })];
 
-            /* Setup for artifact sets */
             var afxSetsProjected = backup.ArtifactsDb.SavedArtifactSets.Select(s =>
                 s.Slots.Select(sl => {
                     var x = backup.ArtifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == sl.ItemId);

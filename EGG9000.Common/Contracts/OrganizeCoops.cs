@@ -20,7 +20,6 @@ namespace EGG9000.Common.Contracts {
                 await guild.DownloadUsersAsync();
             }
 
-            //Start compiling a list of all eligible accounts
             var accounts = users
             .SelectMany(u => u.EggIncAccounts.Select(a => new UserByAccount {
                 Account = a,
@@ -131,10 +130,8 @@ namespace EGG9000.Common.Contracts {
                 //Remove user from group so they don't get added to another coop
                 highestEBGroup.Value.Remove(user);
 
-                //Look through all groups to find other accounts for this user
                 var otherAccounts = ebGroups.SelectMany(x => x.Value.Where(y => y.User.Id == user.User.Id).Select(y => new { Group = x, Account = y })).ToList();
                 if(otherAccounts.Count > 0) {
-                    //Find out how many other accounts we can add to this coop
                     while(coop.Users.Count + otherAccounts.Count > contract.MaxCoopSize && otherAccounts.Count > 0) {
                         otherAccounts.RemoveAt(otherAccounts.Count - 1);
                     }

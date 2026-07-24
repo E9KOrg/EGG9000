@@ -21,7 +21,7 @@ namespace EGG9000.Common.Helpers.AfxSets {
         public int SetsPerPage { get; set; }
         public int SlotsPerRow { get; set; }
 
-        public AfxSetsCreatorConfig() { } // for JSON deserialization
+        public AfxSetsCreatorConfig() { }
 
         public AfxSetsCreatorConfig(int afSize) {
             AFSize = afSize;

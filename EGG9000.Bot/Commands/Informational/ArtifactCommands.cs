@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Commands {
 
             var image = new FileAttachment(new MemoryStream(Convert.FromBase64String(B64)), "Inventory.jpeg", "Inventory Image");
             await command.RespondWithFilesAsyncGettingMessage([image], text: " ", embed: _inventoryEmbed(user, account), ephemeral: !showInChannel);
-            var response = await command.GetOriginalResponseAsync(); // Get the response to edit it
+            var response = await command.GetOriginalResponseAsync();
             var baseUrl = response.Embeds.First().Image.ToString();
             var imageUrl = TrimImageUrl(baseUrl);
             await command.ModifyOriginalResponseAsync(x => {

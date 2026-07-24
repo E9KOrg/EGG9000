@@ -106,6 +106,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
+    <ProjectReference Include="..\EGG9000.Analyzers\EGG9000.Analyzers.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Fonts\always together.otf">

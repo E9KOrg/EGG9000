@@ -11,7 +11,6 @@ using System;
 using Sentry;
 using System.Threading.Tasks;
 
-// Set up logger before anything else
 var logger = LogManager.Setup().GetCurrentClassLogger();
 
 try {

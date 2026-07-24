@@ -118,7 +118,6 @@ namespace EGG9000.Bot.Automated {
                         .ToList();
                     var guildContracts = await _db.GuildContracts.Where(gc => gc.GuildID == dbguild.Id).ToListAsync(CancellationToken.None);
 
-                    //Handle users who are on break, and doing coops
                     var breakCoopsChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.BreakCoopLog);
                     if(breakCoopsChannel is not null) {
                         _logger.LogInformation("Handling on-break coop warnings for {guild}", guild.Name);
@@ -187,7 +186,6 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
 
-                    //Handle promotions
                     _logger.LogInformation("Handling promotions for {guild}", guild.Name);
 
                     foreach(var userAccounts in users.GroupBy(x => x.User.Id)) {
