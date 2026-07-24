@@ -49,6 +49,7 @@ namespace EGG9000.Site.Controllers {
                 return View("Temporary", user);
             }
 
+            Sentry.SentrySdk.AddBreadcrumb($"DiscordId: {discordId}");  
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             return await ViewUser(discordId);
         }
@@ -80,6 +81,7 @@ namespace EGG9000.Site.Controllers {
             var loginUserId = await GetLoginDiscordIdAsync();
             var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            Sentry.SentrySdk.AddBreadcrumb($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordUsername: {user.DiscordUsername}");
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
