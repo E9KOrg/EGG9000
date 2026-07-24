@@ -31,7 +31,7 @@ try {
         o.Dsn = SecretsHelper.GetConfigOrSecret(
             tempConfig,
             "ConnectionStrings:BugsInkURL",
-            "bugsink_url");
+            "bugsink_url") ?? "";
 
         o.Environment = BuildConfig.IsRelease ? "Production" : "Development";
         o.AttachStacktrace = true;
