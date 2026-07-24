@@ -128,11 +128,13 @@ namespace EGG9000.Common.Helpers {
             };
 
 
-            var statusResult = await EggIncApi.PostResult<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
+            var statusResult = await EggIncApi.PostResult<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, false);
             if(statusResult.Failed) {
                 logger?.LogWarning("CoopStatusUpdate failed for {CoopName} (user {UserId}): {Error}", coopName, userId, statusResult.Error);
-            } else if (!statusResult.Value.Exists || statusResult.Value.Status != Ei.ContractCoopStatusResponse.Types.MemberStatus.Valid) {
+            } else if(!statusResult.Value.Exists) {
                 logger?.LogWarning("CoopStatusUpdate returned invalid status for {CoopName} (user {UserId}): {Status}", coopName, userId, JsonConvert.SerializeObject(statusResult.Value));
+            } else {
+                logger?.LogInformation("CoopStatusUpdate succeeded for {CoopName} (user {UserId}): {Status}", coopName, userId, JsonConvert.SerializeObject(statusResult.Value));
             }
             timings?.Set("CoopStatusUpdate");
 
@@ -146,6 +148,9 @@ namespace EGG9000.Common.Helpers {
                     Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
                     RequestingUserId = userId
                 }, userId);
+                if(!r) {
+                    logger?.LogWarning("KickPlayerCoopRequest failed for {CoopName} (user {UserId}): {Error}", coopName, userId, "Request failed");
+                }
                 timings?.Set("Kick Creator");
             }
 
