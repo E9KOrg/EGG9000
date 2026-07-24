@@ -52,10 +52,21 @@ SecretsHelper.Initialize(builder.Configuration);
 builder.WebHost.UseUrls("http://0.0.0.0:5013");
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
+
+builder.WebHost.UseSentry(options => {
+    // You can load the DSN from configuration or hardcode it for testing
+    options.Dsn = SecretsHelper.GetConfigOrSecret(builder.Configuration, "ConnectionStrings:BugsInkURL", "bugsink_url");
+    options.SendDefaultPii = true;
+    options.TracesSampleRate = 0.0;
+
+    // Crucial: Instructs the SDK to process and append stack trace metadata
+    options.AttachStacktrace = true;
+});
+
 ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
-
+app.UseSentryTracing();
 if(BuildConfig.IsRelease) {
     // Apply pending migrations on startup. Production only - dev runs against the live DB and must
     // stay manual. Single shared ApplicationDbContext; EF takes an advisory lock so the bot and site
@@ -199,7 +210,6 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.ClientSecret = Configuration.GetConnectionString("ClientSecret");
         options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents {
             OnTicketReceived = context => {
-                Console.WriteLine("est");
                 return Task.FromResult(0);
             }
         };

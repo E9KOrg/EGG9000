@@ -461,7 +461,6 @@
 		function GetCategoryJoins(selector) {
 			var arr = Array.from($(selector).map((index, element) => $(element).val()));
 			arr = arr.filter(n => n != "" && n != 0);
-			console.log(arr);
 			return arr.join(",");
 		}
 	</script>

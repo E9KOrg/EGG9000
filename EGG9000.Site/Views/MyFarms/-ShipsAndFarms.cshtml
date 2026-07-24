@@ -427,7 +427,7 @@
         <div style="display: inline-block;" class="card">
             @if (farm.FarmType == Ei.FarmType.Home) {
                 <h4 class="card-header"><img src="/images/Egg_@((int)farm.EggType).png" /> Home Farm</h4>
-            } else if (farm.ContractId != null && farm.ContractId != "first-contract") {
+            } else if (farm.ContractId != null && farm.ContractId != "first-contract" && contract != null) {
                 <h4 class="card-header"><img src="@(EggIncStatics.GetEggByContract(contract, Model.CustomEggs).image)" /> @Model.Contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name</h4>
             } else {
                 <h4 class="card-header">Error Finding Contract @farm.ContractId</h4>
@@ -477,7 +477,7 @@
                     }
                 </div>
                 <div>
-                    Current Shipping Rate: @((farmStats.CurrentShippingRate * 60).ToEggString(true))/m <!--(@((farmStats.CurrentShippingRate).ToEggString(true, 3))/s)-->
+                    Current Shipping Rate: @((farmStats.CurrentShippingRate * 60).ToEggString(true))/m
                     @if(farmStats.CurrentShippingRate < farmStats.MaxShippingRate) {
                         if(timeTillFull.timeTillShippingFull < timeTillFull.timeTillHabsFull) {
                             <span>(Will reach max shipping before max habs, @timeTillFull.timeTillShippingFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() or @timeTillFullOffline.timeTillShippingFull.Humanize(maxUnit: TimeUnit.Year).ShortenTime() offline)</span>
@@ -487,9 +487,6 @@
                         }
                     }
                 </div>
-                @*<div>
-                    Base Internal Hatchery: @ihrPerHab
-                </div>*@
                 <div id="@Model.Backup.EggIncId">
                     Internal Hatchery: @farmStats.InternalHatchery/m/hab
                 </div>

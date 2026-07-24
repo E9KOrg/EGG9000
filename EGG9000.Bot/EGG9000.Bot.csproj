@@ -9,6 +9,14 @@
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
   <PropertyGroup>
+    <!-- Forces the build to generate modern, cross-platform Portable PDBs -->
+    <DebugType>portable</DebugType>
+
+    <!-- Embeds the actual C# source code directly into the PDB files -->
+    <EmbedAllSources>true</EmbedAllSources>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+  <PropertyGroup>
     <NoWarn>$(NoWarn);NU1701</NoWarn>
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
   </PropertyGroup>
@@ -90,6 +98,8 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.9" />
+    <PackageReference Include="Sentry" Version="6.6.0" />
+    <PackageReference Include="Sentry.Extensions.Logging" Version="6.6.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="[3.1.12]" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="[2.1.7]" />
     <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.10" />
@@ -106,8 +116,8 @@
     </None>
   </ItemGroup>
   <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(DOCKER_BUILD)' != 'true'">
-    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25h%25%25n%25%25an%25%25n%25%25ct&quot; > &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
-    <Exec Command="git rev-parse --abbrev-ref HEAD >> &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
-    <Exec Command="git config --get remote.origin.url >> &quot;$(ProjectDir)version.txt&quot; &amp; exit 0" ContinueOnError="WarnAndContinue" />
+    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25h%25%25n%25%25an%25%25n%25%25ct&quot; &gt; &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
+    <Exec Command="git rev-parse --abbrev-ref HEAD &gt;&gt; &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
+    <Exec Command="git config --get remote.origin.url &gt;&gt; &quot;$(ProjectDir)version.txt&quot; &amp; exit 0" ContinueOnError="WarnAndContinue" />
   </Target>
 </Project>

@@ -18,7 +18,6 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Frozen;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -40,23 +39,18 @@ namespace EGG9000.Site.Controllers {
         private readonly ArtifactImageRenderer _artifactRenderer = artifactRenderer;
 
         public async Task<IActionResult> Index() {
-            var sw = new Stopwatch();
-            sw.Start();
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
+            var discordId = await GetLoginDiscordIdAsync();
 
             if(NewCoopChecker.WaitingOnCoops) {
                 var weekAgo = DateTimeOffset.UtcNow.AddDays(-7);
-                var user = (await _databaseCache.GetDbUsers()).First(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
+                var user = (await _databaseCache.GetDbUsers()).First(x => x.DiscordId == discordId);
                 var xrefs = await _db.UserCoopXrefs.Where(y => y.UserId == user.Id && y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop).Include(y => y.Coop).ThenInclude(x => x.Contract).ToListAsync();
                 user.UserCoopXrefs = xrefs;
-                _logger.LogInformation($"Time: {sw.ElapsedMilliseconds}");
                 return View("Temporary", user);
             }
 
-
-            _bugsnag.Breadcrumbs.Leave($"DiscordId: {logins.First().ProviderKey}, {logins.First().ProviderDisplayName}");
-            return await ViewUser(ulong.Parse(logins.First().ProviderKey));
+            _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
+            return await ViewUser(discordId);
         }
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
@@ -80,13 +74,10 @@ namespace EGG9000.Site.Controllers {
 
         private async Task<MyFarmsModel> BuildViewUserModel(ulong discordId) {
 
-            Console.WriteLine("ViewUser");
             var times = new TimingsFactory(_logger);
             times.Start();
 
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+            var loginUserId = await GetLoginDiscordIdAsync();
             var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
@@ -99,25 +90,27 @@ namespace EGG9000.Site.Controllers {
             // MyContracts scores are cached (1h) and _db-free, so kick them off concurrently with the DB queries below.
             var scoresTask = GetScores(user, scoring);
 
-            var Contracts = await _db.Contracts.AsQueryable().ToListAsync();
+            var Contracts = await _db.CachedDbContractsAsync();
 
-            var Demerits = await _db.Demerit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            var Merits = await _db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
-            var Snapshots = await _db.UserSnapShots.AsQueryable().Where(x => x.UserId == user.Id).ToListAsync();
-            var xrefs = await _db.UserCoopXrefs.AsQueryable().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
-            var coops = await _db.Coops.Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsSplitQuery().ToListAsync();
+            var Demerits = await _db.Demerit.AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
+            var Merits = await _db.Merit.AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
+            var Snapshots = await _db.UserSnapShots.AsNoTracking().Where(x => x.UserId == user.Id).ToListAsync();
+            var xrefs = await _db.UserCoopXrefs.AsNoTracking().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
+            var coops = await _db.Coops.AsNoTracking().Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsSplitQuery().ToListAsync();
             var erItems = EiEpicResearch.Get().epicResearchItems;
-            var DbGuild = await _db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
+            var DbGuild = _db.CachedGuilds.FirstOrDefault(x => x.Id == user.GuildId);
             var uncompletedPes = GetUncompletedPEContracts(user, Contracts);
 
             var eggIncIds = user.EggIncAccounts.Select(a => a.Id).Distinct().ToList();
             var seasonProgresses = await _db.UserSeasonProgresses
                 .Where(x => eggIncIds.Contains(x.EggIncId))
                 .ToListAsync();
+            var seasonProgressByKey = new Dictionary<(string, string), UserSeasonProgress>();
+            foreach(var sp in seasonProgresses) seasonProgressByKey.TryAdd((sp.EggIncId, sp.SeasonId), sp);
             // Every started season that awards PE, not only the ones the player already has progress in.
             // A season the player never touched has no UserSeasonProgress row, but they can still be
             // missing all of its PE - default that case to 0 CXP at the account's current grade.
-            var seasonInfos = (await _db.SeasonInfos.ToListAsync())
+            var seasonInfos = (await _db.CachedSeasonInfosAsync())
                 .Where(x => x.StartTime <= DateTimeOffset.UtcNow)
                 .ToList();
 
@@ -136,7 +129,7 @@ namespace EGG9000.Site.Controllers {
                 var max = 0;
                 var missing = new List<MissingSeasonalPe>();
                 foreach(var info in seasonInfos) {
-                    var sp = seasonProgresses.FirstOrDefault(x => x.EggIncId == id && x.SeasonId == info.Id);
+                    var sp = seasonProgressByKey.GetValueOrDefault((id, info.Id));
                     var totalCxp = sp?.TotalCxp ?? 0;
                     var grade = sp is not null
                         ? (Contract.Types.PlayerGrade)sp.StartingGrade
@@ -191,9 +184,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> InventoryOverlay(string eid) {
             if(string.IsNullOrWhiteSpace(eid)) return BadRequest(new { error = "Missing account id." });
 
-            var loginuser = await _userManager.GetUserAsync(User);
-            var logins = await _userManager.GetLoginsAsync(loginuser);
-            var loginUserId = ulong.Parse(logins.First().ProviderKey);
+            var loginUserId = await GetLoginDiscordIdAsync();
 
             var owner = await _db.DBUsers.FirstOrDefaultAsync(x => x.EIDs.Contains(eid));
             if(owner is null) return NotFound(new { error = "Account not found." });
@@ -298,9 +289,9 @@ namespace EGG9000.Site.Controllers {
             }
 
             var contractIDs = user.EggIncAccounts.SelectMany(b => b.Backup.Farms.Where(f => f.FarmType == FarmType.Contract).Select(f => f.ContractId)).ToList();
-            ViewBag.Contracts = await _db.Contracts.AsQueryable().Where(x => contractIDs.Contains(x.ID)).ToListAsync();
+            ViewBag.Contracts = await _db.Contracts.Where(x => contractIDs.Contains(x.ID)).ToListAsync();
 
-            var boostEvent = await _db.Events.AsQueryable().Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.UtcNow).FirstOrDefaultAsync();
+            var boostEvent = await _db.Events.Where(x => x.Type == "earnings-boost" && !x.Ended && x.Ends > DateTimeOffset.UtcNow).FirstOrDefaultAsync();
 
             return View(new MyFarms_Partial_EBCalcModel {
                 Backup = user.EggIncAccounts.First().Backup,
@@ -445,16 +436,21 @@ namespace EGG9000.Site.Controllers {
         }
 
         public Dictionary<string, List<DBContract>> GetUncompletedPEContracts(DBUser user, List<DBContract> contracts) {
+            var contractsById = new Dictionary<string, DBContract>(StringComparer.CurrentCultureIgnoreCase);
+            foreach(var c in contracts) contractsById[c.ID] = c;
+            var pePossibleContracts = contracts.Where(c => c.Details.GetPossiblePE() > 0).ToList();
+
             return user.EggIncAccounts.ToDictionary(
                 account => account.Id,
-                account => account.Backup.ArchivedFarms
-                    .Where(f =>
-                        f.PEPossible > 0 && f.PEGained < f.PEPossible
-                    )
-                    .Select(f => contracts.FirstOrDefault(c => c.ID.Equals(f.ContractId, StringComparison.CurrentCultureIgnoreCase)))
-                    .Concat(contracts.Where(c => c.Details.GetPossiblePE() > 0 && !account.Backup.ArchivedFarms.Any(f => f.ContractId == c.ID)))
-                    .Where(x => x is not null)
-                    .ToList()
+                account => {
+                    var archivedContractIds = account.Backup.ArchivedFarms.Select(f => f.ContractId).ToHashSet();
+                    return account.Backup.ArchivedFarms
+                        .Where(f => f.PEPossible > 0 && f.PEGained < f.PEPossible)
+                        .Select(f => contractsById.GetValueOrDefault(f.ContractId))
+                        .Concat(pePossibleContracts.Where(c => !archivedContractIds.Contains(c.ID)))
+                        .Where(x => x is not null)
+                        .ToList();
+                }
             );
         }
 

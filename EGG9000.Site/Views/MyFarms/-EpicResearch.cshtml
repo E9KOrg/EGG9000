@@ -16,13 +16,13 @@
 	var bankScalar = !Model.account.HasActiveSubscription() ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40);
 	var totalBankGE = (ulong)(Model.backup.TotalGEInPiggyBank * bankScalar);
 }
-<div class="card" style="margin-top:15px" x-data="epicResearchPage()" data-epic-research-config="@Json.Serialize(new {
+<div class="card" style="margin-top:15px" x-data="epicResearchPage()" data-epic-research-config="@Html.Raw(System.Net.WebUtility.HtmlEncode(Json.Serialize(new {
 	items = Model.epicResearchConfig,
 	currentGE = Model.backup.GoldenEggsEarned - Model.backup.GoldenEggsSpent,
 	rawGEInPiggyBank = Model.backup.TotalGEInPiggyBank,
 	totalBankGE = totalBankGE,
 	rawBankGE = rawBankGE
-})">
+}).ToString()))">
 	<h4 class="card-header mb-3 d-flex justify-content-between align-items-center" style="gap:12px;">
 		<span style="flex:0 1 auto;">Epic Research GE Calculator</span>
 		<select id="discount-select" class="form-select form-select-sm" x-model.number="Discount" style="width:auto; flex:0 0 auto; min-width:160px;">
