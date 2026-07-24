@@ -12,6 +12,7 @@ namespace EGG9000.Site.Models.Admin {
         public bool PublicScoreGrid { get; set; }
         public string CoopNamePrefix { get; set; }
         public bool RemoveFindCoopSpot { get; set; }
+        public bool RemoveTestAssignment { get; set; }
         public bool AddOutsideCoops { get; set; }
         public bool FAQTopicsEnabled { get; set; }
         public int FAQTopicCooldownMinutes { get; set; }

@@ -1054,6 +1054,7 @@ music
             dbGuild.AllowGuilds = model.AllowGuilds;
             dbGuild.PublicScoreGrid = model.PublicScoreGrid;
             dbGuild.RemoveFindCoopSpot = model.RemoveFindCoopSpot;
+            dbGuild.RemoveTestAssignment = model.RemoveTestAssignment;
             dbGuild.CoopNamePrefix = string.IsNullOrWhiteSpace(model.CoopNamePrefix) ? null : model.CoopNamePrefix;
             dbGuild.AddOutsideCoops = model.AddOutsideCoops;
             dbGuild.MinimumRunningScore = model.MinimumRunningScore;
