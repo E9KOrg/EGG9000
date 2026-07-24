@@ -1189,6 +1189,7 @@ music
             return Content("Success");
         }
 
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public IActionResult Sync() {
             var url = Url.ActionLink("DiscordReturn");
             return Redirect($"https://discordapp.com/api/oauth2/authorize?response_type=code&client_id={_configuration.GetConnectionString("ClientId")}&scope=identify%20guilds.join%20applications.commands.permissions.update&state=15773059ghq9183habn&redirect_uri={url}");
@@ -1216,6 +1217,7 @@ music
             }
         }
 
+        [Authorize(Roles = "Admin,GuildAdmin")]
         public async Task<IActionResult> SyncCommandPermissions(string access_token) {
             var guild = await GetDbGuildByIdAsync(GetGuildId());
             if(guild.RolesToSync is null)
@@ -1226,7 +1228,7 @@ music
             var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
 
             var roleMaps = OverflowSyncing.GetRoleMaps([.. rolesToSync], overflowServers);
-            var output = await OverflowSyncing.HandleCommandPermissionSyncsAsync(guild, mainServer, overflowServers, roleMaps, access_token, _configuration.GetConnectionString("Token"));
+            var output = await OverflowSyncing.HandleCommandPermissionSyncsAsync(_discord, mainServer, overflowServers, roleMaps, access_token);
 
             return Content(output);
         }
