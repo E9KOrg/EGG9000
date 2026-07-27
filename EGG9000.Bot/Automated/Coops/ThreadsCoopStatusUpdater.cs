@@ -691,7 +691,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                                 .ThenInclude(c => c.Contract)
                                             .FirstOrDefaultAsync(
                                                 x => x.User.DiscordId == discordUser.Id &&
-                                                EF.Functions.Like(farm.CoopId, x.Coop.Name),
+                                                EF.Functions.ILike(farm.CoopId, x.Coop.Name),
                                                 cancellationToken: CancellationToken.None
                                             );
                                         if(otherContractXref != null) {
