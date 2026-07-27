@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Automated.Coops {
             return d[a.Length, b.Length];
         }
 
-        public static bool CheckForCreator(Coop coop, CoopDetails coopDetails) {
+        public bool CheckForCreator(Coop coop, CoopDetails coopDetails) {
             if(string.IsNullOrEmpty(coop.CreatorID)) {
                 var creator = coopDetails.CoopParticipants.FirstOrDefault(x => x.Backup is not null && x.Backup.Farms.Any(y => y.Creator && y.CoopId.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase) && y.ContractId == coop.ContractID));
                 if(creator != null) {
