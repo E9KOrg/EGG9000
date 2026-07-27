@@ -61,7 +61,7 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsNoTracking().ToListAsync(CancellationToken.None);
 
             if(BuildConfig.IsDebug) {
-                coops = [.. coops.Where(x => x.LastUpdateToChannel is null)];
+                //coops = [.. coops.Where(x => x.Name == "NapLure49")];
             }
 
 
@@ -669,10 +669,12 @@ namespace EGG9000.Bot.Automated.Coops {
                             if(!userFarmDetails.Xref.OutsideCoop && coop.GuildId == _CPGuildId && !coop.FinishedOrFailedOrExpired() && userFarmDetails.Farm is not null) {
                                 var farm = userFarmDetails.Farm;
                                 if(farm.CoopId.Equals(coop.Name, StringComparison.OrdinalIgnoreCase)) {
+                                    _logger.LogInformation("Coop matches but the game doesn't see {user} in the coop for {coop}. Marked as outside coop.", user.DiscordUsername, coop.Name);
                                     _queue.EnqueueLow(() => coopThread.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}, it looks like your game thinks you have joined the co-op but the game's servers don't see you in the co-op. Please check with the other members of the co-op to verify they don't see you, if they don't then you will need to restart the contract and join again. After you do make sure the bot can see you in the co-op."));
                                     userFarmDetails.Xref.OutsideCoop = true;
                                     await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                                 } else if(farm.CoopId.Length > 0 && farm.FarmType == FarmType.Contract) {
+                                    _logger.LogInformation("Outside coop detected for {user}. Assigned coop is {coop}, but the backup shows an entered code of {enteredCoop}", user.DiscordUsername, coop.Name, farm.CoopId);
                                     // This should always happen so that no matter what, we're only sending one message
                                     userFarmDetails.Xref.OutsideCoop = true;
 
@@ -689,7 +691,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                                 .ThenInclude(c => c.Contract)
                                             .FirstOrDefaultAsync(
                                                 x => x.User.DiscordId == discordUser.Id &&
-                                                x.Coop.Name.Equals(farm.CoopId, StringComparison.CurrentCultureIgnoreCase),
+                                                EF.Functions.Like(farm.CoopId, x.Coop.Name),
                                                 cancellationToken: CancellationToken.None
                                             );
                                         if(otherContractXref != null) {
