@@ -17,14 +17,9 @@ namespace EGG9000.Analyzers.Test {
     [TestCategory("Unit")]
     public class LinqStringEqualsAnalyzerTests {
 
-        /// <summary>
-        /// Builds a compilation with all runtime + System.Linq references so that
-        /// IQueryable&lt;T&gt;, StringComparison, etc. resolve correctly in test sources.
-        /// </summary>
         private static async Task<Diagnostic[]> GetDiagnosticsAsync(string source) {
             var tree = CSharpSyntaxTree.ParseText(source);
 
-            // Collect the core runtime assemblies needed for IQueryable<T> and StringComparison.
             var refs = new List<MetadataReference> {
                 MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
                 MetadataReference.CreateFromFile(typeof(System.Linq.IQueryable<>).Assembly.Location),
@@ -32,8 +27,6 @@ namespace EGG9000.Analyzers.Test {
                 MetadataReference.CreateFromFile(typeof(System.StringComparison).Assembly.Location),
             };
 
-            // Add all assemblies from the current AppDomain's trusted platform assemblies
-            // so that netX.0 ref-pack types (System.Runtime, etc.) are resolvable.
             var trustedAssemblies = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
             foreach(var path in trustedAssemblies.Split(Path.PathSeparator)) {
                 refs.Add(MetadataReference.CreateFromFile(path));
@@ -49,10 +42,6 @@ namespace EGG9000.Analyzers.Test {
             var diagnostics = await withAnalyzers.GetAnalyzerDiagnosticsAsync();
             return [.. diagnostics];
         }
-
-        // -------------------------------------------------------------------------
-        // Cases that SHOULD produce a diagnostic
-        // -------------------------------------------------------------------------
 
         [TestMethod]
         public async Task Equals_WithStringComparison_InWhereLambda_OnIQueryable_Warning() {
@@ -107,10 +96,6 @@ namespace EGG9000.Analyzers.Test {
             Assert.IsTrue(diagnostics.Any(d => d.Id == LinqStringEqualsAnalyzer.DiagnosticId));
         }
 
-        // -------------------------------------------------------------------------
-        // Cases that should NOT produce a diagnostic
-        // -------------------------------------------------------------------------
-
         [TestMethod]
         public async Task Equals_WithStringComparison_OnIEnumerable_NoDiagnostic() {
             var diagnostics = await GetDiagnosticsAsync("""
@@ -161,7 +146,6 @@ namespace EGG9000.Analyzers.Test {
 
         [TestMethod]
         public async Task Equals_WithStringComparison_AfterAsEnumerable_NoDiagnostic() {
-            // AsEnumerable() switches to IEnumerable — subsequent operators run in-process.
             var diagnostics = await GetDiagnosticsAsync("""
                 using System;
                 using System.Linq;
