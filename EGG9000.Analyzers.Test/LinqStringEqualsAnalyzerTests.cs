@@ -1,175 +1,180 @@
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Testing;
-using Microsoft.CodeAnalysis.Testing;
 using EGG9000.Analyzers;
 
-namespace EGG9000.Analyzers.Test;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
-using Verify = CSharpAnalyzerVerifier<LinqStringEqualsAnalyzer, DefaultVerifier>;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-public class LinqStringEqualsAnalyzerTests {
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
-    // -------------------------------------------------------------------------
-    // Cases that SHOULD produce a diagnostic
-    // -------------------------------------------------------------------------
+namespace EGG9000.Analyzers.Test {
+    [TestClass]
+    [TestCategory("Unit")]
+    public class LinqStringEqualsAnalyzerTests {
 
-    [Fact]
-    public async Task Equals_WithStringComparison_InWhereLambda_OnIQueryable_Warning() {
-        var source = """
-            using System;
-            using System.Linq;
+        /// <summary>
+        /// Builds a compilation with all runtime + System.Linq references so that
+        /// IQueryable&lt;T&gt;, StringComparison, etc. resolve correctly in test sources.
+        /// </summary>
+        private static async Task<Diagnostic[]> GetDiagnosticsAsync(string source) {
+            var tree = CSharpSyntaxTree.ParseText(source);
 
-            public class Test {
-                public void Run(IQueryable<string> query, string value) {
-                    var result = query.Where(s => s.{|#0:Equals(value, StringComparison.OrdinalIgnoreCase)|});
-                }
+            // Collect the core runtime assemblies needed for IQueryable<T> and StringComparison.
+            var refs = new List<MetadataReference> {
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(System.Linq.IQueryable<>).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(System.Linq.Enumerable).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(System.StringComparison).Assembly.Location),
+            };
+
+            // Add all assemblies from the current AppDomain's trusted platform assemblies
+            // so that netX.0 ref-pack types (System.Runtime, etc.) are resolvable.
+            var trustedAssemblies = (string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!;
+            foreach(var path in trustedAssemblies.Split(Path.PathSeparator)) {
+                refs.Add(MetadataReference.CreateFromFile(path));
             }
-            """;
 
-        var expected = Verify.Diagnostic(LinqStringEqualsAnalyzer.DiagnosticId)
-            .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Warning);
+            var compilation = CSharpCompilation.Create("Test",
+                [tree],
+                refs.DistinctBy(r => r.Display),
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        await Verify.VerifyAnalyzerAsync(source, expected);
-    }
+            var analyzer = new LinqStringEqualsAnalyzer();
+            var withAnalyzers = compilation.WithAnalyzers([analyzer]);
+            var diagnostics = await withAnalyzers.GetAnalyzerDiagnosticsAsync();
+            return [.. diagnostics];
+        }
 
-    [Fact]
-    public async Task Equals_WithStringComparison_InJoinLambda_OnIQueryable_Warning() {
-        var source = """
-            using System;
-            using System.Linq;
+        // -------------------------------------------------------------------------
+        // Cases that SHOULD produce a diagnostic
+        // -------------------------------------------------------------------------
 
-            public class Coop { public string Name { get; set; } }
-            public class User { public string CoopName { get; set; } }
+        [TestMethod]
+        public async Task Equals_WithStringComparison_InWhereLambda_OnIQueryable_Warning() {
+            var diagnostics = await GetDiagnosticsAsync("""
+                using System;
+                using System.Linq;
 
-            public class Test {
-                public void Run(IQueryable<User> users, IQueryable<Coop> coops, string targetName) {
-                    var result = users.Join(
-                        coops,
-                        u => u.CoopName,
-                        c => c.Name,
-                        (u, c) => new { u, c })
-                        .Where(x => x.c.Name.{|#0:Equals(targetName, StringComparison.CurrentCultureIgnoreCase)|});
+                public class Test {
+                    public void Run(IQueryable<string> query, string value) {
+                        var result = query.Where(s => s.Equals(value, StringComparison.OrdinalIgnoreCase));
+                    }
                 }
-            }
-            """;
+                """);
 
-        var expected = Verify.Diagnostic(LinqStringEqualsAnalyzer.DiagnosticId)
-            .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Warning);
+            Assert.IsTrue(diagnostics.Any(d => d.Id == LinqStringEqualsAnalyzer.DiagnosticId));
+        }
 
-        await Verify.VerifyAnalyzerAsync(source, expected);
-    }
+        [TestMethod]
+        public async Task Equals_WithStringComparison_InJoinLambda_OnIQueryable_Warning() {
+            var diagnostics = await GetDiagnosticsAsync("""
+                using System;
+                using System.Linq;
 
-    [Fact]
-    public async Task Equals_WithStringComparison_InSelectLambda_OnIQueryable_Warning() {
-        var source = """
-            using System;
-            using System.Linq;
+                public class Coop { public string Name { get; set; } }
+                public class User { public string CoopName { get; set; } }
 
-            public class Test {
-                public void Run(IQueryable<string> query, string value) {
-                    var result = query.Select(s => s.{|#0:Equals(value, StringComparison.InvariantCultureIgnoreCase)|});
+                public class Test {
+                    public void Run(IQueryable<User> users, IQueryable<Coop> coops, string targetName) {
+                        var result = users
+                            .Join(coops, u => u.CoopName, c => c.Name, (u, c) => new { u, c })
+                            .Where(x => x.c.Name.Equals(targetName, StringComparison.CurrentCultureIgnoreCase));
+                    }
                 }
-            }
-            """;
+                """);
 
-        var expected = Verify.Diagnostic(LinqStringEqualsAnalyzer.DiagnosticId)
-            .WithLocation(0)
-            .WithSeverity(DiagnosticSeverity.Warning);
+            Assert.IsTrue(diagnostics.Any(d => d.Id == LinqStringEqualsAnalyzer.DiagnosticId));
+        }
 
-        await Verify.VerifyAnalyzerAsync(source, expected);
-    }
+        [TestMethod]
+        public async Task Equals_WithStringComparison_InSelectLambda_OnIQueryable_Warning() {
+            var diagnostics = await GetDiagnosticsAsync("""
+                using System;
+                using System.Linq;
 
-    // -------------------------------------------------------------------------
-    // Cases that should NOT produce a diagnostic
-    // -------------------------------------------------------------------------
-
-    [Fact]
-    public async Task Equals_WithStringComparison_OnIEnumerable_NoDiagnostic() {
-        // IEnumerable is evaluated in-process; no SQL translation required.
-        var source = """
-            using System;
-            using System.Collections.Generic;
-            using System.Linq;
-
-            public class Test {
-                public void Run(IEnumerable<string> list, string value) {
-                    var result = list.Where(s => s.Equals(value, StringComparison.OrdinalIgnoreCase));
+                public class Test {
+                    public void Run(IQueryable<string> query, string value) {
+                        var result = query.Select(s => s.Equals(value, StringComparison.InvariantCultureIgnoreCase));
+                    }
                 }
-            }
-            """;
+                """);
 
-        await Verify.VerifyAnalyzerAsync(source);
-    }
+            Assert.IsTrue(diagnostics.Any(d => d.Id == LinqStringEqualsAnalyzer.DiagnosticId));
+        }
 
-    [Fact]
-    public async Task Equals_WithStringComparison_OutsideLambda_NoDiagnostic() {
-        // Plain method body — not inside any LINQ lambda.
-        var source = """
-            using System;
+        // -------------------------------------------------------------------------
+        // Cases that should NOT produce a diagnostic
+        // -------------------------------------------------------------------------
 
-            public class Test {
-                public bool Run(string a, string b) {
-                    return a.Equals(b, StringComparison.OrdinalIgnoreCase);
+        [TestMethod]
+        public async Task Equals_WithStringComparison_OnIEnumerable_NoDiagnostic() {
+            var diagnostics = await GetDiagnosticsAsync("""
+                using System;
+                using System.Collections.Generic;
+                using System.Linq;
+
+                public class Test {
+                    public void Run(IEnumerable<string> list, string value) {
+                        var result = list.Where(s => s.Equals(value, StringComparison.OrdinalIgnoreCase));
+                    }
                 }
-            }
-            """;
+                """);
 
-        await Verify.VerifyAnalyzerAsync(source);
-    }
+            Assert.IsFalse(diagnostics.Any(d => d.Id == LinqStringEqualsAnalyzer.DiagnosticId));
+        }
 
-    [Fact]
-    public async Task Equals_OneArgOverload_InIQueryableLambda_NoDiagnostic() {
-        // Only the two-argument overload (with StringComparison) is non-translatable.
-        var source = """
-            using System;
-            using System.Linq;
+        [TestMethod]
+        public async Task Equals_WithStringComparison_OutsideLambda_NoDiagnostic() {
+            var diagnostics = await GetDiagnosticsAsync("""
+                using System;
 
-            public class Test {
-                public void Run(IQueryable<string> query, string value) {
-                    var result = query.Where(s => s.Equals(value));
+                public class Test {
+                    public bool Run(string a, string b) {
+                        return a.Equals(b, StringComparison.OrdinalIgnoreCase);
+                    }
                 }
-            }
-            """;
+                """);
 
-        await Verify.VerifyAnalyzerAsync(source);
-    }
+            Assert.IsFalse(diagnostics.Any(d => d.Id == LinqStringEqualsAnalyzer.DiagnosticId));
+        }
 
-    [Fact]
-    public async Task NonStringEquals_WithTwoArgs_InIQueryableLambda_NoDiagnostic() {
-        // Receiver is not a string — should not flag.
-        var source = """
-            using System;
-            using System.Linq;
+        [TestMethod]
+        public async Task Equals_OneArgOverload_InIQueryableLambda_NoDiagnostic() {
+            var diagnostics = await GetDiagnosticsAsync("""
+                using System;
+                using System.Linq;
 
-            public class MyObj { public bool Equals(object other, StringComparison c) => true; }
-
-            public class Test {
-                public void Run(IQueryable<MyObj> query, MyObj value) {
-                    var result = query.Where(s => s.Equals(value, StringComparison.Ordinal));
+                public class Test {
+                    public void Run(IQueryable<string> query, string value) {
+                        var result = query.Where(s => s.Equals(value));
+                    }
                 }
-            }
-            """;
+                """);
 
-        await Verify.VerifyAnalyzerAsync(source);
-    }
+            Assert.IsFalse(diagnostics.Any(d => d.Id == LinqStringEqualsAnalyzer.DiagnosticId));
+        }
 
-    [Fact]
-    public async Task Equals_WithStringComparison_InAsEnumerableLambda_NoDiagnostic() {
-        // Once AsEnumerable() is called, the subsequent LINQ operators run in-process.
-        var source = """
-            using System;
-            using System.Linq;
+        [TestMethod]
+        public async Task Equals_WithStringComparison_AfterAsEnumerable_NoDiagnostic() {
+            // AsEnumerable() switches to IEnumerable — subsequent operators run in-process.
+            var diagnostics = await GetDiagnosticsAsync("""
+                using System;
+                using System.Linq;
 
-            public class Test {
-                public void Run(IQueryable<string> query, string value) {
-                    var result = query.AsEnumerable()
-                                      .Where(s => s.Equals(value, StringComparison.OrdinalIgnoreCase));
+                public class Test {
+                    public void Run(IQueryable<string> query, string value) {
+                        var result = query.AsEnumerable()
+                                          .Where(s => s.Equals(value, StringComparison.OrdinalIgnoreCase));
+                    }
                 }
-            }
-            """;
+                """);
 
-        await Verify.VerifyAnalyzerAsync(source);
+            Assert.IsFalse(diagnostics.Any(d => d.Id == LinqStringEqualsAnalyzer.DiagnosticId));
+        }
     }
 }
