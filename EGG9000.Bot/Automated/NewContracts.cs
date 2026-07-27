@@ -73,7 +73,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 // If any eggs had their modifiers or icons changed
-                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && !ce.Equals(e)));
+                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && !e.Equals(ce)));
                 if(updatedCustomEggs.Any()) {
                     foreach(var updatedEgg in updatedCustomEggs) {
                         var existingEgg = _db.CustomEggs.FirstOrDefault(dbe => dbe.Identifier == updatedEgg.Identifier);
