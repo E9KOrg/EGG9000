@@ -126,7 +126,13 @@ namespace EGG9000.Site.Controllers {
                 var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildGroup.Key);
 
                 foreach(var coop in guildGroup.OrderBy(x => rnd.Next())) {
-                    var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
+                    var trackedMessages = TrackedMessageSerializer.Deserialize(coop.UpdateMessagesId);
+                    var trackedIds = trackedMessages.Select(x => x.MessageId).ToHashSet();
+                    var legitAuthorIds = new HashSet<ulong> { KnownUsers.Bot };
+                    foreach(var webhookId in trackedMessages.Where(x => x.WebhookId != null).Select(x => x.WebhookId!.Value).Distinct()) {
+                        legitAuthorIds.Add(webhookId);
+                    }
+
                     var channel = guild.GetThreadChannel(coop.ThreadID);
                     if(channel == null) {
                         continue;
@@ -134,9 +140,9 @@ namespace EGG9000.Site.Controllers {
                     try {
                         var pinned = await channel.GetMessagesAsync(1000).FlattenAsync();
                         Console.WriteLine(pinned.Count(x => x.IsPinned));
-                        foreach(var msg in pinned.Where(x => x.Author.Id == KnownUsers.Bot)) {
+                        foreach(var msg in pinned.Where(x => legitAuthorIds.Contains(x.Author.Id))) {
                             if(msg.IsPinned || msg.Embeds.Count > 0) {
-                                if(!UpdateMessageIDs.Contains(msg.Id)) {
+                                if(!trackedIds.Contains(msg.Id)) {
                                     await msg.DeleteAsync();
                                 }
                             }

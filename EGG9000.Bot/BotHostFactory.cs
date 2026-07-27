@@ -36,6 +36,11 @@ public static class BotHostFactory {
             services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
             services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
 
+            services.AddSingleton<CoopCreationQueueService>();
+            services.AddSingleton<ICoopCreationQueue>(provider => provider.GetRequiredService<CoopCreationQueueService>());
+            services.AddHostedService(provider => provider.GetRequiredService<CoopCreationQueueService>());
+            services.AddSingleton<CoopMessageSender>();
+
             SecretsHelper.Initialize(hostContext.Configuration);
 
             var connectionString = SecretsHelper.GetConfigOrSecret(
