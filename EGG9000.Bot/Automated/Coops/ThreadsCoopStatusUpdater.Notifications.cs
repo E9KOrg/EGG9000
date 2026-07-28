@@ -23,9 +23,9 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"All users have joined the co-op {coopChannel.Mention}", db);
-                if(dmResult != DMResult.Success) {
+                if(!dmResult.Success) {
                     var capturedUser = userStatus.DiscordUser;
-                    queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{capturedUser.Mention} All users have joined the co-op {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}"));
+                    queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{capturedUser.Mention} All users have joined the co-op {coopChannel.Mention} {(dmResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}"));
                 }
             }
         }
@@ -38,9 +38,9 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"The co-op {coopChannel.Mention} has finished and you are able to exit the co-op.", db);
-                if(dmResult != DMResult.Success) {
+                if(!dmResult.Success) {
                     var capturedUser = userStatus.DiscordUser;
-                    queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{capturedUser.Mention} The co-op {coopChannel.Mention} has finished and everyone is checked in. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}"));
+                    queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{capturedUser.Mention} The co-op {coopChannel.Mention} has finished and everyone is checked in. {(dmResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}"));
                 }
             }
         }
@@ -53,9 +53,9 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"The co-op {coopChannel.Mention} has finished.", db);
-                if(dmResult != DMResult.Success) {
+                if(!dmResult.Success) {
                     var capturedUser = userStatus.DiscordUser;
-                    queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{capturedUser.Mention} The co-op {coopChannel.Mention} has finished. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}"));
+                    queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{capturedUser.Mention} The co-op {coopChannel.Mention} has finished. {(dmResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}"));
                 }
             }
         }
