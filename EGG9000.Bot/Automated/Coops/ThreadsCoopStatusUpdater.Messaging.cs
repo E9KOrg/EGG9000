@@ -271,9 +271,28 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-            var tableString = $"```{GetTable(table)}```";
+            return ChunkTableAtLimit(table, V1MessageContentCharBudget);
+        }
 
-            return ChunkAtDiscordMessageLimit(tableString);
+        public static List<string> ChunkTableAtLimit(List<List<FixedWidthCell>> table, int limit) {
+            var header = table[0];
+            var columnWidths = ComputeColumnWidths(table);
+            string Render(List<List<FixedWidthCell>> rows) => $"```{GetTable(rows, columnWidths)}```";
+
+            var chunks = new List<string>();
+            var current = new List<List<FixedWidthCell>> { header };
+            foreach(var row in table.Skip(1)) {
+                var candidate = new List<List<FixedWidthCell>>(current) { row };
+                if(current.Count > 1 && Render(candidate).Length > limit) {
+                    chunks.Add(Render(current));
+                    current = [header, row];
+                } else {
+                    current.Add(row);
+                }
+            }
+            chunks.Add(Render(current));
+
+            return chunks;
         }
 
         public static List<string> ChunkAtDiscordMessageLimit(string text, int limit = 2000) {

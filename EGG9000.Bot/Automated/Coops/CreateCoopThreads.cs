@@ -400,12 +400,14 @@ namespace EGG9000.Bot.Automated.Coops {
             var category = categories?.OrderBy(x => x.DiscordCategory.Position)?.FirstOrDefault(x => x.CurrentCount < 50);
 
             if(BuildConfig.IsDev9002 && category == null) {
-                var newCategory = await OverflowSocketGuild.CreateCategoryChannelAsync("Coops");
+                if(!OverflowSocketGuild.CategoryChannels.Any(c => c.Name == "Coops")) {
+                    await OverflowSocketGuild.CreateCategoryChannelAsync("Coops");
+                }
                 categories = (await _client.GetAllCoopCategories(OverflowSocketGuild)).Select(x => new CoopCategories(OverflowSocketGuild, x)).ToList();
                 category = categories.OrderBy(x => x.DiscordCategory.Position).FirstOrDefault(x => x.CurrentCount < 50);
             }
             if(category == null) {
-                _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
+                _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}. If this is a primary guild, a newly created 'Coops' category must be added to its CoopCategories config before it will be used.", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
                 return null;
             }
             return await _queue.EnqueueLowAsync(() => OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger));

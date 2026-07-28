@@ -231,7 +231,6 @@ namespace EGG9000.Bot.Commands {
                 CoopEnds = DateTimeOffset.UtcNow.AddDays(2),
                 Created = DateTimeOffset.UtcNow,
                 AddedFromBackup = true,
-                CreatorID = Coop.TestSeedCreatorId,
             };
             Db.Coops.Add(coop);
             await Db.SaveChangesAsync();
@@ -247,7 +246,7 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Seeded fake coop `{coop.Name}` (MaxUsers `{coop.MaxUsers}`) and triggered CreateCoopThreads. A real thread should appear in the contract channel within a few seconds. Then run `/test simulaterender coopname:{coop.Name}`. Clean up with `/test clearseed`."); });
         }
 
-        [SlashCommand("simulaterender", "[DEV] Push synthetic roster data through the real status-message pipeline into a simulated coop's thread")]
+        [SlashCommand("simulaterender", "[DEV] Render synthetic roster data into a simulated coop's real thread")]
         public async Task SimulateRender(
             [Summary(description: "Coop name from a prior /test simulatecoop run")] string coopname,
             [Summary(description: "Fake participant count to render")] int participantcount,

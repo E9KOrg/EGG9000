@@ -27,8 +27,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 table.Add(BuildSyntheticRosterRow(i, worstCase));
             }
 
-            var tableString = $"```{GetTable(table)}```";
-            return ChunkAtDiscordMessageLimit(tableString);
+            return ChunkTableAtLimit(table, V1MessageContentCharBudget);
         }
 
         private static List<FixedWidthCell> BuildSyntheticRosterRow(int index, bool worstCase) {
