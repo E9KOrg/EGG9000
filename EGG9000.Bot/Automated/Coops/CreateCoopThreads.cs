@@ -172,13 +172,13 @@ namespace EGG9000.Bot.Automated.Coops {
 
                                         var capturedThread = coopThread;
                                         var introText = $"Coop **{coop.Name}** for the contract **{guildContract.Contract.Name}** is ready for the following to join: {string.Join(", ", xrefs.Select(x => $"<@{x.User.DiscordId}>" + (x.User.EggIncAccounts.Count > 1 ? $"({x.User.EggIncAccounts.FirstOrDefault(e => e.Id == x.EggIncId)?.Backup.UserName ?? "Check website"})" : "")))}\n";
+                                        var placeholderSlots = Math.Max(0, ThreadsCoopStatusUpdater.EstimateWorstCaseMessageSlots(coop.MaxUsers.GetValueOrDefault()) - 1);
                                         var msgIds = await _queue.EnqueueLowAsync<List<ulong>>(async () => {
-                                            var m1 = await capturedThread.SendMessageAsync(introText);
-                                            var m2 = await capturedThread.SendMessageAsync("\u17B5");
-                                            var m3 = await capturedThread.SendMessageAsync("\u17B5");
-                                            var m4 = await capturedThread.SendMessageAsync("\u17B5");
-                                            var m5 = await capturedThread.SendMessageAsync("\u17B5");
-                                            return [m1.Id, m2.Id, m3.Id, m4.Id, m5.Id];
+                                            var ids = new List<ulong> { (await capturedThread.SendMessageAsync(introText)).Id };
+                                            for(var i = 0; i < placeholderSlots; i++) {
+                                                ids.Add((await capturedThread.SendMessageAsync("\u17B5")).Id);
+                                            }
+                                            return ids;
                                         });
                                         coopToUpdate.UpdateMessagesId = JsonConvert.SerializeObject(msgIds);
                                         await db2.SaveChangesAsyncRetry(cancellationToken: cancellationToken);

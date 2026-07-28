@@ -8,7 +8,6 @@ using Humanizer;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly;
-using static EGG9000.Common.Helpers.Prefarm;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,6 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated.Coops {
     public partial class ThreadsCoopStatusUpdater {
@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             msgs.Insert(0, "@@@EMBED");
 
-            for(var i = msgs.Count; i < (coop.MaxUsers > 40 ? 5 : 4); i++) {
+            for(var i = msgs.Count; i < EstimateWorstCaseMessageSlots(coop.MaxUsers.GetValueOrDefault()); i++) {
                 msgs.Add("឵");
             }
             if(string.IsNullOrWhiteSpace(coop.UpdateMessagesId)) {
@@ -244,6 +244,8 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(x.CoopStatus?.TimeCheatDetected ?? false)
                     sleeping += " ⏱️";
+
+                sleeping = Truncate(sleeping, 24);
 
 
                 var percent = coopDetails.GetProjectedShare(x);
