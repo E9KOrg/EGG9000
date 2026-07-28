@@ -3,6 +3,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Automated;
+using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -16,6 +17,7 @@ using Microsoft.Extensions.Hosting;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 using static EGG9000.Bot.Commands.CommonTypes.AutoCompleteHandlers;
@@ -196,6 +198,82 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
 
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Assigned you to fake coop `{coop.Name}` for **{contract.Name}**. 'Find my Coop' in the contract channel should now return it. Clean up with `/test clearseed`."); });
+        }
+
+        [SlashCommand("simulatecoop", "[DEV] Create a fake coop and force-run real thread creation for it right now")]
+        public async Task SimulateCoop(
+            [Summary(description: "Contract - must already have a working contract channel in this guild")][Autocomplete(typeof(StaffContractAutoComplete))] string contractid,
+            [Summary(description: "MaxUsers to simulate (defaults to the contract's real max)")] int? maxusers = null) {
+            await Context.Interaction.DeferAsync(ephemeral: true);
+
+            var contract = await Db.Contracts.FirstOrDefaultAsync(c => c.ID == contractid);
+            if(contract is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No contract found with ID `{contractid}`."); });
+                return;
+            }
+
+            var guildId = Context.Guild?.Id ?? 0;
+            var gc = await Db.GuildContracts.FirstOrDefaultAsync(c => c.GuildID == guildId && c.ContractID == contractid);
+            if(gc is null || _client.GetChannel(gc.DiscordChannelId) is not ITextChannel) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("This contract has no working contract channel in this guild - can't create a real thread for it."); });
+                return;
+            }
+
+            var coop = new Coop {
+                ContractID = contractid,
+                Name = $"{SeedPrefix}{ShortId()}",
+                GuildId = guildId,
+                Status = CoopStatusEnum.WaitingOnThread,
+                League = 0,
+                MaxUsers = maxusers ?? (contract.MaxUsers > 0 ? contract.MaxUsers : 10),
+                CurrentUsers = 0,
+                ThreadID = 0,
+                CoopEnds = DateTimeOffset.UtcNow.AddDays(2),
+                Created = DateTimeOffset.UtcNow,
+                AddedFromBackup = true,
+                CreatorID = Coop.TestSeedCreatorId,
+            };
+            Db.Coops.Add(coop);
+            await Db.SaveChangesAsync();
+
+            var svc = _serviceProvider.GetServices<IHostedService>().OfType<IUpdaterService>()
+                .FirstOrDefault(s => s.GetType().Name == nameof(CreateCoopThreads));
+            if(svc is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("CreateCoopThreads service not found."); });
+                return;
+            }
+            svc.ResetTimer();
+
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Seeded fake coop `{coop.Name}` (MaxUsers `{coop.MaxUsers}`) and triggered CreateCoopThreads. A real thread should appear in the contract channel within a few seconds. Then run `/test simulaterender coopname:{coop.Name}`. Clean up with `/test clearseed`."); });
+        }
+
+        [SlashCommand("simulaterender", "[DEV] Push synthetic roster data through the real status-message pipeline into a simulated coop's thread")]
+        public async Task SimulateRender(
+            [Summary(description: "Coop name from a prior /test simulatecoop run")] string coopname,
+            [Summary(description: "Fake participant count to render")] int participantcount,
+            [Summary(description: "Pad every field to its worst-case truncation length (stress test)")] bool worstcase = true) {
+            await Context.Interaction.DeferAsync(ephemeral: true);
+
+            var coop = await Db.Coops.IgnoreQueryFilters().FirstOrDefaultAsync(c => c.Name == coopname);
+            if(coop is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No seeded coop named `{coopname}` - run `/test simulatecoop` first."); });
+                return;
+            }
+            if(coop.ThreadID == 0 || _client.GetChannel(coop.ThreadID) is not IThreadChannel thread) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Coop `{coopname}` has no active thread yet - wait for CreateCoopThreads to run, or re-run `/test simulatecoop`."); });
+                return;
+            }
+
+            var updater = _serviceProvider.GetServices<IHostedService>().OfType<ThreadsCoopStatusUpdater>().FirstOrDefault();
+            if(updater is null) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("ThreadsCoopStatusUpdater service not found."); });
+                return;
+            }
+
+            var (messageCount, usedV2) = await updater.SimulateStatusRender(coop, thread, participantcount, worstcase, CancellationToken.None);
+            await Db.SaveChangesAsync();
+
+            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Rendered `{participantcount}` synthetic participants ({(worstcase ? "worst-case" : "typical")} sizing) into {thread.Mention} using **{(usedV2 ? "ComponentsV2" : "V1 plaintext")}**. Slots used: `{messageCount}`."); });
         }
 
     }

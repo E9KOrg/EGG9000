@@ -25,7 +25,7 @@ namespace EGG9000.Bot.Automated.Coops {
             public List<IMessage> DiscordMessages { get; set; }
         }
 
-        private static async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop, CancellationToken cancellationToken) {
+        internal static async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop, CancellationToken cancellationToken) {
             var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
 
             IEnumerable<IMessage> discordMessages;
@@ -96,7 +96,7 @@ namespace EGG9000.Bot.Automated.Coops {
             };
         }
 
-        private async Task UpdateChannel(List<string> msgs, Embed embed, IThreadChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
+        internal async Task UpdateChannel(List<string> msgs, Embed embed, IThreadChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
             var sw = new Stopwatch();
             sw.Restart();
             var times = new List<long>();
@@ -271,22 +271,22 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-            var lstr = new List<string>();
-
-
-
             var tableString = $"```{GetTable(table)}```";
 
+            return ChunkAtDiscordMessageLimit(tableString);
+        }
+
+        public static List<string> ChunkAtDiscordMessageLimit(string text, int limit = 2000) {
             var msgs = new List<string>();
 
-            while(tableString.Length > 2000) {
-                var index = tableString.LastIndexOf('\n', 1997);
+            while(text.Length > limit) {
+                var index = text.LastIndexOf('\n', limit - 3);
 
-                msgs.Add(tableString[..index] + "```");
-                tableString = "```" + tableString[index..];
+                msgs.Add(text[..index] + "```");
+                text = "```" + text[index..];
             }
 
-            msgs.Add(tableString);
+            msgs.Add(text);
 
             return msgs;
         }

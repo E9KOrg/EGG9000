@@ -57,6 +57,7 @@ namespace EGG9000.Common.Database.Entities {
         public ulong ThreadParentChannel { get; set; }
         public bool ThreadArchived { get; set; } = false;
         public bool RolesAddedToThread { get; set; } = false;
+        public bool StatusMessagesUseComponentsV2 { get; set; } = false;
 
 
         public CoopStatusEnum Status { get; set; }

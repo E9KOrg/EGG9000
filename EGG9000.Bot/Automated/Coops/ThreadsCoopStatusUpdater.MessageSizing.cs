@@ -1,3 +1,4 @@
+using Discord;
 using System;
 
 namespace EGG9000.Bot.Automated.Coops {
@@ -8,15 +9,31 @@ namespace EGG9000.Bot.Automated.Coops {
         private const int GiftTableCharsWorstCase = 550;
         private const int CommandLinksCharsWorstCase = 350;
         private const int GradeWarningCharsWorstCase = 150;
-        private const int V1MessageContentCharBudget = 2000;
+        private const int EmbedHeaderCharsWorstCase = 500;
+        public const int V1MessageContentCharBudget = 2000;
 
-        public static int EstimateWorstCaseMessageSlots(int maxUsers) {
+        private static int EstimateWorstCaseTextChars(int maxUsers) {
             var rosterChars = (maxUsers + 1) * RosterRowCharsWorstCase;
             var unjoinedChars = UnjoinedListOverheadCharsWorstCase + maxUsers * UnjoinedMentionCharsWorstCase;
-            var totalTextChars = rosterChars + unjoinedChars + GiftTableCharsWorstCase + CommandLinksCharsWorstCase + GradeWarningCharsWorstCase;
+            return rosterChars + unjoinedChars + GiftTableCharsWorstCase + CommandLinksCharsWorstCase + GradeWarningCharsWorstCase;
+        }
 
-            var textSlots = (int)Math.Ceiling(totalTextChars / (double)V1MessageContentCharBudget);
+        public static int EstimateWorstCaseMessageSlots(int maxUsers) {
+            var textSlots = (int)Math.Ceiling(EstimateWorstCaseTextChars(maxUsers) / (double)V1MessageContentCharBudget);
             return 1 + textSlots;
         }
+
+        public static int EstimateWorstCaseMessageSlotsV2(int maxUsers) {
+            var totalChars = EstimateWorstCaseTextChars(maxUsers) + EmbedHeaderCharsWorstCase;
+            return (int)Math.Ceiling(totalChars / (double)ComponentsV2Safe.TextDisplayMax);
+        }
+
+        internal static string BuildWorstCaseFillerText(int maxUsers) {
+            var unjoinedChars = UnjoinedListOverheadCharsWorstCase + maxUsers * UnjoinedMentionCharsWorstCase;
+            var extrasChars = unjoinedChars + GiftTableCharsWorstCase + CommandLinksCharsWorstCase + GradeWarningCharsWorstCase;
+            return new string('X', extrasChars);
+        }
+
+        internal static string BuildWorstCaseHeaderText() => new string('X', EmbedHeaderCharsWorstCase);
     }
 }

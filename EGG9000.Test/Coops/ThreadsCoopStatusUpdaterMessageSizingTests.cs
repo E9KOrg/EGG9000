@@ -32,5 +32,22 @@ namespace EGG9000.Test.Coops {
 
             Assert.IsTrue(ThreadsCoopStatusUpdater.EstimateWorstCaseMessageSlots(typicalCoopMaxUsers) <= 4);
         }
+
+        [TestMethod]
+        public void EstimateWorstCaseMessageSlotsV2_UsesFewerSlotsThanV1() {
+            var maxUsers = 40;
+
+            var v1Slots = ThreadsCoopStatusUpdater.EstimateWorstCaseMessageSlots(maxUsers);
+            var v2Slots = ThreadsCoopStatusUpdater.EstimateWorstCaseMessageSlotsV2(maxUsers);
+
+            Assert.IsTrue(v2Slots < v1Slots);
+        }
+
+        [TestMethod]
+        public void EstimateWorstCaseMessageSlotsV2_TypicalCoopFitsInOneOrTwoMessages() {
+            var typicalCoopMaxUsers = 20;
+
+            Assert.IsTrue(ThreadsCoopStatusUpdater.EstimateWorstCaseMessageSlotsV2(typicalCoopMaxUsers) <= 2);
+        }
     }
 }
