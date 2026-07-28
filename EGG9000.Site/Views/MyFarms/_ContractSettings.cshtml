@@ -36,7 +36,7 @@
 <div class="contract-settings" data-account-index="@index" data-isself="@(isSelf ? "1" : "0")" style="margin-top:20px;">
     @if (!isSelf && !isAdmin) {
         <div class="alert alert-secondary" style="padding:6px 10px;">Read-only: viewing another user's settings.</div>
-    } else if (isAdmin) {
+    } else if (isAdmin && !isSelf) {
         <div class="alert alert-secondary" style="padding:6px 10px;">Caution: viewing another user's settings.</div>
     }
     <div class="card" style="margin-top:10px;">
@@ -62,8 +62,8 @@
 
             <hr />
 
-            <div class="form-check cs-check" style="margin-bottom:16px;">
-                <input class="form-check-input cs-input" type="checkbox" data-field="colleggtible"
+            <div class="form-check form-switch cs-check" style="margin-bottom:16px;">
+                <input class="form-check-input cs-input" type="checkbox" role="switch" data-field="colleggtible"
                        id="cs-colleggtible-@index" @(colleggtibleOn ? "checked" : "") @dis />
                 <label class="form-check-label" for="cs-colleggtible-@index">Assign me if missing a colleggtible</label>
             </div>
@@ -71,9 +71,10 @@
             <div class="form-group" style="margin-top:18px;">
                 <label for="cs-seasonalmode-@index">Seasonal Contracts</label>
                 <p style="font-size:0.82em; color:grey; margin:2px 0 6px;">
-                    Force-assigns seasonal contracts you haven't completed yet (e.g. you missed a season's PE). Already-completed seasonal contracts are governed by Redo Completed Leggacies below instead.
+                    Choose when to be assigned seasonal contracts you haven't completed yet.<br />
+                    Already-completed seasonal contracts are governed by Redo Completed Leggacies below.
                 </p>
-                <select class="form-control cs-input" data-field="seasonalMode" id="cs-seasonalmode-@index" @dis>
+                <select class="form-select cs-input" data-field="seasonalMode" id="cs-seasonalmode-@index" @dis>
                     @opt(0, seasonalMode, "Always assign")
                     @opt(1, seasonalMode, "Assign until PE earned")
                     @opt(2, seasonalMode, "Assign until CS goal")
@@ -81,11 +82,11 @@
 
                 <div class="cs-dependent cs-seasonalgoal-wrap-@index" style="@(seasonalMode == 2 ? "" : "display:none;")">
                     <div class="form-group" style="margin-bottom:6px;">
-                        <label for="cs-seasonalgoal-@index">CS goal</label>
+                        <label for="cs-seasonalgoal-@index" style="display:block;">CS goal</label>
                         <div class="cs-num-group">
                             <button type="button" class="btn btn-secondary cs-num-step" data-step="-1000" tabindex="-1" @dis>-</button>
-                            <input class="form-control cs-num" type="text" inputmode="numeric" data-field="seasonalCsGoal"
-                                   data-min="0" data-value="@seasonalCsGoal.ToString("0")"
+                            <input class="form-control cs-num" type="text" inputmode="numeric" size="6" data-field="seasonalCsGoal"
+                                   data-min="@SeasonalRule.CsGoalFloor(account.GetGrade()).ToString("0")" data-value="@seasonalCsGoal.ToString("0")"
                                    id="cs-seasonalgoal-@index" @dis />
                             <button type="button" class="btn btn-secondary cs-num-step" data-step="1000" tabindex="-1" @dis>+</button>
                         </div>
@@ -105,8 +106,8 @@
                     </p>
                 </div>
 
-                <div class="form-check cs-check cs-seasonalafter-wrap-@index" style="margin-top:14px; @(seasonalMode == 1 || seasonalMode == 2 ? "" : "display:none;")">
-                    <input class="form-check-input cs-input" type="checkbox" data-field="seasonalRewardFilterAfter"
+                <div class="form-check form-switch cs-check cs-seasonalafter-wrap-@index" style="margin-top:14px; @(seasonalMode == 1 || seasonalMode == 2 ? "" : "display:none;")">
+                    <input class="form-check-input cs-input" type="checkbox" role="switch" data-field="seasonalRewardFilterAfter"
                            id="cs-seasonalafter-@index" @(seasonalRewardFilterAfter ? "checked" : "") @dis />
                     <label class="form-check-label" for="cs-seasonalafter-@index">Assign by reward filter after</label>
                     <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
@@ -118,8 +119,8 @@
             <hr style="margin:20px 0;" />
 
             <div class="form-group">
-                <label for="cs-redomode-@index">Redo leggacies</label>
-                <select class="form-control cs-input" data-field="redoMode" id="cs-redomode-@index" @dis>
+                <label for="cs-redomode-@index">Redo Completed Leggacies</label>
+                <select class="form-select cs-input" data-field="redoMode" id="cs-redomode-@index" @dis>
                     @opt((int)RedoLeggacyOption.NotSet, redoMode, "Not set")
                     @opt((int)RedoLeggacyOption.YesAll, redoMode, "Yes (all)")
                     @opt((int)RedoLeggacyOption.YesThreshold, redoMode, "Yes (under threshold)")
@@ -129,10 +130,10 @@
                 </select>
 
                 <div class="cs-dependent form-group cs-redothreshold-wrap-@index" style="margin-bottom:0; @(redoMode == (int)RedoLeggacyOption.YesThreshold ? "" : "display:none;")">
-                    <label for="cs-redothreshold-@index">CS threshold</label>
+                    <label for="cs-redothreshold-@index" style="display:block;">CS threshold</label>
                     <div class="cs-num-group">
                         <button type="button" class="btn btn-secondary cs-num-step" data-step="-1000" tabindex="-1" @dis>-</button>
-                        <input class="form-control cs-num" type="text" inputmode="numeric" data-field="redoThreshold"
+                        <input class="form-control cs-num" type="text" inputmode="numeric" size="6" data-field="redoThreshold"
                                data-min="0" data-max="90000" data-value="@redoThreshold"
                                id="cs-redothreshold-@index" @dis />
                         <button type="button" class="btn btn-secondary cs-num-step" data-step="1000" tabindex="-1" @dis>+</button>
@@ -146,8 +147,8 @@
                 </div>
 
                 <div class="cs-dependent cs-excludeseasonal-wrap-@index" style="margin-top:6px; @(redoMode == (int)RedoLeggacyOption.NotSet || redoMode == (int)RedoLeggacyOption.No ? "display:none;" : "")">
-                    <div class="form-check cs-check">
-                        <input class="form-check-input cs-input" type="checkbox" data-field="excludeSeasonal"
+                    <div class="form-check form-switch cs-check">
+                        <input class="form-check-input cs-input" type="checkbox" role="switch" data-field="excludeSeasonal"
                                id="cs-excludeseasonal-@index" @(s.Redo.ExcludeSeasonal ? "checked" : "") @dis />
                         <label class="form-check-label" for="cs-excludeseasonal-@index">Skip seasonal replays</label>
                         <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
@@ -157,14 +158,22 @@
                 </div>
             </div>
 
-            <div class="form-check cs-check" style="margin-top:10px;">
-                <input class="form-check-input cs-input" type="checkbox" data-field="twoToThree"
+            <div class="form-check form-switch cs-check" style="margin-top:10px;">
+                <input class="form-check-input cs-input" type="checkbox" role="switch" data-field="twoToThree"
                        id="cs-twotothree-@index" @(s.TwoToThree ? "checked" : "") @dis />
-                <label class="form-check-label" for="cs-twotothree-@index">Bump 2-goal completions to 3</label>
-                <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
-                    Some old contracts are re-released with a 3rd reward. They look "already-completed" to the Bot, so by default, you aren't reassigned.<br />
-                    Enable to be assigned for the new reward (subject to your reward filter passing the 3rd reward).
-                </p>
+                <label class="form-check-label" for="cs-twotothree-@index">Auto-Assign 2 -> 3 Contracts</label>
+                <div style="font-size:0.82em; color:grey; margin:2px 0 0;">
+                    Ocasionally, Leggacy Contracts will be released with three rewards, despite previously having two rewards.
+                    In your contract history, this will appear as a complete contract, and auto-assignment will not happen, by default.
+                    <ul style="margin:4px 0 0; padding-left:18px;">
+                        <li>
+                            If set to No, you will not be assigned coops for contracts in which only a new third reward is offered.
+                        </li>
+                        <li>
+                            If set to Yes, you will be automatically assigned a co-op for these "2 -> 3" Leggacy Contracts.
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
