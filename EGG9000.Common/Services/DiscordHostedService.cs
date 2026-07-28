@@ -450,9 +450,7 @@ namespace EGG9000.Common.Services {
             using var imageStream = new MemoryStream(imageBytes);
             var discordImage = new Image(imageStream);
 
-            var newAppEmote = await _client.Gateway.CreateApplicationEmoteAsync(emojiName, discordImage);
-
-            if(emoteToReplace != null && newAppEmote != null) {
+            if(emoteToReplace != null) {
                 var appEmote = await _client.Gateway.GetApplicationEmoteAsync(emoteToReplace.Id);
                 if(appEmote is not null) {
                     await _client.Gateway.DeleteApplicationEmoteAsync(emoteToReplace.Id, options: new RequestOptions() {
@@ -460,6 +458,8 @@ namespace EGG9000.Common.Services {
                     });
                 }
             }
+
+            var newAppEmote = await _client.Gateway.CreateApplicationEmoteAsync(emojiName, discordImage);
 
             return newAppEmote ?? emoteToReplace ?? null;
         }
