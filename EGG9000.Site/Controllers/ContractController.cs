@@ -235,7 +235,7 @@ namespace EGG9000.Site.Controllers {
                 return Json(new { error = $"Unable to add permissions for {dbuser.DiscordUsername}, likely not in overflow server" });
             }
 
-            _db.Add(xref);
+            await CreateCoopsV2.AddOrReviveXrefAsync(_db, xref);
             await _db.SaveChangesAsync();
 
             var guildContract = await _db.GuildContracts.FirstOrDefaultAsync(x => x.ContractID == targetCoop.ContractID && x.GuildID == guild.Id && x.League == targetCoop.League);

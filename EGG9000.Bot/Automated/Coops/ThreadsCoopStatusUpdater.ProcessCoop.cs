@@ -537,7 +537,10 @@ namespace EGG9000.Bot.Automated.Coops {
 
                             // Removal runs even when discordUser is null. A user who left the server while
                             // assigned but not joined can never join, so once past the kick window we still
-                            // need to mark their xref removed to free the spot for /findcoopforuser.
+                            // mark their xref removed. A soft-removed xref stops occupying a seat (so
+                            // /findcoopforuser can fill it) and stops being read as a current assignment
+                            // (so the kicked user can be placed somewhere else), but it still exists, so
+                            // the boarding-group assignment engine will not re-place them on its own.
                             if(user is not null && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-hoursToKick) && !userFarmDetails.Xref.NoDemerit) {
                                 var accountName = user.EggIncAccounts.Count > 1 ? $" ({user.EggIncAccounts.Where(a => a.Id == userFarmDetails.Xref.EggIncId).FirstOrDefault()?.Backup?.UserName})" : "";
                                 var kickReason = discordUser != null

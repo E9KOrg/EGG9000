@@ -5,6 +5,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -186,6 +187,29 @@ namespace EGG9000.Common.Helpers {
             return response;
         }
 
+
+        // Persists an xref built by MoveUser. If a row already exists for the same (user, co-op, account)
+        // it's revived in place instead of inserted - the not-joined kick only soft-removes the xref, so
+        // re-placing a user into a co-op they were kicked from would otherwise collide with the existing PK.
+        public static async Task AddOrReviveXrefAsync(ApplicationDbContext db, UserCoopXref newXref) {
+            var existing = db.UserCoopXrefs.Local.FirstOrDefault(x => x.UserId == newXref.UserId && x.CoopId == newXref.CoopId && x.EggIncId == newXref.EggIncId)
+                ?? await db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == newXref.UserId && x.CoopId == newXref.CoopId && x.EggIncId == newXref.EggIncId);
+
+            if(existing is null) {
+                db.Add(newXref);
+                return;
+            }
+
+            existing.Removed = false;
+            existing.RemovedOn = null;
+            existing.AddedToChannel = newXref.AddedToChannel;
+            existing.WasAssigned = true;
+            existing.CreatedOn = newXref.CreatedOn;
+            // Fresh join window, so the reminder/kick cycle starts over rather than firing immediately.
+            existing.JoinWarning12h = false;
+            existing.JoinWarning24h = false;
+            existing.JoinWarning24TillFinish = false;
+        }
 
         public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbUserId, string EggIncId, string eggIncName, ApplicationDbContext db, IUser user, DBUser dbUser, SocketTextChannel targetChannel, SocketTextChannel commandChannel, bool silent = false) {
             var newxref = new UserCoopXref {

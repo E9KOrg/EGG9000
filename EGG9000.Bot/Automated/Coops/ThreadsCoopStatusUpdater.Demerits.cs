@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -114,7 +115,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var hoursToKick = CoopTimingHelper.GetHoursToKick(dbGuild, coop.Contract.cc_only);
                 if(userFarmDetail.Xref.CreatedOn > DateTimeOffset.UtcNow.AddHours(-hoursToKick)) {
-                    SoftRemoveFromCoop(userFarmDetail.Xref);
+                    SoftRemoveFromCoop(userFarmDetail.Xref, coop);
                     await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"Removed {userFarmDetail.DiscordUser?.GetCleanName() ?? user.DiscordUsername} without a demerit since they were added less than {hoursToKick} hours before the co-op finished."));
                     continue;
@@ -147,26 +148,28 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
-        private static void SoftRemoveFromCoop(UserCoopXref xref) {
+        private void SoftRemoveFromCoop(UserCoopXref xref, Coop coop) {
             xref.Removed = true;
             xref.RemovedOn = DateTimeOffset.UtcNow;
+            // Drop from the "find my coop" lookup - they no longer have this co-op to be pointed at.
+            _provider.GetService<CoopAssignmentLookup>()?.Remove(xref.UserId, coop.ContractID);
         }
 
         public async Task AddDemeritAndRemoveFromCoop(string reason, DBUser user, ApplicationDbContext _db, UserCoopXref xref, SocketGuildUser discordUser, IThreadChannel coopChannel, Guild dbGuild, Coop coop, bool alwaysRemove) {
             var demeritChannel = await GetDemeritChannel(dbGuild);
             if(demeritChannel is null) {
                 if(alwaysRemove) {
-                    SoftRemoveFromCoop(xref);
+                    SoftRemoveFromCoop(xref, coop);
                 }
                 return;
             }
             var existingDemerit = await _db.Demerit.AnyAsync(x => x.ContractID == coop.ContractID && x.UserId == user.Id);
             if(existingDemerit || xref.JoinedCoop) {
                 _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"Removing {discordUser?.Mention ?? user.DiscordUsername} due to: {reason}"));
-                SoftRemoveFromCoop(xref);
+                SoftRemoveFromCoop(xref, coop);
                 await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
             } else {
-                SoftRemoveFromCoop(xref);
+                SoftRemoveFromCoop(xref, coop);
                 if(user.IsFreshEgg()) {
                     _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}: You will start receiving demerits for this 7 days after joining the server. {reason} "));
                 } else {
