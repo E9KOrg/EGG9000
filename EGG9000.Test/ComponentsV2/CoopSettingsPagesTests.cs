@@ -32,7 +32,7 @@ namespace EGG9000.Test.ComponentsV2 {
             var container = (ContainerComponent)built.Components.Single();
             var texts = container.Components.OfType<SectionComponent>()
                 .Select(s => ((TextDisplayComponent)s.Components.Single()).Content).ToList();
-            Assert.IsFalse(texts.Any(t => t.Contains("PingOnCoopCreated")));
+            Assert.IsFalse(texts.Any(t => t.Contains("Co-op Created")));
         }
 
         [TestMethod]
@@ -47,8 +47,16 @@ namespace EGG9000.Test.ComponentsV2 {
             Assert.IsFalse(sections.Any(s => ((ButtonComponent)s.Accessory).CustomId.StartsWith("CSAll:PingOnFull,")));
 
             var lockedText = container.Components.OfType<TextDisplayComponent>()
-                .FirstOrDefault(t => t.Content.Contains("PingOnFull") && t.Content.Contains("Locked by Server"));
+                .FirstOrDefault(t => t.Content.Contains("Full") && t.Content.Contains("Locked by Server"));
             Assert.IsNotNull(lockedText);
+        }
+
+        [TestMethod]
+        public void PrettySettingName_StripsPingOnAndSpacesWords() {
+            Assert.AreEqual("Full", CoopSettingsModule.PrettySettingName("PingOnFull"));
+            Assert.AreEqual("Highest EB", CoopSettingsModule.PrettySettingName("PingOnHighestEB"));
+            Assert.AreEqual("Everyone Checked In", CoopSettingsModule.PrettySettingName("PingOnEveryoneCheckedIn"));
+            Assert.AreEqual("Co-op Created Even If Joined", CoopSettingsModule.PrettySettingName("PingOnCoopCreatedEvenIfJoined"));
         }
 
         [TestMethod]

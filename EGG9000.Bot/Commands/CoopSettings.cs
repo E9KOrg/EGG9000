@@ -66,18 +66,27 @@ namespace EGG9000.Bot.Commands {
                 var fi = coopSettingEnum.GetType().GetField(property);
                 var description = (fi.GetCustomAttributes(typeof(DescriptionAttribute), false) is DescriptionAttribute[] attributes && attributes.Any()) ? attributes.First().Description : property;
 
+                var label = PrettySettingName(property);
+
                 var guildOverride = guild.GetCoopSetting(coopSettingEnum);
                 var nextToText = guildOverride.Locked ? (guildOverride.Enabled ? "✅ Yes **(Locked by Server)**" : "❌ No **(Locked by Server)**") : (coopSetting[property] ? "✅ Yes" : "❌ No");
 
                 if(guildOverride.Locked)
-                    page.AddRow($"{property}: {nextToText}", description);
+                    page.AddRow($"{label}: {nextToText}", description);
                 else
-                    page.AddRow($"{property}: {nextToText}", description, new ButtonBuilder("Toggle", $"{prefix}:{property},{dbuser.DiscordId},{!coopOnly}", ButtonStyle.Primary));
+                    page.AddRow($"{label}: {nextToText}", description, new ButtonBuilder("Toggle", $"{prefix}:{property},{dbuser.DiscordId},{!coopOnly}", ButtonStyle.Primary));
             }
 
             if(mcs)
                 page.WithReturn($"MCSAccounts:{dbuser.DiscordId}", "← Contract Settings");
             return page.Build();
+        }
+
+        // Display label only - the raw property name still goes in the button custom ID.
+        // "PingOnCoopCreatedEvenIfJoined" -> "Co-op Created Even If Joined".
+        public static string PrettySettingName(string property) {
+            var name = property.StartsWith("PingOn") ? property["PingOn".Length..] : property;
+            return name.SplitPascalCase().Replace("Coop", "Co-op");
         }
 
         public static MessageComponent ChooserComponents(DBUser dbuser) =>
