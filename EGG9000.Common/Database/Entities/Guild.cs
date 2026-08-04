@@ -140,7 +140,7 @@ namespace EGG9000.Common.Database.Entities {
         public string RolesToSync { get; set; }
         [GuildConfig("Disable Boarding Groups", "Toggles", GuildConfigKind.Bool, Description = "Disable boarding-group staggering")]
         public bool DisableBG { get; set; }
-        [GuildConfig("Allow Guilds", "Toggles", GuildConfigKind.Bool, Description = "Let in-game guild members team up")]
+        [GuildConfig("Allow Guilds", "Toggles", GuildConfigKind.Bool, Description = "Let members group into guilds in Contract Settings")]
         public bool AllowGuilds { get; set; }
         [GuildConfig("Group Roles", "Lists", GuildConfigKind.CsvRoles, Description = "Boarding-group roles")]
         public string GroupRoles { get; set; }
@@ -148,6 +148,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool PublicScoreGrid { get; set; }
         [GuildConfig("Remove Find Coop Spot", "Toggles", GuildConfigKind.Bool, Description = "Hide Find Coop Spot buttons")]
         public bool RemoveFindCoopSpot { get; set; }
+        [GuildConfig("Remove Test Assignment", "Toggles", GuildConfigKind.Bool, Description = "Hide the Test Assignment button")]
+        public bool RemoveTestAssignment { get; set; }
         [GuildConfig("Offline Hours Per Demerit", "Numbers", GuildConfigKind.Int, Description = "Hours of raw offline time per demerit (only used when boarding groups are enabled)")]
         public int OfflineDemeritHours { get; set; } = 30;
         [GuildConfig("Hours To Join (normal)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join a co-op before being removed")]
@@ -276,8 +278,6 @@ namespace EGG9000.Common.Database.Entities {
         BannedUserThread = 36,
         [Description("/TC/Optional: Where potential cheaters will be outed.")]
         CheaterThread = 37,
-        /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
-        UnobtainedUltraChannel = 38*/
         [Description("/TC/Optional: Where changes in players' ULTRA status will be logged")]
         UltraLog = 39,
         [Description("/TC/Optional: Where players who join coops while on break will be logged")]
@@ -288,8 +288,6 @@ namespace EGG9000.Common.Database.Entities {
         StandardPermitRole = 42,
         [Description("/R/Role for users that have the Pro Permit (must be paired with Standard Permit role)")]
         ProPermitRole = 43,
-        /*[Description("/R/Users with this role will be added to all coop threads")]
-        AllCoopsRole = 44*/
         [Description("/TC/Optional: Where NASA Astronomy Pictures of the Day (APOD) will be posted")]
         NasaApod = 46,
         [Description("/TC/Optional: Bot Log, gives status updates when the bot detects new contract and launches boarding groups")]

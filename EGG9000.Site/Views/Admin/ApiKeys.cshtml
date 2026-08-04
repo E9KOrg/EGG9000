@@ -1,4 +1,5 @@
-@model EGG9000.Site.Controllers.AdminController.ApiKeysViewModel
+@using EGG9000.Site.Models.Admin
+@model Admin_ApiKeysViewModel
 @{
     ViewData["Title"] = "API Keys";
 }
@@ -19,76 +20,102 @@
     </div>
 }
 
-<h4>Existing Keys</h4>
-@if (!Model.Keys.Any()) {
-    <p>No keys yet.</p>
-} else {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Label</th>
-                <th>Created</th>
-                <th>Expires</th>
-                <th>Status</th>
-                <th>Today</th>
-                <th>Last 7 days</th>
-                <th>Unique IPs (7d)</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var key in Model.Keys) {
-                var usage = Model.KeyUsage[key.Id];
-                <tr>
-                    <td>
-                        @key.Label
-                        @if (usage.IsSpike) {
-                            <span class="badge bg-danger" title="Today's usage is more than 5x this key's trailing baseline">Spike</span>
+<div class="card" style="margin-top:10px;">
+    <div class="card-header"><b>Existing Keys</b></div>
+    <div class="card-body">
+        @if (!Model.Keys.Any()) {
+            <p class="mb-0">No keys yet.</p>
+        } else {
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Label</th>
+                            <th>Created</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                            <th>Today</th>
+                            <th>Last 7 days</th>
+                            <th>Unique IPs (7d)</th>
+                            <th>Members of guild only</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var key in Model.Keys) {
+                            var usage = Model.KeyUsage[key.Id];
+                            <tr>
+                                <td>
+                                    @key.Label
+                                    @if (usage.IsSpike) {
+                                        <span class="badge bg-danger" title="Today's usage is more than 5x this key's trailing baseline">Spike</span>
+                                    }
+                                </td>
+                                <td>@key.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                                <td>@(key.ExpiresAt.HasValue ? key.ExpiresAt.Value.ToString("yyyy-MM-dd") : "Never")</td>
+                                <td>
+                                    @if (key.Revoked) {
+                                        <span class="badge bg-danger">Revoked</span>
+                                    } else if (key.ExpiresAt.HasValue && key.ExpiresAt < DateTimeOffset.UtcNow) {
+                                        <span class="badge bg-warning text-dark">Expired</span>
+                                    } else {
+                                        <span class="badge bg-success">Active</span>
+                                    }
+                                </td>
+                                <td>@usage.RequestsToday</td>
+                                <td>@usage.RequestsLast7Days</td>
+                                <td>@usage.UniqueIps7Days</td>
+                                <td>
+                                    <form method="post" action="/Admin/UpdateApiKeyGuildFilter?guildId=@Model.GuildId" class="d-flex gap-1">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@key.Id" />
+                                        <label class="visually-hidden" for="mgo-@key.Id">Members of guild only for @key.Label</label>
+                                        <input type="text" class="form-control form-control-sm" id="mgo-@key.Id" name="membersOfGuildOnly"
+                                               value="@key.MembersOfGuildOnly" maxlength="100" placeholder="(any)" style="min-width:120px;" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <a href="/Admin/ApiKeyRequestLog?apiKeyId=@key.Id&guildId=@Model.GuildId" class="btn btn-sm btn-outline-secondary">View log</a>
+                                    @if (!key.Revoked) {
+                                        <form method="post" action="/Admin/RevokeApiKey?id=@key.Id&guildId=@Model.GuildId" style="display:inline">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-danger"
+                                                    onclick="return confirm('Revoke key &quot;@key.Label&quot;? This cannot be undone.')">
+                                                Revoke
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
                         }
-                    </td>
-                    <td>@key.CreatedAt.ToString("yyyy-MM-dd HH:mm") UTC</td>
-                    <td>@(key.ExpiresAt.HasValue ? key.ExpiresAt.Value.ToString("yyyy-MM-dd") : "Never")</td>
-                    <td>
-                        @if (key.Revoked) {
-                            <span class="badge bg-danger">Revoked</span>
-                        } else if (key.ExpiresAt.HasValue && key.ExpiresAt < DateTimeOffset.UtcNow) {
-                            <span class="badge bg-warning text-dark">Expired</span>
-                        } else {
-                            <span class="badge bg-success">Active</span>
-                        }
-                    </td>
-                    <td>@usage.RequestsToday</td>
-                    <td>@usage.RequestsLast7Days</td>
-                    <td>@usage.UniqueIps7Days</td>
-                    <td>
-                        <a href="/Admin/ApiKeyRequestLog?apiKeyId=@key.Id&guildId=@Model.GuildId" class="btn btn-sm btn-outline-secondary">View log</a>
-                        @if (!key.Revoked) {
-                            <form method="post" action="/Admin/RevokeApiKey?id=@key.Id&guildId=@Model.GuildId" style="display:inline">
-                                @Html.AntiForgeryToken()
-                                <button type="submit" class="btn btn-sm btn-danger"
-                                        onclick="return confirm('Revoke key &quot;@key.Label&quot;? This cannot be undone.')">
-                                    Revoke
-                                </button>
-                            </form>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
 
-<h4>Create New Key</h4>
-<form method="post" action="/Admin/CreateApiKey">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="id" value="@Model.GuildId" />
-    <div class="mb-3">
-        <label for="label" class="form-label">Label</label>
-        <input type="text" class="form-control" id="label" name="label" required maxlength="100" placeholder="e.g. Stats Dashboard" />
+<div class="card" style="margin-top:20px;">
+    <div class="card-header"><b>Create New Key</b></div>
+    <div class="card-body">
+        <form method="post" action="/Admin/CreateApiKey">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.GuildId" />
+            <div class="mb-3">
+                <label for="label" class="form-label">Label</label>
+                <input type="text" class="form-control" id="label" name="label" required maxlength="100" placeholder="e.g. Stats Dashboard" />
+            </div>
+            <div class="mb-3">
+                <label for="expiresAt" class="form-label">Expiry date (optional)</label>
+                <input type="date" class="form-control" id="expiresAt" name="expiresAt" />
+            </div>
+            <div class="mb-3">
+                <label for="membersOfGuildOnly" class="form-label">Members of guild only (optional)</label>
+                <input type="text" class="form-control" id="membersOfGuildOnly" name="membersOfGuildOnly" maxlength="100" placeholder="Guild to restrict to" />
+                <small class="form-text text-muted">When set, this key only returns accounts whose guild in Contract Settings matches this value.</small>
+            </div>
+            <button type="submit" class="btn btn-primary">Generate Key</button>
+        </form>
     </div>
-    <div class="mb-3">
-        <label for="expiresAt" class="form-label">Expiry date (optional)</label>
-        <input type="date" class="form-control" id="expiresAt" name="expiresAt" />
-    </div>
-    <button type="submit" class="btn btn-primary">Generate Key</button>
-</form>
+</div>

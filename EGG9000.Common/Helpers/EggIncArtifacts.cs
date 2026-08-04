@@ -31,7 +31,7 @@ namespace EGG9000.Common.Helpers {
                 }
 
                 foreach(var stone in x.Stones.Where(x => x.Boost == boostType)) {
-                    rate *= GetEnlightenmentRate(stone, farmMultiple); //stone.Value * (x.Boost == EggIncBoostTypeEnum.EnlightenmentEggValue ? 1 : farmMutiple);
+                    rate *= GetEnlightenmentRate(stone, farmMultiple);
                 }
             });
 
@@ -83,16 +83,6 @@ namespace EGG9000.Common.Helpers {
                 "tachyon-deflector" => "deflector",
                 "book-of-basan" => "book",
                 "light-of-eggendil" => "light",
-                /*"lunar-stone" => "",
-                "shell-stone" => "",
-                "tachyon-stone" => "",
-                "terra-stone" => "",
-                "soul-stone" => "",
-                "dilithium-stone" => "",
-                "quantum-stone" => "",
-                "life-stone" => "",
-                "clarity-stone" => "",
-                "prophecy-stone" => "",*/
                 "gold-meteorite" => "meteorite",
                 "tau-ceti-geode" => "geode",
                 "solar-titanium" => "titanium",
@@ -102,7 +92,7 @@ namespace EGG9000.Common.Helpers {
 
         public static Tier GetTier(int afxId, int tierNumber) {
             var data = GetEiAfxData();
-            // Should be do so, because stone fragment tiers have a different afx_id.
+            // Match via tiers.Any because stone fragment tiers use a different afx_id than their base stone.
             var artifact = data.artifact_families.FirstOrDefault(x => x.tiers.Any(y => y.afx_id == afxId))
                 ?? throw new Exception("Unable to locate artifact family with afx_id: " + afxId);
 
@@ -266,7 +256,6 @@ namespace EGG9000.Common.Helpers {
                 Tier = (byte)(artifactSpec.Level + 1),
                 Rarity = (byte)(artifactSpec.Rarity + 1),
                 Id = (byte)artifact.Name
-                //Spec = artifactSpec
             };
 
             var effect = ResolveEffect(response);

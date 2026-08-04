@@ -1,11 +1,10 @@
-@using static EGG9000.Site.Controllers.HomeController;
-@model List<EggDayResults>
+﻿@using EGG9000.Site.Models.Home
+@model List<Home_EggDayResults>
 @inject Discord.WebSocket.DiscordSocketClient discord
 @{
 	ViewData["Title"] = "Leaderboard";
 
-	var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
-	var discordId = claimsIdentity.Claims.First(x => x.Type == "DiscordId").Value;
+	var discordId = User.DiscordId();
 
 	var myAccounts = Model.Where(x => x.UserAccount.User.DiscordId.ToString() == discordId).ToList();
 
@@ -104,7 +103,7 @@
 </div>
 
 @{
-	void RowTemplate(EggDayResults account, int rank) {
+	void RowTemplate(Home_EggDayResults account, int rank) {
 		var isMe = account.UserAccount.User.DiscordId.ToString() == discordId;
 		var name = Regex.Replace(account.UserAccount.User.DiscordUsername, @"\(.+?\)", "").Trim();
 

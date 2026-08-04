@@ -120,7 +120,7 @@ namespace EGG9000.Bot.Automated {
             var validFor = (DateTimeOffset.FromUnixTimeSeconds((long)guildContract.Contract.Details.ExpirationTime) - DateTime.Now);
             var description = $"**Size** {guildContract.Contract.Details.MaxCoopSize}, **<:Token_boost:724397091211968604>** {guildContract.Contract.Details.MinutesPerToken}mins,";
             description += $"**{(validFor > TimeSpan.Zero ? "  Expires " : " Expired ")}** {DiscordHelpers.TimeStamper(validFor)}";
-            if(guildContract.BoardingGroup < 3)
+            if(guildContract.BoardingGroup < BoardingGroupLaunch.MaxBoardingGroup(guildContract.CcOnly))
                 description += $"\n[View Upcoming Co-ops on egg9000.com](https://egg9000.com/Contract/Day1CoopsFillLate?GuildId={guild.Id}&ContractId={guildContract.ContractID})";
 
             var embedBuilder = new EmbedBuilder().WithDescription(description);
@@ -224,15 +224,19 @@ namespace EGG9000.Bot.Automated {
 
                 MessageComponent findSpotButton;
                 if(BuildConfig.IsDev9002) {
-                    findSpotButton = new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build();
+                    var builder = new ComponentBuilder();
+                    if(!dbGuild.RemoveTestAssignment) builder.WithButton("Test Assignment", customId: "TestAssignment");
+                    if(!dbGuild.RemoveFindCoopSpot) builder.WithButton("Find Coop Spot", customId: $"FindCoopSpot");
+                    findSpotButton = builder.Build();
                 } else {
-                    var bgsLaunched = dbGuild.DisableBG || (DateTimeOffset.UtcNow > guildContract.Contract.Created.AddHours(guildContract.CcOnly ? 24 : 18));
+                    var bgsLaunched = dbGuild.DisableBG || BoardingGroupLaunch.AllBoardingGroupsLaunched(guildContract.Contract.Created, guildContract.CcOnly, DateTimeOffset.UtcNow);
                     var coopButtonEligible = guildContract.Contract.GoodUntil > DateTimeOffset.UtcNow && guildContract.Contract.ContractTime >= TimeSpan.FromHours(NewContracts.MIN_HOURS_TO_CREATE_COOPS);
-                    findSpotButton = coopButtonEligible
-                        ? (bgsLaunched
-                            ? new ComponentBuilder().WithButton("Find Coop Spot", customId: $"FindCoopSpot").Build()
-                            : new ComponentBuilder().WithButton("Find my Coop", customId: $"FindMyCoop").Build())
-                        : null;
+                    var builder = new ComponentBuilder();
+                    if(!dbGuild.RemoveTestAssignment) builder.WithButton("Test Assignment", customId: "TestAssignment");
+                    if(coopButtonEligible && !dbGuild.RemoveFindCoopSpot) {
+                        builder.WithButton(bgsLaunched ? "Find Coop Spot" : "Find my Coop", customId: bgsLaunched ? "FindCoopSpot" : "FindMyCoop");
+                    }
+                    findSpotButton = builder.Build();
                 }
 
                 existingMessages = [.. existingMessages.Where(x => x.Author.IsBot).OrderBy(x => x.CreatedAt)];
@@ -243,10 +247,10 @@ namespace EGG9000.Bot.Automated {
                     await (existingMessages.First() as RestUserMessage).ModifyWithTimeoutAsync(msg => {
                         msg.Embed = contractEmbed;
                         msg.Content = rawTextMessageAspect;
-                        msg.Components = (dbGuild.RemoveFindCoopSpot ? null : findSpotButton);
+                        msg.Components = findSpotButton;
                     });
                 } else {
-                    await channel.SendMessageAsync(rawTextMessageAspect, embed: contractEmbed, components: dbGuild.RemoveFindCoopSpot ? null : findSpotButton);
+                    await channel.SendMessageAsync(rawTextMessageAspect, embed: contractEmbed, components: findSpotButton);
                 }
 
 

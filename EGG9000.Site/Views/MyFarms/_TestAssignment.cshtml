@@ -1,12 +1,14 @@
+@using EGG9000.Common.Contracts.Assignment
 @using EGG9000.Common.Database.Entities
 @using EGG9000.Site.Models.MyFarms
 @model MyFarms_Partial_TestAssignmentModel
 @{
     var index = Model.index;
     var contracts = (Model.contracts ?? new List<DBContract>()).OrderByDescending(c => c.Created).ToList();
+    var siblingApplies = Model.account.Assignment?.Redo.Mode == RedoLeggacyOption.YesOtherAccountMatch;
 }
 
-<div class="test-assignment" data-account-index="@index" style="margin-top:20px;">
+<div class="test-assignment" data-account-index="@index" style="margin-top:30px;">
     <div class="card">
         <div class="card-header"><b>Assignment Testing</b></div>
         <div class="card-body">
@@ -23,15 +25,19 @@
                     }
                 </datalist>
             </div>
-            <div class="form-check" style="margin-top:8px;">
-                <input class="form-check-input ta-sibling-assigned" type="checkbox" id="ta-sibling-@index" />
-                <label class="form-check-label" for="ta-sibling-@index">Simulate a sibling account being assigned</label>
-                <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
-                    Only matters if "Redo leggacies" is set to "if other account matches" — previews whether a sibling getting assigned would pull this account in too (Leggacy redo or Seasonal force-assign).
-                </p>
+            <div class="ta-sibling-wrap-@index" style="@(siblingApplies ? "" : "display:none;")">
+                <div class="form-check form-switch" style="margin-top:8px;">
+                    <input class="form-check-input ta-sibling-assigned" type="checkbox" role="switch" id="ta-sibling-@index" />
+                    <label class="form-check-label" for="ta-sibling-@index">Simulate a sibling account being assigned</label>
+                    <p style="font-size:0.82em; color:grey; margin:2px 0 0;">
+                        Previews whether a sibling account getting assigned would pull this account in too (Leggacy redo or Seasonal force-assign).
+                    </p>
+                </div>
             </div>
-            <p style="font-size:0.85em; color:grey; margin-top:8px;">Ignores current-round assignment (whether you are already in a co-op).</p>
             <div class="ta-result" id="ta-result-@index" style="margin-top:12px;"></div>
+            <div style="margin-top:12px; padding:8px 12px; border:1px solid #e0a52b; border-radius:6px; background:rgba(224,165,43,.12); color:#e0a52b; font-size:0.85em;">
+                Ignores current-round assignment (whether you are already in a co-op).
+            </div>
         </div>
     </div>
 </div>

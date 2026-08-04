@@ -51,8 +51,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
 
         public IActionResult OnGetAsync(string returnUrl = null) {
             return Redirect("~/Identity/Account/Login");
-            //ReturnUrl = returnUrl;
-            //ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null) {
@@ -87,7 +85,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
                 }
             }
 
-            // If we got this far, something failed, redisplay form
             return Page();
         }
     }

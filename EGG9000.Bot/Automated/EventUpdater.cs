@@ -149,7 +149,6 @@ namespace EGG9000.Bot.Automated {
                 var singleEmoji = "";
                 var stackedEmoji = "";
 
-                /* 'Normal' Game Events channel*/
                 var channel = await _client.GetChannelAsync(GuildChannelType.GameEvents, guild);
                 if(channel != default) {
                     var eventsWithCustom = new List<EventWithCustom>();
@@ -181,12 +180,10 @@ namespace EGG9000.Bot.Automated {
                     StillAlive();
                 }
 
-                //"Reset" vars
                 newName = "subscriber-game-events";
                 singleEmoji = "";
                 stackedEmoji = "";
 
-                /* Subscriber-Only Game Events channel */
                 var ccChannel = await _client.GetChannelAsync(GuildChannelType.SubscriptionGameEvents, guild);
                 if(ccChannel != null) {
                     var ccEventsWithCustom = new List<EventWithCustom>();
@@ -239,9 +236,7 @@ namespace EGG9000.Bot.Automated {
                     .OrderByDescending(x => x.MinValue)
                     .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId) ?? null;
 
-                //If the event is subscriber-only
                 if(newEvent.CcOnly) {
-                    //Send to non-CCs without ping
                     if(eventChannel != null) {
                         var ultraNotification = customization?.Settings?.Notifications?.FirstOrDefault(x => x.MinValue == -1) ?? null;
                         var capturedEmbedImage = embedImage;
@@ -251,19 +246,16 @@ namespace EGG9000.Bot.Automated {
                         _logger.LogDebug("PostMessages: sent CC event (no ping) to non-CC channel in {guild}, messageId={messageId}", guild.Name, message?.Id);
                     }
 
-                    //If the CC event channel was found, that's where we'll ping for CC events
                     if(ccEventChannel != null) {
                         var capturedCcEmbedImage = embedImage;
                         var capturedCcEmbed = embed;
                         var capturedCcPingText = notification != null ? $"<@&{notification.RoleID}>" : null;
                         var ccMessage = await _queue.EnqueueLowAsync(() => ccEventChannel.SendFileIfExistsAsync(capturedCcEmbedImage, text: capturedCcPingText, embed: capturedCcEmbed));
-                        //Add the CC event channel message to the IDs
                         messageIds.Add(ccMessage.Id);
                         _logger.LogDebug("PostMessages: sent CC event (with ping={hasPing}) to CC channel in {guild}, messageId={messageId}",
                             notification != null, guild.Name, ccMessage.Id);
                     }
                 } else {
-                    //Only send to non-CC channel, with ping
                     if(eventChannel != null) {
                         var capturedEmbedImage = embedImage;
                         var capturedEmbed = embed;
@@ -275,7 +267,6 @@ namespace EGG9000.Bot.Automated {
                 }
 
 
-                //Always add the message id
                 if(message != null) messageIds.Add(message.Id);
                 StillAlive();
             }
@@ -427,7 +418,7 @@ namespace EGG9000.Bot.Automated {
         public async Task CheckShells(ApplicationDbContext db) {
             var config = await EggIncApi.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsUnlocked = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, EggIncApi.UserId, true);
 
-            if(config is null) return; // This randomly failed while I was working
+            if(config is null) return;
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();
 
             var expiringShells = db.ExpiringShells.Where(x => x.Expires > DateTimeOffset.UtcNow.AddHours(-1));

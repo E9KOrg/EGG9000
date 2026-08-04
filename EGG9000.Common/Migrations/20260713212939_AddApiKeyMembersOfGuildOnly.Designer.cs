@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260804122651_AddOfflineJoinTimingSettings")]
-    partial class AddOfflineJoinTimingSettings
+    [Migration("20260713212939_AddApiKeyMembersOfGuildOnly")]
+    partial class AddApiKeyMembersOfGuildOnly
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -47,6 +47,10 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<string>("Label")
                         .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("MembersOfGuildOnly")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -903,12 +907,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<string>("InactiveStandards")
                         .HasColumnType("text");
 
-                    b.Property<int>("JoinTimeHours")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("JoinTimeUltraHours")
-                        .HasColumnType("integer");
-
                     b.Property<string>("LeaderboardImage")
                         .HasColumnType("text");
 
@@ -917,9 +915,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<string>("Name")
                         .HasColumnType("text");
-
-                    b.Property<int>("OfflineDemeritHours")
-                        .HasColumnType("integer");
 
                     b.Property<string>("OverflowServersJson")
                         .HasColumnType("text");
@@ -1346,12 +1341,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<string>("RefEggIncId")
                         .HasColumnType("text");
-
-                    b.Property<bool>("Removed")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTimeOffset?>("RemovedOn")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<float?>("RunningScore")
                         .HasColumnType("real");

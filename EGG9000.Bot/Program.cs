@@ -8,8 +8,9 @@ using Microsoft.Extensions.Logging;
 using NLog;
 using NLog.Web;
 using System;
+using Sentry;
+using System.Threading.Tasks;
 
-// Set up logger before anything else
 var logger = LogManager.Setup().GetCurrentClassLogger();
 
 try {
@@ -23,6 +24,36 @@ try {
     GlobalDiagnosticsContext.Set("CustomMachineName", machineName);
     GlobalDiagnosticsContext.Set("CustomAppName", "EGG9000.Bot");
     logger.Log(NLog.LogLevel.Info, "Main Start");
+
+    using var sentry = SentrySdk.Init(o =>
+    {
+        o.Dsn = SecretsHelper.GetConfigOrSecret(
+            tempConfig,
+            "ConnectionStrings:BugsInkURL",
+            "bugsink_url") ?? "";
+
+        o.Environment = BuildConfig.IsRelease ? "Production" : "Development";
+        o.AttachStacktrace = true;
+        o.TracesSampleRate = 0.0; // no performance tracing
+    });
+
+    // Optional: catch truly unhandled process exceptions
+    AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+    {
+        logger.Log(NLog.LogLevel.Info, "Manual Exception 1");
+        logger.Log(NLog.LogLevel.Error, e.ExceptionObject);
+        if(e.ExceptionObject is Exception ex) {
+            SentrySdk.CaptureException(ex);
+        }
+    };
+
+    TaskScheduler.UnobservedTaskException += (_, e) =>
+    {
+        logger.Log(NLog.LogLevel.Info, "Manual Exception 1");
+        logger.Log(NLog.LogLevel.Error, e.Exception);
+        SentrySdk.CaptureException(e.Exception);
+        e.SetObserved();
+    };
 
     var host = Host.CreateDefaultBuilder(args)
         .ConfigureLogging(logging => {
@@ -51,6 +82,7 @@ try {
 
     await host.RunAsync();
 } catch(Exception ex) {
+    SentrySdk.CaptureException(ex);
     logger.Error(ex, "Fatal error during startup");
     LogManager.Shutdown();
     throw;

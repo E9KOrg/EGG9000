@@ -68,18 +68,14 @@ namespace EGG9000.Bot.Services {
             var dmChannel = await message.Author.CreateDMChannelAsync();
             var refMessage = await dmChannel.GetMessageAsync(message.Reference.MessageId.Value) as IUserMessage;
 
-            // Make sure the users match
             if(refMessage.InteractionMetadata.UserId != message.Author.Id) return;
 
-            // Make sure the user was prompted by the bot to send a screenshot
             if(!refMessage.Embeds.Any(e => e.Description.Contains("uncropped screenshot of your Privacy & Data tab"))) return;
 
-            // Make sure the attachment is an image (check its ContentType)
             var attachment = message.Attachments.First();
             if(!attachment.ContentType.StartsWith("image/")) return;
 
             using var httpClient = new HttpClient();
-            // Download the image from the attachment's URL
             var imageStream = await httpClient.GetStreamAsync(attachment.Url);
             using var image = SixLabors.ImageSharp.Image.Load(imageStream);
 
@@ -90,7 +86,6 @@ namespace EGG9000.Bot.Services {
 
             var destinationThread = _discord.GetChannel(destThreadId) as SocketThreadChannel;
 
-            // Save the images back to streams
             using var imageMs = new MemoryStream();
             image.Save(imageMs, new PngEncoder());
             var imageAttachment = new FileAttachment(imageMs, "Original_Image.png", "Original Image");
@@ -149,21 +144,16 @@ namespace EGG9000.Bot.Services {
 
             if(welcomeChannel == null || welcomeChannel.Id != message.Channel.Id) return;
 
-            // Lookup the message that this was in reply to
             if((await welcomeChannel.GetMessageAsync(message.Reference.MessageId.Value)) is not IUserMessage refMessage || refMessage.Embeds.Count == 0 || !refMessage.Author.IsBot) return;
 
-            // Make sure the users match
             if(refMessage.InteractionMetadata.UserId != message.Author.Id) return;
 
-            // Make sure the user was prompted by the bot to send a screenshot
             if(!refMessage.Embeds.Any(e => e.Description.Contains("uncropped screenshot of your Privacy & Data tab"))) return;
 
-            // Make sure the attachment is an image (check its ContentType)
             var attachment = message.Attachments.First();
             if(!attachment.ContentType.StartsWith("image/")) return;
 
             using var httpClient = new HttpClient();
-            // Download the image from the attachment's URL
             var imageStream = await httpClient.GetStreamAsync(attachment.Url);
             using var image = SixLabors.ImageSharp.Image.Load(imageStream);
 
@@ -211,15 +201,15 @@ namespace EGG9000.Bot.Services {
 
                 if(!message.Author.IsBot && message.Type != MessageType.ChannelNameChange && message.Interaction == null) {
                     db ??= await _dbContextFactory.CreateDbContextAsync();
-                    var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id || x.DiscordChannelId == message.Channel.Id);
+                    var coop = await db.Coops.FirstOrDefaultAsync(x => x.ThreadID == message.Channel.Id);
                     if(coop is not null) {
                         var xrefs = await db.UserCoopXrefs.Include(x => x.User).Where(x => x.CoopId == coop.Id && x.User.DiscordId != message.Author.Id).ToListAsync();
                         foreach(var xref in xrefs.Where(x => x.User.DiscordId != message.Author.Id)) {
                             if(xref.CoopSetting?.PingOnMessage ?? false) {
                                 var discordUser = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(xref.User.DiscordId);
                                 var author = _discord.Guilds.First(x => x.Id == coop.GuildId).GetUser(message.Author.Id);
-                                if(discordUser is null) continue; //Another null check
-                                var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{(coop.ThreadID != 0 ? coop.ThreadID : coop.DiscordChannelId)}>, **{author.GetCleanName()}:** {message.Content}", db);
+                                if(discordUser is null) continue;
+                                var dmResult = await DiscordHelpersExt.BoolSendDm(discordUser, $"Message from <#{coop.ThreadID}>, **{author.GetCleanName()}:** {message.Content}", db);
                             }
                         }
                     }

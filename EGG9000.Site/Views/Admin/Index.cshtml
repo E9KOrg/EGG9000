@@ -1,4 +1,5 @@
-﻿@model EGG9000.Site.Controllers.AdminController.IndexViewModel
+﻿@using EGG9000.Site.Models.Admin
+@model Admin_IndexViewModel
 @using static EGG9000.Common.Helpers.CreateCoopsV2;
 @{
 	ViewData["Title"] = "Admin";
@@ -119,7 +120,7 @@
 			</h5>
 
 			@foreach (var contract in Model.Contracts) {
-				<div>@*<a href="/admin/contract?contractid=@contract.ID">@contract.Name</a> *@<a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
+				<div><a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
 			}
 		</div>
 	</div>

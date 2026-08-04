@@ -1,21 +1,7 @@
-﻿@model EGG9000.Site.Controllers.AdminController.ScoreResult
+﻿@using EGG9000.Site.Models.Admin
+@model Admin_ScoreResult
 @{
 }
-
-<script>
-    function copyIdToClipboard(id, notifId) {
-        navigator.clipboard.writeText((typeof id === "object") ? id.innerText : id.toString());
-        if (notifId) {
-            var notification = document.getElementById(notifId);
-            notification.style.display = "block";
-            notification.style.opacity = "1";
-
-            setTimeout(function () {
-                notification.style.opacity = "0";
-            }, 2000);
-        }
-    }
-</script>
 
 <h3>Users Below Threshold</h3>
 <div class="copy-notification" id="low-copy-notification-name">Username copied!</div>

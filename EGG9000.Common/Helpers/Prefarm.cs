@@ -391,11 +391,10 @@ namespace EGG9000.Common.Helpers {
 
             var userBackupsAssigned = backups.Where(x => coop.UserCoopsXrefs.Any(y => y.UserId == x.User.Id)).ToList();
 
-            //Add joined participants
             if(status is not null) {
                 foreach(var participant in status.Participants) {
 
-                    //Try and match UUID (skip if UUID is empty to avoid false positives)
+                    // Empty UUID is treated as no-match to avoid false positives
                     var backup = !string.IsNullOrEmpty(participant.Uuid)
                         ? backups.Where(x => x.Backup is not null).FirstOrDefault(x => x.Backup.Farms.Any(farm => farm.ReportedUUIDs is not null && farm.ReportedUUIDs.Any(uuid => uuid == participant.Uuid)))
                         : null;
@@ -412,31 +411,26 @@ namespace EGG9000.Common.Helpers {
                             xref = coop.UserCoopsXrefs.FirstOrDefault(xref => xref.EggIncId == participant.GetID());
                             var saveFixedUserName = false;
 
-                            //First try for FixedUserName
                             xref ??= coop.UserCoopsXrefs.FirstOrDefault(x => !string.IsNullOrEmpty(x.FixedUserName) && x.FixedUserName == participant.UserName);
 
                             if(xref == null) {
-                                //Try matching username to assigned backup
                                 var matchbackup = userBackupsAssigned.FirstOrDefault(x => x.Backup.UserName == participant.UserName);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                             }
 
                             if(xref == null) {
-                                //Try matching to EB
                                 var matchbackup = userBackupsAssigned.FirstOrDefault(x => Math.Log10(x.Backup.EarningsBonus / 100) == participant.SoulPower);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                                 if(xref is not null) saveFixedUserName = true;
                             }
 
                             if(xref == null) {
-                                //Try matching to Soul Eggs
                                 var matchbackup = userBackupsAssigned.FirstOrDefault(x => x.Backup.SoulEggs == participant.FarmInfo?.SoulEggs);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                                 if(xref is not null) saveFixedUserName = true;
                             }
 
                             if(xref == null && !string.IsNullOrWhiteSpace(participant.UserName)) {
-                                //Now try to match a backup username
                                 var matchbackup = backups.FirstOrDefault(x => x.Backup?.UserName == participant.UserName);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                                 if(xref is not null) saveFixedUserName = true;
@@ -491,7 +485,6 @@ namespace EGG9000.Common.Helpers {
             }
 
             if(coop is not null) {
-                //Add missing participants
                 // Soft-removed users no longer occupy a seat or appear as pending joiners,
                 // but their xref keeps them marked as already assigned for this contract.
                 var missingXrefs = coop.UserCoopsXrefs.Where(x => !x.Removed && !coopParticipants.Any(y => y is not null && y.Xref == x));
@@ -551,7 +544,7 @@ namespace EGG9000.Common.Helpers {
             var goal = contract.Details.GetGoals(user.Elite ? 0 : 1).Last().TargetAmount;
 
             prefarm.CancelledFarm = prefarm.CancelledFarm || farm.NumChickens == 0;
-            var ratePerSec = farmStats.CurrentShippingRate;// user.Backup.get Research.GetEggShippedRatePerSec(farm, user.Backup.Game.EpicResearch.ToList());
+            var ratePerSec = farmStats.CurrentShippingRate;
 
 
             var siloTimeMinutes = user.Backup != null && farm != null ? (Research.GetTotalSiloCapacity(user.Backup) * farm.SilosOwned) : 0;
