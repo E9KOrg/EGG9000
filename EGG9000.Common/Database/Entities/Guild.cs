@@ -148,6 +148,12 @@ namespace EGG9000.Common.Database.Entities {
         public bool PublicScoreGrid { get; set; }
         [GuildConfig("Remove Find Coop Spot", "Toggles", GuildConfigKind.Bool, Description = "Hide Find Coop Spot buttons")]
         public bool RemoveFindCoopSpot { get; set; }
+        [GuildConfig("Offline Hours Per Demerit", "Numbers", GuildConfigKind.Int, Description = "Hours of raw offline time per demerit (only used when boarding groups are enabled)")]
+        public int OfflineDemeritHours { get; set; } = 30;
+        [GuildConfig("Hours To Join (normal)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join a co-op before being removed")]
+        public int JoinTimeHours { get; set; } = 18;
+        [GuildConfig("Hours To Join (ultra)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join an ultra (cc-only) co-op before being removed")]
+        public int JoinTimeUltraHours { get; set; } = 24;
         [GuildConfig("Show Contract Stats Embeds", "Toggles", GuildConfigKind.Bool, Description = "Show a live co-op stats embed inside each contract channel")]
         public bool ShowContractStatsEmbeds { get; set; }
     }

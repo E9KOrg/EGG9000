@@ -492,7 +492,9 @@ namespace EGG9000.Common.Helpers {
 
             if(coop is not null) {
                 //Add missing participants
-                var missingXrefs = coop.UserCoopsXrefs.Where(x => !coopParticipants.Any(y => y is not null && y.Xref == x));
+                // Soft-removed users no longer occupy a seat or appear as pending joiners,
+                // but their xref keeps them marked as already assigned for this contract.
+                var missingXrefs = coop.UserCoopsXrefs.Where(x => !x.Removed && !coopParticipants.Any(y => y is not null && y.Xref == x));
 
                 foreach(var xref in missingXrefs) {
                     var backup = backups.FirstOrDefault(b => b.Backup?.EggIncId == xref.EggIncId);

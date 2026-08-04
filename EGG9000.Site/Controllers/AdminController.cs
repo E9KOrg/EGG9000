@@ -1292,6 +1292,9 @@ music
             Console.WriteLine("Setting FAQTopicCooldownMinutes to " + model.FAQTopicCooldownMinutes);
             dbGuild.FAQTopicsEnabled = model.FAQTopicsEnabled;
             dbGuild.FAQTopicCooldownMinutes = model.FAQTopicCooldownMinutes;
+            dbGuild.OfflineDemeritHours = model.OfflineDemeritHours >= 1 ? model.OfflineDemeritHours : 30;
+            dbGuild.JoinTimeHours = model.JoinTimeHours >= 1 ? model.JoinTimeHours : 18;
+            dbGuild.JoinTimeUltraHours = model.JoinTimeUltraHours >= 1 ? model.JoinTimeUltraHours : 24;
             if(invalidateApodGuildCache) {
                 var guildNasaKey = _db.InvalidateGuildNASACache(dbGuild);
                 await _publishEndpoint.Publish(new ExpireCacheMessage(guildNasaKey));
@@ -1346,6 +1349,9 @@ music
             public bool FAQTopicsEnabled { get; set; }
             public int FAQTopicCooldownMinutes { get; set; }
             public float MinimumRunningScore { get; set; }
+            public int OfflineDemeritHours { get; set; }
+            public int JoinTimeHours { get; set; }
+            public int JoinTimeUltraHours { get; set; }
         }
 
         public class EasterUser {

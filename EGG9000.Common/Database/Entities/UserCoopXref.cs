@@ -26,6 +26,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool AddedToChannel { get; set; }
         public bool Starter { get; set; }
         public bool WasAssigned { get; set; }
+        public bool Removed { get; set; }
+        public DateTimeOffset? RemovedOn { get; set; }
 
         public bool JoinWarning12h { get; set; }
         public bool JoinWarning24h { get; set; }

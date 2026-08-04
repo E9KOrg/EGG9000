@@ -303,6 +303,9 @@
 			}
 			<button class="btn btn-primary" onclick="InsertGroupRole(this)">Add Role</button>
 		</div>
+		<div id="OfflineDemeritSettings" style="@(Model.DisableBG ? "display: none;" : "")">
+			<label>Offline Hours Per Demerit <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.OfflineDemeritHours" id="OfflineDemeritHours" /></label>
+		</div>
 	</div>
 </div>
 <div class="card">
@@ -344,6 +347,9 @@
 		</div>
 		<label>Running Score Threshold <input style="margin-left: 3px;" class="custom-input" type="number" step="0.01" value="@Model.MinimumRunningScore" id="MinimumRunningScore" /></label>
 		<label>Co-op Prefix <input style="margin-left: 3px;" class="custom-input" value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
+		<br />
+		<label>Hours To Join (normal) <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.JoinTimeHours" id="JoinTimeHours" /></label>
+		<label>Hours To Join (ultra) <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.JoinTimeUltraHours" id="JoinTimeUltraHours" /></label>
 	</div>
 </div>
 
@@ -419,7 +425,10 @@
 						MinimumRunningScore: $("#MinimumRunningScore").val(),
 						AddOutsideCoops: $("#AddOutsideCoops").is(":checked"),
 						FaqTopicsEnabled: $("#FaqTopicsEnabled").is(":checked"),
-						FaqTopicCooldownMinutes: $("#FaqTopicCooldownMinutes").val()
+						FaqTopicCooldownMinutes: $("#FaqTopicCooldownMinutes").val(),
+						OfflineDemeritHours: $("#OfflineDemeritHours").val(),
+						JoinTimeHours: $("#JoinTimeHours").val(),
+						JoinTimeUltraHours: $("#JoinTimeUltraHours").val()
 					})
 			}, function () {
 				document.location = document.location;
@@ -449,8 +458,10 @@
 		function ShowGroupRoles(input) {
 			if ($(input).is(":checked")) {
 				$("#GroupRoles").show();
+				$("#OfflineDemeritSettings").hide();
 			} else {
 				$("#GroupRoles").hide();
+				$("#OfflineDemeritSettings").show();
 			}
 		}
 		function GetCategoryJoins(selector) {
