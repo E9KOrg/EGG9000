@@ -29,6 +29,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool Removed { get; set; }
         public DateTimeOffset? RemovedOn { get; set; }
 
+        // Legacy names from the fixed 12h/24h reminders. Now: 12h = first scaled join reminder
+        // (1/3 of the guild join window), 24h = second (2/3). Kept to avoid a column rename.
         public bool JoinWarning12h { get; set; }
         public bool JoinWarning24h { get; set; }
         public bool JoinWarning24TillFinish { get; set; }
