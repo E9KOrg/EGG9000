@@ -152,6 +152,8 @@ namespace EGG9000.Common.Database.Entities {
         public bool RemoveTestAssignment { get; set; }
         [GuildConfig("Offline Hours Per Demerit", "Numbers", GuildConfigKind.Int, Description = "Hours of raw offline time per demerit (only used when boarding groups are enabled)")]
         public int OfflineDemeritHours { get; set; } = 30;
+        [GuildConfig("Offline Warning Hours", "Numbers", GuildConfigKind.Int, Description = "Hours offline before a courtesy reminder DM is sent. Must be below Offline Hours Per Demerit (only used when boarding groups are enabled)")]
+        public int OfflineWarningHours { get; set; } = 22;
         [GuildConfig("Hours To Join (normal)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join a co-op before being removed")]
         public int JoinTimeHours { get; set; } = 18;
         [GuildConfig("Hours To Join (ultra)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join an ultra (cc-only) co-op before being removed")]

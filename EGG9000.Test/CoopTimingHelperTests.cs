@@ -62,5 +62,49 @@ namespace EGG9000.Test {
             Assert.IsFalse(check.ShouldDemerit);
             Assert.AreEqual(30, check.NextDemeritAtHours);
         }
+
+        [TestMethod]
+        public void EvaluateSleepAlert_BgEnabled_FiresAtConfiguredHour() {
+            var guild = new Guild { DisableBG = false, OfflineWarningHours = 22, OfflineDemeritHours = 30 };
+            var at = CoopTimingHelper.EvaluateSleepAlert(guild, hoursSleeping: 22, siloTimeHours: 4);
+            Assert.IsTrue(at.ShouldAlert);
+            Assert.AreEqual(22.0, at.AlertAtHours, 0.001);
+            Assert.AreEqual(30.0, at.DemeritAtHours, 0.001);
+            Assert.IsTrue(at.OfflineBased);
+
+            var under = CoopTimingHelper.EvaluateSleepAlert(guild, hoursSleeping: 21.9, siloTimeHours: 4);
+            Assert.IsFalse(under.ShouldAlert);
+        }
+
+        [TestMethod]
+        public void EvaluateSleepAlert_BgEnabled_ZeroSettingFallsBackTo22() {
+            var guild = new Guild { DisableBG = false, OfflineWarningHours = 0, OfflineDemeritHours = 30 };
+            var check = CoopTimingHelper.EvaluateSleepAlert(guild, hoursSleeping: 22, siloTimeHours: 0);
+            Assert.IsTrue(check.ShouldAlert);
+            Assert.AreEqual(22.0, check.AlertAtHours, 0.001);
+        }
+
+        [TestMethod]
+        public void EvaluateSleepAlert_BgEnabled_ScalesWithLowThreshold() {
+            var guild = new Guild { DisableBG = false, OfflineWarningHours = 9, OfflineDemeritHours = 12 };
+            var check = CoopTimingHelper.EvaluateSleepAlert(guild, hoursSleeping: 9, siloTimeHours: 2);
+            Assert.IsTrue(check.ShouldAlert);
+            Assert.AreEqual(9.0, check.AlertAtHours, 0.001);
+            Assert.AreEqual(12.0, check.DemeritAtHours, 0.001);
+        }
+
+        [TestMethod]
+        public void EvaluateSleepAlert_BgDisabled_KeepsLegacySiloMidpoint() {
+            var guild = new Guild { DisableBG = true, OfflineWarningHours = 5, OfflineDemeritHours = 5 };
+            // Legacy: midpoint between silo runout (10h) and the 30h ceiling.
+            var check = CoopTimingHelper.EvaluateSleepAlert(guild, hoursSleeping: 20, siloTimeHours: 10);
+            Assert.IsTrue(check.ShouldAlert);
+            Assert.AreEqual(20.0, check.AlertAtHours, 0.001);
+            Assert.AreEqual(28.0, check.DemeritAtHours, 0.001);
+            Assert.IsFalse(check.OfflineBased);
+
+            var under = CoopTimingHelper.EvaluateSleepAlert(guild, hoursSleeping: 19.9, siloTimeHours: 10);
+            Assert.IsFalse(under.ShouldAlert);
+        }
     }
 }

@@ -218,7 +218,7 @@ namespace EGG9000.Site.Controllers {
             var targetCoop = await _db.Coops.Include(x => x.Contract).FirstAsync(x => x.Id == CoopId);
             var dbuser = await _db.DBUsers.FirstAsync(x => x.Id == UserId);
 
-            var existingXref = await _db.UserCoopXrefs.FirstOrDefaultAsync(x => x.Coop.Created > DateTimeOffset.UtcNow.AddMonths(-6) && x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatusEnum.Failed);
+            var existingXref = await _db.UserCoopXrefs.FirstOrDefaultAsync(x => !x.Removed && x.Coop.Created > DateTimeOffset.UtcNow.AddMonths(-6) && x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatusEnum.Failed);
             if(existingXref != null) {
                 return Json(new { error = $"{dbuser.DiscordUsername} has already been assigned a co-op." });
             }

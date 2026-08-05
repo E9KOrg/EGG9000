@@ -913,6 +913,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<int>("OfflineDemeritHours")
                         .HasColumnType("integer");
 
+                    b.Property<int>("OfflineWarningHours")
+                        .HasColumnType("integer");
+
                     b.Property<string>("OverflowServersJson")
                         .HasColumnType("text");
 

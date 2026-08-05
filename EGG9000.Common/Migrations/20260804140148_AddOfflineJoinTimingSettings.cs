@@ -44,6 +44,13 @@ namespace EGG9000.Common.Migrations
                 type: "integer",
                 nullable: false,
                 defaultValue: 30);
+
+            migrationBuilder.AddColumn<int>(
+                name: "OfflineWarningHours",
+                table: "Guilds",
+                type: "integer",
+                nullable: false,
+                defaultValue: 22);
         }
 
         /// <inheritdoc />
@@ -67,6 +74,10 @@ namespace EGG9000.Common.Migrations
 
             migrationBuilder.DropColumn(
                 name: "OfflineDemeritHours",
+                table: "Guilds");
+
+            migrationBuilder.DropColumn(
+                name: "OfflineWarningHours",
                 table: "Guilds");
         }
     }

@@ -1040,6 +1040,11 @@ music
                 return BadRequest();
             }
             var model = JsonConvert.DeserializeObject<Admin_SaveChannelDetailsObject>(json);
+            var offlineDemeritHours = model.OfflineDemeritHours >= 1 ? model.OfflineDemeritHours : 30;
+            var offlineWarningHours = model.OfflineWarningHours >= 1 ? model.OfflineWarningHours : 22;
+            if(!model.DisableBG && offlineWarningHours >= offlineDemeritHours) {
+                return BadRequest("Offline Warning Hours must be below Offline Hours Per Demerit");
+            }
             var dbGuild = await GetDbGuildByIdAsync(id);
             var invalidateApodGuildCache = (
                 (dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
@@ -1062,7 +1067,8 @@ music
             Console.WriteLine("Setting FAQTopicCooldownMinutes to " + model.FAQTopicCooldownMinutes);
             dbGuild.FAQTopicsEnabled = model.FAQTopicsEnabled;
             dbGuild.FAQTopicCooldownMinutes = model.FAQTopicCooldownMinutes;
-            dbGuild.OfflineDemeritHours = model.OfflineDemeritHours >= 1 ? model.OfflineDemeritHours : 30;
+            dbGuild.OfflineDemeritHours = offlineDemeritHours;
+            dbGuild.OfflineWarningHours = offlineWarningHours;
             dbGuild.JoinTimeHours = model.JoinTimeHours >= 1 ? model.JoinTimeHours : 18;
             dbGuild.JoinTimeUltraHours = model.JoinTimeUltraHours >= 1 ? model.JoinTimeUltraHours : 24;
             if(invalidateApodGuildCache) {

@@ -305,6 +305,7 @@
 		</div>
 		<div id="OfflineDemeritSettings" style="@(Model.DisableBG ? "display: none;" : "")">
 			<label>Offline Hours Per Demerit <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.OfflineDemeritHours" id="OfflineDemeritHours" /></label>
+			<label>Offline Warning Hours <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.OfflineWarningHours" id="OfflineWarningHours" /></label>
 		</div>
 	</div>
 </div>
@@ -358,6 +359,7 @@
 </div>
 
 <button style="margin-top: 15px;" class="btn btn-success" onclick="SaveChannels(this)">Save Settings</button>
+<div id="SaveChannelsError" role="alert" style="margin-top: 8px; color: #dc3545; font-weight: 600; display: none;"></div>
 <hr />
 
 
@@ -380,7 +382,41 @@
 
 @section Scripts {
 	<script>
+		function ShowSaveChannelsError(message) {
+			$("#SaveChannelsError").text(message).show();
+		}
+		function ClearSaveChannelsError() {
+			$("#SaveChannelsError").text("").hide();
+		}
+		function EnableSaveChannels(button) {
+			$(button).addClass("btn-success");
+			$(button).removeAttr("disabled");
+		}
 		function SaveChannels(button) {
+			ClearSaveChannelsError();
+
+			// Validate before disabling the button, so a rejected save leaves it usable.
+			// Timing settings are hours and must be 1 or more. An empty number input posts as
+			// "" and cannot be deserialized into an int, so it never reaches the server.
+			var timingFields = [
+				{ id: "OfflineWarningHours", label: "Offline Warning Hours" },
+				{ id: "OfflineDemeritHours", label: "Offline Hours Per Demerit" },
+				{ id: "JoinTimeHours", label: "Hours To Join (normal)" },
+				{ id: "JoinTimeUltraHours", label: "Hours To Join (ultra)" }
+			];
+			for (var t = 0; t < timingFields.length; t++) {
+				if (!(+$("#" + timingFields[t].id).val() >= 1)) {
+					ShowSaveChannelsError(timingFields[t].label + " must be 1 or more.");
+					return;
+				}
+			}
+
+			if (!$("#DisableBG").is(":checked")
+				&& +$("#OfflineWarningHours").val() >= +$("#OfflineDemeritHours").val()) {
+				ShowSaveChannelsError("Offline Warning Hours must be below Offline Hours Per Demerit.");
+				return;
+			}
+
 			$(button).removeClass("btn-success");
 			$(button).attr("disabled", "disabled");
 
@@ -432,11 +468,15 @@
 						FaqTopicsEnabled: $("#FaqTopicsEnabled").is(":checked"),
 						FaqTopicCooldownMinutes: $("#FaqTopicCooldownMinutes").val(),
 						OfflineDemeritHours: $("#OfflineDemeritHours").val(),
+						OfflineWarningHours: $("#OfflineWarningHours").val(),
 						JoinTimeHours: $("#JoinTimeHours").val(),
 						JoinTimeUltraHours: $("#JoinTimeUltraHours").val()
 					})
 			}, function () {
 				document.location = document.location;
+			}).fail(function (xhr) {
+				EnableSaveChannels(button);
+				ShowSaveChannelsError(xhr.responseText || ("Save failed with status " + xhr.status + "."));
 			});
 		}
 		function SaveRoles(button) {

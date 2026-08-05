@@ -7,6 +7,9 @@ namespace EGG9000.Common.Helpers {
         public const int DefaultOfflineDemeritHours = 30;
         public const int DefaultJoinTimeHours = 18;
         public const int DefaultJoinTimeUltraHours = 24;
+        public const int DefaultOfflineWarningHours = 22;
+        // Legacy silo-midpoint ceiling, kept only for DisableBG servers.
+        public const double LegacyAlertCeilingHours = 30.0;
         // BG-disabled servers keep the original fixed empty-silo cadence.
         public const int LegacyEmptySiloDemeritHours = 18;
 
@@ -29,7 +32,21 @@ namespace EGG9000.Common.Helpers {
             var nextAt = (demeritsGiven + 1) * interval;
             return new SleepDemeritCheck(hoursSleeping > nextAt, nextAt, OfflineBased: true);
         }
+
+        public static SleepAlertCheck EvaluateSleepAlert(Guild guild, double hoursSleeping, double siloTimeHours) {
+            if(guild.DisableBG) {
+                var legacyAlertAt = (LegacyAlertCeilingHours - siloTimeHours) / 2 + siloTimeHours;
+                // DemeritAtHours is filled in for completeness but no caller reads it on this
+                // branch: the warning DM only prints it when OfflineBased is true.
+                return new SleepAlertCheck(hoursSleeping >= legacyAlertAt, legacyAlertAt,
+                    siloTimeHours + LegacyEmptySiloDemeritHours, OfflineBased: false);
+            }
+            var alertAt = guild.OfflineWarningHours >= 1 ? guild.OfflineWarningHours : DefaultOfflineWarningHours;
+            var threshold = guild.OfflineDemeritHours >= 1 ? guild.OfflineDemeritHours : DefaultOfflineDemeritHours;
+            return new SleepAlertCheck(hoursSleeping >= alertAt, alertAt, threshold, OfflineBased: true);
+        }
     }
 
     public record SleepDemeritCheck(bool ShouldDemerit, int NextDemeritAtHours, bool OfflineBased);
+    public record SleepAlertCheck(bool ShouldAlert, double AlertAtHours, double DemeritAtHours, bool OfflineBased);
 }

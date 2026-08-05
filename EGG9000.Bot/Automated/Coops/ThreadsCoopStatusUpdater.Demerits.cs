@@ -25,8 +25,8 @@ namespace EGG9000.Bot.Automated.Coops {
             var currentSleepStart = user.Joined ? DateTimeOffset.UtcNow.Subtract(user.OfflineTime) : coop.Created;
             var hoursSleeping = (double)user.OfflineTime.TotalMinutes / 60.0;
             var siloTimeHours = (float)(user.SiloTimeMinutes / 60.0);
-            var alertTime = (30.0 - siloTimeHours) / 2 + siloTimeHours;
-            var needsAlert = hoursSleeping >= alertTime;
+            var alertCheck = CoopTimingHelper.EvaluateSleepAlert(dbGuild, hoursSleeping, siloTimeHours);
+            var needsAlert = alertCheck.ShouldAlert;
             var timeEmpty = Math.Round(hoursSleeping - siloTimeHours, 2);
 
             var sleepTracking = user.Xref.SleepTracking.ToList();
@@ -41,7 +41,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 var index = random.Next(messages.Count);
 
                 if(user.DiscordUser != null) {
-                    var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours {coopChannel.Mention}]" : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]"));
+                    var detail = alertCheck.OfflineBased
+                        ? $" [Offline for {Math.Round(hoursSleeping, 1)} hours, demerit at {alertCheck.DemeritAtHours} hours {coopChannel.Mention}]"
+                        : timeEmpty < 0
+                            ? $" [Empty silos in {Math.Abs(timeEmpty)} hours {coopChannel.Mention}]"
+                            : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]";
+                    var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + detail);
                     var dmResult = await BoolSendDm(user.DiscordUser, warningText, _db);
                     if(dmResult != DMResult.Success) {
                         var fallbackText = $"{warningText} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}";
