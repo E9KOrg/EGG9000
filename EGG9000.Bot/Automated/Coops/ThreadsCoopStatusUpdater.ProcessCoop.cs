@@ -518,7 +518,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             var hoursToKick = CoopTimingHelper.GetHoursToKick(ctx.DbGuild, ctx.Coop.Contract.cc_only);
                             var (firstReminderHours, secondReminderHours) = CoopTimingHelper.GetJoinReminderHours(hoursToKick);
                             if(discordUser != null) {
-                                var bgSuggestion = ctx.DbGuild.DisableBG ? "" : $", if this launch time doesn't suit your schedule consider changing your Boarding Group with {await _client.GetSlashCommandStringAsync(ctx.ParentGuild, "mycontractsettings")}";
+                                var bgSuggestion = ctx.DbGuild.DisableBG ? "" : $", if this launch time doesn't suit your schedule consider changing your Boarding Group for future contracts with {await _client.GetSlashCommandStringAsync(ctx.ParentGuild, "mycontractsettings")}";
                                 if(!userFarmDetails.Xref.JoinWarning24TillFinish && ctx.TimeRemaining.TotalHours < 24 && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-1)) {
                                     userFarmDetails.Xref.JoinWarning24TillFinish = true;
                                     await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
