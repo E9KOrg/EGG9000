@@ -339,8 +339,8 @@ namespace EGG9000.Bot.Commands {
     // Flat (non-grouped) command. Was a top-level /updatechannel before the Discord.NET migration
     // and was incorrectly nested under /a in that migration - kept flat here to preserve the
     // pre-migration command name.
-    [DefaultMemberPermissions(GuildPermission.ManageChannels)]
-    [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
+    [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+    [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
     public class UpdateChannelModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater) : Interactions.E9KModuleBase(dbFactory) {
         [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
         public async Task UpdateChannel() {
