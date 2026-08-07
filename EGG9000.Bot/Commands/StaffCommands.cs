@@ -56,32 +56,6 @@ namespace EGG9000.Bot.Commands {
     public class StaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
 
-        [SlashCommand("clearcustomeggs", "Clear ALL custom eggs from the DB, and remove Emoji.")]
-        [StaffOnly(StaffTier.Admin)]
-        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
-        public async Task ClearCustomEggs() {
-            await Context.Interaction.DeferAsync();
-
-            var customEggs = await Db.GetCustomEggsAsync();
-
-            foreach(var egg in customEggs) {
-                // DEV9K Overflow Server in dev/debug, Cluckingham Overflow 4 in release
-                var emojiServer = (BuildConfig.IsDev9002 || BuildConfig.IsDebug)
-                    ? _client.GetGuild(1130233910966620290)
-                    : _client.GetGuild(1147264073659064420);
-                if(emojiServer != null) {
-                    var emote = await emojiServer.GetEmoteAsync(egg.EmojiId);
-                    await emojiServer.DeleteEmoteAsync(emote);
-                }
-
-                Db.CustomEggs.Remove(egg);
-            }
-            await Db.SaveChangesAsync();
-            Db._cache.InvalidateCustomEggs();
-
-            await Context.Interaction.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await Db.GetCustomEggsAsync()).Count}");
-        }
-
         [SlashCommand("as", "Log a Message")]
         [StaffOnly(StaffTier.Admin)]
         [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
@@ -240,48 +214,24 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class BotGroupModule {
-        [SlashCommand("status", "Get the bot's status")]
-        public async Task Status() {
-            var command = Context.Interaction;
-            var lastComplete = await Db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
-            var last24 = await Db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
-            var averages = last24.GroupBy(x => x.Type).Select(x => new { Type = x.Key, Avg = x.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()) }).ToList();
-            var table = new List<List<FixedWidthCell>> {new() {
-                new("Name"),
-                new("Avg"),
-                new("Last🏁"),
-                new("Attempts"),
-                new("Status")
-            }};
-            foreach(var log in lastComplete.OrderBy(x => x.Type)) {
-                var incompletes = await Db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
-                var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == log.Type);
-                if(service == null || service is not IUpdaterService castedService) continue;
-
-                table.Add([
-                    new(log.Type),
-                    new(
-                        averages.Any(x => x.Type == log.Type) ?
-                        TimeSpan.FromSeconds(averages.First(x => x.Type == log.Type).Avg).Humanize().ShortenTime()
-                        : ""),
-                    new((DateTimeOffset.UtcNow - log.EndTime.Value).Humanize().ShortenTime()),
-                    new(incompletes.Count.ToString()),
-                    new(
-                        castedService.Running() ?
-                            (incompletes.Any(x => !x.Skipped) ?
-                            $"Current run {(DateTimeOffset.UtcNow - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
-                            : "Started"
-                            )
-                        : "Stopped"
-                        )
-                ]);
-            }
-
-            await command.RespondAsyncGettingMessage($"```\n{GetTable(table)}```");
+        public enum ServiceAction {
+            Restart,
+            Stop,
+            Run,
+            Start,
         }
 
-        [SlashCommand("restartservice", "Restart an automated service")]
-        public async Task RestartService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+        [SlashCommand("service", "Control an automated service")]
+        public async Task Service([Summary("action")] ServiceAction action, [Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+            switch(action) {
+                case ServiceAction.Restart: await RestartServiceImpl(serviceName); break;
+                case ServiceAction.Stop: await StopServiceImpl(serviceName); break;
+                case ServiceAction.Run: await RunServiceImpl(serviceName); break;
+                case ServiceAction.Start: await StartServiceImpl(serviceName); break;
+            }
+        }
+
+        private async Task RestartServiceImpl(string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -325,8 +275,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted {serviceName}"); });
         }
 
-        [SlashCommand("stopservice", "Stop an automated service")]
-        public async Task StopService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+        private async Task StopServiceImpl(string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -361,8 +310,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Stopped {serviceName}"); });
         }
 
-        [SlashCommand("runservice", "Run automated service now")]
-        public async Task RunService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+        private async Task RunServiceImpl(string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -397,8 +345,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Ran {serviceName}"); });
         }
 
-        [SlashCommand("startservice", "Start an automated service")]
-        public async Task StartService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+        private async Task StartServiceImpl(string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -428,49 +375,6 @@ namespace EGG9000.Bot.Commands {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedExceptionFrame(e); });
             }
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Started {serviceName}"); });
-        }
-
-        [SlashCommand("dbload", "Database load, cache sizes, and process memory")]
-        public async Task DbLoad() {
-            var command = Context.Interaction;
-            await command.DeferAsync(ephemeral: true);
-
-            var sw = Stopwatch.StartNew();
-            await Db.Database.ExecuteSqlRawAsync("SELECT 1");
-            var pingMs = sw.ElapsedMilliseconds;
-
-            var proc = Process.GetCurrentProcess();
-            var workingMb = proc.WorkingSet64 / 1_048_576.0;
-            var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
-
-            var cacheCount = Db._cache is MemoryCache mc ? mc.Count : -1;
-
-            var trackerEntries = Db.ChangeTracker.Entries().ToList();
-            var pending = trackerEntries.Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
-
-            var activeCoops = await Db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.UtcNow);
-            var dbUsers = await Db.DBUsers.CountAsync();
-            var contracts = await Db.Contracts.CountAsync();
-            var events = await Db.Events.CountAsync();
-            var autoLogs = await Db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1));
-
-            var rows = new List<List<FixedWidthCell>> {
-                new() { new("DB Ping"), new($"{pingMs} ms", CellAlignment.Right) },
-                new() { new("Working Set"), new($"{workingMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC Heap"), new($"{gcHeapMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC (0/1/2)"), new($"{GC.CollectionCount(0)} / {GC.CollectionCount(1)} / {GC.CollectionCount(2)}", CellAlignment.Right) },
-                new() { new("Cache"), new(cacheCount >= 0 ? $"{cacheCount}" : "n/a", CellAlignment.Right) },
-                new() { new("Tracked"), new($"{trackerEntries.Count}", CellAlignment.Right) },
-                new() { new("Pending"), new($"{pending}", CellAlignment.Right) },
-                null,
-                new() { new("DBUsers"), new($"{dbUsers:N0}", CellAlignment.Right) },
-                new() { new("Active Coops"), new($"{activeCoops:N0}", CellAlignment.Right) },
-                new() { new("Contracts"), new($"{contracts:N0}", CellAlignment.Right) },
-                new() { new("Events"), new($"{events:N0}", CellAlignment.Right) },
-                new() { new("AutoLogs 24h"), new($"{autoLogs:N0}", CellAlignment.Right) },
-            };
-
-            await command.RespondAsyncGettingMessage($"```\n{GetTable(rows)}```", ephemeral: true);
         }
 
         [SlashCommand("coopstats", "Active Co-op Stats")]
