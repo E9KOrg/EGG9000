@@ -74,6 +74,24 @@ namespace EGG9000.Site.Controllers {
         }
 
         [Authorize(Roles = "Admin")]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> SetApiVersions(int clientVersion, string appVersion, string appBuild) {
+            if(clientVersion <= 0 || string.IsNullOrWhiteSpace(appVersion) || string.IsNullOrWhiteSpace(appBuild))
+                return Content("clientVersion must be positive and appVersion/appBuild must be non-empty. Nothing changed.");
+
+            var valid = await EggIncApi.ValidateVersionsAsync((uint)clientVersion, appVersion, appBuild);
+            if(!valid)
+                return Content($"Rejected {clientVersion} / {appVersion} / {appBuild}: the API returned no contracts (bad/stale/typo'd version, or a transient failure). Nothing changed.");
+
+            var oldTriple = $"{EggIncApi.ClientVersion} / {EggIncApi.AppVersion} / {EggIncApi.AppBuild}";
+            EggIncApi.SetVersions((uint)clientVersion, appVersion, appBuild);
+            await _publishEndpoint.Publish(new UpdateApiVersionsMessage { ClientVersion = (uint)clientVersion, AppVersion = appVersion, AppBuild = appBuild });
+
+            return Content($"API versions updated and applied to all running instances.\nOld: {oldTriple}\nNew: {clientVersion} / {appVersion} / {appBuild}");
+        }
+
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> LookForLargeJump() {
             var snapshots = await _db.UserSnapShots.ToListAsync();
 
