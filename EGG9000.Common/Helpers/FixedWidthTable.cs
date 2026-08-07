@@ -12,7 +12,6 @@ namespace EGG9000.Common.Helpers {
         public static string GetTable(List<List<FixedWidthCell>> contents) {
             var sb = new StringBuilder();
 
-            //Find max column widths
             var columnWidths = new Dictionary<int, int>();
             foreach((var row, var rowIndex) in contents.Select((item, i) => (item, i))) {
                 if(row == null)

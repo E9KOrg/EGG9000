@@ -17,7 +17,7 @@
     // Read/staff tier - gates display-only context when viewing another user's farms (titles, status
     // badges, extra columns). All write controls (remove merit/demerit) are gated on isAdmin instead, so
     // the read-only GuildReadOnlyAdmin (CT) tier is safe to include here.
-    var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+    var isLesserAdmin = User.IsStaff();
     var isSelf = Model.IsSelf;
 
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
@@ -39,11 +39,6 @@
 
 <style>
     <!-- TODO: Figure out what portion of this needs to be 'here', versus extracted -->
-    .card-header img {
-        height: 50px;
-        margin: -31px -8px -25px -22px;
-    }
-
     .card {
         vertical-align: top;
     }
@@ -73,12 +68,49 @@
         margin-top: 10px;
     }
 
+    #myfarms-content .form-switch {
+        padding-left: 3.1em;
+    }
+
+    #myfarms-content .form-switch .form-check-input {
+        width: 2.6em;
+        height: 1.4em;
+        margin-top: 0.05em;
+        margin-left: -3.1em;
+        cursor: pointer;
+        background-color: #c62828;
+        border-color: #c62828;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+        transition: background-position .18s ease-in-out, background-color .18s ease-in-out, border-color .18s ease-in-out;
+    }
+
+    #myfarms-content .form-switch .form-check-input:checked {
+        background-color: #2e7d32;
+        border-color: #2e7d32;
+    }
+
+    #myfarms-content .form-switch .form-check-label {
+        margin-left: 6px;
+    }
+
+    #myfarms-content .form-switch p {
+        margin-left: -3.1em;
+    }
+
     /* Don't let selects stretch the full card width; scale to their content where supported. */
     .contract-settings select.cs-input {
         width: auto;
         field-sizing: content;
         min-width: 160px;
         max-width: 100%;
+        background-position: left .65rem center;
+        padding-left: 2rem;
+        padding-right: .85rem;
+    }
+
+    .contract-settings .form-group > label {
+        display: inline-block;
+        margin-bottom: 6px;
     }
 
     /* Humanized CS number inputs: stepper buttons either side, width scales to content. */
@@ -91,7 +123,7 @@
     .contract-settings .cs-num {
         width: auto;
         field-sizing: content;
-        min-width: 90px;
+        min-width: 6ch;
         max-width: 220px;
         text-align: right;
         border-radius: 0;
@@ -117,6 +149,38 @@
 
     .Expired td {
         opacity: 60%;
+    }
+
+    .cs-save-bar {
+        display: none;
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1090;
+        background: #4a4f55;
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.5);
+        align-items: center;
+        gap: 12px;
+    }
+
+    .cs-save-bar.cs-visible {
+        display: flex;
+    }
+
+    @@keyframes cs-wiggle {
+        0%, 100% { transform: translateX(-50%) rotate(0deg); }
+        20% { transform: translateX(-50%) rotate(-3deg); }
+        40% { transform: translateX(-50%) rotate(3deg); }
+        60% { transform: translateX(-50%) rotate(-3deg); }
+        80% { transform: translateX(-50%) rotate(3deg); }
+    }
+
+    .cs-save-bar.cs-wiggle {
+        animation: cs-wiggle 0.4s ease;
     }
 
     .tooltip-custom {
@@ -174,24 +238,6 @@
 </style>
 
 <script>
-    function copyIdToClipboard(id, notifId) {
-        // If the passed parameter is an HTML element, get its inner text
-        const content = (typeof id === "object") ? id.innerText : id.toString();
-        navigator.clipboard.writeText(content);
-
-        if (notifId) {
-            // Show the notification
-            var notification = document.getElementById(notifId);
-            notification.style.display = "block";
-            notification.style.opacity = "1";
-
-            // Hide the notification after 2 seconds (adjust the duration as needed)
-            setTimeout(function () {
-                notification.style.opacity = "0";
-            }, 2000);
-        }
-    }
-
     function formatEpochToTime(epochSeconds, full) {
         // Calculate the difference between the epoch time and the current time in seconds
         var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
@@ -595,15 +641,21 @@
                     }
                 </div>
                 <div class="tab-pane" id="contractsettings@(index)" role="tabpanel">
-                    @{
-                        var contractSettingsModel = new MyFarms_Partial_ContractSettingsModel(Model, index, isSelf);
-                        await Html.RenderPartialAsync("_ContractSettings", contractSettingsModel);
-                    }
-                    <hr style="border-color:#444; margin:24px 0;" />
-                    @{
-                        var testAssignmentModel = new MyFarms_Partial_TestAssignmentModel(Model, index);
-                        await Html.RenderPartialAsync("_TestAssignment", testAssignmentModel);
-                    }
+                    <div class="row">
+                        <div class="col-12 col-lg-7">
+                            @{
+                                var contractSettingsModel = new MyFarms_Partial_ContractSettingsModel(Model, index, isSelf);
+                                await Html.RenderPartialAsync("_ContractSettings", contractSettingsModel);
+                            }
+                        </div>
+                        <div class="col-12 col-lg-5">
+                            <hr class="d-lg-none" style="border-color:#444; margin:24px 0;" />
+                            @{
+                                var testAssignmentModel = new MyFarms_Partial_TestAssignmentModel(Model, index);
+                                await Html.RenderPartialAsync("_TestAssignment", testAssignmentModel);
+                            }
+                        </div>
+                    </div>
                 </div>
                 <div class="tab-pane" id="inventory@(index)" role="tabpanel">
                     @{
@@ -615,6 +667,12 @@
         </div>
     }
 </div>
+</div>
+
+<div id="cs-save-bar" class="cs-save-bar">
+    <span class="cs-save-bar-text">Unsaved changes</span>
+    <button type="button" class="btn btn-sm btn-danger cs-discard-btn">Discard</button>
+    <button type="button" class="btn btn-sm btn-success cs-save-btn">Save</button>
 </div>
 
 @section Scripts {
@@ -692,11 +750,24 @@
                 let newUrl;
                 const hash = $(this).attr("href");
 
-                console.log(hash.substring(1, 5));
                 if (hash.substring(1, 5) == "user")
                     return;
                 newUrl = url.split("#")[0] + hash;
                 history.replaceState(null, null, newUrl);
+            });
+
+            $(document).on("show.bs.tab", 'a[data-bs-toggle="tab"]', function (e) {
+                if (csIsDirty()) {
+                    e.preventDefault();
+                    csWiggleBar();
+                }
+            });
+
+            window.addEventListener("beforeunload", function (e) {
+                if (csIsDirty()) {
+                    e.preventDefault();
+                    e.returnValue = "";
+                }
             });
 
             $(document).on("keyup", "[id^='ArchivedFarmsSearch']", function () {
@@ -800,39 +871,151 @@
             toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
         }
 
-        function saveContractSetting(container, accountIndex, field, value, revert) {
-            fetch('/MyFarms/SaveContractSetting', {
+        function postContractSetting(accountIndex, field, value) {
+            return fetch('/MyFarms/SaveContractSetting', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ accountIndex: accountIndex, field: field, value: value })
-            }).then(res => {
-                if (res.ok) {
-                    res.json().then(body => {
-                        // Server enforces the grade floor; reflect any clamp back into the input.
-                        if (body && body.effectiveCsGoal != null) {
+            });
+        }
+
+        function applyCsSideEffects(container, accountIndex, field, value) {
+            if (field === 'seasonalMode') {
+                const goalWrap = container.querySelector('.cs-seasonalgoal-wrap-' + accountIndex);
+                if (goalWrap) goalWrap.style.display = (value === '2') ? '' : 'none';
+                const afterWrap = container.querySelector('.cs-seasonalafter-wrap-' + accountIndex);
+                if (afterWrap) afterWrap.style.display = (value === '1' || value === '2') ? '' : 'none';
+            }
+            if (field === 'redoMode') {
+                const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);
+                if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
+                const otherMatchWrap = container.querySelector('.cs-redoothermatch-wrap-' + accountIndex);
+                if (otherMatchWrap) otherMatchWrap.style.display = (value === '4') ? '' : 'none';
+                const excludeSeasonalWrap = container.querySelector('.cs-excludeseasonal-wrap-' + accountIndex);
+                if (excludeSeasonalWrap) excludeSeasonalWrap.style.display = (value === '0' || value === '3') ? 'none' : '';
+                const siblingWrap = document.querySelector('.ta-sibling-wrap-' + accountIndex);
+                if (siblingWrap) siblingWrap.style.display = (value === '4') ? '' : 'none';
+            }
+        }
+
+        function csFieldValue(container, field) {
+            const group = container.querySelector('.cs-reward-group[data-field="' + field + '"]');
+            if (group) return rewardGroupValue(group);
+            const numEl = container.querySelector('.cs-num[data-field="' + field + '"]');
+            if (numEl) return numEl.dataset.value;
+            const el = container.querySelector('[data-field="' + field + '"]');
+            return el ? controlValue(el) : null;
+        }
+
+        function csUpdateCommitted(container, field) {
+            const group = container.querySelector('.cs-reward-group[data-field="' + field + '"]');
+            if (group) { group.dataset.csCommitted = rewardGroupValue(group); return; }
+            const numEl = container.querySelector('.cs-num[data-field="' + field + '"]');
+            if (numEl) { numEl.dataset.csCommitted = numEl.dataset.value; return; }
+            const el = container.querySelector('[data-field="' + field + '"]');
+            if (el) el.dataset.csCommitted = controlValue(el);
+        }
+
+        const csPanels = new Map();
+
+        function csPanel(container, accountIndex) {
+            let panel = csPanels.get(accountIndex);
+            if (!panel) {
+                panel = { container: container, fields: new Map() };
+                csPanels.set(accountIndex, panel);
+            }
+            panel.container = container;
+            return panel;
+        }
+
+        function csIsDirty() {
+            for (const panel of csPanels.values()) {
+                if (panel.fields.size > 0) return true;
+            }
+            return false;
+        }
+
+        function csBarEl() {
+            return document.getElementById('cs-save-bar');
+        }
+
+        function csShowBar() {
+            csBarEl().classList.add('cs-visible');
+        }
+
+        function csHideBar() {
+            csBarEl().classList.remove('cs-visible');
+        }
+
+        function csWiggleBar() {
+            const bar = csBarEl();
+            bar.classList.add('cs-visible');
+            bar.classList.remove('cs-wiggle');
+            void bar.offsetWidth;
+            bar.classList.add('cs-wiggle');
+        }
+
+        function csMarkDirty(container, accountIndex, field, revertFn) {
+            csPanel(container, accountIndex).fields.set(field, revertFn);
+            csShowBar();
+        }
+
+        async function csCommitPending() {
+            if (!csIsDirty()) return;
+            const bar = csBarEl();
+            const saveBtn = bar.querySelector('.cs-save-btn');
+            saveBtn.disabled = true;
+            let anyFailed = false;
+            let lastContainer = null;
+
+            for (const [accountIndex, panel] of Array.from(csPanels)) {
+                const container = panel.container;
+                lastContainer = container;
+                for (const field of Array.from(panel.fields.keys())) {
+                    const value = csFieldValue(container, field);
+                    try {
+                        const res = await postContractSetting(accountIndex, field, value);
+                        if (!res.ok) { anyFailed = true; continue; }
+                        const body = await res.json().catch(() => null);
+                        if (field === 'seasonalCsGoal' && body && body.effectiveCsGoal != null) {
                             const input = container.querySelector('#cs-seasonalgoal-' + accountIndex);
                             const eff = String(Math.round(body.effectiveCsGoal));
                             if (input && eff !== input.dataset.value) {
                                 input.dataset.value = eff;
                                 csNumDisplay(input);
                                 showCsStatus(container, 'Adjusted to grade minimum', true);
-                                return;
                             }
                         }
-                        showCsStatus(container, 'Saved', true);
-                    }).catch(() => showCsStatus(container, 'Saved', true));
-                } else {
-                    if (revert) revert();
-                    showCsStatus(container, 'Save failed', false);
+                        csUpdateCommitted(container, field);
+                        panel.fields.delete(field);
+                    } catch (e) {
+                        anyFailed = true;
+                    }
                 }
-            }).catch(() => {
-                if (revert) revert();
-                showCsStatus(container, 'Save failed', false);
-            });
+                if (panel.fields.size === 0) csPanels.delete(accountIndex);
+            }
+
+            saveBtn.disabled = false;
+            if (anyFailed) {
+                showCsStatus(lastContainer, 'Save failed', false);
+                return;
+            }
+            if (!csIsDirty()) {
+                csHideBar();
+                showCsStatus(lastContainer, 'Saved', true);
+            }
+        }
+
+        function csDiscardPending() {
+            if (!csIsDirty()) return;
+            for (const panel of csPanels.values()) {
+                panel.fields.forEach(fn => fn && fn());
+            }
+            csPanels.clear();
+            csHideBar();
         }
 
         function wireContractSettings() {
-            // Format every humanized number for display, even read-only (other users') panels.
             document.querySelectorAll('.contract-settings .cs-num').forEach(csNumDisplay);
 
             document.querySelectorAll('.contract-settings').forEach(container => {
@@ -840,45 +1023,35 @@
                 const accountIndex = parseInt(container.dataset.accountIndex);
 
                 container.querySelectorAll('.cs-input').forEach(el => {
-                    let prior = controlValue(el);
+                    el.dataset.csCommitted = controlValue(el);
                     el.addEventListener('change', () => {
                         const field = el.dataset.field;
                         const value = controlValue(el);
-                        const before = prior;
-                        if (field === 'seasonalMode') {
-                            const goalWrap = container.querySelector('.cs-seasonalgoal-wrap-' + accountIndex);
-                            if (goalWrap) goalWrap.style.display = (value === '2') ? '' : 'none';
-                            const afterWrap = container.querySelector('.cs-seasonalafter-wrap-' + accountIndex);
-                            if (afterWrap) afterWrap.style.display = (value === '1' || value === '2') ? '' : 'none';
-                        }
-                        if (field === 'redoMode') {
-                            const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);
-                            if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
-                            const otherMatchWrap = container.querySelector('.cs-redoothermatch-wrap-' + accountIndex);
-                            if (otherMatchWrap) otherMatchWrap.style.display = (value === '4') ? '' : 'none';
-                            const excludeSeasonalWrap = container.querySelector('.cs-excludeseasonal-wrap-' + accountIndex);
-                            if (excludeSeasonalWrap) excludeSeasonalWrap.style.display = (value === '0' || value === '3') ? 'none' : '';
-                        }
-                        saveContractSetting(container, accountIndex, field, value, () => {
-                            if (el.type === 'checkbox') el.checked = (before === 'true');
-                            else el.value = before;
+                        applyCsSideEffects(container, accountIndex, field, value);
+                        csMarkDirty(container, accountIndex, field, () => {
+                            const committed = el.dataset.csCommitted;
+                            if (el.type === 'checkbox') el.checked = (committed === 'true');
+                            else el.value = committed;
+                            applyCsSideEffects(container, accountIndex, field, committed);
                         });
-                        prior = value;
                     });
                 });
 
                 container.querySelectorAll('.cs-num').forEach(el => {
                     csNumDisplay(el);
+                    el.dataset.csCommitted = el.dataset.value;
                     const field = el.dataset.field;
 
                     const commit = (raw) => {
-                        const before = el.dataset.value;
                         const parsed = csParseHuman(raw);
                         if (!isFinite(parsed)) { csNumDisplay(el); return; } // bad input -> restore
+                        if (field === 'seasonalCsGoal' && el.dataset.min != null && parsed < parseFloat(el.dataset.min)) {
+                            showCsStatus(container, 'Adjusted to grade minimum', true);
+                        }
                         const changed = csNumSet(el, parsed);
                         if (changed == null) return; // no net change
-                        saveContractSetting(container, accountIndex, field, el.dataset.value, () => {
-                            el.dataset.value = before;
+                        csMarkDirty(container, accountIndex, field, () => {
+                            el.dataset.value = el.dataset.csCommitted;
                             csNumDisplay(el);
                         });
                     };
@@ -892,11 +1065,10 @@
                             btn.addEventListener('click', () => {
                                 if (el.disabled) return;
                                 const cur = parseFloat(el.dataset.value) || 0;
-                                const before = el.dataset.value;
                                 const changed = csNumSet(el, cur + parseFloat(btn.dataset.step));
                                 if (changed == null) return;
-                                saveContractSetting(container, accountIndex, field, el.dataset.value, () => {
-                                    el.dataset.value = before;
+                                csMarkDirty(container, accountIndex, field, () => {
+                                    el.dataset.value = el.dataset.csCommitted;
                                     csNumDisplay(el);
                                 });
                             });
@@ -906,19 +1078,26 @@
 
                 container.querySelectorAll('.cs-reward-group').forEach(group => {
                     const field = group.dataset.field;
+                    group.dataset.csCommitted = rewardGroupValue(group);
                     group.querySelectorAll('.cs-reward').forEach(cb => {
-                        let priorChecked = cb.checked;
                         cb.addEventListener('change', () => {
-                            const before = priorChecked;
-                            const value = rewardGroupValue(group);
-                            saveContractSetting(container, accountIndex, field, value, () => {
-                                cb.checked = before;
+                            csMarkDirty(container, accountIndex, field, () => {
+                                const committed = group.dataset.csCommitted;
+                                group.querySelectorAll('.cs-reward').forEach(box => {
+                                    box.checked = committed.split(',').includes(box.value);
+                                });
                             });
-                            priorChecked = cb.checked;
                         });
                     });
                 });
             });
+
+            const bar = csBarEl();
+            if (bar && !bar.dataset.wired) {
+                bar.dataset.wired = '1';
+                bar.querySelector('.cs-save-btn').addEventListener('click', csCommitPending);
+                bar.querySelector('.cs-discard-btn').addEventListener('click', csDiscardPending);
+            }
         }
 
         function wireTestAssignment() {
@@ -1021,6 +1200,17 @@
                     if(!fresh) return;
 
                     current.innerHTML = fresh.innerHTML;
+
+                    current.querySelectorAll('script').forEach(function(oldScript) {
+                        var newScript = document.createElement('script');
+                        for (var i = 0; i < oldScript.attributes.length; i++) {
+                            var attr = oldScript.attributes[i];
+                            newScript.setAttribute(attr.name, attr.value);
+                        }
+                        newScript.textContent = oldScript.textContent;
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+
                     hydrateMyFarmsContent();
 
                     [activeOuterTab, activeInnerTab].forEach(function(tab) {
@@ -1033,7 +1223,7 @@
         }
 
         (function() {
-            var discordId = @Model.User.DiscordId;
+            var discordId = '@Model.User.DiscordId';
             var since = @latestBackupAtRender;
             var maxAttempts = 6;
 
@@ -1042,7 +1232,7 @@
                 fetch('/MyFarms/BackupFreshness?discordId=' + discordId)
                     .then(function(r) { return r.ok ? r.json() : null; })
                     .then(function(data) {
-                        if(data && data.latest > since) {
+                        if(data && data.latest > since && !csIsDirty()) {
                             swapMyFarmsContent(discordId);
                         } else {
                             setTimeout(function() { poll(attempt + 1); }, 4000);

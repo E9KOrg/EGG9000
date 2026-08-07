@@ -16,13 +16,13 @@
 	var bankScalar = !Model.account.HasActiveSubscription() ? 1 : (Model.account.SubscriptionLevel == 0 ? 1.25 : 1.40);
 	var totalBankGE = (ulong)(Model.backup.TotalGEInPiggyBank * bankScalar);
 }
-<div class="card" style="margin-top:15px" x-data="epicResearchPage()" data-epic-research-config="@Json.Serialize(new {
+<div class="card" style="margin-top:15px" x-data="epicResearchPage()" data-epic-research-config="@Html.Raw(System.Net.WebUtility.HtmlEncode(Json.Serialize(new {
 	items = Model.epicResearchConfig,
 	currentGE = Model.backup.GoldenEggsEarned - Model.backup.GoldenEggsSpent,
 	rawGEInPiggyBank = Model.backup.TotalGEInPiggyBank,
 	totalBankGE = totalBankGE,
 	rawBankGE = rawBankGE
-})">
+}).ToString()))">
 	<h4 class="card-header mb-3 d-flex justify-content-between align-items-center" style="gap:12px;">
 		<span style="flex:0 1 auto;">Epic Research GE Calculator</span>
 		<select id="discount-select" class="form-select form-select-sm" x-model.number="Discount" style="width:auto; flex:0 0 auto; min-width:160px;">
@@ -49,7 +49,7 @@
 			</thead>
 			<tbody>
 				<template x-for="er in EpicResearchConfig" :key="er.id">
-					<tr :class="{ 'collapsible-er-row': er.mappedBackupResearch.level === er.costs.length }">
+					<tr :class="{ 'collapsible-er-row': er.mappedBackupResearch.level >= er.costs.length }">
 						<td>
 							<span x-text="er.title"></span>
 							<span class="d-md-none">
@@ -57,7 +57,7 @@
 									  :class="{
 										'text-bg-danger': er.mappedBackupResearch.level === 0,
 										'text-bg-warning': er.mappedBackupResearch.level > 0 && er.mappedBackupResearch.level < er.costs.length,
-										'text-bg-success': er.mappedBackupResearch.level === er.costs.length
+										'text-bg-success': er.mappedBackupResearch.level >= er.costs.length
 									  }">
 									<span x-text="er.mappedBackupResearch.level + '/' + er.costs.length"></span>
 								</span>
@@ -69,12 +69,12 @@
 								  :class="{
 									'text-bg-danger': er.mappedBackupResearch.level === 0,
 									'text-bg-warning': er.mappedBackupResearch.level > 0 && er.mappedBackupResearch.level < er.costs.length,
-									'text-bg-success': er.mappedBackupResearch.level === er.costs.length
+									'text-bg-success': er.mappedBackupResearch.level >= er.costs.length
 								  }">
 								<span x-text="er.mappedBackupResearch.level + '/' + er.costs.length"></span>
 							</span>
 						</td>
-						<td x-show="er.mappedBackupResearch.level === er.costs.length" colspan="3">&nbsp;</td>
+						<td x-show="er.mappedBackupResearch.level >= er.costs.length" colspan="3">&nbsp;</td>
 						<td x-show="er.mappedBackupResearch.level < er.costs.length" class="text-end" x-text="Math.round(getCostForLevels(er, true)).toLocaleString()"></td>
 						<td x-show="er.mappedBackupResearch.level < er.costs.length">
 							<input type="number" x-model.number="er.levelsToBuy" :min="0" :max="er.costs.length - er.mappedBackupResearch.level" step="1" style="width: 3em;" />

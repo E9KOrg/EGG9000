@@ -21,6 +21,9 @@
 	<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\EGG9000.Analyzers\EGG9000.Analyzers.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+  </ItemGroup>
+  <ItemGroup>
     <None Remove="JsonData\ArtifactEmoji.json" />
     <None Remove="JsonData\farmer-ranks.json" />
     <None Remove="JsonData\ei-epic-research.json" />

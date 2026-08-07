@@ -127,7 +127,7 @@
 			</h5>
 
 			@foreach (var contract in Model.Contracts) {
-				<div>@*<a href="/admin/contract?contractid=@contract.ID">@contract.Name</a> *@<a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
+				<div><a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
 			}
 		</div>
 	</div>

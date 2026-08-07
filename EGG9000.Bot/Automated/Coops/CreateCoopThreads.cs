@@ -219,7 +219,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var allTasks = Task.WhenAll(tasks);
                 var completedTask = await Task.WhenAny(allTasks, watchdogTask);
 
-                if(completedTask == watchdogTask) { // Timeout occurred
+                if(completedTask == watchdogTask) {
                     watchdogCancellationSource.Cancel();
                     _logger.LogWarning("Watchdog Task Called, not all tasks finished. (Completed {count} of {total})", tasks.Count(x => x.IsCompleted), tasks.Count);
                 }
@@ -259,7 +259,6 @@ namespace EGG9000.Bot.Automated.Coops {
                 return thread;
             } catch(HttpException dException) {
                 if(dException.DiscordCode == DiscordErrorCode.MaximumActiveThreadsReached) {
-                    //Expected?
                 }
             } catch(Exception e) {
                 _logger.LogWarning(e, "Failed to create thread {thread}", threadName);

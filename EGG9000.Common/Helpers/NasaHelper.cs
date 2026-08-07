@@ -137,30 +137,6 @@ public static partial class NasaHelper {
             Embed = apodEmbed.Build(),
             Components = apod.CreateEphemeralExplanationButton()
         });
-
-
-        /*
-        if(TryExtractYouTubeId(apod.BestUrl) is string videoId) {
-            var apodEmbed = apod.GetEmbedBuilder().WithImageUrl($"https://img.youtube.com/vi/{videoId}/maxresdefault.jpg");
-            return new CustomDiscordMessage {
-                Embed = apodEmbed.Build(),
-                Components = apod.CreateEphemeralExplanationButton()
-            };
-
-        } else {
-            var attachment = await apod.GetFileAttachmentOrNull(db, logger);
-            if(attachment is not FileAttachment fileAttachment) {
-                logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
-                return null;
-            }
-            var apodEmbed = apod.GetEmbedBuilder().WithImageUrl($"attachment://{fileAttachment.FileName}");
-            return new CustomDiscordMessage {
-                Embed = apodEmbed.Build(),
-                File = fileAttachment,
-                SendFile = true,
-                Components = apod.CreateEphemeralExplanationButton()
-            };
-        }*/
     }
 
     public static async Task<bool> TrySendNasaAPOD(this GuildNasaApodDetails details, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {

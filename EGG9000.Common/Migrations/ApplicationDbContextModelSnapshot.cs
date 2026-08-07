@@ -919,6 +919,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<bool>("RemoveFindCoopSpot")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("RemoveTestAssignment")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("RolesToSync")
                         .HasColumnType("text");
 

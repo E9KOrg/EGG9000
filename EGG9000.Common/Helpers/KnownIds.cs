@@ -17,7 +17,6 @@ namespace EGG9000.Common.Helpers {
     }
 
     public static class KnownUsers {
-        // The EGG9000 bot's own application/user id.
         public const ulong Bot = 514257192803893272;
     }
 }

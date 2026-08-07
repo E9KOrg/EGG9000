@@ -7,6 +7,14 @@
 	<EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <PropertyGroup>
+    <!-- Forces the build to generate modern, cross-platform Portable PDBs -->
+    <DebugType>portable</DebugType>
+
+    <!-- Embeds the actual C# source code directly into the PDB files -->
+    <EmbedAllSources>true</EmbedAllSources>
+    <DebugSymbols>true</DebugSymbols>
+  </PropertyGroup>
+  <PropertyGroup>
     <HotReloadAutoRestart>true</HotReloadAutoRestart>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -73,12 +81,14 @@
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.16.0" />
     <PackageReference Include="Polly" Version="8.7.0" />
     <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
+    <PackageReference Include="Sentry.AspNetCore" Version="6.6.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="[3.1.12]" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="[2.1.7]" />
     <PackageReference Include="Stripe.Net" Version="52.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
+    <ProjectReference Include="..\EGG9000.Analyzers\EGG9000.Analyzers.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="EGG9000.Test" />

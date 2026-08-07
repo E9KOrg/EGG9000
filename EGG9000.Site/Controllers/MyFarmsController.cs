@@ -49,6 +49,7 @@ namespace EGG9000.Site.Controllers {
                 return View("Temporary", user);
             }
 
+            Sentry.SentrySdk.AddBreadcrumb($"DiscordId: {discordId}");  
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             return await ViewUser(discordId);
         }
@@ -80,6 +81,7 @@ namespace EGG9000.Site.Controllers {
             var loginUserId = await GetLoginDiscordIdAsync();
             var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            Sentry.SentrySdk.AddBreadcrumb($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordUsername: {user.DiscordUsername}");
             var scoring = new List<(string EggIncId, MyContracts MyContracts)>();
@@ -173,7 +175,7 @@ namespace EGG9000.Site.Controllers {
 
 
             Console.WriteLine(string.Join("\n", times.Finished().Select(y => $"{y.name}: {y.time.Humanize().ShortenTime()}")));
-            return new MyFarmsModel(user, Contracts, Demerits, Merits, /*RawBackups,*/ Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId);
+            return new MyFarmsModel(user, Contracts, Demerits, Merits, Snapshots, xrefs, coops, erItems, scoring, DbGuild, uncompletedPes, dbCustomEggs, isSelf, cachedContracts, seasonPEByEggIncId, missingSeasonalPEByEggIncId);
         }
 
         // Lazily renders the artifact-inventory image plus its hover-target manifest for one account. The
@@ -276,7 +278,7 @@ namespace EGG9000.Site.Controllers {
         public async Task<IActionResult> EarningsBoostCalculator() {
             var user = await GetCurrentDbUserAsync();
 
-            //Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
+            // Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
             var cachedContracts = await _db.CachedEiContractsAsync();
             var freshBackups = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
                 var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, cachedContracts);
@@ -388,7 +390,8 @@ namespace EGG9000.Site.Controllers {
                 .FirstOrDefaultAsync();
 
             var contractFacts = Common.Contracts.Assignment.Facts.ContractFactsBuilder.Build(contract, season);
-            var accountFacts = Common.Contracts.Assignment.Facts.AccountFactsBuilder.Build(dbuser, account, contract, [], latest, season, seasonProgresses);
+            var existingCoops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.ContractID == contract.ID && x.Created > DateTimeOffset.UtcNow.AddDays(-60)).ToListAsync();
+            var accountFacts = Common.Contracts.Assignment.Facts.AccountFactsBuilder.Build(dbuser, account, contract, existingCoops, latest, season, seasonProgresses);
 
             // Only means anything under YesOtherAccountMatch; on any other redo mode nothing reads the flag.
             var siblingMatchApplies = m.SimulateSiblingAssigned
