@@ -413,7 +413,7 @@ namespace EGG9000.Common.Helpers {
 
                             xref ??= coop.UserCoopsXrefs.FirstOrDefault(x => !string.IsNullOrEmpty(x.FixedUserName) && x.FixedUserName == participant.UserName);
 
-                            if(xref == null) {
+                            if(xref == null && !string.IsNullOrWhiteSpace(participant.UserName)) {
                                 var matchbackup = userBackupsAssigned.FirstOrDefault(x => x.Backup.UserName == participant.UserName);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                             }
