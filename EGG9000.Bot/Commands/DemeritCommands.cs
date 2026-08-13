@@ -1,10 +1,10 @@
-using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Helpers.Discord.Paging;
 
 using Humanizer;
 
@@ -12,43 +12,34 @@ using Microsoft.EntityFrameworkCore;
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
-        public static async Task<string> GetDemerits(Guid dbuserid, ApplicationDbContext db) {
+        public static async Task<List<string>> BuildDemeritLines(Guid dbuserid, ApplicationDbContext db) {
             var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuserid && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).ToListAsync();
-            if(demerits.Count == 0) {
-                string msg;
-                msg = $"There are no recent demerits";
-                return msg;
-            }
-
-            var demeritDesc = string.Join("\n", demerits.Select(x => {
-                var monthAgo = DateTimeOffset.UtcNow.AddMonths(-1);
-                var timeLeft = monthAgo - x.When;
-                return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
-            }));
-
-            return demeritDesc;
+            var monthAgo = DateTimeOffset.UtcNow.AddMonths(-1);
+            return [.. demerits.Select(x => $"Expires in {(monthAgo - x.When).Humanize(2)} for reason: {x.Reason}")];
         }
 
-        public static async Task SendDemeritList(SocketInteraction interaction, string mentionText, string demeritDesc, bool ephemeral) {
-            var header = $"Demerit info for {mentionText}\n";
+        public static async Task<string> GetDemerits(Guid dbuserid, ApplicationDbContext db) {
+            var lines = await BuildDemeritLines(dbuserid, db);
+            return lines.Count == 0 ? "There are no recent demerits" : string.Join("\n", lines);
+        }
+    }
 
-            if((header.Length + demeritDesc.Length) <= 1900) {
-                await interaction.RespondAsyncGettingMessage(header + demeritDesc, ephemeral: ephemeral);
-            } else {
-                await interaction.RespondWithFilesAsyncGettingMessage(
-                    [new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(demeritDesc)), "Demerits.txt")],
-                    text: header + "_(List too large for Discord - see attached file)_",
-                    ephemeral: ephemeral);
-            }
+    public class DemeritListPager(IReadOnlyList<string> lines, int page, string mentionText, ulong invokerId, ulong targetDiscordId) : TextListPager(lines, page) {
+        protected override string Title => "Demerits";
+        protected override string Preamble => $"Demerits for {mentionText}";
+        protected override string CustomIdPrefix => "DemeritsPage";
+        protected override string KeySuffix => $"{invokerId},{targetDiscordId}";
+
+        public static (ulong InvokerId, ulong TargetDiscordId, int Page) ParseCustomId(string data) {
+            var parts = data.Split(",");
+            return (ulong.Parse(parts[0]), ulong.Parse(parts[1]), int.Parse(parts[2]));
         }
     }
 
@@ -61,29 +52,36 @@ namespace EGG9000.Bot.Commands {
                 var socketUser = Context.User;
                 var user = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == socketUser.Id);
 
-                var demerits = await Db.Demerit.AsQueryable().Where(x => x.UserId == user.Id && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).ToListAsync();
-                if(demerits.Count == 0) {
-                    string msg;
+                var lines = await DemeritCommands.BuildDemeritLines(user.Id, Db);
+                if(lines.Count == 0) {
                     var msgs = new List<string> {
                             "How does a demerit sound for asking me that which you should already know",
                             "I really should give you a demerit so you can know what it feels like",
                             "No demerits, maybe I'll give you one just for fun"
                         };
-                    msg = msgs.Skip(new Random().Next(0, msgs.Count)).Take(1).First();
+                    var msg = msgs.Skip(new Random().Next(0, msgs.Count)).Take(1).First();
                     await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = msg);
                     return;
                 }
 
-                var demeritDesc = string.Join("\n", demerits.Select(x => {
-                    var monthAgo = DateTimeOffset.UtcNow.AddMonths(-1);
-                    var timeLeft = monthAgo - x.When;
-                    return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
-                }));
-
-                await DemeritCommands.SendDemeritList(Context.Interaction, socketUser.Mention, demeritDesc, ephemeral: true);
+                var pager = new DemeritListPager(lines, 0, socketUser.Mention, socketUser.Id, socketUser.Id);
+                await pager.SendAsync(Context.Interaction, ephemeral: true);
             } catch(Exception e) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
             }
+        }
+
+        [ComponentInteraction("DemeritsPage:*", ignoreGroupNames: true)]
+        public async Task DemeritsPage(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+            var (invokerId, targetDiscordId, page) = DemeritListPager.ParseCustomId(data);
+            if(component.User.Id != invokerId) { await Pager.RejectNonInvokerAsync(component); return; }
+
+            var targetUser = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetDiscordId);
+            if(targetUser is null) return;
+            var lines = await DemeritCommands.BuildDemeritLines(targetUser.Id, Db);
+            var pager = new DemeritListPager(lines, page, $"<@{targetDiscordId}>", invokerId, targetDiscordId);
+            await pager.UpdateComponentAsync(component);
         }
     }
 
@@ -150,9 +148,14 @@ namespace EGG9000.Bot.Commands {
             try {
                 var dbuser = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == user.Id);
 
-                var demeritDesc = await DemeritCommands.GetDemerits(dbuser.Id, Db);
+                var lines = await DemeritCommands.BuildDemeritLines(dbuser.Id, Db);
+                if(lines.Count == 0) {
+                    await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"There are no recent demerits for {user.Mention}");
+                    return;
+                }
 
-                await DemeritCommands.SendDemeritList(Context.Interaction, user.Mention, demeritDesc, ephemeral: hidden);
+                var pager = new DemeritListPager(lines, 0, user.Mention, Context.User.Id, user.Id);
+                await pager.SendAsync(Context.Interaction, ephemeral: hidden);
             } catch(Exception e) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
             }
