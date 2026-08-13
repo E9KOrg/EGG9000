@@ -1,3 +1,4 @@
+using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Common.Database;
@@ -11,7 +12,9 @@ using Microsoft.EntityFrameworkCore;
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
@@ -33,6 +36,19 @@ namespace EGG9000.Bot.Commands {
             }));
 
             return demeritDesc;
+        }
+
+        public static async Task SendDemeritList(SocketInteraction interaction, string mentionText, string demeritDesc, bool ephemeral) {
+            var header = $"Demerit info for {mentionText}\n";
+
+            if((header.Length + demeritDesc.Length) <= 1900) {
+                await interaction.RespondAsyncGettingMessage(header + demeritDesc, ephemeral: ephemeral);
+            } else {
+                await interaction.RespondWithFilesAsyncGettingMessage(
+                    [new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(demeritDesc)), "Demerits.txt")],
+                    text: header + "_(List too large for Discord - see attached file)_",
+                    ephemeral: ephemeral);
+            }
         }
     }
 
@@ -64,7 +80,7 @@ namespace EGG9000.Bot.Commands {
                     return $"Expires in {timeLeft.Humanize(2)} for reason: {x.Reason}";
                 }));
 
-                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Demerit info for {socketUser.Mention}\n{demeritDesc}");
+                await DemeritCommands.SendDemeritList(Context.Interaction, socketUser.Mention, demeritDesc, ephemeral: true);
             } catch(Exception e) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
             }
@@ -136,7 +152,7 @@ namespace EGG9000.Bot.Commands {
 
                 var demeritDesc = await DemeritCommands.GetDemerits(dbuser.Id, Db);
 
-                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Demerit info for {user.Mention}\n{demeritDesc}");
+                await DemeritCommands.SendDemeritList(Context.Interaction, user.Mention, demeritDesc, ephemeral: hidden);
             } catch(Exception e) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedExceptionFrame(e));
             }

@@ -191,6 +191,17 @@ namespace EGG9000.Bot.Commands {
 
                 var recentDemeritsString = $"{await DemeritCommands.GetDemerits(user.Id, db)}";
                 if(recentDemeritsString != "") {
+                    if(recentDemeritsString.Length > 1000) {
+                        var demeritLines = recentDemeritsString.Split('\n');
+                        var shownLines = new List<string>();
+                        var runningLength = 0;
+                        foreach(var line in demeritLines) {
+                            if(runningLength + line.Length + 1 > 950) break;
+                            shownLines.Add(line);
+                            runningLength += line.Length + 1;
+                        }
+                        recentDemeritsString = $"{string.Join("\n", shownLines)}\n_(+{demeritLines.Length - shownLines.Count} more - see /demerits)_";
+                    }
                     AddInfoSeparatorIfNeeded();
                     lastBuilder.AddField("Recent Demerits", recentDemeritsString);
                 }

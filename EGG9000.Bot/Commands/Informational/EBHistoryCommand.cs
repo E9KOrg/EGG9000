@@ -3,9 +3,11 @@ using Discord.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -95,21 +97,29 @@ namespace EGG9000.Bot.Commands.Informational {
             var longestRankLength = entries.Max(e => e.RankString.Length);
             entries.ForEach(e => e.MutateStrings(longestEBLength, longestRankLength));
 
-            var sb = new StringBuilder();
-            sb.Append($"{Context.User.Mention} - {account.Backup?.UserName ?? account.Name}'s Earnings Boost rank history, with a first entry from {DiscordHelpers.TimeStamper(snapshots.First().Date)}.");
-            sb.AppendLine("```");
-            sb.AppendLine($"Date        EB{new string(' ', longestEBLength - 2)}   Rank{new string(' ', longestRankLength - 2)}");
+            var introText = $"{Context.User.Mention} - {account.Backup?.UserName ?? account.Name}'s Earnings Boost rank history, with a first entry from {DiscordHelpers.TimeStamper(snapshots.First().Date)}.";
+
+            var tableSb = new StringBuilder();
+            tableSb.AppendLine($"Date        EB{new string(' ', longestEBLength - 2)}   Rank{new string(' ', longestRankLength - 2)}");
             foreach(var customEntry in entries) {
-                sb.AppendLine(customEntry.ToString());
+                tableSb.AppendLine(customEntry.ToString());
             }
-            sb.AppendLine("```");
+            var tableBody = tableSb.ToString();
 
-            var builder = new EmbedBuilder();
-            builder.Title = "EB History";
-            builder.Description = sb.ToString();
-            builder.Color = Color.DarkGreen;
+            var embedDescription = $"{introText}\n```\n{tableBody}```";
 
-            await Context.Interaction.ModifyOriginalResponseAsync(c => { c.Content = ""; c.Embed = builder.Build(); });
+            if(embedDescription.Length <= 3900) {
+                var builder = new EmbedBuilder();
+                builder.Title = "EB History";
+                builder.Description = embedDescription;
+                builder.Color = Color.DarkGreen;
+
+                await Context.Interaction.ModifyOriginalResponseAsync(c => { c.Content = ""; c.Embed = builder.Build(); });
+            } else {
+                await Context.Interaction.RespondWithFilesAsyncGettingMessage(
+                    [new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(tableBody)), "EBHistory.txt")],
+                    text: $"{introText}\n_(History too large for Discord - see attached file)_");
+            }
         }
 
         [GeneratedRegex(@"^EI\d{16}$")]
