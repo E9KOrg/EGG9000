@@ -403,11 +403,15 @@ namespace EGG9000.Bot.Automated.Coops {
                     var pingEvenIfJoined = xref.CoopSetting.PingOnCoopCreatedEvenIfJoined;
                     var pingIfNotJoined = xref.CoopSetting.PingOnCoopCreated && !xref.JoinedCoop;
                     if(pingEvenIfJoined || pingIfNotJoined) {
-                        await SendDMWarning(ctx.Db, ctx.ParentGuild.GetUser(user.User.DiscordId), ctx.CoopThread, "Co-op has been created", ctx.Coop);
                         xref.CoopSetting.PingOnCoopCreated = false;
                         xref.CoopSetting.PingOnCoopCreatedEvenIfJoined = false;
+                        xref.UpdateCoopSetting();
+                        await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                        await SendDMWarning(ctx.Db, ctx.ParentGuild.GetUser(user.User.DiscordId), ctx.CoopThread, "Co-op has been created", ctx.Coop);
+                    } else {
+                        xref.UpdateCoopSetting();
+                        await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
-                    xref.UpdateCoopSetting();
                 }
             }
             ctx.Timings.Set("5.1");
@@ -429,6 +433,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             }
                         });
                     ctx.Coop.RolesAddedToThread = true;
+                    await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                 } catch(Exception) {
                     _logger.LogInformation("Failed to compile role pings for {coop}", ctx.CoopName);
                 }
@@ -677,7 +682,8 @@ namespace EGG9000.Bot.Automated.Coops {
                     await ChannelHelper.DetermineAndSend(_client.Gateway, ctx.DbGuild, GuildChannelType.CheaterThread,
                         new() { Text = $"Time cheat detected for <@{u.User.DiscordId}> ({u.Backup?.UserName ?? "_No Username_"}) in the coop <#{ctx.Coop.ThreadID}> (`{ctx.Coop.Name}`)" }
                     );
-                    u.Xref.TimeCheatReported = true; //Set the flag to prevent repetition
+                    u.Xref.TimeCheatReported = true;
+                    await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                 }
             }
         }
@@ -720,10 +726,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 var mention = deflectorUser.DiscordUser?.Mention ?? $"<@{deflectorUser.User?.DiscordId}>";
                 var (b64, renderError) = await AfxSetsRender.RenderSingleSetB64(recommendedSet);
                 if(b64 is not null) {
-                    // Mark notified on the loop thread so the batch SaveChanges below persists it.
-                    // Setting it inside the queued lambda races SaveChanges and touches the
-                    // DbContext off-thread, which re-sent the suggestion every cycle.
-                    if(deflectorUser.Xref is not null) deflectorUser.Xref.TachyonDeflectorNotified = true;
+                    if(deflectorUser.Xref is not null) {
+                        deflectorUser.Xref.TachyonDeflectorNotified = true;
+                        await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                    }
                     var capturedMention = mention;
                     var capturedB64 = b64;
                     _queue.EnqueueLow(async () => {
@@ -733,7 +739,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 } else {
                     _logger.LogWarning("Tachyon image render failed for {user}: {error}", deflectorUser.User?.DiscordId, renderError);
                     ctx.LastMessage += $"\n\n{mention} should equip their **Tachyon Deflector**.";
-                    if(deflectorUser.Xref is not null) deflectorUser.Xref.TachyonDeflectorNotified = true;
+                    if(deflectorUser.Xref is not null) {
+                        deflectorUser.Xref.TachyonDeflectorNotified = true;
+                        await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
+                    }
                 }
             }
         }

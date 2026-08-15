@@ -1149,8 +1149,8 @@ namespace EGG9000.Bot.Commands {
     // Flat (non-grouped) staff commands. These were top-level /commands before the Discord.NET
     // migration and were incorrectly nested under /admin in that migration - kept flat here to
     // preserve the pre-migration command names.
-    [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
-    [StaffOnly(StaffTier.Admin)]
+    [DefaultMemberPermissions(GuildPermission.ManageChannels)]
+    [StaffOnly(StaffTier.CluckingCoordinator)]
     public partial class ContractStaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<ContractStaffModule> logger, DiscordSocketClient gateway) : E9KModuleBase(dbFactory) {
         private readonly ILogger<ContractStaffModule> _logger = logger;
 

@@ -638,9 +638,17 @@ namespace EGG9000.Site.Controllers {
             };
 
 
-            model.CoopStatus = await EggIncApi.GetCoopStatus(ContractId, CoopId.ToLower(), EIID: model.DbCoop?.CreatorID, xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger);
+            model.CoopStatus = model.DbCoop is not null 
+                ? await EggIncApi.GetCoopStatus(ContractId, CoopId.ToLower(), EIID: model.DbCoop?.CreatorID, xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger)
+                : await EggIncApi.GetCoopStatusBot(ContractId, CoopId.ToLower(), _logger: _logger);
 
             model.CoopStatus ??= model.DbCoop?.LastStatusUpdate;
+
+            if(model.CoopStatus is null && model.Contract is null) {
+                return View("Message", $"Unable to find contract. Contract Id: {ContractId}");
+            } else if(model.CoopStatus is null) {
+                return View("Message", $"Unable to find co-op. Contract: {model.Contract.Name} ({model.Contract.ID}), Co-op Name: {CoopId}");
+            }
 
             model.UserInfos = [];
 
