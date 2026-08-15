@@ -35,6 +35,11 @@ namespace EGG9000.Common.Database.Entities {
         public bool JoinWarning24h { get; set; }
         public bool JoinWarning24TillFinish { get; set; }
 
+        // One reminder each per user per co-op, never repeated. Same shape as the JoinWarning
+        // flags above.
+        public bool SiloWarningFirst { get; set; }
+        public bool SiloWarningSecond { get; set; }
+
         public DateTimeOffset? LastStatusTime { get; set; }
         public DateTimeOffset? SleepingWarningTime { get; set; }
         public DateTimeOffset? Joined { get; set; }

@@ -1063,6 +1063,11 @@ music
             if(!model.DisableBG && offlineWarningHours >= offlineDemeritHours) {
                 return BadRequest("Offline Warning Hours must be below Offline Hours Per Demerit");
             }
+            var siloFirst = model.SiloReminderFirstHours >= 1 ? model.SiloReminderFirstHours : CoopTimingHelper.DefaultSiloReminderFirstHours;
+            var siloSecond = model.SiloReminderSecondHours >= 1 ? model.SiloReminderSecondHours : CoopTimingHelper.DefaultSiloReminderSecondHours;
+            if(model.SiloRemindersEnabled && siloFirst >= siloSecond) {
+                return BadRequest("Silo Reminder Hours (first) must be below Silo Reminder Hours (second)");
+            }
             var dbGuild = await GetDbGuildByIdAsync(id);
             var invalidateApodGuildCache = (
                 (dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
@@ -1089,6 +1094,9 @@ music
             dbGuild.OfflineWarningHours = offlineWarningHours;
             dbGuild.JoinTimeHours = model.JoinTimeHours >= 1 ? model.JoinTimeHours : 18;
             dbGuild.JoinTimeUltraHours = model.JoinTimeUltraHours >= 1 ? model.JoinTimeUltraHours : 24;
+            dbGuild.SiloRemindersEnabled = model.SiloRemindersEnabled;
+            dbGuild.SiloReminderFirstHours = siloFirst;
+            dbGuild.SiloReminderSecondHours = siloSecond;
             if(invalidateApodGuildCache) {
                 var guildNasaKey = _db.InvalidateGuildNASACache(dbGuild);
                 await _publishEndpoint.Publish(new ExpireCacheMessage(guildNasaKey));

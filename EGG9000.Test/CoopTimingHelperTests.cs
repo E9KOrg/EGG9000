@@ -106,5 +106,101 @@ namespace EGG9000.Test {
             var under = CoopTimingHelper.EvaluateSleepAlert(guild, hoursSleeping: 19.9, siloTimeHours: 10);
             Assert.IsFalse(under.ShouldAlert);
         }
+
+        private static Guild SiloGuild(int first = 12, int second = 24, bool enabled = true) =>
+            new Guild { SiloRemindersEnabled = enabled, SiloReminderFirstHours = first, SiloReminderSecondHours = second };
+
+        [TestMethod]
+        public void GetMaxSilos_MatchesPermitLevel() {
+            Assert.AreEqual(2, Research.GetMaxSilos(0));
+            Assert.AreEqual(10, Research.GetMaxSilos(1));
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_DisabledGuild_NeverFires() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(enabled: false),
+                silosOwned: 1, permitLevel: 1, hoursSinceJoined: 100, firstSent: false, secondSent: false);
+            Assert.AreEqual(SiloReminderStage.None, check.Stage);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_AllSilosBought_NeverFires() {
+            var standard = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 2, 0, 100, false, false);
+            Assert.AreEqual(SiloReminderStage.None, standard.Stage);
+            var pro = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 10, 1, 100, false, false);
+            Assert.AreEqual(SiloReminderStage.None, pro.Stage);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_BeforeFirstThreshold_Silent() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 2, 1, 11.9, false, false);
+            Assert.AreEqual(SiloReminderStage.None, check.Stage);
+            Assert.AreEqual(0, check.ThresholdHours);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_PastFirstOnly_ReturnsFirst() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 2, 1, 12, false, false);
+            Assert.AreEqual(SiloReminderStage.First, check.Stage);
+            Assert.AreEqual(10, check.MaxSilos);
+            Assert.AreEqual(8, check.MissingSilos);
+            Assert.AreEqual(12, check.ThresholdHours);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_PastBoth_SkipsStraightToSecond() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 2, 1, 30, false, false);
+            Assert.AreEqual(SiloReminderStage.Second, check.Stage);
+            Assert.AreEqual(24, check.ThresholdHours);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_FirstAlreadySent_StaysSilentBeforeSecond() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 2, 1, 20, true, false);
+            Assert.AreEqual(SiloReminderStage.None, check.Stage);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_FirstAlreadySent_ReturnsSecondPastThreshold() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 2, 1, 25, true, false);
+            Assert.AreEqual(SiloReminderStage.Second, check.Stage);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_BothSent_NeverFiresAgain() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 2, 1, 500, true, true);
+            Assert.AreEqual(SiloReminderStage.None, check.Stage);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_StandardPermitMissingOne_ReportsCounts() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 1, 0, 12, false, false);
+            Assert.AreEqual(SiloReminderStage.First, check.Stage);
+            Assert.AreEqual(2, check.MaxSilos);
+            Assert.AreEqual(1, check.MissingSilos);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_StalePermitOwnsMoreThanMax_FloorsMissingAtZero() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), silosOwned: 5, permitLevel: 0, hoursSinceJoined: 100, firstSent: false, secondSent: false);
+            Assert.AreEqual(SiloReminderStage.None, check.Stage);
+            Assert.AreEqual(0, check.MissingSilos);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_ExactlySecondThreshold_ReturnsSecond() {
+            var check = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(), 2, 1, 24, false, false);
+            Assert.AreEqual(SiloReminderStage.Second, check.Stage);
+        }
+
+        [TestMethod]
+        public void EvaluateSiloReminder_ZeroedColumnsFallBackToDefaults() {
+            var first = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(first: 0, second: 0), 2, 1, 13, false, false);
+            Assert.AreEqual(SiloReminderStage.First, first.Stage);
+            Assert.AreEqual(12, first.ThresholdHours);
+            var second = CoopTimingHelper.EvaluateSiloReminder(SiloGuild(first: 0, second: 0), 2, 1, 25, false, false);
+            Assert.AreEqual(SiloReminderStage.Second, second.Stage);
+            Assert.AreEqual(24, second.ThresholdHours);
+        }
     }
 }

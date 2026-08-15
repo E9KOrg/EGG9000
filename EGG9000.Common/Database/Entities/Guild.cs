@@ -160,6 +160,12 @@ namespace EGG9000.Common.Database.Entities {
         public int JoinTimeUltraHours { get; set; } = 24;
         [GuildConfig("Show Contract Stats Embeds", "Toggles", GuildConfigKind.Bool, Description = "Show a live co-op stats embed inside each contract channel")]
         public bool ShowContractStatsEmbeds { get; set; }
+        [GuildConfig("Silo Reminders", "Toggles", GuildConfigKind.Bool, Description = "DM players in a co-op who have not bought every silo their permit allows")]
+        public bool SiloRemindersEnabled { get; set; }
+        [GuildConfig("Silo Reminder Hours (first)", "Numbers", GuildConfigKind.Int, Description = "Hours after joining a co-op before the first missing-silo reminder DM")]
+        public int SiloReminderFirstHours { get; set; } = 12;
+        [GuildConfig("Silo Reminder Hours (second)", "Numbers", GuildConfigKind.Int, Description = "Hours after joining a co-op before the second missing-silo reminder, which is also logged. Must be above the first")]
+        public int SiloReminderSecondHours { get; set; } = 24;
     }
 
     [NotMapped]
@@ -298,5 +304,7 @@ namespace EGG9000.Common.Database.Entities {
         CoopStatsChannel = 48,
         [Description("/TC/Optional: Where E9K will log issues that occur with users trying to /register")]
         RegisterIssues = 49,
+        [Description("/TC/Optional: Where second missing-silo reminders will be logged")]
+        SiloLog = 50,
     }
 }

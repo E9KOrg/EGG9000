@@ -65,7 +65,8 @@ namespace EGG9000.Bot.Commands {
         // surfaces agree on what a valid value is.
         private static readonly string[] TimingHourFields = [
             nameof(Guild.OfflineWarningHours), nameof(Guild.OfflineDemeritHours),
-            nameof(Guild.JoinTimeHours), nameof(Guild.JoinTimeUltraHours)
+            nameof(Guild.JoinTimeHours), nameof(Guild.JoinTimeUltraHours),
+            nameof(Guild.SiloReminderFirstHours), nameof(Guild.SiloReminderSecondHours)
         ];
 
         private static readonly (string Key, string Label)[] Sections = [
@@ -393,6 +394,8 @@ namespace EGG9000.Bot.Commands {
                         else if(i < 1 && TimingHourFields.Contains(f.PropName)) error = $"**{f.Label}**: must be 1 or more.";
                         else if(!g.DisableBG && f.PropName == nameof(Guild.OfflineWarningHours) && i >= g.OfflineDemeritHours) error = $"**{f.Label}**: must be below {GuildConfigReflection.Get(nameof(Guild.OfflineDemeritHours))?.Label} ({g.OfflineDemeritHours}).";
                         else if(!g.DisableBG && f.PropName == nameof(Guild.OfflineDemeritHours) && i <= g.OfflineWarningHours) error = $"**{f.Label}**: must be above {GuildConfigReflection.Get(nameof(Guild.OfflineWarningHours))?.Label} ({g.OfflineWarningHours}).";
+                        else if(g.SiloRemindersEnabled && f.PropName == nameof(Guild.SiloReminderFirstHours) && i >= g.SiloReminderSecondHours) error = $"**{f.Label}**: must be below {GuildConfigReflection.Get(nameof(Guild.SiloReminderSecondHours))?.Label} ({g.SiloReminderSecondHours}).";
+                        else if(g.SiloRemindersEnabled && f.PropName == nameof(Guild.SiloReminderSecondHours) && i <= g.SiloReminderFirstHours) error = $"**{f.Label}**: must be above {GuildConfigReflection.Get(nameof(Guild.SiloReminderFirstHours))?.Label} ({g.SiloReminderFirstHours}).";
                         else f.Property.SetValue(g, i);
                         break;
                     case GuildConfigKind.Float:

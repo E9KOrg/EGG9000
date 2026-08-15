@@ -21,5 +21,8 @@ namespace EGG9000.Site.Models.Admin {
         public int OfflineWarningHours { get; set; }
         public int JoinTimeHours { get; set; }
         public int JoinTimeUltraHours { get; set; }
+        public bool SiloRemindersEnabled { get; set; }
+        public int SiloReminderFirstHours { get; set; }
+        public int SiloReminderSecondHours { get; set; }
     }
 }
