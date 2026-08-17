@@ -161,7 +161,8 @@ Sort By:
 
 			@if (ViewBag.SortBy == "eott" || ViewBag.SortBy == "eov" || ViewBag.SortBy == "tepershift") {
 				<td align="right">@account.Backup.EggsOfTruthTotal</td>
-				<td align="right">@((account.Backup.VirtueEggsDelivered?.Sum() ?? 0).ToEggString())</td>
+				var eov = account.Backup.VirtueEggsDelivered?.Sum() ?? 0;
+				<td align="right">@(eov > 0 ? eov.ToEggStringD(4) : "0")</td>
 				@if (account.Backup.ShiftCount > 0) {
 					<td align="right">@(((double)account.Backup.EggsOfTruthTotal / (double)account.Backup.ShiftCount).ToString("#.00"))</td>
 				} else
