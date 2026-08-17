@@ -22,7 +22,7 @@ namespace EGG9000.Common.EggIncAPI {
 
         public static readonly List<(string EggIncId, Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = [];
 
-        public static uint ClientVersion { get; set; } = 72;
+        public static uint ClientVersion { get; set; } = 75;
         public static string AppVersion { get; set; } = "1.35.6";
         public static string AppBuild { get; set; } = "1.35.6.3";
 
