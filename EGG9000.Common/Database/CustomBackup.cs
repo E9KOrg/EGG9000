@@ -145,6 +145,8 @@ namespace EGG9000.Common.Database {
         public double SubscriptionEnds { get; set; } = 0;
         [Key(49)]
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; } = null;
+        [Key(50)]
+        public bool NoAliasInLatestBackup { get; set; }
 
 
         [IgnoreMember]
@@ -240,6 +242,7 @@ namespace EGG9000.Common.Database {
             CurrentMultiplier = backup.Game.CurrentMultiplier;
             EggIncId = backup.GetID();
             UserName = string.IsNullOrEmpty(backup.UserName) ? lastBackup?.UserName ?? "" : backup.UserName;
+            NoAliasInLatestBackup = string.IsNullOrEmpty(backup.UserName);
             LastBackupTime = (long)backup.Settings.LastBackupTime;
             PermitLevel = (ushort)backup.Game.PermitLevel;
             SoulEggs = backup.Game.SoulEggsTotal;

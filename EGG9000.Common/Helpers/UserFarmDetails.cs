@@ -248,7 +248,7 @@ namespace EGG9000.Common.Helpers {
 
         public string Name {
             get {
-                return DiscordUser?.GetCleanName() ?? CoopStatus?.UserName ?? DBUser?.DiscordUsername ?? "[error getting name]";
+                return DiscordUser?.GetCleanName() ?? (string.IsNullOrWhiteSpace(CoopStatus?.UserName) ? null : CoopStatus.UserName) ?? DBUser?.DiscordUsername ?? "[error getting name]";
             }
         }
 
