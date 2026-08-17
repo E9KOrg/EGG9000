@@ -987,7 +987,7 @@ namespace EGG9000.Bot.Commands {
             }
             // A brand new ephemeral message, not an update of the Test Assignment message: that message
             // is flagged ComponentsV2, and Discord will not allow downgrading it back to V1 components.
-            await component.RespondAsync(text: "Select which account you would like to manage", components: ContractSettingsCommands.GetAccountButtons(dbUser, "MCSMenu"), ephemeral: true);
+            await component.RespondAsync(components: ContractSettingsCommands.GetAccountButtons(dbUser, "MCSMenu"), flags: MessageFlags.ComponentsV2, ephemeral: true);
         }
 
         [ComponentInteraction("AcceptCoopOffer:*", ignoreGroupNames: true)]
