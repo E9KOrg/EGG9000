@@ -24,7 +24,7 @@ namespace EGG9000.Bot.Commands {
     public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
-        [SlashCommand("banlist", "Check the list of Users/EIDs that have been banned from the server via /kick")]
+        [SlashCommand("banlist", "Check the list of Users/EIDs that have been banned from the server via /b ban")]
         public async Task BanList() {
             await Context.Interaction.DeferAsync();
             var guildId = (await Db.Guilds.FirstOrDefaultAsync(g => g.Id == Context.Interaction.GuildId || g.OverflowServersJson.Contains(Context.Interaction.GuildId.ToString())))?.Id ?? ulong.MaxValue;
@@ -90,6 +90,74 @@ namespace EGG9000.Bot.Commands {
 
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = unbanEmbed; });
         }
+
+        [SlashCommand("ban", "Kick user(s) with DM and ban their EID(s) from the server")]
+        public async Task Ban(
+            [Summary("reason", "reason")] string reason,
+            [ComplexParameter] Interactions.UserSlots userSlots) {
+            await Context.Interaction.DeferAsync();
+            var users = userSlots.Users;
+            var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
+            var dbGuild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == Context.Interaction.GuildId || g.OverflowServersJson.Contains(Context.Interaction.GuildId.ToString()));
+            var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == Context.Interaction.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == Context.User.Id);
+            var canBan = runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers);
+
+            var banlist = new List<ulong>();
+            var exceptionList = new List<ulong>();
+            foreach(var targetUser in users) {
+                var bannedWithoutDm = false;
+                var dmChannel = await targetUser.CreateDMChannelAsync();
+
+                if(await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id) is { } dbUser) {
+                    var bannedServersList = dbUser.ServersBannedFrom?.Split(",")?.ToList() ?? [];
+                    bannedServersList.Add(dbGuild.Id.ToString());
+                    dbUser.ServersBannedFrom = string.Join(",", bannedServersList);
+                    dbUser.Banned = true;
+                    await Db.SaveChangesAsync();
+                }
+
+                try {
+                    await dmChannel.SendMessageAsync($"You have been banned from {guild.Name} for the reason: {reason}.");
+                } catch(HttpException) {
+                    bannedWithoutDm = true;
+                }
+
+                try {
+                    var execDiscordUser = guild.GetUser(targetUser.Id);
+                    if(execDiscordUser is null || !canBan) {
+                        if(users.Length > 1) {
+                            exceptionList.Add(targetUser.Id);
+                            continue;
+                        } else {
+                            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"{targetUser.Mention} may not have been banned from the server via Discord.{(canBan ? "" : " You do not have the `BanMembers` permission.")}\n\n**The DB Ban was applied to the user's account.**"); });
+                            return;
+                        }
+                    }
+                    await execDiscordUser.BanAsync(0, reason);
+                    if(users.Length > 1) {
+                        banlist.Add(targetUser.Id);
+                    } else {
+                        await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = $"Banned <@{targetUser.Id}> {(bannedWithoutDm ? "**without**" : "with")} DM"; });
+                        return;
+                    }
+                    continue;
+                } catch(Exception) {
+                    if(users.Length > 1) {
+                        exceptionList.Add(targetUser.Id);
+                    } else {
+                        await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. {targetUser.Mention} may not have been banned from the server.\n\n**The DB Ban was applied to the user's account.**"); });
+                        return;
+                    }
+                    continue;
+                }
+            }
+
+            if(users.Length > 1) {
+                var message = $"{(banlist.Count > 0 ? "Banned: " + string.Join(", ", banlist.Select(id => $"<@{id}>")) : "")}";
+                if(exceptionList.Count > 0) message += "\n\n**Did not Discord-ban (DB ban still applied)**: " + string.Join(", ", exceptionList.Select(id => $"<@{id}>"));
+                await Context.Interaction.ModifyOriginalResponseAsync(message);
+            }
+        }
     }
 
     // Flat (non-grouped) command. Was a top-level /kick before the Discord.NET migration and was
@@ -99,16 +167,14 @@ namespace EGG9000.Bot.Commands {
         private readonly DiscordHostedService _client = client;
 
         [SlashCommand("kick", "Kick user(s) with DM")]
-        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
-        [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
+        [DefaultMemberPermissions(GuildPermission.ManageChannels)]
+        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
         public async Task Kick(
             [Summary("reason", "reason")] string reason,
-            [ComplexParameter] Interactions.UserSlots userSlots,
-            [Summary("banaccount", "banaccount")] bool banaccount = false) {
+            [ComplexParameter] Interactions.UserSlots userSlots) {
             await Context.Interaction.DeferAsync();
             var users = userSlots.Users;
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
-            var dbGuild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == Context.Interaction.GuildId || g.OverflowServersJson.Contains(Context.Interaction.GuildId.ToString()));
 
             var kicklist = new List<ulong>();
             var exceptionList = new List<ulong>();
@@ -116,23 +182,11 @@ namespace EGG9000.Bot.Commands {
                 var kickedWithoutDm = false;
                 var dmChannel = await targetUser.CreateDMChannelAsync();
 
-                if(banaccount && await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id) is { } dbUser) {
-                    var bannedServersList = dbUser.ServersBannedFrom?.Split(",")?.ToList() ?? [];
-                    bannedServersList.Add(dbGuild.Id.ToString());
-                    dbUser.ServersBannedFrom = string.Join(",", bannedServersList);
-                    dbUser.Banned = true;
-                    await Db.SaveChangesAsync();
-                }
-
                 try {
-                    var verbiage = banaccount ? "banned" : "kicked";
-                    await dmChannel.SendMessageAsync($"You have been {verbiage} from {guild.Name} for the reason: {reason}.");
+                    await dmChannel.SendMessageAsync($"You have been kicked from {guild.Name} for the reason: {reason}.");
                 } catch(HttpException) {
                     kickedWithoutDm = true;
                 }
-
-                var runningUser = _client.Guilds?.FirstOrDefault(g => g.Id == Context.Interaction.GuildId)?.Users?.ToList().FirstOrDefault(u => u.Id == Context.User.Id);
-                var canBan = banaccount && runningUser is not null && runningUser.GuildPermissions.ToList().Contains(GuildPermission.BanMembers);
 
                 try {
                     var execDiscordUser = guild.GetUser(targetUser.Id);
@@ -141,15 +195,15 @@ namespace EGG9000.Bot.Commands {
                             exceptionList.Add(targetUser.Id);
                             continue;
                         } else {
-                            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. {targetUser.Mention} may not have been {(canBan ? "banned" : "kicked")} from the server.{(canBan ? $" \n\n**The DB Ban was applied to the user's account.**" : "")}"); });
+                            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. {targetUser.Mention} may not have been kicked from the server."); });
                             return;
                         }
                     }
-                    await (canBan ? execDiscordUser.BanAsync(0, reason) : execDiscordUser.KickAsync(reason));
+                    await execDiscordUser.KickAsync(reason);
                     if(users.Length > 1) {
                         kicklist.Add(targetUser.Id);
                     } else {
-                        await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = $"{(canBan ? "Banned" : (banaccount ? "DB Banned & Kicked" : "Kicked"))} <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
+                        await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = $"Kicked <@{targetUser.Id}> {(kickedWithoutDm ? "**without**" : "with")} DM"; });
                         return;
                     }
                     continue;
@@ -157,7 +211,7 @@ namespace EGG9000.Bot.Commands {
                     if(users.Length > 1) {
                         exceptionList.Add(targetUser.Id);
                     } else {
-                        await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. {targetUser.Mention} may not have been {(canBan ? "banned" : "kicked")} from the server.{(canBan ? $" \n\n**The DB Ban was applied to the user's account.**" : "")}"); });
+                        await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedWarning($"An exception was caught. {targetUser.Mention} may not have been kicked from the server."); });
                         return;
                     }
                     continue;
