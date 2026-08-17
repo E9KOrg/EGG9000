@@ -27,7 +27,6 @@ public class NasaApod {
     }
     private Guid _idCache = Guid.Empty;
 
-    // Actual properties from NASA APOD API
     [JsonProperty("title")]
     public string Title { get; set; }
     [JsonProperty("url")]
@@ -49,7 +48,6 @@ public class NasaApod {
     public string? Copyright { get; set; }
 #nullable disable
 
-    // Our own storage properties
     [JsonIgnore]
     public byte[] _postedToBytes { get; set; }
     [NotMapped]

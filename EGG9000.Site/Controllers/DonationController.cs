@@ -45,7 +45,7 @@ namespace EGG9000.Site.Controllers {
             StripeConfiguration.ApiKey = apiKey;
 
             var json = await new StreamReader(Request.Body).ReadToEndAsync();
-            Stripe.Event stripeEvent;
+            Event stripeEvent;
             try {
                 // Verifies the Stripe-Signature header against the webhook signing secret. Throws on
                 // a forged/replayed/tampered payload, which is the only authentication this endpoint has.
@@ -75,7 +75,7 @@ namespace EGG9000.Site.Controllers {
                 });
                 await _db.SaveChangesAsync();
 
-                var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.Id == userId);
+                var dbuser = await _db.DBUsers.FirstOrDefaultAsync(x => x.Id == userId);
                 if(dbuser is not null) {
                     discordUser = guild.Users.FirstOrDefault(x => x.Id == dbuser.DiscordId);
                     var role = guild.Roles.FirstOrDefault(x => x.Id == DonorRoleId);

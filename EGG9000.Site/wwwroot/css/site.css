@@ -1,6 +1,18 @@
 ﻿/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
 for details on configuring this project to bundle and minify static web assets. */
 
+:root {
+  --brand: #1b6ec2;
+  --brand-dark: #1861ac;
+  --border-muted: #e5e5e5;
+  --me-row: #adffaa;
+  --me-row-dark: #2c462b;
+  --tip-dark: rgba(33, 37, 41, 0.95);
+  --tip-light: rgba(130, 135, 140, 0.95);
+  --tip-lighter: rgba(235, 239, 242, 0.95);
+  --tip-border: #ccc;
+}
+
 a.navbar-brand {
   white-space: nowrap;
 }
@@ -33,27 +45,29 @@ a.navbar-brand {
     --bs-alert-border-color: #b6effb;
 }
 
+/* Alert backgrounds stay light-mode even in dark mode (see above), but Bootstrap's .text-muted
+   flips to a light gray in dark mode via --bs-secondary-color, which is unreadable against them. */
+[data-bs-theme="dark"] .alert .text-muted {
+    --bs-secondary-color: rgba(33, 37, 41, 0.75);
+}
+
 /* Provide sufficient contrast against white background */
 a {
   color: #0366d6;
 }
 
-.btn-primary {
+.btn-primary, .nav-pills .nav-link.active, .nav-pills .show > .nav-link {
   color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
-}
-
-.nav-pills .nav-link.active, .nav-pills .show > .nav-link {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
+  background-color: var(--brand);
+  border-color: var(--brand-dark);
 }
 
 /* Sticky footer styles
 -------------------------------------------------- */
 html {
   font-size: 14px;
+  position: relative;
+  min-height: 100%;
 }
 @media (min-width: 768px) {
   html {
@@ -62,26 +76,25 @@ html {
 }
 
 .border-top {
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid var(--border-muted);
 }
 .border-bottom {
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid var(--border-muted);
 }
 
 .box-shadow {
   box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
 }
 
-button.accept-policy {
-  font-size: 1rem;
-  line-height: inherit;
+.lb-name-cell {
+  max-width: 150px;
+  text-overflow: ellipsis;
+  line-break: strict;
 }
 
-/* Sticky footer styles
--------------------------------------------------- */
-html {
+.lb-anchor-offset {
   position: relative;
-  min-height: 100%;
+  top: -40px;
 }
 
 body {
@@ -96,26 +109,8 @@ body {
   line-height: 60px; /* Vertically center the text there */
 }
 
-/* Artifact Backgrounds 
+/* Artifact Backgrounds
 ------------------------------------------- */
-
-.afx-bg, .afx-img {
-    height: 5em;
-    width: 5em;
-}
-
-.afx-stone {
-    height: 1em;
-    width: 1em;
-    position: relative;
-}
-
-
-.afx-stone .afx-img {
-    width: 100%;
-    height: 100%;
-}
-
 
 .bg-common {
     background: radial-gradient(#d3d3d3,#d3d3d3,#9e9e9e);
@@ -133,13 +128,10 @@ body {
     background: radial-gradient(#fffe41,#fffe41,#eeab42);
 }
 
-.rounded-full {
-    border-radius: 9999px;
-    display: inline-block;
-}
-
 .ei-egg {
-    transform: scale(0.75, 0.75);
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
 }
 
 .card > table thead tr th {
@@ -307,10 +299,6 @@ body {
 .afx-set-wrap {
     margin-top: 4px;
     max-width: 375px;
-}
-
-.afx-hotspot-stone:hover {
-    outline-color: rgba(255, 255, 255, 0.85);
 }
 
 /* Artifact Combos tab: Current tile on top, four suggestion tiles in a 2x2 grid. */

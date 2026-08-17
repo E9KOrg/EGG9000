@@ -267,28 +267,23 @@ namespace EGG9000.Common.Helpers {
         public static readonly List<ResearchItem> CommonResearchList = [
             new ResearchItem { id = "comfy_nests", Name = "Comfortable Nests", Levels = 50, Increase = 0.1M, Type = ResearchEffect.EggLayingRate },
             new ResearchItem { id = "nutritional_sup", Name = "Nutritional Supplements", Levels = 40, Increase = 0.25M, Type = ResearchEffect.EggValue },
-            //new ResearchItem { id = "better_incubators", Name = "", Levels = 50, Increase = 0.1M, Type = IT.EggLayingRate },
             new ResearchItem { id = "excitable_chickens", Name = "Excitable Chickens", Levels = 25, Increase = 0.001M, Type = ResearchEffect.RunningBonus },
 
             new ResearchItem { id = "hab_capacity1", Name = "Hen House Remodel", Levels = 8, Increase = 0.05M, Type = ResearchEffect.HabCapacity },
             new ResearchItem { id = "internal_hatchery1", Name = "Internal Hatcheries", Levels = 10, Increase = 2M, Type = ResearchEffect.InternalHatchery },
             new ResearchItem { id = "padded_packaging", Name = "Padded Packaging	", Levels = 30, Increase = 0.25M, Type = ResearchEffect.EggValue },
-            //new ResearchItem { id = "hatchery_expansion", Name = "", Levels = 50, Increase = 0.1M, Type = IT.EggLayingRate },
             new ResearchItem { id = "bigger_eggs", Name = "Bigger Eggs	", Levels = 1, Increase = 1M, Type = ResearchEffect.EggValue },
 
             new ResearchItem { id = "internal_hatchery2", Name = "Internal Hatchery Upgrades", Levels = 10, Increase = 5M, Type = ResearchEffect.InternalHatchery },
             new ResearchItem { id = "leafsprings", Name = "Improved Leafsprings", Levels = 30, Increase = 0.05M, Type = ResearchEffect.VehicleCapacity },
             new ResearchItem { id = "vehicle_reliablity", Name = "Vehicle Reliability", Levels = 2, Increase = 1M, Type = ResearchEffect.FleetSize },
-            //new ResearchItem { id = "rooster_booster", Name = "", Levels = 50, Increase = 0.1M, Type = IT.EggLayingRate },
             new ResearchItem { id = "coordinated_clucking", Name = "Coordinated Clucking", Levels = 50, Increase = 0.2M, Type = ResearchEffect.MaxRunningBonus },
 
-            //new ResearchItem { id = "hatchery_rebuild1", Name = "", Levels = 50, Increase = 0.1M, Type = IT.EggLayingRate },
             new ResearchItem { id = "usde_prime", Name = "USDE Prime Certification", Levels = 1, Increase = 2M, Type = ResearchEffect.EggValue },
             new ResearchItem { id = "hen_house_ac", Name = "Hen House A/C", Levels = 50, Increase = 0.05M, Type = ResearchEffect.EggLayingRate },
             new ResearchItem { id = "superfeed", Name = "Super-Feed™ Diet", Levels = 35, Increase = 0.25M, Type = ResearchEffect.EggValue },
             new ResearchItem { id = "microlux", Name = "Microlux™ Chicken Suites", Levels = 10, Increase = 0.05M, Type = ResearchEffect.HabCapacity },
 
-            //new ResearchItem { id = "compact_incubators", Name = "", Levels = 50, Increase = 0.1M, Type = IT.EggLayingRate },
             new ResearchItem { id = "lightweight_boxes", Name = "Lightweight Boxes", Levels = 40, Increase = 0.1M, Type = ResearchEffect.VehicleCapacity },
             new ResearchItem { id = "excoskeletons", Name = "Depot Worker Exoskeletons", Levels = 2, Increase = 1M, Type = ResearchEffect.FleetSize },
             new ResearchItem { id = "internal_hatchery3", Name = "Internal Hatchery Expansion", Levels = 15, Increase = 10M, Type = ResearchEffect.InternalHatchery },

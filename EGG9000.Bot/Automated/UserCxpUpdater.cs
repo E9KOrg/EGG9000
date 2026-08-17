@@ -25,7 +25,6 @@ namespace EGG9000.Bot.Automated {
             List<UserCsHistoryEntry> existingScores;
             using(var lookupScope = _provider.CreateScope()) {
                 var lookupDb = lookupScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                //Get a list of all users that are a part of a guild
                 users = BuildConfig.IsDebug
                     ? await lookupDb.DBUsers.AsNoTracking().Where(x => x.DiscordId == 273621777119313921).ToListAsync(CancellationToken.None)
                     : await lookupDb.DBUsers.AsNoTracking().Where(x => x.GuildId > 0).ToListAsync(CancellationToken.None);
@@ -35,7 +34,6 @@ namespace EGG9000.Bot.Automated {
                 _logger.LogInformation("Finished Getting scores");
             }
 
-            //Loop through each user in the DB
             var chunkSize = 25;
             var count = 0;
             var userChunks = users.Chunk(chunkSize);
@@ -48,12 +46,9 @@ namespace EGG9000.Bot.Automated {
                 var skipped = 0;
                 // Network calls only below - no DB scope held while awaiting EggIncApi.
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3, CancellationToken = cancellationToken }, async (user, cancellationToken) => {
-                    //Loop through each account of the user
                     foreach(var account in user.EggIncAccounts.Where(x => x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
                         if(cancellationToken.IsCancellationRequested) break;
                         try {
-
-                            //Get every score of the user's contracts
                             var scores = await EggIncApi.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
 
                             if(scores?.Contracts is null) {
@@ -65,19 +60,15 @@ namespace EGG9000.Bot.Automated {
                             // Scanning only Contracts silently drops the score for anything that's already
                             // archived by run time, leaving redo-Leggacy threshold checks with no score.
                             foreach(var score in scores.Contracts.Concat(scores.Archive ?? [])) {
-                                //Max length for coop because of weird names
+                                // Coop names can run long enough to exceed the column's storage limit.
                                 var coopIdentifier = score.CoopIdentifier.Length > 100 ? score.CoopIdentifier[..100] : score.CoopIdentifier;
-                                //Get the score from existing ones
                                 var existingScore = existingScores.FirstOrDefault(x => x.ContractIdentifier == score.Contract.Identifier && x.CoopIdentifier == coopIdentifier && x.EggIncId == account.Id);
 
-                                //Check if a score for this contract already exists
                                 if(existingScore is null) {
-                                    //If it doesn't exist, add a new one
                                     scoresToAdd.Add(new UserCsHistoryEntry(score.Contract.Identifier, coopIdentifier, score.Evaluation.Cxp, account.Id));
                                 } else if(existingScore.Cxp != score.Evaluation.Cxp) {
-                                    //If it does, update the score and coop name, and bump Created so a
-                                    //changed score (e.g. a later replay observed under the same coop
-                                    //identifier) still sorts as the most recent play.
+                                    // Bump Created so a changed score (e.g. a later replay observed under
+                                    // the same coop identifier) still sorts as the most recent play.
                                     scoresToUpdate.Add((score.Contract.Identifier, coopIdentifier, account.Id, score.Evaluation.Cxp));
                                 }
                             }

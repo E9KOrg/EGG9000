@@ -79,7 +79,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                             timings.Set("Setup");
                             var creator = EggIncApi.CoopCreatorIds.FirstOrDefault(x => x.EggIncId == coop.CreatorID);
-                            await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default, timings: timings);
+                            await CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coop.Name, secondsRemaining, coop.CreatorID, coop.AnyLeague, kickCreator: creator == default, timings: timings, logger: _logger);
 
                             timings.Set("Coop API Call");
 

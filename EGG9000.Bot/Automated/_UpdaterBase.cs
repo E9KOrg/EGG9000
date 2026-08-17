@@ -41,8 +41,6 @@ namespace EGG9000.Bot.Automated {
 
         private readonly CronExpression _cronExpression;
         private DateTimeOffset _nextRunFromCron;
-        /*private readonly DateTimeOffset _firstRunDue;
-        private DateTimeOffset _updaterInitiated;*/
 
         public TimeSpan UpdateInterval;
         private readonly TimeSpan _delayedStart;
@@ -161,6 +159,7 @@ namespace EGG9000.Bot.Automated {
                     await _db.SaveChangesAsync();
 
                     LastCompleted = DateTime.Now;
+                    _logger.LogInformation("Completed");
                     if(Restarted) {
                         Restarted = false;
                         await _client.SendDMToKendrome($"{GetType().Name} successfully restarted.");

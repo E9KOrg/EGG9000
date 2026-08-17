@@ -76,13 +76,11 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
         public static Root Get() => _res.Value;
 
         private static Root PostProcess(Root Instance) {
-            // Compile the crafting coefficients from artifactParameters
             Instance.baseCraftingCoefficients = Instance.artifactParameters
                 .GroupBy(config => new { config.spec.name, config.spec.level })
-                .Where(artifactLevelGrouping => artifactLevelGrouping.Count() > 1) // Weed out stones and ingredients, artifact levels with no rarity
+                .Where(artifactLevelGrouping => artifactLevelGrouping.Count() > 1) // Weeds out stones/ingredients: artifact levels with no rarity variants
                 .ToDictionary(
                     artifactLevelGrouping => {
-                        // Create an EggIncArtifactInstance
                         var firstGroup = artifactLevelGrouping.First();
                         var afInstanceName = firstGroup.spec.name.Replace("_", "-").ToLower();
                         afInstanceName = afInstanceName.Replace("vial-", "vial-of-");
@@ -99,7 +97,7 @@ namespace EGG9000.Common.JsonData.EiAfxConfig {
                         var epicCoeff = commonCoeff / (artifactLevelGrouping.FirstOrDefault(c => c.spec.rarity == "EPIC")?.oddsMultiplier ?? 1);
                         var legendaryCoeff = commonCoeff / (artifactLevelGrouping.FirstOrDefault(c => c.spec.rarity == "LEGENDARY")?.oddsMultiplier ?? 1);
 
-                        // Ensure coefficients are set to 0 if they are undefined
+                        // Ratio equals 1 (coeff == commonCoeff) when the rarity is undefined for this level; treat as 0
                         if(rareCoeff == commonCoeff) rareCoeff = 0;
                         if(epicCoeff == commonCoeff) epicCoeff = 0;
                         if(legendaryCoeff == commonCoeff) legendaryCoeff = 0;

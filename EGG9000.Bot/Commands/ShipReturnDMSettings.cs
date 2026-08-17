@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord.ComponentsV2;
 using Microsoft.EntityFrameworkCore;
 
 using System;
@@ -19,45 +20,35 @@ namespace EGG9000.Bot.Commands {
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            var props = MainMenu(dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
         }
 
-        public static MessageProperties MainMenu(DBUser user, Color color = default) {
-            var props = new MessageProperties();
-
-            var eBuilder = new EmbedBuilder()
-                .WithTitle($"Ship Return DMs");
-
-            eBuilder.Description += "\n\nReceive a DM whenever a ship is due to return. The DM will also let you know the current fuel tank values.";
+        public static MessageComponent MainMenu(DBUser user, Color color = default) {
+            var page = new MenuPageBuilder("Ship Return DMs")
+                .WithDescription("Receive a DM whenever a ship is due to return. The DM will also let you know the current fuel tank values.");
             if(color != default)
-                eBuilder.Color = color;
-
-            var builder = new ComponentBuilder();
+                page.WithAccent(color);
 
             if(!user.DMOnShipReturn) {
-                builder.WithButton("Enable Ship DMs", $"SRDEnable:{user.DiscordId}");
+                page.AddButtons(new ButtonBuilder("Enable Ship DMs", $"SRDEnable:{user.DiscordId}", ButtonStyle.Primary));
             } else {
-                eBuilder.Description += "\n\nYou will receive a DM a set number of minutes before a ship is set to return depending on whether the next ship is fully fueled or not. You have the option for a second DM for ships that need fueling, one sent at the 'Needs Fueling' time and a second sent at the 'Full Ship' time.";
-                eBuilder.AddField("If Ship Is Fully Fueled", $"DM sent {user.ShipReturnMinutes} mins before ship is set to return");
+                page.AddText("You will receive a DM a set number of minutes before a ship is set to return depending on whether the next ship is fully fueled or not. You have the option for a second DM for ships that need fueling, one sent at the 'Needs Fueling' time and a second sent at the 'Full Ship' time.");
+                page.AddDivider();
+                page.AddRow("If Ship Is Fully Fueled", $"DM sent {user.ShipReturnMinutes} mins before ship is set to return",
+                    new ButtonBuilder("Set Time For Full Ship", $"SRDSetFueledTime:{user.DiscordId}", ButtonStyle.Primary));
 
                 var needsFueling = $"DM sent {(user.ShipReturnStillFuelingMinutes > 0 ? user.ShipReturnStillFuelingMinutes : user.ShipReturnMinutes)} mins before ship is set to return.";
-                if(user.ShipReturnDMAfterFuel) {
+                if(user.ShipReturnDMAfterFuel)
                     needsFueling += $"\nYou will receive a second DM at {user.ShipReturnMinutes} mins before ship is set to return";
-                }
-                eBuilder.AddField("Or If Ship Needs Fueling", needsFueling);
+                page.AddRow("Or If Ship Needs Fueling", needsFueling,
+                    new ButtonBuilder("Set Time For Ship Needs Fueling", $"SRDSetNotFueledTime:{user.DiscordId}", ButtonStyle.Primary));
 
-                builder.WithButton("Disable Ship DMs", $"SRDDisable:{user.DiscordId}");
-                builder.WithButton("Set Time For Full Ship", $"SRDSetFueledTime:{user.DiscordId}");
-                builder.WithButton("Set Time For Ship Needs Fueling", $"SRDSetNotFueledTime:{user.DiscordId}");
-                builder.WithButton($"{(user.ShipReturnDMAfterFuel ? "Disable" : "Receive")} Second DM For Ship Needs Fueling", $"SRDSecondDM:{user.DiscordId}");
+                page.AddButtons(
+                    new ButtonBuilder($"{(user.ShipReturnDMAfterFuel ? "Disable" : "Receive")} Second DM For Ship Needs Fueling", $"SRDSecondDM:{user.DiscordId}", ButtonStyle.Primary),
+                    new ButtonBuilder("Disable Ship DMs", $"SRDDisable:{user.DiscordId}", ButtonStyle.Danger));
             }
-            builder.WithButton("↵ Contract Settings", $"MCSAccounts:{user.DiscordId}", ButtonStyle.Secondary);
-
-            props.Components = builder.Build();
-            props.Embed = eBuilder.Build();
-
-            return props;
+            page.WithReturn($"MCSAccounts:{user.DiscordId}", "← Contract Settings");
+            return page.Build();
         }
 
         [ComponentInteraction("SRDEnable:*", ignoreGroupNames: true)]
@@ -68,8 +59,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = true;
             await Db.SaveChangesAsync();
-            var props = MainMenu(dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
         }
 
         [ComponentInteraction("SRDDisable:*", ignoreGroupNames: true)]
@@ -80,8 +70,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = false;
             await Db.SaveChangesAsync();
-            var props = MainMenu(dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
         }
 
         [ComponentInteraction("SRDSecondDM:*", ignoreGroupNames: true)]
@@ -92,8 +81,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.ShipReturnDMAfterFuel = !dbuser.ShipReturnDMAfterFuel;
             await Db.SaveChangesAsync();
-            var props = MainMenu(dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
         }
 
         [ComponentInteraction("SRDSetFueledTime:*", ignoreGroupNames: true)]
@@ -118,14 +106,12 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
 
             if(!isNum || mins < 0) {
-                var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
-                var components = new ComponentBuilder().WithButton("Re-enter", $"SRDSetFueledTime:{data}").WithButton("Cancel", $"SRDMenu:{data}").Build();
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
+                var components = ComponentsV2EmbedHelpers.ErrorWithRetry("Ship Return DMs", "⚠️ Input needs to be a positive integer", $"SRDSetFueledTime:{data}", $"SRDMenu:{data}");
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
             } else {
                 dbuser.ShipReturnMinutes = mins;
                 await Db.SaveChangesAsync();
-                var props = MainMenu(dbuser);
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
             }
         }
 
@@ -152,18 +138,15 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : modal.User.Id));
 
             if(!isNum || mins < 0) {
-                var embedBuilder = new EmbedBuilder().WithTitle("⚠️Input needs to be a positive integer").WithColor(Color.Red).Build();
-                var components = new ComponentBuilder().WithButton("Re-enter", $"SRDSetNotFueledTime:{data}").WithButton("Cancel", $"SRDMenu:{data}").Build();
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
+                var components = ComponentsV2EmbedHelpers.ErrorWithRetry("Ship Return DMs", "⚠️ Input needs to be a positive integer", $"SRDSetNotFueledTime:{data}", $"SRDMenu:{data}");
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
             } else if(mins < dbuser.ShipReturnMinutes) {
-                var embedBuilder = new EmbedBuilder().WithTitle($"⚠️Input needs to be greater or equal to Ship Fueled Time of {dbuser.ShipReturnMinutes} mins").WithColor(Color.Red).Build();
-                var components = new ComponentBuilder().WithButton("Re-enter", $"SRDSetNotFueledTime:{data}").WithButton("Cancel", $"SRDMenu:{data}").Build();
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = null; x.Components = components; x.Embed = embedBuilder; });
+                var components = ComponentsV2EmbedHelpers.ErrorWithRetry("Ship Return DMs", $"⚠️ Input needs to be greater or equal to Ship Fueled Time of {dbuser.ShipReturnMinutes} mins", $"SRDSetNotFueledTime:{data}", $"SRDMenu:{data}");
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
             } else {
                 dbuser.ShipReturnStillFuelingMinutes = mins;
                 await Db.SaveChangesAsync();
-                var props = MainMenu(dbuser);
-                await modal.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+                await modal.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
             }
         }
 

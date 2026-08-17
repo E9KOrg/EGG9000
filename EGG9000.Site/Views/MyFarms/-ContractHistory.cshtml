@@ -1,13 +1,13 @@
 ﻿@using System.Collections.Frozen
 @using Discord.WebSocket
-@model (CustomBackup backup, bool isAdmin, List<DBContract> contracts, List<DBCustomEgg> CustomEggs, DBUser User, Ei.MyContracts scores, int index)
+@using EGG9000.Site.Models.MyFarms
+@model MyFarms_Partial_ContractHistoryModel
 @inject DiscordSocketClient discordClient
 @{
 	var backup = Model.backup;
-	var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
 	// Read/staff tier - gates display-only extra columns (cheat metrics). Includes the read-only
 	// GuildReadOnlyAdmin (CT) tier; no write controls are gated on this flag.
-	var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+	var isLesserAdmin = User.IsStaff();
 	var contracts = Model.contracts;
 
 	var farms = backup.Farms;
@@ -210,7 +210,9 @@
 							UserFarmDetails userFarmDetails = null;
 							if (coop is not null) {
                                 var coopContract = contracts.FirstOrDefault(x => x.ID == coop.ContractID);
-								userFarmDetails = GetCoopParticipants(coop, coopContract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
+								if (coopContract is not null) {
+									userFarmDetails = GetCoopParticipants(coop, coopContract, coop.League, coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
+								}
 							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm?.ContractId);
 							var score = Model.scores?.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract?.Identifier) == farm?.ContractId)?.Evaluation;
@@ -265,10 +267,10 @@
 								pastXrefWithScore = Model.User.UserCoopXrefs.OrderByDescending(x => x.CreatedOn).FirstOrDefault(x => x.Coop.ContractID == farm.ContractId && x.Score.HasValue && x.EggIncId == backup.EggIncId);
 							}
 							UserFarmDetails userFarmDetails = null;
-							if (xref is not null) {
-								userFarmDetails = GetCoopParticipants(xref.Coop, xref.Coop.Contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
-							}
 							var contract = contracts.FirstOrDefault(x => x.ID == farm.ContractId);
+							if (xref is not null && contract is not null) {
+								userFarmDetails = GetCoopParticipants(xref.Coop, contract, xref.Coop.League, xref.Coop.LastStatusUpdate, new List<UserWithBackup> { new UserWithBackup { User = Model.User, Backup = backup } }, Model.CustomEggs, discordClient).FirstOrDefault(x => x.Backup == backup);
+							}
 							var score = Model.scores?.Contracts.FirstOrDefault(x => (x.ContractIdentifier ?? x.Contract?.Identifier) == farm.ContractId)?.Evaluation;
 							<tr data-name="@(contracts.FirstOrDefault(x => x.ID == farm.ContractId)?.Name ?? farm.ContractId)" data-coop="@(farm.CoopId ?? null)">
 								<td>@(score?.Cxp.ToString() ?? "")</td>

@@ -1,4 +1,5 @@
-@model EGG9000.Site.Controllers.AdminController.FAQCustomizationModel
+@using EGG9000.Site.Models.Admin
+@model Admin_FAQCustomizationModel
 @using System.Security.Claims;
 @{
     ViewData["Title"] = "FAQ Customization";
@@ -380,12 +381,7 @@
                     )];
                     this.selectedItem._keywords = JSON.stringify(this.selectedItem.Keywords);
                     try {
-                        const r = await fetch('/admin/savefaqtopic/', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.selectedItem)
-                        });
-                        const data = await r.json();
+                        const data = await postJson('/admin/savefaqtopic/', this.selectedItem);
                         if (data.Error) { alert(data.Error); return; }
                         this._modal.hide();
                         location.reload();
@@ -405,12 +401,7 @@
                     this.selectedItem.subscribedGuildIds = ids;
                     this.selectedItem.subscribed = true;
                     try {
-                        const r = await fetch('/admin/savefaqtopic/', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.selectedItem)
-                        });
-                        const data = await r.json();
+                        const data = await postJson('/admin/savefaqtopic/', this.selectedItem);
                         if (data.Error) { alert(data.Error); return; }
                         this._modal.hide();
                     } catch (e) {
@@ -425,12 +416,7 @@
                     this.selectedItem.subscribedGuildIds = (this.selectedItem.subscribedGuildIds || []).filter(id => id !== guildIdStr);
                     this.selectedItem.subscribed = false;
                     try {
-                        const r = await fetch('/admin/savefaqtopic/', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.selectedItem)
-                        });
-                        const data = await r.json();
+                        const data = await postJson('/admin/savefaqtopic/', this.selectedItem);
                         if (data.Error) { alert(data.Error); return; }
                         this._modal.hide();
                     } catch (e) {
@@ -442,12 +428,7 @@
                 async deleteItem() {
                     if (!confirm('Are you sure you want to delete this item?')) return;
                     try {
-                        const r = await fetch('/admin/deletefaqtopic/', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.selectedItem)
-                        });
-                        const data = await r.json();
+                        const data = await postJson('/admin/deletefaqtopic/', this.selectedItem);
                         if (data.Error) { alert(data.Error); return; }
                         this._modal.hide();
                         location.reload();

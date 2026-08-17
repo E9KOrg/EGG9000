@@ -2,37 +2,28 @@
 @using Discord.WebSocket
 @using EGG9000.Common.Contracts.Assignment
 @using EGG9000.Common.Helpers
-@using EGG9000.Common.JsonData
-@using Microsoft.AspNetCore.Html
-@using static EGG9000.Site.Controllers.MyFarmsController
+@using EGG9000.Site.Models.MyFarms
 @inject DiscordSocketClient discordClient
 @{
     ViewData["Title"] = "Index";
-
-    List<DBContract> contracts = Model.Contracts;
 
     List<UserSnapShot> snapshots = Model.SnapShots;
 
     List<UserCoopXref> unjoinedCoops = Model.UnjoinedCoops.ToList();
 
-    List<EpicResearchItem> epicResearchConfig = Model.EpicResearchConfig;
-
-    Dictionary<string, List<EGG9000.Common.Database.Entities.DBContract>> uncompletePEs = Model.UncompletedPEContracts;
-
-    List<(string EggIncId, Ei.MyContracts MyContracts)> scoring = Model.Scoring;
     Guild dbguild = Model.DBGuild;
 
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
     // Read/staff tier - gates display-only context when viewing another user's farms (titles, status
     // badges, extra columns). All write controls (remove merit/demerit) are gated on isAdmin instead, so
     // the read-only GuildReadOnlyAdmin (CT) tier is safe to include here.
-    var isLesserAdmin = isAdmin || User.IsInRole("GuildLesserAdmin") || User.IsInRole("GuildReadOnlyAdmin");
+    var isLesserAdmin = User.IsStaff();
     var isSelf = Model.IsSelf;
 
     var emojiReplace = new Regex(@"<:[^:]+:(\d+)>");
 
     string emojiDelegage(Match match) {
-        return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' />";
+        return $"<img src='https://cdn.discordapp.com/emojis/{match.Groups[1]}.png?size=22' alt='emoji' />";
     };
 
     string accountName(string eggIncId){
@@ -43,13 +34,11 @@
 
     var inDB = Model.User.DiscordId > 0;
 
+    var latestBackupAtRender = Model.User.EggIncAccounts.Count == 0 ? 0 : Model.User.EggIncAccounts.Max(a => a.Backup?.LastBackupTime ?? 0);
 }
-<style>
-    .card-header img {
-        height: 50px;
-        margin: -31px -8px -25px -22px;
-    }
 
+<style>
+    <!-- TODO: Figure out what portion of this needs to be 'here', versus extracted -->
     .card {
         vertical-align: top;
     }
@@ -79,12 +68,49 @@
         margin-top: 10px;
     }
 
+    #myfarms-content .form-switch {
+        padding-left: 3.1em;
+    }
+
+    #myfarms-content .form-switch .form-check-input {
+        width: 2.6em;
+        height: 1.4em;
+        margin-top: 0.05em;
+        margin-left: -3.1em;
+        cursor: pointer;
+        background-color: #c62828;
+        border-color: #c62828;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+        transition: background-position .18s ease-in-out, background-color .18s ease-in-out, border-color .18s ease-in-out;
+    }
+
+    #myfarms-content .form-switch .form-check-input:checked {
+        background-color: #2e7d32;
+        border-color: #2e7d32;
+    }
+
+    #myfarms-content .form-switch .form-check-label {
+        margin-left: 6px;
+    }
+
+    #myfarms-content .form-switch p {
+        margin-left: -3.1em;
+    }
+
     /* Don't let selects stretch the full card width; scale to their content where supported. */
     .contract-settings select.cs-input {
         width: auto;
         field-sizing: content;
         min-width: 160px;
         max-width: 100%;
+        background-position: left .65rem center;
+        padding-left: 2rem;
+        padding-right: .85rem;
+    }
+
+    .contract-settings .form-group > label {
+        display: inline-block;
+        margin-bottom: 6px;
     }
 
     /* Humanized CS number inputs: stepper buttons either side, width scales to content. */
@@ -97,7 +123,7 @@
     .contract-settings .cs-num {
         width: auto;
         field-sizing: content;
-        min-width: 90px;
+        min-width: 6ch;
         max-width: 220px;
         text-align: right;
         border-radius: 0;
@@ -123,6 +149,38 @@
 
     .Expired td {
         opacity: 60%;
+    }
+
+    .cs-save-bar {
+        display: none;
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1090;
+        background: #4a4f55;
+        color: #fff;
+        padding: 10px 16px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,.5);
+        align-items: center;
+        gap: 12px;
+    }
+
+    .cs-save-bar.cs-visible {
+        display: flex;
+    }
+
+    @@keyframes cs-wiggle {
+        0%, 100% { transform: translateX(-50%) rotate(0deg); }
+        20% { transform: translateX(-50%) rotate(-3deg); }
+        40% { transform: translateX(-50%) rotate(3deg); }
+        60% { transform: translateX(-50%) rotate(-3deg); }
+        80% { transform: translateX(-50%) rotate(3deg); }
+    }
+
+    .cs-save-bar.cs-wiggle {
+        animation: cs-wiggle 0.4s ease;
     }
 
     .tooltip-custom {
@@ -180,24 +238,6 @@
 </style>
 
 <script>
-    function copyIdToClipboard(id, notifId) {
-        // If the passed parameter is an HTML element, get its inner text
-        const content = (typeof id === "object") ? id.innerText : id.toString();
-        navigator.clipboard.writeText(content);
-
-        if (notifId) {
-            // Show the notification
-            var notification = document.getElementById(notifId);
-            notification.style.display = "block";
-            notification.style.opacity = "1";
-
-            // Hide the notification after 2 seconds (adjust the duration as needed)
-            setTimeout(function () {
-                notification.style.opacity = "0";
-            }, 2000);
-        }
-    }
-
     function formatEpochToTime(epochSeconds, full) {
         // Calculate the difference between the epoch time and the current time in seconds
         var timeDifference = epochSeconds - Math.floor(Date.now() / 1000);
@@ -245,8 +285,9 @@
         }
         <div class="font-weight-bold" style="margin-top:10px;">
             @foreach (var xref in unjoinedCoops) {
+                    var egg = EggIncStatics.GetEggByContract(xref.Coop.Contract, Model.CustomEggs);
                 <div>
-                    <img style="max-height: 30px;" src="@(EggIncStatics.GetEggByContract(xref.Coop.Contract, Model.CustomEggs).image)" />
+                    <img style="max-height: 30px;" src="@(egg.image)" alt="@(egg.name)" />
                     @if(Model.User.EggIncAccounts.Count > 1) {
                         <span>@xref.Coop.Contract.Name - @xref.Coop.Name (@accountName(xref.EggIncId))</span>
                     } else {
@@ -255,7 +296,7 @@
                     @if(xref.Coop.ThreadID != 0)
                     {
                         <a href="discord://discordapp.com/channels/@xref.Coop.OverflowGuildId/@xref.Coop.ThreadID/">
-                            <img src="/images/discordicon.png" style="max-height: 1em;" />
+                            <img alt="Discord" src="/images/discordicon.png" style="max-height: 1em;" />
                         </a>
                     }
                 </div>
@@ -272,7 +313,7 @@
             <span><b>It looks like you've blocked DMs from EGG9000</b>.<br />This can either be due to Server Privacy settings, or directly blocking the bot.<br />This may lead to missed communications - please resolve this.</span>
             <div class="font-weight-bold" style="margin-top:10px;">
                 <a href="https://support.discord.com/hc/en-us/articles/217916488-Blocking-Privacy-Settings-">
-                    <img style="max-height: 30px" src="https://assets-global.website-files.com/6257adef93867e50d84d30e2/636e0a69f118df70ad7828d4_icon_clyde_blurple_RGB.svg"/> 
+                    <img style="max-height: 30px" alt="Discord" src="/images/discordicon.png"/> 
                     See this Discord support article for help fixing this issue.
                 </a>
             </div>
@@ -280,6 +321,7 @@
     </div>
 }
 
+<div id="myfarms-content">
 <div>
     @if (isLesserAdmin || isAdmin) {
         if (Model.User.TempDisabled) {
@@ -305,14 +347,16 @@
     <ul class="nav nav-tabs" role="tablist">
         @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
             var account = Model.User.EggIncAccounts[index];
+            var accountGrade = account.GetGrade();
             <li class="nav-item">
                 <a class="nav-link @(index == 0 ? "active" : "")" id="tab@(account.Id)" data-bs-toggle="tab" href="#user@(index)" role="tab" aria-selected="@(index == 0)">
+                    
                     @account.Backup.UserName
-                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;" />
+                    <img src="@PlayerGradeDetails.GetImage(accountGrade)" alt="Grade @PlayerGradeDetails.GetText(accountGrade)" style="max-height: 23px;" />
                     @if (account.Backup.PermitLevel == 0) {
-                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
+                        <img alt="Standard Permit" src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
                     } else {
-                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
+                        <img alt="Pro Permit" src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
                     }
                 </a>
             </li>
@@ -320,6 +364,7 @@
     </ul>
 }
 
+<!-- TODO: Split this up into another partial; this is wayyyyyy too long -->
 <div class="tab-content">
     @for (var index = 0; index < Model.User.EggIncAccounts.Count; index++) {
         var account = Model.User.EggIncAccounts[index];
@@ -327,12 +372,13 @@
         <div class="tab-pane @(index == 0 ? "show active" : "")" id="user@(index)" role="tabpanel">
             <div style="padding-bottom: 10px;" class="nobreak">
                 @if (Model.User.EggIncAccounts.Count == 1) {
+                    var accountGrade = account.GetGrade();
                     @:<span style="margin-right:10px;"><b><u>In-Game Name</u></b>: @backup.UserName</span>
-                    <img src="@PlayerGradeDetails.GetImage(account.GetGrade())" style="max-height: 23px;" />
+                    <img src="@PlayerGradeDetails.GetImage(accountGrade)" alt="Grade @PlayerGradeDetails.GetText(accountGrade)" style="max-height: 23px;" />
                     @if (backup.PermitLevel == 0) {
-                        <img src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
+                        <img alt="Standard Permit" src="https://cdn.discordapp.com/emojis/755734059761795173.png?v=1" style="max-height: 23px;" />
                     } else {
-                        <img src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
+                        <img alt="Pro Permit" src="https://cdn.discordapp.com/emojis/724392625276452955.png?v=1" style="max-height: 23px;" />
                     }
                 }
                 <span style="margin-right:10px;" onclick="copyIdToClipboard('@backup.EggIncId', 'copy-notification-eid-@index')" title="Click to copy"><b><u>EggIncId</u></b>: @backup.EggIncId</span>
@@ -456,18 +502,20 @@
             <div class="tab-content">
                 <div class="tab-pane" style="margin-top:20px" id="shipsfarms@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ShipsandFarms", (index, backup, Model.JoinedCoops, contracts, Model.CustomEggs));
+                        var shipsAndFarmsModel = new MyFarms_Partial_ShipsAndFarmsModel(Model, index);
+                        await Html.RenderPartialAsync("-ShipsandFarms", shipsAndFarmsModel);
                     }
                 </div>
-
-                 <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
+                <div class="tab-pane" id="epicresearch@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-EpicResearch", (epicResearchConfig, backup, account));
+                        var epicResearchModel = new MyFarms_Partial_EpicResearchModel(Model, index);
+                        await Html.RenderPartialAsync("-EpicResearch", epicResearchModel);
                     }
                 </div>
                 <div class="tab-pane" id="artifactcombos@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ArtifactCombos", (backup, contracts, Model.JoinedCoops, Model.User, Model.CustomEggs));
+                        var artifactCombosModel = new MyFarms_Partial_ArtifactCombosModel(Model, index);
+                        await Html.RenderPartialAsync("-ArtifactCombos", artifactCombosModel);
                     }
                 </div>
                 
@@ -552,32 +600,35 @@
                     @if (snapshots != null) {
                         <div class="tab-pane" id="ebhistory@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-EBHistory", (backup, snapshots, isAdmin, uncompletePEs, contracts, Model.SeasonPEByEggIncId.GetValueOrDefault(backup.EggIncId, (Earned: 0, Max: 0)), Model.MissingSeasonalPEByEggIncId.GetValueOrDefault(backup.EggIncId, new List<EGG9000.Site.Controllers.MyFarmsController.MissingSeasonalPe>())));
+                                var ebHistoryModel = new MyFarms_Partial_EBHistoryModel(Model, index, isAdmin);
+                                await Html.RenderPartialAsync("-EBHistory", ebHistoryModel);
                             }
                         </div>
                         <div class="tab-pane" id="virtuestats@(index)" role="tabpanel">
                             @{
-                                await Html.RenderPartialAsync("-VirtueStats", (backup, snapshots, isAdmin));
+                                var virtueStatsModel = new MyFarms_Partial_VirtueStatsModel(Model, index, isAdmin);
+                                await Html.RenderPartialAsync("-VirtueStats", virtueStatsModel);
                             }
                         </div>
                     }
                 }
                 <div class="tab-pane show active" id="contracthistory@(index)" role="tabpanel">
                     @{
-                        Ei.MyContracts scores = scoring.Any(x => x.EggIncId == backup.EggIncId) ? scoring.First(x => x.EggIncId == backup.EggIncId).MyContracts : null;
-                        await Html.RenderPartialAsync("-ContractHistory", (backup, isAdmin, contracts, Model.CustomEggs, Model.User, scores, index));
+                        var contractHistoryModel = new MyFarms_Partial_ContractHistoryModel(Model, index, isAdmin);
+                        await Html.RenderPartialAsync("-ContractHistory", contractHistoryModel);
                     }
                 </div>
 
                 <div class="tab-pane" id="externaltools@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ExternalTools", (backup, Model.User));
+                        var externalToolsModel = new MyFarms_Partial_ExternalToolsModel(Model, index);
+                        await Html.RenderPartialAsync("-ExternalTools", externalToolsModel);
                     }
                 </div>
 
                 <div class="tab-pane" id="earningsboostcalc@(index)" role="tabpanel">
                     @{
-                        var newModel = new EarningsBoostCalculatorModel();
+                        var newModel = new MyFarms_Partial_EBCalcModel();
                         newModel.Backup = backup;
                         newModel.CustomEggs = Model.CustomEggs;
                         await Html.RenderPartialAsync("-EarningsBoostCalculator", (newModel));
@@ -585,27 +636,43 @@
                 </div>
                 <div class="tab-pane" id="colleggtibles@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-Colleggtibles", (backup, Model.CustomEggs));
+                        var colleggtiblesModel = new MyFarms_Partial_ColleggtiblesModel(Model, index);
+                        await Html.RenderPartialAsync("-Colleggtibles", colleggtiblesModel);
                     }
                 </div>
                 <div class="tab-pane" id="contractsettings@(index)" role="tabpanel">
-                    @{
-                        await Html.RenderPartialAsync("_ContractSettings", (account, index, isSelf));
-                    }
-                    <hr style="border-color:#444; margin:24px 0;" />
-                    @{
-                        await Html.RenderPartialAsync("_TestAssignment", (account, index, contracts));
-                    }
+                    <div class="row">
+                        <div class="col-12 col-lg-7">
+                            @{
+                                var contractSettingsModel = new MyFarms_Partial_ContractSettingsModel(Model, index, isSelf);
+                                await Html.RenderPartialAsync("_ContractSettings", contractSettingsModel);
+                            }
+                        </div>
+                        <div class="col-12 col-lg-5">
+                            <hr class="d-lg-none" style="border-color:#444; margin:24px 0;" />
+                            @{
+                                var testAssignmentModel = new MyFarms_Partial_TestAssignmentModel(Model, index);
+                                await Html.RenderPartialAsync("_TestAssignment", testAssignmentModel);
+                            }
+                        </div>
+                    </div>
                 </div>
                 <div class="tab-pane" id="inventory@(index)" role="tabpanel">
                     @{
-                        await Html.RenderPartialAsync("-ArtifactInventory", account.Id);
-
+                        var artifactInventoryModel = new MyFarms_Partial_ArtifactInventoryModel(Model, index);
+                        await Html.RenderPartialAsync("-ArtifactInventory", artifactInventoryModel);
                     }
                 </div>
             </div>
         </div>
     }
+</div>
+</div>
+
+<div id="cs-save-bar" class="cs-save-bar">
+    <span class="cs-save-bar-text">Unsaved changes</span>
+    <button type="button" class="btn btn-sm btn-danger cs-discard-btn">Discard</button>
+    <button type="button" class="btn btn-sm btn-success cs-save-btn">Save</button>
 </div>
 
 @section Scripts {
@@ -644,10 +711,18 @@
             });
         }
 
+        function hydrateMyFarmsContent() {
+            updateLastBackupTime();
+            wireContractSettings();
+            wireTestAssignment();
+            if (window.ArtifactOverlay) window.ArtifactOverlay.scan();
+        }
+        window.hydrateMyFarmsContent = hydrateMyFarmsContent;
+
         $(document).ready(() => {
             let url = location.href.replace(/\/$/, "");
 
-            updateLastBackupTime();
+            hydrateMyFarmsContent();
 
             if (location.hash) {
                 const hash = url.split("#");
@@ -669,18 +744,33 @@
 
             }
 
-            $('a[data-bs-toggle="tab"]').on("click", function () {
+            // Delegated on document, not the tab links themselves - survives a background content
+            // swap (BackupFreshness poll) without needing to be rebound.
+            $(document).on("click", 'a[data-bs-toggle="tab"]', function () {
                 let newUrl;
                 const hash = $(this).attr("href");
 
-                console.log(hash.substring(1, 5));
                 if (hash.substring(1, 5) == "user")
                     return;
                 newUrl = url.split("#")[0] + hash;
                 history.replaceState(null, null, newUrl);
             });
 
-            $("[id^='ArchivedFarmsSearch']").keyup(function () {
+            $(document).on("show.bs.tab", 'a[data-bs-toggle="tab"]', function (e) {
+                if (csIsDirty()) {
+                    e.preventDefault();
+                    csWiggleBar();
+                }
+            });
+
+            window.addEventListener("beforeunload", function (e) {
+                if (csIsDirty()) {
+                    e.preventDefault();
+                    e.returnValue = "";
+                }
+            });
+
+            $(document).on("keyup", "[id^='ArchivedFarmsSearch']", function () {
                 var terms = $(this).val().split(" ");
                 var showAll = $(this).val().trim().length == 0;
                 var index = $(this).attr('id').replace("ArchivedFarmsSearch", "");
@@ -704,9 +794,6 @@
             });
 
             setInterval(updateLastBackupTime, 1000);
-
-            wireContractSettings();
-            wireTestAssignment();
         });
 
         function rewardGroupValue(group) {
@@ -784,39 +871,151 @@
             toast._hideTimer = setTimeout(() => { toast.style.opacity = '0'; }, 1800);
         }
 
-        function saveContractSetting(container, accountIndex, field, value, revert) {
-            fetch('/MyFarms/SaveContractSetting', {
+        function postContractSetting(accountIndex, field, value) {
+            return fetch('/MyFarms/SaveContractSetting', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ accountIndex: accountIndex, field: field, value: value })
-            }).then(res => {
-                if (res.ok) {
-                    res.json().then(body => {
-                        // Server enforces the grade floor; reflect any clamp back into the input.
-                        if (body && body.effectiveCsGoal != null) {
+            });
+        }
+
+        function applyCsSideEffects(container, accountIndex, field, value) {
+            if (field === 'seasonalMode') {
+                const goalWrap = container.querySelector('.cs-seasonalgoal-wrap-' + accountIndex);
+                if (goalWrap) goalWrap.style.display = (value === '2') ? '' : 'none';
+                const afterWrap = container.querySelector('.cs-seasonalafter-wrap-' + accountIndex);
+                if (afterWrap) afterWrap.style.display = (value === '1' || value === '2') ? '' : 'none';
+            }
+            if (field === 'redoMode') {
+                const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);
+                if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
+                const otherMatchWrap = container.querySelector('.cs-redoothermatch-wrap-' + accountIndex);
+                if (otherMatchWrap) otherMatchWrap.style.display = (value === '4') ? '' : 'none';
+                const excludeSeasonalWrap = container.querySelector('.cs-excludeseasonal-wrap-' + accountIndex);
+                if (excludeSeasonalWrap) excludeSeasonalWrap.style.display = (value === '0' || value === '3') ? 'none' : '';
+                const siblingWrap = document.querySelector('.ta-sibling-wrap-' + accountIndex);
+                if (siblingWrap) siblingWrap.style.display = (value === '4') ? '' : 'none';
+            }
+        }
+
+        function csFieldValue(container, field) {
+            const group = container.querySelector('.cs-reward-group[data-field="' + field + '"]');
+            if (group) return rewardGroupValue(group);
+            const numEl = container.querySelector('.cs-num[data-field="' + field + '"]');
+            if (numEl) return numEl.dataset.value;
+            const el = container.querySelector('[data-field="' + field + '"]');
+            return el ? controlValue(el) : null;
+        }
+
+        function csUpdateCommitted(container, field) {
+            const group = container.querySelector('.cs-reward-group[data-field="' + field + '"]');
+            if (group) { group.dataset.csCommitted = rewardGroupValue(group); return; }
+            const numEl = container.querySelector('.cs-num[data-field="' + field + '"]');
+            if (numEl) { numEl.dataset.csCommitted = numEl.dataset.value; return; }
+            const el = container.querySelector('[data-field="' + field + '"]');
+            if (el) el.dataset.csCommitted = controlValue(el);
+        }
+
+        const csPanels = new Map();
+
+        function csPanel(container, accountIndex) {
+            let panel = csPanels.get(accountIndex);
+            if (!panel) {
+                panel = { container: container, fields: new Map() };
+                csPanels.set(accountIndex, panel);
+            }
+            panel.container = container;
+            return panel;
+        }
+
+        function csIsDirty() {
+            for (const panel of csPanels.values()) {
+                if (panel.fields.size > 0) return true;
+            }
+            return false;
+        }
+
+        function csBarEl() {
+            return document.getElementById('cs-save-bar');
+        }
+
+        function csShowBar() {
+            csBarEl().classList.add('cs-visible');
+        }
+
+        function csHideBar() {
+            csBarEl().classList.remove('cs-visible');
+        }
+
+        function csWiggleBar() {
+            const bar = csBarEl();
+            bar.classList.add('cs-visible');
+            bar.classList.remove('cs-wiggle');
+            void bar.offsetWidth;
+            bar.classList.add('cs-wiggle');
+        }
+
+        function csMarkDirty(container, accountIndex, field, revertFn) {
+            csPanel(container, accountIndex).fields.set(field, revertFn);
+            csShowBar();
+        }
+
+        async function csCommitPending() {
+            if (!csIsDirty()) return;
+            const bar = csBarEl();
+            const saveBtn = bar.querySelector('.cs-save-btn');
+            saveBtn.disabled = true;
+            let anyFailed = false;
+            let lastContainer = null;
+
+            for (const [accountIndex, panel] of Array.from(csPanels)) {
+                const container = panel.container;
+                lastContainer = container;
+                for (const field of Array.from(panel.fields.keys())) {
+                    const value = csFieldValue(container, field);
+                    try {
+                        const res = await postContractSetting(accountIndex, field, value);
+                        if (!res.ok) { anyFailed = true; continue; }
+                        const body = await res.json().catch(() => null);
+                        if (field === 'seasonalCsGoal' && body && body.effectiveCsGoal != null) {
                             const input = container.querySelector('#cs-seasonalgoal-' + accountIndex);
                             const eff = String(Math.round(body.effectiveCsGoal));
                             if (input && eff !== input.dataset.value) {
                                 input.dataset.value = eff;
                                 csNumDisplay(input);
                                 showCsStatus(container, 'Adjusted to grade minimum', true);
-                                return;
                             }
                         }
-                        showCsStatus(container, 'Saved', true);
-                    }).catch(() => showCsStatus(container, 'Saved', true));
-                } else {
-                    if (revert) revert();
-                    showCsStatus(container, 'Save failed', false);
+                        csUpdateCommitted(container, field);
+                        panel.fields.delete(field);
+                    } catch (e) {
+                        anyFailed = true;
+                    }
                 }
-            }).catch(() => {
-                if (revert) revert();
-                showCsStatus(container, 'Save failed', false);
-            });
+                if (panel.fields.size === 0) csPanels.delete(accountIndex);
+            }
+
+            saveBtn.disabled = false;
+            if (anyFailed) {
+                showCsStatus(lastContainer, 'Save failed', false);
+                return;
+            }
+            if (!csIsDirty()) {
+                csHideBar();
+                showCsStatus(lastContainer, 'Saved', true);
+            }
+        }
+
+        function csDiscardPending() {
+            if (!csIsDirty()) return;
+            for (const panel of csPanels.values()) {
+                panel.fields.forEach(fn => fn && fn());
+            }
+            csPanels.clear();
+            csHideBar();
         }
 
         function wireContractSettings() {
-            // Format every humanized number for display, even read-only (other users') panels.
             document.querySelectorAll('.contract-settings .cs-num').forEach(csNumDisplay);
 
             document.querySelectorAll('.contract-settings').forEach(container => {
@@ -824,45 +1023,35 @@
                 const accountIndex = parseInt(container.dataset.accountIndex);
 
                 container.querySelectorAll('.cs-input').forEach(el => {
-                    let prior = controlValue(el);
+                    el.dataset.csCommitted = controlValue(el);
                     el.addEventListener('change', () => {
                         const field = el.dataset.field;
                         const value = controlValue(el);
-                        const before = prior;
-                        if (field === 'seasonalMode') {
-                            const goalWrap = container.querySelector('.cs-seasonalgoal-wrap-' + accountIndex);
-                            if (goalWrap) goalWrap.style.display = (value === '2') ? '' : 'none';
-                            const afterWrap = container.querySelector('.cs-seasonalafter-wrap-' + accountIndex);
-                            if (afterWrap) afterWrap.style.display = (value === '1' || value === '2') ? '' : 'none';
-                        }
-                        if (field === 'redoMode') {
-                            const wrap = container.querySelector('.cs-redothreshold-wrap-' + accountIndex);
-                            if (wrap) wrap.style.display = (value === '2') ? '' : 'none';
-                            const otherMatchWrap = container.querySelector('.cs-redoothermatch-wrap-' + accountIndex);
-                            if (otherMatchWrap) otherMatchWrap.style.display = (value === '4') ? '' : 'none';
-                            const excludeSeasonalWrap = container.querySelector('.cs-excludeseasonal-wrap-' + accountIndex);
-                            if (excludeSeasonalWrap) excludeSeasonalWrap.style.display = (value === '0' || value === '3') ? 'none' : '';
-                        }
-                        saveContractSetting(container, accountIndex, field, value, () => {
-                            if (el.type === 'checkbox') el.checked = (before === 'true');
-                            else el.value = before;
+                        applyCsSideEffects(container, accountIndex, field, value);
+                        csMarkDirty(container, accountIndex, field, () => {
+                            const committed = el.dataset.csCommitted;
+                            if (el.type === 'checkbox') el.checked = (committed === 'true');
+                            else el.value = committed;
+                            applyCsSideEffects(container, accountIndex, field, committed);
                         });
-                        prior = value;
                     });
                 });
 
                 container.querySelectorAll('.cs-num').forEach(el => {
                     csNumDisplay(el);
+                    el.dataset.csCommitted = el.dataset.value;
                     const field = el.dataset.field;
 
                     const commit = (raw) => {
-                        const before = el.dataset.value;
                         const parsed = csParseHuman(raw);
                         if (!isFinite(parsed)) { csNumDisplay(el); return; } // bad input -> restore
+                        if (field === 'seasonalCsGoal' && el.dataset.min != null && parsed < parseFloat(el.dataset.min)) {
+                            showCsStatus(container, 'Adjusted to grade minimum', true);
+                        }
                         const changed = csNumSet(el, parsed);
                         if (changed == null) return; // no net change
-                        saveContractSetting(container, accountIndex, field, el.dataset.value, () => {
-                            el.dataset.value = before;
+                        csMarkDirty(container, accountIndex, field, () => {
+                            el.dataset.value = el.dataset.csCommitted;
                             csNumDisplay(el);
                         });
                     };
@@ -876,11 +1065,10 @@
                             btn.addEventListener('click', () => {
                                 if (el.disabled) return;
                                 const cur = parseFloat(el.dataset.value) || 0;
-                                const before = el.dataset.value;
                                 const changed = csNumSet(el, cur + parseFloat(btn.dataset.step));
                                 if (changed == null) return;
-                                saveContractSetting(container, accountIndex, field, el.dataset.value, () => {
-                                    el.dataset.value = before;
+                                csMarkDirty(container, accountIndex, field, () => {
+                                    el.dataset.value = el.dataset.csCommitted;
                                     csNumDisplay(el);
                                 });
                             });
@@ -890,19 +1078,26 @@
 
                 container.querySelectorAll('.cs-reward-group').forEach(group => {
                     const field = group.dataset.field;
+                    group.dataset.csCommitted = rewardGroupValue(group);
                     group.querySelectorAll('.cs-reward').forEach(cb => {
-                        let priorChecked = cb.checked;
                         cb.addEventListener('change', () => {
-                            const before = priorChecked;
-                            const value = rewardGroupValue(group);
-                            saveContractSetting(container, accountIndex, field, value, () => {
-                                cb.checked = before;
+                            csMarkDirty(container, accountIndex, field, () => {
+                                const committed = group.dataset.csCommitted;
+                                group.querySelectorAll('.cs-reward').forEach(box => {
+                                    box.checked = committed.split(',').includes(box.value);
+                                });
                             });
-                            priorChecked = cb.checked;
                         });
                     });
                 });
             });
+
+            const bar = csBarEl();
+            if (bar && !bar.dataset.wired) {
+                bar.dataset.wired = '1';
+                bar.querySelector('.cs-save-btn').addEventListener('click', csCommitPending);
+                bar.querySelector('.cs-discard-btn').addEventListener('click', csDiscardPending);
+            }
         }
 
         function wireTestAssignment() {
@@ -991,5 +1186,62 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function swapMyFarmsContent(discordId) {
+            var current = document.getElementById('myfarms-content');
+            var activeOuterTab = current.querySelector('.nav-tabs > li > a.active');
+            var activeInnerTab = current.querySelector('.tab-pane.active .nav-tabs > li > a.active, .tab-pane.active .nav-link.active');
+
+            return fetch('/MyFarms/RefreshContent?discordId=' + discordId)
+                .then(function(r) { return r.ok ? r.text() : null; })
+                .then(function(html) {
+                    if(!html) return;
+                    var fresh = new DOMParser().parseFromString(html, 'text/html').getElementById('myfarms-content');
+                    if(!fresh) return;
+
+                    current.innerHTML = fresh.innerHTML;
+
+                    current.querySelectorAll('script').forEach(function(oldScript) {
+                        var newScript = document.createElement('script');
+                        for (var i = 0; i < oldScript.attributes.length; i++) {
+                            var attr = oldScript.attributes[i];
+                            newScript.setAttribute(attr.name, attr.value);
+                        }
+                        newScript.textContent = oldScript.textContent;
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+
+                    hydrateMyFarmsContent();
+
+                    [activeOuterTab, activeInnerTab].forEach(function(tab) {
+                        if(!tab) return;
+                        var href = tab.getAttribute('href');
+                        var replacement = href ? current.querySelector('a[href="' + href + '"]') : null;
+                        if(replacement) bootstrap.Tab.getOrCreateInstance(replacement).show();
+                    });
+                });
+        }
+
+        (function() {
+            var discordId = '@Model.User.DiscordId';
+            var since = @latestBackupAtRender;
+            var maxAttempts = 6;
+
+            function poll(attempt) {
+                if(attempt > maxAttempts) return;
+                fetch('/MyFarms/BackupFreshness?discordId=' + discordId)
+                    .then(function(r) { return r.ok ? r.json() : null; })
+                    .then(function(data) {
+                        if(data && data.latest > since && !csIsDirty()) {
+                            swapMyFarmsContent(discordId);
+                        } else {
+                            setTimeout(function() { poll(attempt + 1); }, 4000);
+                        }
+                    })
+                    .catch(function() { setTimeout(function() { poll(attempt + 1); }, 4000); });
+            }
+
+            setTimeout(function() { poll(1); }, 4000);
+        })();
     </script>
 }

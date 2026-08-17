@@ -28,9 +28,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
         public InputModel Input { get; set; }
 
         public class InputModel {
-            //[Phone]
-            //[Display(Name = "Phone number")]
-            //public string PhoneNumber { get; set; }
             [Display(Name = "Get a DM when a ship returns")]
             public bool DMOnShipReturn { get; set; }
             [Display(Name = "How Many Minutes before a ship returns that you'll get a DM")]
@@ -53,7 +50,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
 
         private async Task LoadAsync(ApplicationUser user) {
             var userName = await _userManager.GetUserNameAsync(user);
-            //var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
 
             var logins = await _userManager.GetLoginsAsync(user);
             var dbuser = await _db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(logins.First().ProviderKey));
@@ -61,7 +57,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
 
 
             Input = new InputModel {
-                //PhoneNumber = phoneNumber,
                 DMOnShipReturn = dbuser.DMOnShipReturn,
                 ShipReturnMinutes = dbuser.ShipReturnMinutes,
                 ShipReturnStillFuelingMinutes = dbuser.ShipReturnStillFuelingMinutes,
@@ -94,15 +89,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account.Manage {
                 await LoadAsync(user);
                 return Page();
             }
-
-            //var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
-            //if(Input.PhoneNumber != phoneNumber) {
-            //    var setPhoneResult = await _userManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
-            //    if(!setPhoneResult.Succeeded) {
-            //        var userId = await _userManager.GetUserIdAsync(user);
-            //        throw new InvalidOperationException($"Unexpected error occurred setting phone number for user with ID '{userId}'.");
-            //    }
-            //}
 
             if(!string.IsNullOrEmpty(Username)) {
                 Console.WriteLine("Updating username");

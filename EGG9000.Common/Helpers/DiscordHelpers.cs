@@ -88,6 +88,24 @@ namespace EGG9000.Common.Helpers {
             return result;
         }
 
+        // Sends without touching the DbContext. Applies blocked status to the passed dbUser in memory.
+        // Should be safe to run many of these concurrently against one shared context.
+        public static async Task<DMResult> BoolSendDmDeferred(IUser dmUser, Embed embed, MessageComponent components, DBUser dbUser) {
+            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
+            var result = DMResult.Success;
+            try {
+                var dmChannel = await dmUser.CreateDMChannelAsync();
+                if(dmChannel is null) return DMResult.DiscordError;
+                await dmChannel.SendMessageAsync(embed: embed, components: components);
+            } catch(HttpException ex) {
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
+            } catch(Exception) {
+                return DMResult.DiscordError;
+            }
+            dbUser?.UpdateDMStatus(result);
+            return result;
+        }
+
         public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
             var tokenSource2 = new CancellationTokenSource();
             var token2 = tokenSource2.Token;
@@ -285,7 +303,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             if(extraRoles.Count > 0) {
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived).ToListAsync();
 
                 //Handle the case where users rank up, and need to still see existing coops
                 var lostXrefs = xrefs.Where(x => extraGrades.Any(eg => eg.grade == (Ei.Contract.Types.PlayerGrade)x.Coop.League));
@@ -294,7 +312,6 @@ namespace EGG9000.Common.Helpers {
                     if(guild is null) continue;
                     var header = guild.GetTextChannel(lostXref.Coop.ThreadParentChannel);
                     if(header is null) continue;
-                    //Make sure user is in the server
                     if(header.Guild.GetUser(DiscordUser.Id) is null) continue;
                     try {
                         await header.AddPermissionOverwriteAsync(DiscordUser,

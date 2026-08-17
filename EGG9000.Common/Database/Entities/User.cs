@@ -2,8 +2,6 @@
 
 using Ei;
 
-using MassTransit;
-
 using MessagePack;
 
 using Microsoft.EntityFrameworkCore;
@@ -191,7 +189,6 @@ namespace EGG9000.Common.Database.Entities {
                                 account.LastGrade = backupGrade;
                                 needsUpdate = true;
                             }
-                            //Sync account's Device ID from backup
                             if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
                                 account.DeviceID = account.Backup.DeviceId;
                             }
@@ -317,7 +314,7 @@ namespace EGG9000.Common.Database.Entities {
             public long ShipReturnTime { get; set; }
         }
 
-        public static bool MatchRewards(Ei.Contract.Types.GradeSpec gradeSpec, RewardType selectReward, byte completedRewards) {
+        public static bool MatchRewards(Contract.Types.GradeSpec gradeSpec, RewardType selectReward, byte completedRewards) {
             return selectReward switch {
                 RewardType.Artifact => gradeSpec.Goals.Skip(completedRewards).Any(g => g.RewardType == RewardType.Artifact || g.RewardType == RewardType.ArtifactCase),
                 RewardType.PiggyMultiplier => gradeSpec.Goals.Skip(completedRewards).Any(g => g.RewardType == RewardType.PiggyMultiplier || g.RewardType == RewardType.PiggyLevelBump || g.RewardType == RewardType.PiggyFill),
@@ -325,7 +322,7 @@ namespace EGG9000.Common.Database.Entities {
             };
         }
 
-        public static bool MatchLastReward(Ei.Contract.Types.GradeSpec gradeSpec, RewardType selectReward) {
+        public static bool MatchLastReward(Contract.Types.GradeSpec gradeSpec, RewardType selectReward) {
             var lastGoal = gradeSpec.Goals.LastOrDefault();
             if(lastGoal == null) return false;
             var lastType = lastGoal.RewardType;
@@ -364,11 +361,11 @@ namespace EGG9000.Common.Database.Entities {
         [Key(5)]
         public byte Group { get; set; }
         [Key(6)]
-        public bool bool2 { get; set; } //Not being user
+        public bool bool2 { get; set; } //Not being used
         [Key(7)]
         public bool RedoLeggacy { get; set; }
         [Key(8)]
-        public Ei.Contract.Types.PlayerGrade LastGrade { get; set; }
+        public Contract.Types.PlayerGrade LastGrade { get; set; }
         [Key(9)]
         public DateTimeOffset PromotionTime { get; set; }
         [Key(10)]
@@ -416,9 +413,7 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset BreakSetTime { get; set; } = DateTimeOffset.MaxValue;
         [Key(30)]
         public bool BreakCoopWarningSent { get; set; } = false;
-        /*
-         * [Key(31)] and [Key(31)] currently in progress of development.
-         */
+        // Key(31) and Key(32) reserved: in-progress fields not yet committed to this shape.
         [Key(33)]
         public bool CraftingWarningSent { get; set; } = false;
         [Key(34)]
@@ -466,7 +461,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
 
-        public Ei.Contract.Types.PlayerGrade GetGrade() {
+        public Contract.Types.PlayerGrade GetGrade() {
             if(Backup is null)
                 return LastGrade;
 

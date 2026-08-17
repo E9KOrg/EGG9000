@@ -8,9 +8,9 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace EGG9000.Common.Database {
-    public sealed record AssignedCoop(Guid CoopId, ulong ThreadId, ulong DiscordChannelId, string Name, string ContractId);
+    public sealed record AssignedCoop(Guid CoopId, ulong ThreadId, string Name, string ContractId);
 
-    public readonly record struct CoopAssignmentRow(Guid UserId, Guid CoopId, string ContractId, ulong ThreadId, ulong DiscordChannelId, string Name);
+    public readonly record struct CoopAssignmentRow(Guid UserId, Guid CoopId, string ContractId, ulong ThreadId, string Name);
 
     /// <summary>
     /// Fast user -> assigned-but-not-yet-joined coop lookup, so the "Find my Coop" button
@@ -40,7 +40,7 @@ namespace EGG9000.Common.Database {
                 map[group.Key] = [.. group
                     .GroupBy(r => r.CoopId)
                     .Select(c => c.First())
-                    .Select(c => new AssignedCoop(c.CoopId, c.ThreadId, c.DiscordChannelId, c.Name, c.ContractId))];
+                    .Select(c => new AssignedCoop(c.CoopId, c.ThreadId, c.Name, c.ContractId))];
             }
             return map;
         }
@@ -55,7 +55,7 @@ namespace EGG9000.Common.Database {
                     .Where(x => !x.JoinedCoop
                              && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
                              && x.Coop.CoopEnds > now && !x.Coop.PseudoExpired)
-                    .Select(x => new CoopAssignmentRow(x.UserId, x.Coop.Id, x.Coop.ContractID, x.Coop.ThreadID, x.Coop.DiscordChannelId, x.Coop.Name))
+                    .Select(x => new CoopAssignmentRow(x.UserId, x.Coop.Id, x.Coop.ContractID, x.Coop.ThreadID, x.Coop.Name))
                     .ToListAsync();
 
                 _map = Build(rows);

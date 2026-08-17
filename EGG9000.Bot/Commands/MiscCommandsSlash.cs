@@ -52,7 +52,9 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("trackeb", "Track your EB since the last time you ran this command")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task TrackEB() {
-            await Context.Interaction.DeferAsync(ephemeral: Context.Interaction.IsDMInteraction ? false : true);
+            // TEMP: Eggday temporary fix to make command public. Remove after eggday is over.
+            await Context.Interaction.DeferAsync(ephemeral: false);
+            //await Context.Interaction.DeferAsync(ephemeral: Context.Interaction.IsDMInteraction ? false : true);
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbUser == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
@@ -219,7 +221,9 @@ namespace EGG9000.Bot.Commands {
                     var messageToPing = await thread.SendMessageAsync(".");
                     await messageToPing.ModifyAsync(x => x.Content = staffTag);
                     await messageToPing.DeleteAsync();
-                    await thread.SendMessageAsync(text: $"{Context.User.Mention}", embed: EmbedCustom(Color.DarkerGrey, "CallStaff", message));
+
+                    var staffPingEmbed = EmbedCustom(EmbedHelpers.EmbedType.UnStyled, "CallStaff", message);
+                    await thread.SendMessageAsync(text: $"{Context.User.Mention}", embed: staffPingEmbed);
 
                     var response = await ChannelHelper.DetermineAndSend(_client, guildFind, GuildChannelType.CallStaffChannel, new() { Text = staffTag + message + " " + thread.Mention });
 
@@ -275,7 +279,7 @@ namespace EGG9000.Bot.Commands {
         [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
         public async Task RenameCoop([Summary("correctcoopname")] string correctcoopname) {
             await Context.Interaction.DeferAsync();
-            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id || x.DiscordChannelId == Context.Channel.Id);
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id);
             if(targetCoop == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => x.Embed = EmbedError($"Command only works in co-op channels"));
                 return;
@@ -335,14 +339,14 @@ namespace EGG9000.Bot.Commands {
     // Flat (non-grouped) command. Was a top-level /updatechannel before the Discord.NET migration
     // and was incorrectly nested under /a in that migration - kept flat here to preserve the
     // pre-migration command name.
-    [DefaultMemberPermissions(GuildPermission.ManageChannels)]
-    [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
+    [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
+    [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
     public class UpdateChannelModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater) : Interactions.E9KModuleBase(dbFactory) {
         [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
         public async Task UpdateChannel() {
             var command = Context.Interaction;
             await command.DeferAsync(ephemeral: true);
-            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id || x.DiscordChannelId == command.Channel.Id);
+            var targetCoop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == command.Channel.Id);
             if(targetCoop != null) {
                 await command.ModifyOriginalResponseAsync(x => x.Content = "Updating coop...");
                 var guild = gateway.Guilds.First(x => x.Id == targetCoop.OverflowGuildId);

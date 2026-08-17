@@ -1,5 +1,6 @@
 ﻿using Discord;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
@@ -13,32 +14,62 @@ namespace EGG9000.Common.Helpers.Discord {
             Warning = 3,
             Error = 4,
             InternalError = 5,
+            UnStyled = 6,
         }
 
+        public static readonly string IconUrl = "https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp";
 
-        public static Embed EmbedInProgress(string text) {
-            return new EmbedBuilder().WithColor(Color.Blue).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Please wait...").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
+        private static Color ColorFor(EmbedType type) => type switch {
+            EmbedType.Success => Color.Green,
+            EmbedType.InProgress => Color.Blue,
+            EmbedType.Alert => Color.Orange,
+            EmbedType.Warning => Color.LightOrange,
+            EmbedType.Error => Color.Red,
+            EmbedType.InternalError => Color.Red,
+            EmbedType.UnStyled => Color.DarkerGrey,
+            _ => Color.LighterGrey
+        };
+
+private static Embed Build(EmbedType type, string authorName, string text, IEnumerable<EmbedFieldBuilder> fields) {
+            // Materialize once: a lazily-evaluated IEnumerable would otherwise be walked twice
+            EmbedFieldBuilder[] fieldArray = fields as EmbedFieldBuilder[] ?? [.. fields];
+
+            if(fieldArray.Length > EmbedBuilder.MaxFieldCount) {
+                throw new ArgumentOutOfRangeException(
+                    nameof(fields),
+                    fieldArray.Length,
+                    $"An embed may contain at most {EmbedBuilder.MaxFieldCount} fields."
+                );
+            }
+
+            return new EmbedBuilder()
+                .WithColor(ColorFor(type))
+                .WithDescription(text)
+                .WithAuthor(new EmbedAuthorBuilder().WithName(authorName).WithIconUrl(IconUrl))
+                .WithFields(fieldArray)
+                .Build();
         }
 
-        public static Embed EmbedAlert(string text) {
-            return new EmbedBuilder().WithColor(Color.Orange).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Alert").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
+        public static Embed EmbedInProgress(string text, params IEnumerable<EmbedFieldBuilder> fields)
+            => Build(EmbedType.InProgress, "Please wait...", text, fields);
 
-        public static Embed EmbedSuccess(string text) {
-            return new EmbedBuilder().WithColor(Color.Green).WithDescription(text).WithAuthor(new EmbedAuthorBuilder().WithName("Success").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
+        public static Embed EmbedAlert(string text, params IEnumerable<EmbedFieldBuilder> fields)
+            => Build(EmbedType.Alert, "Alert", text, fields);
 
-        public static Embed EmbedWarning(string warningText) {
-            return new EmbedBuilder().WithColor(Color.LightOrange).WithDescription(warningText).WithAuthor(new EmbedAuthorBuilder().WithName("Warning").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
+        public static Embed EmbedSuccess(string text, params IEnumerable<EmbedFieldBuilder> fields)
+            => Build(EmbedType.Success, "Success", text, fields);
 
-        public static Embed EmbedError(string errorText, string name = "Error") {
-            return new EmbedBuilder().WithColor(Color.Red).WithDescription(errorText).WithAuthor(new EmbedAuthorBuilder().WithName(name).WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
+        public static Embed EmbedWarning(string warningText, params IEnumerable<EmbedFieldBuilder> fields)
+            => Build(EmbedType.Warning, "Warning", warningText, fields);
 
-        public static Embed EmbedInternalError(string errorText) {
-            return new EmbedBuilder().WithColor(Color.Red).WithDescription(errorText).WithAuthor(new EmbedAuthorBuilder().WithName("Internal Error").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
+        public static Embed EmbedError(string errorText, string name = "Error", params IEnumerable<EmbedFieldBuilder> fields)
+            => Build(EmbedType.Error, name, errorText, fields);
+
+        public static Embed EmbedInternalError(string internalErrorText, params IEnumerable<EmbedFieldBuilder> fields)
+            => Build(EmbedType.InternalError, "Internal Error", internalErrorText, fields);
+
+        public static Embed EmbedCustom(EmbedType type, string title, string text, params IEnumerable<EmbedFieldBuilder> fields)
+            => Build(type, title, text, fields);
 
         public static Embed EmbedExceptionFrame(Exception e) {
             foreach(var frame in new StackTrace(e, true).GetFrames() ?? []) {
@@ -46,7 +77,7 @@ namespace EGG9000.Common.Helpers.Discord {
                     return EmbedInternalError(
                         $"**Message**:\n{e.Message}\n\n" +
                         $"**Frame info**:\n\t" +
-                            $"File: {Path.GetFileName(Path.GetFileName(frame.GetFileName() ?? "")) ?? "(Unknown)"}\n\t" +
+                            $"File: {Path.GetFileName(frame.GetFileName() ?? "")}\n\t" +
                             $"Line: {frame.GetFileLineNumber()}"
                     );
                 }
@@ -58,25 +89,10 @@ namespace EGG9000.Common.Helpers.Discord {
             return EmbedInternalError(
                 $"**Message**:\n{e.Message}\n\n" +
                 $"**Frame info**:\n\t" +
-                    $"File: {Path.GetFileName(frame2.GetFileName() ?? "") ?? "(Unknown)"}\n\t" +
+                    $"File: {Path.GetFileName(frame2.GetFileName() ?? "")}\n\t" +
                     $"Line: {frame2.GetFileLineNumber()}"
             );
         }
 
-        public static Embed MakeCustomEmbed(EmbedType embedType, string embedTitle, string embedText) {
-            return new EmbedBuilder().WithColor(embedType switch {
-                EmbedType.Success => Color.Green,
-                EmbedType.InProgress => Color.Blue,
-                EmbedType.Alert => Color.Orange,
-                EmbedType.Warning => Color.LightOrange,
-                EmbedType.Error => Color.Red,
-                EmbedType.InternalError => Color.Red,
-                _ => Color.LighterGrey
-            }).WithDescription(embedText).WithAuthor(new EmbedAuthorBuilder().WithName(embedTitle).WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
-
-        public static Embed EmbedCustom(Color embedColor, string embedTitle, string embedText) {
-            return new EmbedBuilder().WithColor(embedColor).WithDescription(embedText).WithAuthor(new EmbedAuthorBuilder().WithName(embedTitle).WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).Build();
-        }
     }
 }
