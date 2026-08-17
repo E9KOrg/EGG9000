@@ -3,7 +3,9 @@ using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
 using EGG9000.Common.Database;
+using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Helpers.Discord.Paging;
 using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
@@ -18,31 +20,57 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
+    public class BanListPager(IReadOnlyList<string> lines, int page, string guildName, ulong invokerId) : TextListPager(lines, page) {
+        protected override string Title => "Banned Users";
+        protected override string Preamble => $"Users Banned from {guildName}";
+        protected override Color EmbedColor => Color.DarkRed;
+        protected override string CustomIdPrefix => "BanListPage";
+        protected override string KeySuffix => $"{invokerId}";
+
+        public static (ulong InvokerId, int Page) ParseCustomId(string data) {
+            var parts = data.Split(",");
+            return (ulong.Parse(parts[0]), int.Parse(parts[1]));
+        }
+    }
+
     [Group("b", "Ban management commands")]
     [DefaultMemberPermissions(GuildPermission.Administrator)]
     [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
     public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
-        [SlashCommand("banlist", "Check the list of Users/EIDs that have been banned from the server via /b ban")]
+        private async Task<List<DBUser>> FetchBannedUsers(ulong guildId) {
+            var resolvedGuildId = (await Db.Guilds.FirstOrDefaultAsync(g => g.Id == guildId || g.OverflowServersJson.Contains(guildId.ToString())))?.Id ?? ulong.MaxValue;
+            return await Db.DBUsers.Where(u => (u.Banned && (u.LastGuild == resolvedGuildId || u.GuildId == resolvedGuildId)) || (u.ServersBannedFrom != null && u.ServersBannedFrom.IndexOf(resolvedGuildId.ToString()) > -1)).ToListAsync();
+        }
+
+        private static List<string> BuildBanLines(List<DBUser> bannedUsers) =>
+            [.. bannedUsers.Select(u => $"{u.DiscordUsername}\t{u.DiscordId}\t" + string.Join(", ", u.EggIncAccounts.Select(a => a.Id)))];
+
+        [SlashCommand("banlist", "Check the list of Users/EIDs that have been banned from the server via /kick")]
         public async Task BanList() {
             await Context.Interaction.DeferAsync();
-            var guildId = (await Db.Guilds.FirstOrDefaultAsync(g => g.Id == Context.Interaction.GuildId || g.OverflowServersJson.Contains(Context.Interaction.GuildId.ToString())))?.Id ?? ulong.MaxValue;
-            var bannedUsers = await Db.DBUsers.Where(u => (u.Banned && (u.LastGuild == guildId || u.GuildId == guildId)) || (u.ServersBannedFrom != null && u.ServersBannedFrom.IndexOf(guildId.ToString()) > -1)).ToListAsync();
+            var bannedUsers = await FetchBannedUsers(Context.Interaction.GuildId ?? ulong.MaxValue);
             if(bannedUsers is null || bannedUsers.Count == 0) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess("No users are banned from this guild."); });
                 return;
             }
-            var userList = string.Join("\n", bannedUsers.Select(u => $"{u.DiscordUsername}\t{u.DiscordId}\t" + string.Join(", ", u.EggIncAccounts.Select(a => a.Id).ToList()))) ?? "Could not compile list";
             var guildName = (await Db.Guilds.FirstOrDefaultAsync(x => x.Id == Context.Interaction.GuildId)).Name;
 
-            var responseEmbedBuilder = new EmbedBuilder()
-                .WithAuthor(new EmbedAuthorBuilder().WithName("Banned Users").WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")).WithColor(Color.DarkRed)
-                        .WithDescription($"Users Banned from {guildName}\n\n" +
-                        $"{(userList.Length > 1600 ? "_(List too large for Discord - see attached file)_\n" : userList)}");
+            var pager = new BanListPager(BuildBanLines(bannedUsers), 0, guildName, Context.User.Id);
+            await pager.SendAsync(Context.Interaction);
+        }
 
-            if(userList.Length > 1600) await Context.Interaction.RespondWithFilesAsyncGettingMessage([new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(userList.Replace("<@", "").Replace(">", ""))), "BannedUsers.txt")], text: "", embed: responseEmbedBuilder.Build());
-            else await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: responseEmbedBuilder.Build());
+        [ComponentInteraction("BanListPage:*", ignoreGroupNames: true)]
+        public async Task BanListPage(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+            var (invokerId, page) = BanListPager.ParseCustomId(data);
+            if(component.User.Id != invokerId) { await Pager.RejectNonInvokerAsync(component); return; }
+
+            var bannedUsers = await FetchBannedUsers(component.GuildId ?? ulong.MaxValue);
+            var guildName = (await Db.Guilds.FirstOrDefaultAsync(x => x.Id == component.GuildId)).Name;
+            var pager = new BanListPager(BuildBanLines(bannedUsers), page, guildName, invokerId);
+            await pager.UpdateComponentAsync(component);
         }
 
         [SlashCommand("removeban", "Remove the ban placed on a user, and their associated EID(s)")]
