@@ -19,8 +19,8 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
     [Group("b", "Ban management commands")]
-    [DefaultMemberPermissions(GuildPermission.ManageChannels)]
-    [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
+    [DefaultMemberPermissions(GuildPermission.Administrator)]
+    [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
     public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : Interactions.E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
