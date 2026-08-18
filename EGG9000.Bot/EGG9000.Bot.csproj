@@ -65,7 +65,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Humanizer" Version="3.0.10" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="[8.5.9]" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="[8.5.10]" />
     <PackageReference Include="MessagePack" Version="3.1.8" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />

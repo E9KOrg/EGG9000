@@ -42,7 +42,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Humanizer" Version="3.0.10" />
-    <PackageReference Include="MassTransit" Version="[8.5.9]" />
+    <PackageReference Include="MassTransit" Version="[8.5.10]" />
     <PackageReference Include="MessagePack" Version="3.1.8" />
     <PackageReference Include="MessagePackAnalyzer" Version="3.1.8">
       <PrivateAssets>all</PrivateAssets>
