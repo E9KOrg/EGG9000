@@ -54,7 +54,7 @@ namespace EGG9000.Site.Controllers {
             var a = await _db.UserLogins.FirstOrDefaultAsync(x => x.ProviderKey == id);
             var user = await _userManager.Users.FirstAsync(x => x.Id == a.UserId);
             var dbuser = await _db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == ulong.Parse(id));
-            if(dbuser.GuildId != 1108127105088241746) {
+            if(dbuser.GuildId != KnownGuilds.Dev) {
                 return NotFound();
             }
             await _signInManager.SignInWithClaimsAsync(user, true, [
@@ -219,7 +219,7 @@ namespace EGG9000.Site.Controllers {
                 SeasonCS = y.Backup?.SeasonCS ?? 0,
                 TotalCraftingXP = y.Backup?.CraftingXP ?? 0,
                 CraftingLevel = y.Backup?.GetCraftingLevel() ?? 1,
-            })).Where(x => x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
+            })).Where(x => x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == KnownGuilds.Dev)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
 
             return accounts;
         }

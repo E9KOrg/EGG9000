@@ -49,6 +49,9 @@ logger.Debug("init main");
 
 var builder = WebApplication.CreateBuilder(args);
 SecretsHelper.Initialize(builder.Configuration);
+// Resolves the dev server id before anything reads KnownGuilds, so a developer running against
+// their own server is pointed at it rather than at the shared dev server.
+KnownGuilds.Initialize(builder.Configuration);
 builder.WebHost.UseUrls("http://0.0.0.0:5013");
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
