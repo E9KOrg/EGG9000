@@ -98,12 +98,16 @@ namespace EGG9000.Common.Database {
         public bool HyperloopPurchased { get; set; }
         [Key(26)]
         public uint TankLevel { get; set; }
+        // Retired - see LastContractPlayerInfoBytes
         //[Key(27)]
         //public PlayerGrade Grade { get; set; }
         [Key(28)]
         public byte ClientVersion { get; set; }
         [Key(29)]
         public Dictionary<Ei.Egg, double> FuelAmounts { get; set; }
+        // Retired - see LastContractPlayerInfoBytes 
+        //[Key(30)]
+        //public double GradeProgress { get; set; }
         [Key(31)]
         public Ei.Egg MaxEggReached { get; set; }
         [Key(32)]
@@ -125,7 +129,7 @@ namespace EGG9000.Common.Database {
         [Key(41)]
         public SpaceMission FuelingMission { get; set; }
         [Key(42)]
-        public Dictionary<string, ulong> CustomEggMaxFarmSizeReached = [];
+        public Dictionary<string, ulong> CustomEggMaxFarmSizeReached { get; set; } = [];
 
 
         //[Key(43)]
@@ -256,12 +260,12 @@ namespace EGG9000.Common.Database {
             return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
         }
 
-        public CustomBackup() { }
-
         // CS is sourced out-of-band (get_contract_player_info), so the protobuf rebuild has no fresh
         // value. Keep the prior value unless a positive fresh one is supplied. -1 is the legacy
         // "unknown" sentinel and counts as no value.
         public static double CarryForwardCs(double fresh, double last) => fresh > 0 ? fresh : last;
+
+        public CustomBackup() { }
 
         public CustomBackup(Ei.Backup backup, FrozenSet<Ei.Contract> contracts, CustomBackup lastBackup = null) {
             if(backup?.Game == null) {
@@ -375,7 +379,6 @@ namespace EGG9000.Common.Database {
                 MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, lastBackup.CustomEggMaxFarmSizeReached);
 
 
-            var temp = backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => x.Ship);
             if(backup.ArtifactsDb is not null) {
                 ShipsSent = [.. backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => new { x.Ship, x.DurationType }).Select(x => (x.Key.Ship, x.Key.DurationType, x.Count()))];
                 foreach(var ship in backup.ArtifactsDb.MissionInfos.Where(x => (int)x.Status > 5)) {
