@@ -33,56 +33,20 @@ git clone https://github.com/E9KOrg/EGG9000.git
 cd EGG9000
 ```
 
-<br>
+**2. Create your own Discord bot and test server**
 
-**2. Set up secrets**
+You do not need access to the shared E9K dev bot. Use your own, in your own server.
 
-Two User Secrets IDs are in use — one for `dotnet run` (Option A in step 7), one for the Docker images (Option B):
+1. Create a Discord server to test in, if you do not already have one.
+2. Go to <https://discord.com/developers/applications> and click **New Application**.
+3. **Bot** tab → **Reset Token** → copy it. This is `ConnectionStrings:Token`.
+4. Still on the **Bot** tab, enable all three **Privileged Gateway Intents** (Presence, Server Members, Message Content). The bot requests `GuildMembers` and `MessageContent`, and will fail to connect without them.
+5. **OAuth2** tab → copy **Client ID** and **Client Secret**. These are `ConnectionStrings:ClientId` and `ConnectionStrings:ClientSecret`.
+6. On the same tab, add these **Redirects**, which is where Discord sends you back after login:
+   - `http://localhost:5013/signin-discord`
+7. **OAuth2 → URL Generator**: tick scopes `bot` and `applications.commands`, give it **Administrator** under bot permissions for a test server, then open the generated URL and invite the bot to your server.
 
-- **Option A (dotnet):** `DEV9001`
-- **Option B (Docker):** `dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a`
-
-Create `secrets.json` at the path for your platform and option. If you plan to use both, create the file at both paths.
-
-**Windows** — create `secrets.json` at:
-- Option A: `%APPDATA%\Microsoft\UserSecrets\DEV9001\secrets.json`
-- Option B: `%APPDATA%\Microsoft\UserSecrets\dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a\secrets.json`
-
-**Linux / WSL2** — the base path varies by distro. Run this from the repo root to have .NET create the file and find where it looks for it:
-```bash
-cd EGG9000.Bot && dotnet user-secrets set "ConnectionStrings:DefaultConnection" "placeholder"
-```
-Known locations (check which one your distro uses):
-- `~/.microsoft/usersecrets/<id>/secrets.json`
-- `~/.local/share/Microsoft/UserSecrets/<id>/secrets.json`
-
-Replace `<id>` with `DEV9001` for Option A or the Docker ID above for Option B.
-
-`docker-compose.dev.yml` mounts `${APPDATA}/Microsoft/UserSecrets` into containers. If your secrets live under `~/.local/share`, set `APPDATA` so the compose mount can find them:
-```bash
-# Add to ~/.bashrc or ~/.zshrc
-export APPDATA="$HOME/.local/share"
-```
-
-<br>
-
-All platforms — populate `secrets.json` with:
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;PORT=5433;Database=<dbname>;Username=<username>;Password=<password>;SSL Mode=Disable",
-    "Token": "<discord bot token>",
-    "ClientId": "<discord application client id>",
-    "ClientSecret": "<discord application client secret>",
-    "BugSnagApiKey": "<bugsnag key — leave blank for dev>",
-    "ApiSalt": "<egg inc api salt>",
-    "RabbitMQServer": "rabbitmq|e9k|devpassword",
-    "CPGuildId": "<your test discord server id>"
-  }
-}
-```
-
-> **ApiSalt** is required for authenticated Egg Inc. API endpoints (`ei_ctx/get_contracts_info`, `ei_ctx/get_contract_player_info`). Without it those calls are silently disabled but everything else still works.
+Step 5 records your server's id for you, so the bot and site both use it instead of the shared dev server.
 
 <br>
 
@@ -118,38 +82,52 @@ docker run -d --name egg9000-pg \
   postgres:latest
 ```
 
-> Make sure the connection string in `secrets.json` matches the username, password, and database name you used here.
+> Note the username, password, and database name you used. Step 5 writes a `DefaultConnection` key into `secrets.json` for you, and these are the values that go in it.
 
 <br>
 
-**5. Initialize the database**
+**5. Run setup**
 
-To initialize the database or to run migrations. Install the EF Core CLI tools and run:
+One command does the rest of the setup. It creates your `secrets.json`, tells you where it is and which keys to fill in, applies migrations, seeds the `Guilds` row for your test Discord server, records your server id, creates the `Admin` role, and grants it to you.
+
+You do not create the secrets file yourself and you do not need to know which keys go in it. Expect to run this twice:
+
+1. First run: it creates `secrets.json`, prints its full path, and lists each missing key with what it is for.
+2. Open that file, paste in the values from step 2 and the database details from step 4.
+3. Run it again. It picks up from where it stopped.
 
 ```
-dotnet tool install --global dotnet-ef
-dotnet ef database update --project EGG9000.Common --startup-project EGG9000.Bot --configuration DEV9002
+cd EGG9000.Onboarding
+dotnet run --configuration DEV9002
 ```
+
+It prints what it did at each step and is safe to run again at any time. A second run reports anything already in place as `ok` and changes nothing.
+
+It also lists the Discord servers your bot is in and lets you pick one, so you do not need to copy a server ID by hand.
+
+**It will pause and wait.** Granting yourself admin needs a website login, which only exists after you sign in through Discord in a browser. When setup reaches that point it prints instructions and waits, polling until you have logged in. Leave it running and carry on with steps 6 to 8 in another terminal. It picks up on its own once your login appears.
+
+Optional flags, mostly for scripted runs:
+
+| Flag | Effect |
+|------|--------|
+| `--guild <id>` | Skip the server picker |
+| `--admin <id>` | Skip the Discord user ID prompt |
+| `--no-wait` | Never wait for a website login, report that step as skipped instead |
+
+> Setup refuses to run under the `DEV9001` and `Release` configurations, which point at the production database. There is no override.
+
+> The file it writes is the one the `DEV9002` configuration reads (user secrets id `DEV9001`). The bot and the site read the same file when passed the same flag, which is why step 6 passes it to both.
 
 <br>
 
-**6. Seed the Guilds table**
+**6. Start the application**
 
-The bot needs a row in `Guilds` for your test Discord server before it will function. Replace `<your-server-id>` with your Discord server's ID (visible by right-clicking the server icon with Developer Mode on):
-
-```
-docker exec -it egg9000-pg psql -U <username> -d <dbname> -c "INSERT INTO \"Guilds\" (\"Id\", \"Name\", \"DiscordSeverId\", \"OverflowServersJson\", \"_coopSettingsJson\", \"_eventCustomizationsJson\", \"_faqTopicsJson\", \"_channelDetailsJson\", \"AddOutsideCoops\", \"MinimumRunningScore\", \"FAQTopicsEnabled\", \"FAQTopicCooldownMinutes\", \"DisableBG\", \"AllowGuilds\", \"PublicScoreGrid\", \"RemoveFindCoopSpot\") VALUES (<your-server-id>, 'Dev Server', <your-server-id>, '[]', '[]', '[]', '[]', '[]', true, 0, false, 0, false, false, false, false);"
-```
-
-<br>
-
-**7. Start the application**
-
-Two options — pick one:
+Two options, pick one:
 
 ---
 
-**Option A — dotnet (recommended for active development)**
+**Option A - dotnet (recommended for active development)**
 
 Runs bot and site directly. Requires only the postgres container from step 4.
 
@@ -164,20 +142,30 @@ The bot connects to your test Discord server. Confirm you can see the bot online
 **Run the site** (new terminal):
 ```
 cd EGG9000.Site
-dotnet watch --no-hot-reload
+dotnet watch --no-hot-reload --configuration DEV9002
 ```
+
+> `--configuration DEV9002` is required, not optional. Without it the site builds `Debug`, which reads a different secrets file from the one step 5 filled in, so Discord login will not be configured and step 8 cannot work.
 
 Site at `http://localhost:5013`. To bypass Discord login: `/Home/DebugLogin?id={yourdiscordid}` (requires at least one prior login to the dev DB).
 
 ---
 
-**Option B — docker-compose (full stack)**
+**Option B - docker-compose (full stack)**
 
 Runs bot, site, and rabbitmq as a Docker stack. Use this to test the dockerized bot image or replicate the production environment.
 
+> **Different secrets file:** the Docker images use user secrets id `dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a`, not the one step 5 wrote. Copy your finished `secrets.json` to that id's folder, alongside the one setup created.
+>
+> **Linux:** `docker-compose.dev.yml` mounts `${APPDATA}/Microsoft/UserSecrets` into the containers. If your secrets live under `~/.local/share`, point `APPDATA` at it so the mount resolves:
+> ```bash
+> # Add to ~/.bashrc or ~/.zshrc
+> export APPDATA="$HOME/.local/share"
+> ```
+>
 > **Connection string change required:** Both containers read `secrets.json` but can't reach `localhost` from inside Docker. Change `Host=localhost` to `Host=host.docker.internal` in your `secrets.json` before starting the stack. Revert to `localhost` when switching back to Option A.
 >
-> **Linux:** `host.docker.internal` is not available by default — add `extra_hosts: ["host.docker.internal:host-gateway"]` under both `bot` and `site` in `docker-compose.dev.yml`, or point `Host=` at your machine's LAN IP.
+> **Linux:** `host.docker.internal` is not available by default - add `extra_hosts: ["host.docker.internal:host-gateway"]` under both `bot` and `site` in `docker-compose.dev.yml`, or point `Host=` at your machine's LAN IP.
 
 ```
 docker-compose -f docker-compose.dev.yml up
@@ -189,49 +177,25 @@ Site at `http://localhost:5013`.
 
 <br>
 
-**8. Register via the bot**
+**7. Register via the bot**
 
 In your test Discord server, run the `/register` slash command with your Egg Inc. ID. This creates your `DBUser` row and is required before logging into the site.
 
 <br>
 
-**9. Log in to the site**
+**8. Log in to the site**
 
-Go to `http://localhost:5013` and log in with Discord. This creates your ASP.NET Identity rows (`AspNetUsers`, `AspNetUserLogins`) which the admin SQL below depends on.
+Go to `http://localhost:5013` and log in with Discord. This creates your ASP.NET Identity rows, which is what the waiting setup command from step 5 is looking for. Once it sees them it grants you the `Admin` role and finishes.
 
-<br>
-
-**10. Seed yourself as admin**
-
-Connect to the postgres container:
-
+If you closed setup before logging in, run it again now:
 ```
-docker exec -it egg9000-pg psql -U <username> -d <dbname>
-```
-
-Then paste:
-
-```sql
--- 1. Create the Admin role (skip if already exists)
-INSERT INTO "AspNetRoles" ("Id", "Name", "NormalizedName", "ConcurrencyStamp")
-VALUES (gen_random_uuid()::text, 'Admin', 'ADMIN', gen_random_uuid()::text)
-ON CONFLICT DO NOTHING;
-
--- 2. Add yourself (replace <your-discord-id> with your numeric Discord user ID)
-INSERT INTO "AspNetUserRoles" ("UserId", "RoleId")
-SELECT u."Id", r."Id"
-FROM "AspNetUsers" u, "AspNetRoles" r
-WHERE r."NormalizedName" = 'ADMIN'
-  AND u."Id" = (
-    SELECT "UserId" FROM "AspNetUserLogins"
-    WHERE "ProviderKey" = '<your-discord-id>'
-  )
-ON CONFLICT DO NOTHING;
+cd EGG9000.Onboarding
+dotnet run --configuration DEV9002
 ```
 
 <br>
 
-**11. Configure your server**
+**9. Configure your server**
 
 Navigate to `http://localhost:5013/Admin/ConfigureServer` to set up channels, roles, and other server settings.
 
