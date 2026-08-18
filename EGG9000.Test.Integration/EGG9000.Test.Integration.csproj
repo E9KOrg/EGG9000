@@ -19,5 +19,6 @@
   <ItemGroup>
     <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
     <ProjectReference Include="..\EGG9000.Bot\EGG9000.Bot.csproj" />
+    <ProjectReference Include="..\EGG9000.Onboarding\EGG9000.Onboarding.csproj" />
   </ItemGroup>
 </Project>

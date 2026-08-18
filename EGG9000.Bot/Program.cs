@@ -18,6 +18,10 @@ try {
         .AddEnvironmentVariables()
         .AddUserSecrets<Program>(optional: true) // Optional for Docker scenarios
         .Build();
+    // Resolves the dev server id before anything reads KnownGuilds, so a developer running against
+    // their own server is pointed at it rather than at the shared dev server.
+    KnownGuilds.Initialize(tempConfig);
+
     var botColor = tempConfig.GetValue<string>("BOT_COLOR");
     logger.Log(NLog.LogLevel.Info, $"BotColor = {botColor}");
     var machineName = BuildConfig.IsDebug ? $"{Environment.MachineName}_debug" : !string.IsNullOrEmpty(botColor) ? $"{Environment.MachineName}_{botColor}" : Environment.MachineName;

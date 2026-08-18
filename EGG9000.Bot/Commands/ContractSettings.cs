@@ -329,7 +329,7 @@ namespace EGG9000.Bot.Commands {
             var page = new MenuPageBuilder("Break Menu", AccountLine(account))
                 .WithDescription("Setting a break will prevent you from being added to co-ops for the duration of the break.");
 
-            if(user.GuildId == 656455567858073601 || user.GuildId == 1108127105088241746) { // Palace / Dev E9K
+            if(user.GuildId == KnownGuilds.PalaceProduction || user.GuildId == KnownGuilds.Dev) { // Palace / dev server
                 page.AddText("⚠️ **NOTE**\n```This is for when you need a break from all contracts;\nIt is NOT a break for coop assignments from this server.```");
             }
 

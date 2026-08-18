@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <!-- All four must be declared. BuildConfig (EGG9000.Common) resolves the active configuration
+         from #if symbols, and OnboardCommand refuses to run under DEV9001 and Release. A missing
+         configuration here silently builds as Debug, which would defeat that guard. -->
+    <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
+  </PropertyGroup>
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <!-- UserSecretsId per configuration, matching EGG9000.Bot.csproj exactly so onboard reads the
+       same secrets file the bot will read under the same configuration. DEV9002 intentionally
+       points at DEV9001: that is the id the README tells developers to use for dotnet runs. -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <WarningLevel>7</WarningLevel>
+    <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <WarningLevel>7</WarningLevel>
+    <UserSecretsId>dotnetcore-coopcodes-f186fb4c-b5ba-4267-9a58-9d24c71afb0a</UserSecretsId>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9001|AnyCPU'">
+    <WarningLevel>7</WarningLevel>
+    <UserSecretsId>DEV9001-LiveDB</UserSecretsId>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DEV9002|AnyCPU'">
+    <WarningLevel>7</WarningLevel>
+    <UserSecretsId>DEV9001</UserSecretsId>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Discord.Net is needed by GuildSelectionStep, which lists the servers the bot is in.
+         EF Core, Npgsql and ASP.NET Identity arrive transitively through EGG9000.Common. -->
+    <PackageReference Include="Discord.Net" Version="3.20.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
+    <ProjectReference Include="..\EGG9000.Analyzers\EGG9000.Analyzers.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+  </ItemGroup>
+</Project>
