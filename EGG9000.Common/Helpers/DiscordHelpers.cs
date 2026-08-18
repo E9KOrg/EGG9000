@@ -191,6 +191,7 @@ namespace EGG9000.Common.Helpers {
                 await CheckPermitRoles(_client, guild, discordUser, dbUser);
                 await CheckGrades(db, _client, discordUser, dbUser, grades);
                 await CheckOudatedGameRole(_client, guild, discordUser, dbUser);
+                await CheckNoAliasRole(_client, guild, discordUser, dbUser);
                 await CheckUserOSRole(_client, guild, discordUser, dbUser);
                 await CheckUnjoined(guild, discordUser, leaderboardUsers.FirstOrDefault(x => x.User.Id == dbUser.Id));
                 await CheckEnDRole(_client, guild, discordUser, dbUser);
@@ -303,7 +304,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             if(extraRoles.Count > 0) {
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Removed && !x.Coop.ThreadArchived).ToListAsync();
 
                 //Handle the case where users rank up, and need to still see existing coops
                 var lostXrefs = xrefs.Where(x => extraGrades.Any(eg => eg.grade == (Ei.Contract.Types.PlayerGrade)x.Coop.League));
@@ -334,6 +335,11 @@ namespace EGG9000.Common.Helpers {
             var gameOutdatedRole = await _client.GetRoleAsync(GuildChannelType.GameVersionOutdated, Guild);
             var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.ClientVersion > 0 && x.Backup.ClientVersion < EggIncApi.ClientVersion);
             await RoleToggle.ApplyAsync(DiscordUser, gameOutdatedRole, needsRole, "outdated role");
+        }
+        private static async Task CheckNoAliasRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+            var noAliasRole = await _client.GetRoleAsync(GuildChannelType.NoAliasRole, Guild);
+            var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.NoAliasInLatestBackup);
+            await RoleToggle.ApplyAsync(DiscordUser, noAliasRole, needsRole, "no alias role");
         }
 
         private static async Task CheckEnDRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {

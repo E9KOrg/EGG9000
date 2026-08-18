@@ -97,14 +97,15 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 if(coop is null || coop.FinishedOrFailedOrExpired()) {
                     return [];
                 }
-                var eidsIn = coop.UserCoopsXrefs.Select(x => x.EggIncId).ToList();
+                var activeXrefs = coop.UserCoopsXrefs.Where(x => !x.Removed).ToList();
+                var eidsIn = activeXrefs.Select(x => x.EggIncId).ToList();
                 if(eidsIn.Count == 0) {
                     return [];
                 }
 
                 var users = string.IsNullOrWhiteSpace((string)arg.Data.Current.Value) ?
-                    coop.UserCoopsXrefs :
-                    coop.UserCoopsXrefs.Where(x =>
+                    activeXrefs :
+                    activeXrefs.Where(x =>
                         x.User.DiscordUsername.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase) ||
                         x.User.Usernames.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase)
                     );

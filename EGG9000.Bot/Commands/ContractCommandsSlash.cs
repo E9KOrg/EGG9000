@@ -152,10 +152,10 @@ namespace EGG9000.Bot.Commands {
             _ = priority switch {
                 FindCoopPrioritization.FinishTimeLow => coops = [.. coops.OrderBy(c => c.ProjectedFinish)],
                 FindCoopPrioritization.FinishTimeHigh => coops = [.. coops.OrderByDescending(c => c.ProjectedFinish)],
-                FindCoopPrioritization.LowPlayerCount => coops = [.. coops.OrderBy(c => c.UserCoopsXrefs.Count)],
-                FindCoopPrioritization.HighPlayerCount => coops = [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Count)],
-                FindCoopPrioritization.NeedsHighEB => coops = [.. coops.OrderBy(c => c.UserCoopsXrefs.Max(x => x.SoulPower))],
-                FindCoopPrioritization.HasHighEB => coops = [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Max(x => x.SoulPower))],
+                FindCoopPrioritization.LowPlayerCount => coops = [.. coops.OrderBy(c => c.UserCoopsXrefs.Count(x => !x.Removed))],
+                FindCoopPrioritization.HighPlayerCount => coops = [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Count(x => !x.Removed))],
+                FindCoopPrioritization.NeedsHighEB => coops = [.. coops.OrderBy(c => c.UserCoopsXrefs.Where(x => !x.Removed).Max(x => x.SoulPower))],
+                FindCoopPrioritization.HasHighEB => coops = [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Where(x => !x.Removed).Max(x => x.SoulPower))],
                 _ => coops = [.. coops.OrderBy(c => c.ProjectedFinish)],
             };
 
@@ -994,7 +994,7 @@ namespace EGG9000.Bot.Commands {
             }
             // A brand new ephemeral message, not an update of the Test Assignment message: that message
             // is flagged ComponentsV2, and Discord will not allow downgrading it back to V1 components.
-            await component.RespondAsync(text: "Select which account you would like to manage", components: ContractSettingsCommands.GetAccountButtons(dbUser, "MCSMenu"), ephemeral: true);
+            await component.RespondAsync(components: ContractSettingsCommands.GetAccountButtons(dbUser, "MCSMenu"), flags: MessageFlags.ComponentsV2, ephemeral: true);
         }
 
         [ComponentInteraction("AcceptCoopOffer:*", ignoreGroupNames: true)]
@@ -1182,8 +1182,8 @@ namespace EGG9000.Bot.Commands {
             var verbiage = response.Success ? "is now private." : "**may** now be private.\n-# (API success was false)";
             var embedType = response.Success ? EmbedHelpers.EmbedType.Success : EmbedHelpers.EmbedType.Warning;
             await Context.Interaction.ModifyOriginalResponseAsync(x => {
-               x.Content = "";
-               x.Embed =  EmbedCustom(embedType, titleVerbiage, $"{coop.Name} {verbiage}");
+                x.Content = "";
+                x.Embed = EmbedCustom(embedType, titleVerbiage, $"{coop.Name} {verbiage}");
             });
         }
 

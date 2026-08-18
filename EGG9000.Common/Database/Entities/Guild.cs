@@ -304,7 +304,9 @@ namespace EGG9000.Common.Database.Entities {
         CoopStatsChannel = 48,
         [Description("/TC/Optional: Where E9K will log issues that occur with users trying to /register")]
         RegisterIssues = 49,
+        [Description("/R/Role for users whose latest backup came back with no in-game name (likely logged out of Google Play Games/Game Center)")]
+        NoAliasRole = 50,
         [Description("/TC/Optional: Where missing silo reminders will be logged")]
-        SiloLog = 50,
+        SiloLog = 51,
     }
 }
