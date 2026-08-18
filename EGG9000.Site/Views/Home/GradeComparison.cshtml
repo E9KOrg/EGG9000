@@ -69,6 +69,7 @@
 </div>
 
 <partial name="_ApexCharts" />
+@section Scripts {
 <script>
     var ebOptions = {
         series: [{
@@ -149,3 +150,4 @@
     var gradeChart = new ApexCharts(document.querySelector("#chartGrade"), ebOptions);
     gradeChart.render();
 </script>
+}

@@ -4,31 +4,30 @@ using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Helpers.Discord.Paging;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway) : Interactions.E9KModuleBase(dbFactory) {
-        private async Task RespondWithMeritList(string mentionText, List<Merit> merits, bool ephemeral) {
-            var i = 1;
-            var meritDesc = string.Join("\n", merits.Select(x => $"{i++}: {x.Reason}"));
-            var header = $"Merit info for {mentionText}\n";
+    public class MeritListPager(IReadOnlyList<string> lines, int page, string mentionText, ulong invokerId, ulong targetDiscordId) : TextListPager(lines, page) {
+        protected override string Title => "Merits";
+        protected override string Preamble => $"Merits for {mentionText}";
+        protected override string CustomIdPrefix => "MeritsPage";
+        protected override string KeySuffix => $"{invokerId},{targetDiscordId}";
 
-            if((header.Length + meritDesc.Length) <= 1900) {
-                await Context.Interaction.RespondAsyncGettingMessage(header + meritDesc, ephemeral: ephemeral);
-            } else {
-                await Context.Interaction.RespondWithFilesAsyncGettingMessage(
-                    [new FileAttachment(new MemoryStream(Encoding.UTF8.GetBytes(meritDesc)), "Merits.txt")],
-                    text: header + "_(List too large for Discord - see attached file)_",
-                    ephemeral: ephemeral);
-            }
+        public static (ulong InvokerId, ulong TargetDiscordId, int Page) ParseCustomId(string data) {
+            var parts = data.Split(",");
+            return (ulong.Parse(parts[0]), ulong.Parse(parts[1]), int.Parse(parts[2]));
         }
+    }
+
+    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway) : Interactions.E9KModuleBase(dbFactory) {
+        private static List<string> BuildMeritLines(List<Merit> merits) =>
+            [.. merits.Select((m, i) => $"{i + 1}: {m.Reason}")];
 
         [SlashCommand("addmerit", "Add merit to user(s)")]
         [DefaultMemberPermissions(GuildPermission.ModerateMembers)]
@@ -83,14 +82,14 @@ namespace EGG9000.Bot.Commands {
             try {
                 var user = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);
 
-
                 var merits = await Db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
                 if(merits.Count == 0) {
                     await Context.Interaction.RespondAsyncGettingMessage($"There are no merits for {targetUser.Mention}");
                     return;
                 }
 
-                await RespondWithMeritList(targetUser.Mention, merits, ephemeral: false);
+                var pager = new MeritListPager(BuildMeritLines(merits), 0, targetUser.Mention, Context.User.Id, targetUser.Id);
+                await pager.SendAsync(Context.Interaction);
             } catch(Exception e) {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedExceptionFrame(e));
             }
@@ -109,10 +108,24 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                await RespondWithMeritList(socketUser.Mention, merits, ephemeral: true);
+                var pager = new MeritListPager(BuildMeritLines(merits), 0, socketUser.Mention, socketUser.Id, socketUser.Id);
+                await pager.SendAsync(Context.Interaction, ephemeral: true);
             } catch(Exception e) {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedExceptionFrame(e));
             }
+        }
+
+        [ComponentInteraction("MeritsPage:*", ignoreGroupNames: true)]
+        public async Task MeritsPage(string data) {
+            var component = (SocketMessageComponent)Context.Interaction;
+            var (invokerId, targetDiscordId, page) = MeritListPager.ParseCustomId(data);
+            if(component.User.Id != invokerId) { await Pager.RejectNonInvokerAsync(component); return; }
+
+            var user = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetDiscordId);
+            if(user is null) return;
+            var merits = await Db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
+            var pager = new MeritListPager(BuildMeritLines(merits), page, $"<@{targetDiscordId}>", invokerId, targetDiscordId);
+            await pager.UpdateComponentAsync(component);
         }
     }
 }
