@@ -2,6 +2,9 @@ using EGG9000.Common.Database;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+using System.Collections.Frozen;
+using System.Collections.Generic;
+
 namespace EGG9000.Test {
     // CS (TotalCS/SeasonCS) is no longer sourced from the protobuf backup - it is written out-of-band
     // by AccountRefresh.ApplyExtrasAsync from get_contract_player_info. Each mass UpdateBackups pass
@@ -28,6 +31,23 @@ namespace EGG9000.Test {
         [TestMethod]
         public void CarryForwardCs_zero_when_no_history() {
             Assert.AreEqual(0d, CustomBackup.CarryForwardCs(0d, 0d));
+        }
+
+        [TestMethod]
+        public void LastContractPlayerInfoBytes_carries_forward_across_rebuild() {
+            var lastBackup = new CustomBackup { LastContractPlayerInfoBytes = [1, 2, 3, 4] };
+            var backup = new Ei.Backup {
+                Game = new Ei.Backup.Types.Game(),
+                Settings = new Ei.Backup.Types.Settings(),
+                Stats = new Ei.Backup.Types.Stats(),
+                Artifacts = new Ei.Backup.Types.Artifacts(),
+                Contracts = new Ei.MyContracts(),
+                ArtifactsDb = new Ei.ArtifactsDB()
+            };
+
+            var rebuilt = new CustomBackup(backup, new List<Ei.Contract>().ToFrozenSet(), lastBackup);
+
+            CollectionAssert.AreEqual(lastBackup.LastContractPlayerInfoBytes, rebuilt.LastContractPlayerInfoBytes);
         }
     }
 }
