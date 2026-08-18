@@ -46,6 +46,7 @@ namespace EGG9000.Common.Helpers {
 
         public static async Task<CustomBackup> RefreshFullAsync(EggIncAccount account, FrozenSet<Ei.Contract> cachedContracts, DBUser user, ApplicationDbContext db, ILogger logger) {
             var backup = await RefreshBackupAsync(account, cachedContracts, logger);
+            if(backup is null) return null;
             await ApplyExtrasAsync(user, account, db, logger);
             return backup;
         }
@@ -59,7 +60,8 @@ namespace EGG9000.Common.Helpers {
             if(info is null) return false;
 
             var mutated = ApplyExtras(user, account, info, logger);
-            await UpsertSeasonProgress(account.Id, info.SeasonProgress, db, cancellationToken);
+            if(info.Status == Ei.ContractPlayerInfo.Types.Status.Complete)
+                await UpsertSeasonProgress(account.Id, info.SeasonProgress, db, cancellationToken);
             return mutated;
         }
 
@@ -79,14 +81,17 @@ namespace EGG9000.Common.Helpers {
         // Caller still owes UpsertSeasonProgress(account.Id, info.SeasonProgress, db, ...) + persist.
         public static bool ApplyExtras(DBUser user, EggIncAccount account, Ei.ContractPlayerInfo info, ILogger logger) {
             var backupMutated = false;
-            if(account.Backup is not null) {
+            if(account.Backup is not null && info.Status == Ei.ContractPlayerInfo.Types.Status.Complete) {
                 if(account.Backup.TotalCS != info.TotalCxp || account.Backup.SeasonCS != info.SeasonCxp) {
                     account.Backup.TotalCS = info.TotalCxp;
                     account.Backup.SeasonCS = info.SeasonCxp;
                     backupMutated = true;
                 }
 
-                var freshBytes = info.ToByteArray();
+                var trimmed = info.Clone();
+                trimmed.UnreadEvaluations.Clear();
+                trimmed.SeasonProgress.Clear();
+                var freshBytes = trimmed.ToByteArray();
                 if(!freshBytes.AsSpan().SequenceEqual(account.Backup.LastContractPlayerInfoBytes ?? [])) {
                     account.Backup.LastContractPlayerInfoBytes = freshBytes;
                     backupMutated = true;
@@ -107,10 +112,11 @@ namespace EGG9000.Common.Helpers {
         private static bool ApplyCompleteGrade(DBUser user, EggIncAccount account, Ei.ContractPlayerInfo info, ILogger logger) {
             var mutated = GradeSync.ApplyGradeChange(user, account, info.Grade, setPromotionTime: true, guardUnset: true, logger);
 
+            var pendingCleared = false;
             if(account.PendingGrade.HasValue) {
                 account.PendingGrade = null;
                 account.PendingGradeSince = default;
-                mutated = true;
+                pendingCleared = true;
             }
 
             if(mutated) return true;
@@ -124,7 +130,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             logger.LogInformation("No grade change for user {User} ({Account}) grade: {Grade}", user.DiscordUsername, account.Name, info.Grade);
-            return false;
+            return pendingCleared;
         }
 
         private static bool ApplyCalculatingGrade(DBUser user, EggIncAccount account, Ei.ContractPlayerInfo info, ILogger logger) {

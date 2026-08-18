@@ -309,6 +309,9 @@ namespace EGG9000.Bot.Commands {
             });
 
             var freshBackup = await AccountRefresh.RefreshFullAsync(account, await Db.CachedEiContractsAsync(), dbuser, Db, _logger);
+            if(freshBackup is not null) {
+                dbuser.UpdateAccounts();
+            }
 
             if((uint)account.LastGrade != newgrade) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => {
@@ -317,9 +320,6 @@ namespace EGG9000.Bot.Commands {
                 });
                 await Db.SaveChangesAsync();
                 return;
-            }
-            if(freshBackup is not null) {
-                dbuser.UpdateAccounts();
             }
 
             if(gradeRole != null) {

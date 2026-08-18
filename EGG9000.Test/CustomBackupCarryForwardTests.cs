@@ -12,6 +12,7 @@ namespace EGG9000.Test {
     // its 0 default and CSLeaderboard's "TotalCS > 0" filter drops the user until the slower CS sweep
     // runs again. Carry-forward keeps the last known CS across rebuilds.
     [TestClass]
+    [TestCategory("Unit")]
     public class CustomBackupCarryForwardTests {
         [TestMethod]
         public void CarryForwardCs_keeps_last_value_when_fresh_has_none() {
