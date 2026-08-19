@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Prometheus;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -135,7 +136,8 @@ namespace EGG9000.Bot.Services {
                     _logger.LogDebug("Autocomplete for {command} by {username}", CommandName(interaction), interaction.User?.Username);
                 else {
                     RuntimeMetrics.AddCommands();
-                    _logger.LogInformation("Running command {command} for user: {username}", CommandName(interaction), interaction.User?.Username);
+                    _logger.LogInformation("Running command {command}({params}) for user: {username} in guild {guild} channel {channel}",
+                        CommandName(interaction), CommandParams(interaction), interaction.User?.Username, DescribeGuild(ctx.Guild), DescribeChannel(ctx.Channel));
                 }
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 try {
@@ -143,7 +145,8 @@ namespace EGG9000.Bot.Services {
                 } catch(Exception e) {
                     Failures.Inc();
                     RuntimeMetrics.AddCommandFailures();
-                    _logger.LogError(e, "Interaction {command} threw", CommandName(interaction));
+                    _logger.LogError(e, "Interaction {command}({params}) threw for user {username} in guild {guild}",
+                        CommandName(interaction), CommandParams(interaction), interaction.User?.Username, DescribeGuild(ctx.Guild));
                     _bugsnag.Notify(e);
                 } finally {
                     _semaphore.Release();
@@ -161,11 +164,13 @@ namespace EGG9000.Bot.Services {
             var interaction = ctx.Interaction;
             MessageComponent component;
             if(result is ExecuteResult er && er.Exception is not null) {
-                _logger.LogError(er.Exception, "Command {command} failed for {username}", info?.Name, interaction.User?.Username);
+                _logger.LogError(er.Exception, "Command {command}({params}) failed for {username} in guild {guild}",
+                    info?.Name, CommandParams(interaction), interaction.User?.Username, DescribeGuild(ctx.Guild));
                 _bugsnag.Notify(er.Exception);
                 component = ComponentsV2EmbedHelpers.ExceptionFrame(er.Exception);
             } else {
-                _logger.LogWarning("Command {command} failed for {username}: {error} - {reason}", info?.Name, interaction.User?.Username, result.Error, result.ErrorReason);
+                _logger.LogWarning("Command {command}({params}) failed for {username} in guild {guild}: {error} - {reason}",
+                    info?.Name, CommandParams(interaction), interaction.User?.Username, DescribeGuild(ctx.Guild), result.Error, result.ErrorReason);
                 component = ComponentsV2EmbedHelpers.Error(result.ErrorReason ?? "Command could not be completed.");
             }
             try {
