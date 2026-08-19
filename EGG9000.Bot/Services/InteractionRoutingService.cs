@@ -175,14 +175,48 @@ namespace EGG9000.Bot.Services {
         }
 
         private static string CommandName(IDiscordInteraction interaction) => interaction switch {
-            SocketSlashCommand s when s.Data.Options.Any(o => o.Type == ApplicationCommandOptionType.SubCommand)
-                => $"{s.Data.Name} {s.Data.Options.First(o => o.Type == ApplicationCommandOptionType.SubCommand).Name}",
-            SocketSlashCommand s => s.Data.Name,
+            SocketSlashCommand s => string.Join(" ", new[] { s.Data.Name }.Concat(SubCommandPath(s.Data.Options))),
             SocketUserCommand u => u.Data.Name,
             SocketMessageComponent c => c.Data.CustomId,
             SocketModal m => m.Data.CustomId,
             SocketAutocompleteInteraction a => a.Data.CommandName,
             _ => interaction.Type.ToString()
         };
+
+        private static IEnumerable<string> SubCommandPath(IReadOnlyCollection<SocketSlashCommandDataOption> options) {
+            var sub = options?.FirstOrDefault(o => o.Type is ApplicationCommandOptionType.SubCommand or ApplicationCommandOptionType.SubCommandGroup);
+            if(sub is null) yield break;
+            yield return sub.Name;
+            foreach(var nested in SubCommandPath(sub.Options)) yield return nested;
+        }
+
+        private static string CommandParams(IDiscordInteraction interaction) => interaction switch {
+            SocketSlashCommand s => FormatSlashOptions(s.Data.Options),
+            SocketMessageComponent { Data.Values.Count: > 0 } c => string.Join(", ", c.Data.Values),
+            SocketModal m => string.Join(", ", m.Data.Components.Select(comp => $"{comp.CustomId}={comp.Value}")),
+            _ => ""
+        };
+
+        private static string FormatSlashOptions(IReadOnlyCollection<SocketSlashCommandDataOption> options) {
+            if(options is null) return "";
+            var parts = new List<string>();
+            foreach(var opt in options) {
+                if(opt.Type is ApplicationCommandOptionType.SubCommand or ApplicationCommandOptionType.SubCommandGroup) parts.Add(FormatSlashOptions(opt.Options));
+                else parts.Add($"{opt.Name}={FormatOptionValue(opt.Value)}");
+            }
+            return string.Join(", ", parts.Where(p => !string.IsNullOrEmpty(p)));
+        }
+
+        private static string FormatOptionValue(object value) => value switch {
+            null => "null",
+            IUser u => $"{u.Username}({u.Id})",
+            IChannel c => $"{c.Name}({c.Id})",
+            IRole r => $"{r.Name}({r.Id})",
+            IAttachment a => a.Filename,
+            _ => value.ToString()
+        };
+
+        private static string DescribeGuild(IGuild guild) => guild is null ? "DM" : $"{guild.Name}({guild.Id})";
+        private static string DescribeChannel(IMessageChannel channel) => channel is null ? "unknown" : $"{channel.Name}({channel.Id})";
     }
 }

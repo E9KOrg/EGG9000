@@ -9,6 +9,7 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Helpers.Discord.ComponentsV2;
 using EGG9000.Common.Services;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
@@ -405,6 +406,72 @@ namespace EGG9000.Bot.Commands {
             for(var i = 1; i < messages.Count; i++) {
                 await command.Channel.SendMessageAsync(messages[i]);
             }
+        }
+
+        [SlashCommand("identify", "Identify what a Discord ID refers to (user, channel, guild, role, emoji)")]
+        public async Task Identify([Summary("id", "The Discord ID (snowflake) to identify")] string id) {
+            var command = Context.Interaction;
+            await command.DeferAsync(ephemeral: true);
+
+            var digits = new string(id.Where(char.IsDigit).ToArray());
+            if(!ulong.TryParse(digits, out var snowflake)) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ComponentsV2EmbedHelpers.Error($"`{id}` is not a valid Discord ID."); });
+                return;
+            }
+
+            var createdAt = SnowflakeUtils.FromSnowflake(snowflake);
+            var createdLine = $"Created: {DiscordHelpers.TimeStamper(createdAt, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)} ({DiscordHelpers.TimeStamper(createdAt, DiscordHelpers.DiscordTimestampFormat.Relative)})";
+
+            IDiscordClient client = gateway;
+            var guild = await client.GetGuildAsync(snowflake);
+            var channel = await client.GetChannelAsync(snowflake);
+            var role = gateway.Guilds.SelectMany(g => g.Roles).FirstOrDefault(r => r.Id == snowflake);
+            var emoteMatch = gateway.Guilds.SelectMany(g => g.Emotes.Select(e => (Guild: g, Emote: e))).FirstOrDefault(x => x.Emote.Id == snowflake);
+            var user = await client.GetUserAsync(snowflake);
+
+            string title, body;
+            if(guild is not null) {
+                title = "Guild";
+                body = $"**{guild.Name}**\nOwner: <@{guild.OwnerId}>\nID: `{guild.Id}`";
+            } else if(channel is not null) {
+                var kind = channel switch {
+                    IThreadChannel => "Thread",
+                    IForumChannel => "Forum Channel",
+                    IStageChannel => "Stage Channel",
+                    IVoiceChannel => "Voice Channel",
+                    ICategoryChannel => "Category",
+                    ITextChannel => "Text Channel",
+                    IDMChannel => "DM Channel",
+                    _ => channel.GetType().Name
+                };
+                title = kind;
+                var guildLine = channel is IGuildChannel gc ? $"\nGuild: {gc.Guild.Name} (`{gc.Guild.Id}`)" : "";
+                body = $"**{channel.Name}**{guildLine}\nMention: <#{channel.Id}>\nID: `{channel.Id}`";
+            } else if(role is not null) {
+                title = "Role";
+                body = $"**{role.Name}**\nGuild: {role.Guild.Name} (`{role.Guild.Id}`)\nPosition: {role.Position}\nMention: <@&{role.Id}>\nID: `{role.Id}`";
+            } else if(emoteMatch.Emote is not null) {
+                title = "Emoji";
+                body = $"**{emoteMatch.Emote.Name}**{(emoteMatch.Emote.Animated ? " (animated)" : "")}\nGuild: {emoteMatch.Guild.Name} (`{emoteMatch.Guild.Id}`)\nID: `{emoteMatch.Emote.Id}`";
+            } else if(user is not null) {
+                title = "User";
+                body = $"**{user.Username}**{(user.IsBot ? " (bot)" : "")}\nMention: <@{user.Id}>\nID: `{user.Id}`";
+            } else {
+                title = "Unknown";
+                body = $"Not found as a guild, channel, role, emoji, or user visible to the bot.\nID: `{snowflake}`\n\n_Could be a message, attachment, or interaction ID - those can't be looked up without channel context._";
+            }
+
+            await command.ModifyOriginalResponseAsync(x => {
+                x.Content = "";
+                x.Embed = null;
+                x.Flags = MessageFlags.ComponentsV2;
+                x.Components = new ComponentBuilderV2()
+                    .AddComponent(new ContainerBuilder()
+                        .WithAccentColor(title == "Unknown" ? Color.LightGrey : Color.Blue)
+                        .WithHeader($"Identify: {title}")
+                        .WithTextDisplay($"{body}\n\n{createdLine}"))
+                    .Build();
+            });
         }
     }
 }
