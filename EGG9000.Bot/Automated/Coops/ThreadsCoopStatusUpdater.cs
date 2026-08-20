@@ -149,6 +149,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 await PopulateUserStatuses(ctx);
                 await ReconcileUsersWithoutXref(ctx);
                 await ProcessSleepingParticipants(ctx);
+                await ProcessSiloReminders(ctx);
                 await UpdateCoopLifecycleStatus(ctx);
                 UpdateCurrentUserCount(ctx);
 

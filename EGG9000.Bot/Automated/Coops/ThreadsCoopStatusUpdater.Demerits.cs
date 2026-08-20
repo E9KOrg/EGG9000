@@ -4,6 +4,7 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -24,8 +25,8 @@ namespace EGG9000.Bot.Automated.Coops {
             var currentSleepStart = user.Joined ? DateTimeOffset.UtcNow.Subtract(user.OfflineTime) : coop.Created;
             var hoursSleeping = (double)user.OfflineTime.TotalMinutes / 60.0;
             var siloTimeHours = (float)(user.SiloTimeMinutes / 60.0);
-            var alertTime = (30.0 - siloTimeHours) / 2 + siloTimeHours;
-            var needsAlert = hoursSleeping >= alertTime;
+            var alertCheck = CoopTimingHelper.EvaluateSleepAlert(dbGuild, hoursSleeping, siloTimeHours);
+            var needsAlert = alertCheck.ShouldAlert;
             var timeEmpty = Math.Round(hoursSleeping - siloTimeHours, 2);
 
             var sleepTracking = user.Xref.SleepTracking.ToList();
@@ -40,7 +41,12 @@ namespace EGG9000.Bot.Automated.Coops {
                 var index = random.Next(messages.Count);
 
                 if(user.DiscordUser != null) {
-                    var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + (timeEmpty < 0 ? $" [Empty silos in {timeEmpty} hours {coopChannel.Mention}]" : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]"));
+                    var detail = alertCheck.OfflineBased
+                        ? $" [Offline for {Math.Round(hoursSleeping, 1)} hours, demerit at {alertCheck.DemeritAtHours} hours {coopChannel.Mention}]"
+                        : timeEmpty < 0
+                            ? $" [Empty silos in {Math.Abs(timeEmpty)} hours {coopChannel.Mention}]"
+                            : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]";
+                    var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + detail);
                     var dmResult = await BoolSendDm(user.DiscordUser, warningText, _db);
                     if(dmResult != DMResult.Success) {
                         var fallbackText = $"{warningText} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}";
@@ -59,13 +65,15 @@ namespace EGG9000.Bot.Automated.Coops {
                     user.Xref.TotalHoursSleeping = (float)(currentSleep.LastChecked - currentSleep.SleepStart).TotalHours;
                     user.Xref.HoursSleeping = 0;
                 } else {
-                    var nextDemeritAt = (currentSleep.DemeritsGiven + 1) * 18;
+                    var demeritCheck = CoopTimingHelper.EvaluateSleepDemerit(dbGuild, hoursSleeping, timeEmpty, currentSleep.DemeritsGiven);
+                    var nextDemeritAt = demeritCheck.NextDemeritAtHours;
                     var demeritChannel = await GetDemeritChannel(dbGuild);
-                    var needsDemerit = timeEmpty > nextDemeritAt && demeritChannel is not null && !user.Xref.NoDemerit;
+                    var needsDemerit = demeritCheck.ShouldDemerit && demeritChannel is not null && !user.Xref.NoDemerit;
                     if(needsDemerit && user.DBUser is not null && user.DiscordUser is not null) {
                         currentSleep.DemeritsGiven++;
                         if(user.DBUser.IsFreshEgg()) {
-                            _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{user.DiscordUser?.Mention ?? user.DBUser.DiscordUsername}: You will start receiving demerits for this 7 days after joining the server. Your silos have been empty for {nextDemeritAt} hours."));
+                            var freshEggDetail = demeritCheck.OfflineBased ? $"You have been offline for {nextDemeritAt} hours." : $"Your silos have been empty for {nextDemeritAt} hours.";
+                            _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{user.DiscordUser?.Mention ?? user.DBUser.DiscordUsername}: You will start receiving demerits for this 7 days after joining the server. {freshEggDetail}"));
                             user.Xref.SleepTracking = sleepTracking;
                             await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                         } else {
@@ -74,7 +82,9 @@ namespace EGG9000.Bot.Automated.Coops {
                                 AdminUserId = Guid.Empty,
                                 UserId = user.DBUser.Id,
                                 Id = Guid.NewGuid(),
-                                Reason = $"Empty silos for {nextDemeritAt} hours in {coop.Contract.Name}",
+                                Reason = demeritCheck.OfflineBased
+                                    ? $"Offline for {nextDemeritAt} hours in {coop.Contract.Name}"
+                                    : $"Empty silos for {nextDemeritAt} hours in {coop.Contract.Name}",
                                 Details = JsonConvert.SerializeObject(new { FarmTimestemp = user.CoopStatus?.FarmInfo?.Timestamp, Silos = siloTimeHours })
                             };
                             _db.Demerit.Add(demerit);
@@ -110,10 +120,11 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(user == null || userFarmDetail.Xref.NoDemerit)
                     continue;
 
-                if(userFarmDetail.Xref.CreatedOn > DateTimeOffset.UtcNow.AddHours(-18)) {
-                    _db.Remove(userFarmDetail.Xref);
+                var hoursToKick = CoopTimingHelper.GetHoursToKick(dbGuild, coop.Contract.cc_only);
+                if(userFarmDetail.Xref.CreatedOn > DateTimeOffset.UtcNow.AddHours(-hoursToKick)) {
+                    SoftRemoveFromCoop(userFarmDetail.Xref, coop);
                     await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
-                    _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"Removed {userFarmDetail.DiscordUser?.GetCleanName() ?? user.DiscordUsername} without a demerit since they were added less than 18 hours before the co-op finished."));
+                    _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"Removed {userFarmDetail.DiscordUser?.GetCleanName() ?? user.DiscordUsername} without a demerit since they were added less than {hoursToKick} hours before the co-op finished."));
                     continue;
                 }
 
@@ -144,21 +155,28 @@ namespace EGG9000.Bot.Automated.Coops {
             }
         }
 
+        private void SoftRemoveFromCoop(UserCoopXref xref, Coop coop) {
+            xref.Removed = true;
+            xref.RemovedOn = DateTimeOffset.UtcNow;
+            // Drop from the "find my coop" lookup - they no longer have this co-op to be pointed at.
+            _provider.GetService<CoopAssignmentLookup>()?.Remove(xref.UserId, coop.ContractID);
+        }
+
         public async Task AddDemeritAndRemoveFromCoop(string reason, DBUser user, ApplicationDbContext _db, UserCoopXref xref, SocketGuildUser discordUser, IThreadChannel coopChannel, Guild dbGuild, Coop coop, bool alwaysRemove) {
             var demeritChannel = await GetDemeritChannel(dbGuild);
             if(demeritChannel is null) {
                 if(alwaysRemove) {
-                    _db.Remove(xref);
+                    SoftRemoveFromCoop(xref, coop);
                 }
                 return;
             }
             var existingDemerit = await _db.Demerit.AnyAsync(x => x.ContractID == coop.ContractID && x.UserId == user.Id);
             if(existingDemerit || xref.JoinedCoop) {
                 _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"Removing {discordUser?.Mention ?? user.DiscordUsername} due to: {reason}"));
-                _db.Remove(xref);
+                SoftRemoveFromCoop(xref, coop);
                 await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
             } else {
-                _db.Remove(xref);
+                SoftRemoveFromCoop(xref, coop);
                 if(user.IsFreshEgg()) {
                     _queue.EnqueueLow(() => coopChannel.SendMessageAsync($"{discordUser?.Mention ?? user.DiscordUsername}: You will start receiving demerits for this 7 days after joining the server. {reason} "));
                 } else {

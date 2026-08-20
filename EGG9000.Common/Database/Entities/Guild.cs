@@ -150,8 +150,22 @@ namespace EGG9000.Common.Database.Entities {
         public bool RemoveFindCoopSpot { get; set; }
         [GuildConfig("Remove Test Assignment", "Toggles", GuildConfigKind.Bool, Description = "Hide the Test Assignment button")]
         public bool RemoveTestAssignment { get; set; }
+        [GuildConfig("Offline Hours Per Demerit", "Numbers", GuildConfigKind.Int, Description = "Hours of raw offline time per demerit (only used when boarding groups are enabled)")]
+        public int OfflineDemeritHours { get; set; } = 30;
+        [GuildConfig("Offline Warning Hours", "Numbers", GuildConfigKind.Int, Description = "Hours offline before a courtesy reminder DM is sent. Must be below Offline Hours Per Demerit (only used when boarding groups are enabled)")]
+        public int OfflineWarningHours { get; set; } = 22;
+        [GuildConfig("Hours To Join (normal)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join a co-op before being removed")]
+        public int JoinTimeHours { get; set; } = 18;
+        [GuildConfig("Hours To Join (ultra)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join an ultra (cc-only) co-op before being removed")]
+        public int JoinTimeUltraHours { get; set; } = 24;
         [GuildConfig("Show Contract Stats Embeds", "Toggles", GuildConfigKind.Bool, Description = "Show a live co-op stats embed inside each contract channel")]
         public bool ShowContractStatsEmbeds { get; set; }
+        [GuildConfig("Silo Reminders", "Toggles", GuildConfigKind.Bool, Description = "DM players in a co-op who have not bought every silo their permit allows")]
+        public bool SiloRemindersEnabled { get; set; }
+        [GuildConfig("Silo Reminder Hours (first)", "Numbers", GuildConfigKind.Int, Description = "Hours after joining a co-op before the first missing-silo reminder DM")]
+        public int SiloReminderFirstHours { get; set; } = 12;
+        [GuildConfig("Silo Reminder Hours (second)", "Numbers", GuildConfigKind.Int, Description = "Hours after joining a co-op before the second missing-silo reminder, which is also logged. Must be above the first")]
+        public int SiloReminderSecondHours { get; set; } = 24;
     }
 
     [NotMapped]
@@ -292,5 +306,7 @@ namespace EGG9000.Common.Database.Entities {
         RegisterIssues = 49,
         [Description("/R/Role for users whose latest backup came back with no in-game name (likely logged out of Google Play Games/Game Center)")]
         NoAliasRole = 50,
+        [Description("/TC/Optional: Where missing silo reminders will be logged")]
+        SiloLog = 51,
     }
 }

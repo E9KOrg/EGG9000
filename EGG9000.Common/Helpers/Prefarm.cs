@@ -389,7 +389,7 @@ namespace EGG9000.Common.Helpers {
             var coopParticipants = new List<UserFarmDetails>();
 
 
-            var userBackupsAssigned = backups.Where(x => coop.UserCoopsXrefs.Any(y => y.UserId == x.User.Id)).ToList();
+            var userBackupsAssigned = backups.Where(x => coop.UserCoopsXrefs.Any(y => y.UserId == x.User.Id && !y.Removed)).ToList();
 
             if(status is not null) {
                 foreach(var participant in status.Participants) {
@@ -485,7 +485,9 @@ namespace EGG9000.Common.Helpers {
             }
 
             if(coop is not null) {
-                var missingXrefs = coop.UserCoopsXrefs.Where(x => !coopParticipants.Any(y => y is not null && y.Xref == x));
+                // Soft-removed users no longer occupy a seat or appear as pending joiners,
+                // but their xref keeps them marked as already assigned for this contract.
+                var missingXrefs = coop.UserCoopsXrefs.Where(x => !x.Removed && !coopParticipants.Any(y => y is not null && y.Xref == x));
 
                 foreach(var xref in missingXrefs) {
                     var backup = backups.FirstOrDefault(b => b.Backup?.EggIncId == xref.EggIncId);

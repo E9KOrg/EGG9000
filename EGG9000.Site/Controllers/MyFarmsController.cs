@@ -44,7 +44,7 @@ namespace EGG9000.Site.Controllers {
             if(NewCoopChecker.WaitingOnCoops) {
                 var weekAgo = DateTimeOffset.UtcNow.AddDays(-7);
                 var user = (await _databaseCache.GetDbUsers()).First(x => x.DiscordId == discordId);
-                var xrefs = await _db.UserCoopXrefs.Where(y => y.UserId == user.Id && y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop).Include(y => y.Coop).ThenInclude(x => x.Contract).ToListAsync();
+                var xrefs = await _db.UserCoopXrefs.Where(y => y.UserId == user.Id && y.CreatedOn > weekAgo && !y.Coop.Finished && !y.JoinedCoop && !y.Removed).Include(y => y.Coop).ThenInclude(x => x.Contract).ToListAsync();
                 user.UserCoopXrefs = xrefs;
                 return View("Temporary", user);
             }
@@ -97,7 +97,7 @@ namespace EGG9000.Site.Controllers {
             var Demerits = await _db.Demerit.AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var Merits = await _db.Merit.AsNoTracking().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var Snapshots = await _db.UserSnapShots.AsNoTracking().Where(x => x.UserId == user.Id).ToListAsync();
-            var xrefs = await _db.UserCoopXrefs.AsNoTracking().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
+            var xrefs = await _db.UserCoopXrefs.AsNoTracking().Where(x => x.UserId == user.Id && !x.Coop.ThreadArchived && !x.JoinedCoop && !x.Removed && !x.Coop.Finished && x.Coop.CoopEnds > DateTime.UtcNow).Include(x => x.Coop).ThenInclude(x => x.Contract).ToListAsync();
             var coops = await _db.Coops.AsNoTracking().Where(x => x.UserCoopsXrefs.Any(y => y.UserId == user.Id && y.JoinedCoop) && !x.ThreadArchived).Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).AsSplitQuery().ToListAsync();
             var erItems = EiEpicResearch.Get().epicResearchItems;
             var DbGuild = _db.CachedGuilds.FirstOrDefault(x => x.Id == user.GuildId);

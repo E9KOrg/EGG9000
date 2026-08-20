@@ -381,6 +381,8 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(!userStatus.Xref.JoinedCoop && userStatus.CoopStatus is not null) {
                     userStatus.Xref.JoinedCoop = true;
+                    userStatus.Xref.Removed = false;
+                    userStatus.Xref.RemovedOn = null;
                     // Joined - drop from the "find my coop" lookup (they're in the thread now).
                     _provider.GetService<CoopAssignmentLookup>()?.Remove(userStatus.Xref.UserId, ctx.Coop.ContractID);
                     var unjoinedRole = ctx.Guild.Roles.FirstOrDefault(x => x.Id == KnownRoles.Unjoined);
@@ -518,27 +520,32 @@ namespace EGG9000.Bot.Automated.Coops {
                         userList.Add(mention);
 
                         if(!ctx.Coop.Finished && ctx.Coop.Status != CoopStatusEnum.Failed && ctx.Coop.CoopEnds > DateTimeOffset.UtcNow) {
+                            var hoursToKick = CoopTimingHelper.GetHoursToKick(ctx.DbGuild, ctx.Coop.Contract.cc_only);
+                            var (firstReminderHours, secondReminderHours) = CoopTimingHelper.GetJoinReminderHours(hoursToKick);
                             if(discordUser != null) {
+                                var bgSuggestion = ctx.DbGuild.DisableBG ? "" : $", if this launch time doesn't suit your schedule consider changing your Boarding Group for future contracts with {await _client.GetSlashCommandStringAsync(ctx.ParentGuild, "mycontractsettings")}";
                                 if(!userFarmDetails.Xref.JoinWarning24TillFinish && ctx.TimeRemaining.TotalHours < 24 && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-1)) {
                                     userFarmDetails.Xref.JoinWarning24TillFinish = true;
                                     await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                                     await SendDMWarning(ctx.Db, discordUser, ctx.CoopThread, $"reminder to join - co-op will be finished in under {Math.Ceiling(ctx.TimeRemaining.TotalHours)} hours", ctx.Coop);
-                                } else if(!userFarmDetails.Xref.JoinWarning24h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-24)) {
+                                } else if(!userFarmDetails.Xref.JoinWarning24h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-secondReminderHours)) {
                                     userFarmDetails.Xref.JoinWarning24h = true;
                                     userFarmDetails.Xref.JoinWarning12h = true;
                                     await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
-                                    await SendDMWarning(ctx.Db, discordUser, ctx.CoopThread, $"reminder to join - 24h since added to co-op", ctx.Coop);
-                                } else if(!userFarmDetails.Xref.JoinWarning12h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-12)) {
+                                    await SendDMWarning(ctx.Db, discordUser, ctx.CoopThread, $"reminder to join - {Math.Round(secondReminderHours)}h since added to co-op, removal at {hoursToKick}h{bgSuggestion}", ctx.Coop);
+                                } else if(!userFarmDetails.Xref.JoinWarning12h && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-firstReminderHours)) {
                                     userFarmDetails.Xref.JoinWarning12h = true;
                                     await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
-                                    await SendDMWarning(ctx.Db, discordUser, ctx.CoopThread, $"reminder to join - 12h since added to co-op", ctx.Coop);
+                                    await SendDMWarning(ctx.Db, discordUser, ctx.CoopThread, $"reminder to join - {Math.Round(firstReminderHours)}h since added to co-op{bgSuggestion}", ctx.Coop);
                                 }
                             }
 
                             // Removal runs even when discordUser is null. A user who left the server while
                             // assigned but not joined can never join, so once past the kick window we still
-                            // need to drop their xref to free the spot for /findcoopforuser.
-                            var hoursToKick = ctx.Coop.Contract.cc_only ? 24 : 18;
+                            // mark their xref removed. A soft-removed xref stops occupying a seat (so
+                            // /findcoopforuser can fill it) and stops being read as a current assignment
+                            // (so the kicked user can be placed somewhere else), but it still exists, so
+                            // the boarding-group assignment engine will not re-place them on its own.
                             if(user is not null && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-hoursToKick) && !userFarmDetails.Xref.NoDemerit) {
                                 var accountName = user.EggIncAccounts.Count > 1 ? $" ({user.EggIncAccounts.Where(a => a.Id == userFarmDetails.Xref.EggIncId).FirstOrDefault()?.Backup?.UserName})" : "";
                                 var kickReason = discordUser != null

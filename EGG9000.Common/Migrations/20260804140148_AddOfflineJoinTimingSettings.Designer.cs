@@ -3,6 +3,7 @@ using System;
 using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260804140148_AddOfflineJoinTimingSettings")]
+    partial class AddOfflineJoinTimingSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -940,15 +943,6 @@ namespace EGG9000.Common.Migrations
                     b.Property<bool>("ShowContractStatsEmbeds")
                         .HasColumnType("boolean");
 
-                    b.Property<int>("SiloReminderFirstHours")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("SiloReminderSecondHours")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("SiloRemindersEnabled")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("StaffCoopsMessageDetails")
                         .HasColumnType("text");
 
@@ -1368,12 +1362,6 @@ namespace EGG9000.Common.Migrations
 
                     b.Property<float?>("SiloTimeHours")
                         .HasColumnType("real");
-
-                    b.Property<bool>("SiloWarningFirst")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("SiloWarningSecond")
-                        .HasColumnType("boolean");
 
                     b.Property<decimal>("SleepingDiscordMessageID")
                         .HasColumnType("numeric(20,0)");

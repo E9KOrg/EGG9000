@@ -186,7 +186,9 @@ namespace EGG9000.Bot.Commands {
                     xrefsShortened = true;
                 }
 
-                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.ThreadID}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}"))}";
+                // Soft-removed xrefs stay listed on purpose - staff need to see a kick happened, but
+                // they are marked so the co-op is not read as a current assignment.
+                var coopsString = $"{string.Join("\n", xrefs.Select(x => $"<#{x.Coop.ThreadID}> {(user.EggIncAccounts.Count > 1 ? $"({user.EggIncAccounts.FirstOrDefault(y => y.Id == x.EggIncId)?.Backup?.UserName ?? "(No name)"})" : "")}{(x.Removed ? " *(removed)*" : "")}"))}";
                 if(coopsString != "") {
                     AddInfoSeparatorIfNeeded();
                     lastBuilder.AddField($"Coops {(xrefsShortened ? "(Shortened List)" : "")}", coopsString);

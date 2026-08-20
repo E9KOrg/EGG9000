@@ -630,7 +630,7 @@ namespace EGG9000.Site.Controllers {
                 var overflowGuild = _discord.Guilds.First(x => x.Id == overflowGuildId);
                 await overflowGuild.DownloadUsersAsync();
                 var oneWeekAgo = DateTimeOffset.UtcNow.AddDays(-7);
-                var xrefs = await _db.UserCoopXrefs.Where(x => !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop).Select(x => new Admin_Ghost {
+                var xrefs = await _db.UserCoopXrefs.Where(x => !x.Coop.ThreadArchived && x.Coop.OverflowGuildId == overflowGuildId && !x.JoinedCoop && !x.Removed).Select(x => new Admin_Ghost {
                     Coop = x.Coop.Name,
                     DiscordId = x.User.DiscordId,
                     CoopChannel = x.Coop.ThreadID,
@@ -1058,6 +1058,16 @@ music
                 return BadRequest();
             }
             var model = JsonConvert.DeserializeObject<Admin_SaveChannelDetailsObject>(json);
+            var offlineDemeritHours = model.OfflineDemeritHours >= 1 ? model.OfflineDemeritHours : 30;
+            var offlineWarningHours = model.OfflineWarningHours >= 1 ? model.OfflineWarningHours : 22;
+            if(!model.DisableBG && offlineWarningHours >= offlineDemeritHours) {
+                return BadRequest("Offline Warning Hours must be below Offline Hours Per Demerit");
+            }
+            var siloFirst = model.SiloReminderFirstHours >= 1 ? model.SiloReminderFirstHours : CoopTimingHelper.DefaultSiloReminderFirstHours;
+            var siloSecond = model.SiloReminderSecondHours >= 1 ? model.SiloReminderSecondHours : CoopTimingHelper.DefaultSiloReminderSecondHours;
+            if(model.SiloRemindersEnabled && siloFirst >= siloSecond) {
+                return BadRequest("Silo Reminder Hours (first) must be below Silo Reminder Hours (second)");
+            }
             var dbGuild = await GetDbGuildByIdAsync(id);
             var invalidateApodGuildCache = (
                 (dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == GuildChannelType.NasaApod)?.Id ?? ulong.MinValue)
@@ -1080,6 +1090,13 @@ music
             Console.WriteLine("Setting FAQTopicCooldownMinutes to " + model.FAQTopicCooldownMinutes);
             dbGuild.FAQTopicsEnabled = model.FAQTopicsEnabled;
             dbGuild.FAQTopicCooldownMinutes = model.FAQTopicCooldownMinutes;
+            dbGuild.OfflineDemeritHours = offlineDemeritHours;
+            dbGuild.OfflineWarningHours = offlineWarningHours;
+            dbGuild.JoinTimeHours = model.JoinTimeHours >= 1 ? model.JoinTimeHours : 18;
+            dbGuild.JoinTimeUltraHours = model.JoinTimeUltraHours >= 1 ? model.JoinTimeUltraHours : 24;
+            dbGuild.SiloRemindersEnabled = model.SiloRemindersEnabled;
+            dbGuild.SiloReminderFirstHours = siloFirst;
+            dbGuild.SiloReminderSecondHours = siloSecond;
             if(invalidateApodGuildCache) {
                 var guildNasaKey = _db.InvalidateGuildNASACache(dbGuild);
                 await _publishEndpoint.Publish(new ExpireCacheMessage(guildNasaKey));
