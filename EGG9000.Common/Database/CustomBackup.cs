@@ -1,6 +1,7 @@
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.JsonData;
+using EGG9000.Common.Proto;
 using Google.Protobuf.Collections;
 using MessagePack;
 using System;
@@ -19,13 +20,22 @@ namespace EGG9000.Common.Database {
         [Key(0)]
         public List<CustomFarm> Farms { get; set; }
         [Key(1)]
-        public string EggIncId { get; set; }
+        public string EggIncId {
+            get => EiBackup is { } p ? p.GetID() : field;
+            set;
+        }
         [Key(2)]
-        public string UserName { get; set; }
+        public string UserName {
+            get => EiBackup is { } p && !string.IsNullOrEmpty(p.UserName) ? p.UserName : field;
+            set;
+        }
         //[Key(3)]
         //public double EarningsBonus { get; set; }
         [Key(4)]
-        public long LastBackupTime { get; set; }
+        public long LastBackupTime {
+            get => EiBackup?.Settings is { } s ? (long)s.LastBackupTime : field;
+            set;
+        }
         public DateTimeOffset GetLastBackupDateTime() {
             return DateTimeOffset.FromUnixTimeSeconds(LastBackupTime);
         }
@@ -39,23 +49,40 @@ namespace EGG9000.Common.Database {
                 graded.AddRange(Farms.Where(x => x.Grade != PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
             if(ArchivedFarms is not null)
                 graded.AddRange(ArchivedFarms.Where(x => x.Grade != PlayerGrade.GradeUnset).Select(x => ((double)x.TimeAccepted, x.Grade)));
-            var latest = graded.OrderByDescending(x => x.time).FirstOrDefault();
-            if(latest.grade == PlayerGrade.GradeUnset)
+            var (time, grade) = graded.OrderByDescending(x => x.time).FirstOrDefault();
+            if(grade == PlayerGrade.GradeUnset)
                 return (PlayerGrade.GradeUnset, DateTimeOffset.MinValue);
-            return (latest.grade, DateTimeOffset.FromUnixTimeSeconds((long)latest.time));
+            return (grade, DateTimeOffset.FromUnixTimeSeconds((long)time));
         }
         [Key(5)]
-        public List<CustomResearch> EpicResearch { get; set; }
+        public List<CustomResearch> EpicResearch {
+            get => EiBackup?.Game is { } g ? _epicResearch ??= [.. g.EpicResearch.Select(x => new CustomResearch(x))] : field;
+            set {
+                field = value;
+                _epicResearch = null;
+            }
+        }
+        private List<CustomResearch> _epicResearch;
         [Key(6)]
-        public ushort PermitLevel { get; set; }
-        [Key(7)]
-        public DateTime CacheAdded { get; set; }
+        public ushort PermitLevel {
+            get => EiBackup?.Game is { } g ? (ushort)g.PermitLevel : field;
+            set;
+        }
         [Key(8)]
-        public ushort EggsOfProphecy { get; set; }
+        public ushort EggsOfProphecy {
+            get => EiBackup?.Game is { } g ? (ushort)g.EggsOfProphecy : field;
+            set;
+        }
         [Key(9)]
-        public double SoulEggs { get; set; }
+        public double SoulEggs {
+            get => EiBackup?.Game is { } g ? g.SoulEggsTotal : field;
+            set;
+        }
         [Key(10)]
-        public double CurrentMultiplier { get; set; }
+        public double CurrentMultiplier {
+            get => EiBackup?.Game is { } g ? g.CurrentMultiplier : field;
+            set;
+        }
         //[Key(11)]
         //public List<string> CompleteContracts { get; set; }
         [Key(12)]
@@ -63,59 +90,118 @@ namespace EGG9000.Common.Database {
         [Key(13)]
         public List<CustomArchivedFarms> ArchivedFarms { get; set; }
         [Key(14)]
-        public ulong NumPrestiges { get; set; }
+        public ulong NumPrestiges {
+            get => EiBackup?.Stats is { } s ? s.NumPrestiges : field;
+            set;
+        }
         [Key(15)]
         public List<SpaceMission> SpaceMissions { get; set; }
 
         [Key(16)]
-        public uint NumDailyGiftsCollected { get; set; }
-
-        [IgnoreMember]
-        public uint PEFromDailyGifts {
-            get {
-                return Math.Min(24, NumDailyGiftsCollected / 28);
-            }
+        public uint NumDailyGiftsCollected {
+            get => EiBackup?.Game is { } g ? g.NumDailyGiftsCollected : field;
+            set;
         }
 
+        [IgnoreMember]
+        public uint PEFromDailyGifts => Math.Min(24, NumDailyGiftsCollected / 28);
+
         [Key(17)]
-        public List<uint> EggMedalLevel { get; set; }
+        public List<uint> EggMedalLevel {
+            get => EiBackup?.Game is { } g ? _eggMedalLevel ??= [.. g.EggMedalLevel] : field;
+            set {
+                field = value;
+                _eggMedalLevel = null;
+            }
+        }
+        private List<uint> _eggMedalLevel;
 
         [Key(18)]
-        public ulong GoldenEggsEarned { get; set; }
+        public ulong GoldenEggsEarned {
+            get => EiBackup?.Game is { } g ? g.GoldenEggsEarned : field;
+            set;
+        }
         [Key(19)]
-        public ulong GoldenEggsSpent { get; set; }
+        public ulong GoldenEggsSpent {
+            get => EiBackup?.Game is { } g ? g.GoldenEggsSpent : field;
+            set;
+        }
         [Key(20)]
-        public ulong PiggyBank { get; set; }
+        public ulong PiggyBank {
+            get => EiBackup?.Game is { } g ? g.PiggyBank : field;
+            set;
+        }
         [Key(21)]
-        public ulong DroneTakedowns { get; set; }
+        public ulong DroneTakedowns {
+            get => EiBackup?.Stats is { } s ? s.DroneTakedowns : field;
+            set;
+        }
         [Key(22)]
-        public ulong DroneTakedownsElite { get; set; }
+        public ulong DroneTakedownsElite {
+            get => EiBackup?.Stats is { } s ? s.DroneTakedownsElite : field;
+            set;
+        }
         [Key(23)]
-        public ulong NumPiggyBreaks { get; set; }
+        public ulong NumPiggyBreaks {
+            get => EiBackup?.Stats is { } s ? s.NumPiggyBreaks : field;
+            set;
+        }
         [Key(24)]
         public List<ArtifactCount> ArtifactHall { get; set; }
         [Key(25)]
-        public bool HyperloopPurchased { get; set; }
+        public bool HyperloopPurchased {
+            get => EiBackup?.Game is { } g ? g.HyperloopStation : field;
+            set;
+        }
         [Key(26)]
         public uint TankLevel { get; set; }
         // Retired - see LastContractPlayerInfoBytes
         //[Key(27)]
         //public PlayerGrade Grade { get; set; }
         [Key(28)]
-        public byte ClientVersion { get; set; }
+        public byte ClientVersion {
+            get => EiBackup is { } p ? (byte)p.Version : field;
+            set;
+        }
         [Key(29)]
         public Dictionary<Ei.Egg, double> FuelAmounts { get; set; }
         // Retired - see LastContractPlayerInfoBytes 
         //[Key(30)]
         //public double GradeProgress { get; set; }
         [Key(31)]
-        public Ei.Egg MaxEggReached { get; set; }
+        public Ei.Egg MaxEggReached {
+            get => EiBackup?.Game is { } g ? g.MaxEggReached : field;
+            set;
+        }
         [Key(32)]
-        public Dictionary<Ei.Egg, ulong> MaxFarmSizeReached { get; set; }
+        public Dictionary<Ei.Egg, ulong> MaxFarmSizeReached {
+            get => EiBackup?.Game is { } g ? _maxFarmSizeReached ??= BuildMaxFarmSizeReached(g) : field;
+            set {
+                field = value;
+                _maxFarmSizeReached = null;
+            }
+        }
+        private Dictionary<Ei.Egg, ulong> _maxFarmSizeReached;
+
+        private static Dictionary<Ei.Egg, ulong> BuildMaxFarmSizeReached(Ei.Backup.Types.Game game) {
+            var sizes = new Dictionary<Ei.Egg, ulong>();
+            for(var i = 0; i < game.MaxFarmSizeReached.Count; i++) {
+                if(game.MaxFarmSizeReached[i] > 0)
+                    sizes.Add((Ei.Egg)(i + 1), game.MaxFarmSizeReached[i]);
+            }
+            return sizes;
+        }
+
         [Key(33)]
-        public bool HasDeviceId { get; set; } = false;
+        public bool HasDeviceId {
+            get => EiBackup is { } p ? p.HasDeviceId : field;
+            set;
+        } = false;
         [Key(34)]
-        public string DeviceId { get; set; } = string.Empty;
+        public string DeviceId {
+            get => EiBackup is { HasDeviceId: true } p ? p.DeviceId : field;
+            set;
+        } = string.Empty;
         [Key(36)]
         public List<(Spaceship ship, DurationType type, int count)> ShipsSent { get; set; }
         [Key(37)]
@@ -125,7 +211,10 @@ namespace EGG9000.Common.Database {
         [Key(39)]
         public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = [];
         [Key(40)]
-        public double CraftingXP { get; set; } = 0;
+        public double CraftingXP {
+            get => EiBackup?.Artifacts is { } a ? a.CraftingXp : field;
+            set;
+        } = 0;
         [Key(41)]
         public SpaceMission FuelingMission { get; set; }
         [Key(42)]
@@ -136,19 +225,42 @@ namespace EGG9000.Common.Database {
         //public uint EoV { get; set; } = 0;
 
         [Key(44)]
-        public double[] VirtueEggsDelivered { get; set; } = [];
+        public double[] VirtueEggsDelivered {
+            get => EiBackup?.Virtue is { } v ? _virtueEggsDelivered ??= [.. v.EggsDelivered] : field;
+            set {
+                field = value;
+                _virtueEggsDelivered = null;
+            }
+        } = [];
+        private double[] _virtueEggsDelivered;
         [Key(45)]
-        public uint Resets { get; set; }
+        public uint Resets {
+            get => EiBackup?.Virtue is { } v ? v.Resets : field;
+            set;
+        }
         [Key(46)]
-        public uint ShiftCount { get; set; }
+        public uint ShiftCount {
+            get => EiBackup?.Virtue is { } v ? v.ShiftCount : field;
+            set;
+        }
         [Key(47)]
-        public uint[] EovEarned { get; set; }
+        public uint[] EovEarned {
+            get => EiBackup?.Virtue is { } v ? _eovEarned ??= [.. v.EovEarned] : field;
+            set {
+                field = value;
+                _eovEarned = null;
+            }
+        } = [];
+        private uint[] _eovEarned;
         [Key(48)]
         public double SubscriptionEnds { get; set; } = 0;
         [Key(49)]
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; } = null;
         [Key(50)]
-        public bool NoAliasInLatestBackup { get; set; }
+        public bool NoAliasInLatestBackup {
+            get => EiBackup is { } p ? string.IsNullOrEmpty(p.UserName) : field;
+            set;
+        }
         [Key(51)]
         public byte[] LastContractPlayerInfoBytes {
             get;
@@ -167,6 +279,33 @@ namespace EGG9000.Common.Database {
             }
         }
         private Ei.ContractPlayerInfo _lastContractPlayerInfo;
+
+        [Key(52)]
+        public byte[] EiBackupBytes {
+            get;
+            set {
+                field = value;
+                _eiBackup = null;
+                _epicResearch = null;
+                _eggMedalLevel = null;
+                _maxFarmSizeReached = null;
+                _virtueEggsDelivered = null;
+                _eovEarned = null;
+            }
+        }
+
+        [IgnoreMember]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [System.Xml.Serialization.XmlIgnore]
+        [System.Runtime.Serialization.IgnoreDataMember]
+        public Ei.Backup EiBackup {
+            get {
+                if(_eiBackup is null && EiBackupBytes is { Length: > 0 })
+                    _eiBackup = Ei.Backup.Parser.ParseFrom(EiBackupBytes);
+                return _eiBackup;
+            }
+        }
+        private Ei.Backup _eiBackup;
 
         [IgnoreMember]
         public double GradeProgress => LastContractPlayerInfo?.GradeProgress ?? 0;
@@ -237,29 +376,10 @@ namespace EGG9000.Common.Database {
                 EmptyBackup = true;
                 return;
             }
-            EpicResearch = [.. backup.Game.EpicResearch.Select(x => new CustomResearch(x))];
-            CurrentMultiplier = backup.Game.CurrentMultiplier;
-            EggIncId = backup.GetID();
+            EiBackupBytes = StorageTrimmer.TrimmedBytes(backup);
             UserName = string.IsNullOrEmpty(backup.UserName) ? lastBackup?.UserName ?? "" : backup.UserName;
-            NoAliasInLatestBackup = string.IsNullOrEmpty(backup.UserName);
-            LastBackupTime = (long)backup.Settings.LastBackupTime;
-            PermitLevel = (ushort)backup.Game.PermitLevel;
-            SoulEggs = backup.Game.SoulEggsTotal;
-            EggsOfProphecy = (ushort)backup.Game.EggsOfProphecy;
-            NumPrestiges = backup.Stats.NumPrestiges;
-
-            GoldenEggsEarned = backup.Game.GoldenEggsEarned;
-            GoldenEggsSpent = backup.Game.GoldenEggsSpent;
-            PiggyBank = backup.Game.PiggyBank;
-            NumPiggyBreaks = backup.Stats.NumPiggyBreaks;
-            DroneTakedowns = backup.Stats.DroneTakedowns;
-            DroneTakedownsElite = backup.Stats.DroneTakedownsElite;
-            HyperloopPurchased = backup.Game.HyperloopStation;
-            var currentFarm = backup.Farms.ElementAtOrDefault((int)backup.Game.CurrentFarm);
-            var inVirtueDimension = currentFarm is not null && (int)currentFarm.EggType >= 50 && (int)currentFarm.EggType <= 54;
-            var activeTankArtifacts = inVirtueDimension && backup.Virtue?.Afx is not null ? backup.Virtue.Afx : backup.Artifacts;
+            var activeTankArtifacts = ResolveActiveTankArtifacts(backup);
             TankLevel = activeTankArtifacts.TankLevel;
-            ClientVersion = (byte)backup.Version;
 
             // CS is written out-of-band by AccountRefresh.ApplyExtrasAsync (from get_contract_player_info),
             // not derived from this protobuf backup. Carry the last known value forward so a mass-backup
@@ -268,19 +388,7 @@ namespace EGG9000.Common.Database {
             SeasonCS = CarryForwardCs(0, lastBackup?.SeasonCS ?? 0);
             LastContractPlayerInfoBytes = lastBackup?.LastContractPlayerInfoBytes;
 
-            VirtueEggsDelivered = backup.Virtue?.EggsDelivered.ToArray() ?? [];
-            Resets = backup.Virtue?.Resets ?? 0;
-            ShiftCount = backup.Virtue?.ShiftCount ?? 0;
-            EovEarned = backup.Virtue?.EovEarned.ToArray() ?? [];
-
             SetSubscriptionInfo(backup);
-
-            HasDeviceId = backup.HasDeviceId;
-            if(backup.HasDeviceId) DeviceId = backup.DeviceId;
-
-            MaxEggReached = backup.Game.MaxEggReached;
-
-            CraftingXP = backup.Artifacts.CraftingXp;
 
             ArchivedFarms = [];
             AddContracts(backup.Contracts.Contracts, contracts);
@@ -291,110 +399,27 @@ namespace EGG9000.Common.Database {
                 AddFarm(farm, backup);
             }
 
-
-
-            SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(m => new SpaceMission {
-                Ship = m.Ship,
-                Duration = m.DurationType,
-                Status = m.Status,
-                DurationSeconds = (long)m.DurationSeconds,
-                StartTime = (long)m.StartTimeDerived,
-                Fuels = [.. m.Fuel.Select(f => new SpaceMissionFuel {
-                    Amount = f.Amount,
-                    Egg = f.Egg
-                })],
-                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? Name.Unknown : Name.Unknown,
-                Capacity = m.Capacity,
-                Stars = m.Level
-            }).ToList();
+            SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(ToSpaceMission).ToList();
 
             var fm = backup.ArtifactsDb?.FuelingMission ?? null;
             if(fm != null) {
-                FuelingMission = new SpaceMission {
-                    Ship = fm.Ship,
-                    Duration = fm.DurationType,
-                    Status = fm.Status,
-                    DurationSeconds = (long)fm.DurationSeconds,
-                    StartTime = (long)fm.StartTimeDerived,
-                    Fuels = [.. fm.Fuel.Select(f => new SpaceMissionFuel {
-                        Amount = f.Amount,
-                        Egg = f.Egg
-                    })],
-                    Targeting = (int)fm.Ship >= 4 ? fm?.TargetArtifact ?? Name.Unknown : Name.Unknown,
-                    Capacity = fm.Capacity,
-                    Stars = fm.Level
-                };
+                FuelingMission = ToSpaceMission(fm);
             }
 
-            FuelAmounts = [];
-            for(var i = 0; i < activeTankArtifacts.TankFuels.Count; i++) {
-                if(activeTankArtifacts.TankFuels[i] > 0)
-                    FuelAmounts.Add((Ei.Egg)(i + 1), activeTankArtifacts.TankFuels[i]);
-            }
-
-            MaxFarmSizeReached = [];
-            for(var i = 0; i < backup.Game.MaxFarmSizeReached.Count; i++) {
-                if(backup.Game.MaxFarmSizeReached[i] > 0)
-                    MaxFarmSizeReached.Add((Ei.Egg)(i + 1), backup.Game.MaxFarmSizeReached[i]);
-            }
+            FuelAmounts = BuildFuelAmounts(activeTankArtifacts);
 
             CustomEggMaxFarmSizeReached = [];
             MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, backup.Contracts.Archive.Concat(backup.Contracts.Contracts), contracts);
             if(lastBackup?.CustomEggMaxFarmSizeReached is not null)
                 MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, lastBackup.CustomEggMaxFarmSizeReached);
 
-
             if(backup.ArtifactsDb is not null) {
-                ShipsSent = [.. backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => new { x.Ship, x.DurationType }).Select(x => (x.Key.Ship, x.Key.DurationType, x.Count()))];
-                foreach(var ship in backup.ArtifactsDb.MissionInfos.Where(x => (int)x.Status > 5)) {
-                    var shipInfo = ShipsSent.FirstOrDefault(x => x.ship == ship.Ship && x.type == ship.DurationType);
-                    if(shipInfo != default) {
-                        shipInfo.count++;
-                        ShipsSent.RemoveAll(x => x.ship == ship.Ship && x.type == ship.DurationType);
-                        ShipsSent.Add(shipInfo);
-                    } else {
-                        ShipsSent.Add((ship.Ship, ship.DurationType, 1));
-                    }
-                }
+                ShipsSent = BuildShipsSent(backup.ArtifactsDb);
             }
 
+            ArtifactHall = BuildArtifactHall(backup.ArtifactsDb);
 
-
-            NumDailyGiftsCollected = backup.Game.NumDailyGiftsCollected;
-
-            EggMedalLevel = [.. backup.Game.EggMedalLevel];
-
-            ArtifactHall = [.. backup.ArtifactsDb.InventoryItems.Select(x => {
-                var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
-                if(artifact is not null) {
-                    artifact.Stones = [.. x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null)];
-                }
-                var artifactStatus = backup.ArtifactsDb.ArtifactStatus.FirstOrDefault(a =>
-                    a.Spec.Name == x.Artifact.Spec.Name &&
-                    a.Spec.Level == x.Artifact.Spec.Level &&
-                    a.Spec.Rarity == x.Artifact.Spec.Rarity
-                );
-                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0 };
-            })];
-
-            var afxSetsProjected = backup.ArtifactsDb.SavedArtifactSets.Select(s =>
-                s.Slots.Select(sl => {
-                    var x = backup.ArtifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == sl.ItemId);
-                    if(x is null) return null;
-                    var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
-                    if(artifact is null) return null;
-                    artifact.Stones = [.. x.Artifact.Stones.Select(EggIncArtifacts.GetArtifact).Where(y => y != null)];
-                    return artifact;
-                })
-            );
-            ArtifactSets = Helpers.AfxSets.AfxSetsBuilder.BuildSetsPreservingEmpty(afxSetsProjected);
-
-            ArtifactHall.AddRange(backup.ArtifactsDb.ArtifactStatus.Where(a =>
-                !backup.ArtifactsDb.InventoryItems.Any(x => a.Spec.Name == x.Artifact.Spec.Name &&
-                    a.Spec.Level == x.Artifact.Spec.Level &&
-                    a.Spec.Rarity == x.Artifact.Spec.Rarity
-                )
-            ).Select(a => new ArtifactCount { Count = 0, Artifact = EggIncArtifacts.GetArtifact(a.Spec), NumberCrafted = a.Count }));
+            ArtifactSets = BuildArtifactSets(backup.ArtifactsDb);
         }
 
         private void SetSubscriptionInfo(Ei.Backup backup) {
@@ -417,48 +442,21 @@ namespace EGG9000.Common.Database {
                 ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.ContractIdentifier == farm.ContractId);
 
             var customFarm = new CustomFarm {
-                FarmType = farm.FarmType,
-                ContractId = farm.ContractId,
-                EggsPaidFor = farm.EggsPaidFor,
-                League = contract?.League,
-                CoopId = contract?.CoopIdentifier,
-                Cancelled = contract?.Cancelled ?? false,
+                SimulationBytes = StorageTrimmer.TrimmedBytes(farm),
+                LocalContractBytes = contract is null ? null : StorageTrimmer.TrimmedBytes(contract),
                 Completed = contract?.Contract != null && contract.NumGoalsAchieved == contract.Contract.GetGoals(contract).Count,
-                NumChickens = farm.NumChickens,
-                CommonResearch = [.. farm.CommonResearch.Select(x => new CustomResearch(x))],
-                EggType = farm.EggType,
                 Vehicles = [.. farm.Vehicles],
-                TrainLength = [.. farm.TrainLength],
-                SilosOwned = farm.SilosOwned,
-                TimeAccepted = (long)(contract?.TimeAccepted ?? 0),
                 CoopAllowed = contract?.Contract?.CoopAllowed ?? false,
-                CoopSharedEndTime = (long)(contract?.CoopSharedEndTime ?? 0),
-                BoostTokensReceived = (ushort)farm.BoostTokensReceived,
-                BoostTokensGiven = (ushort)farm.BoostTokensGiven,
-                BoostTokensSpent = (ushort)farm.BoostTokensSpent,
-                CashEarned = farm.CashEarned,
-                CashSpent = farm.CashSpent,
-                TimeCheatDebt = (long)farm.TimeCheatDebtDEP,
-                BoostsUsed = (ushort)(contract?.BoostsUsed ?? 0),
-                TimeCheatsDetected = (ushort)farm.TimeCheatsDetected,
-                Habs = [.. farm.Habs.Select(x => (ushort)x)],
-                LastStepTime = (float)farm.LastStepTime,
-                Grade = contract?.Grade ?? PlayerGrade.GradeUnset,
-                EvaluationCxp = (contract?.Evaluation == null ? 0.0 : (float)contract.Evaluation.Cxp),
-                ContributionFinalized = contract?.CoopContributionFinalized ?? false,
-                CoopSimulationEndTime = contract?.CoopSimulationEndTime ?? 0,
-                NumGoalsAchieved = (byte?)contract?.NumGoalsAchieved ?? (byte)0,
             };
 
 
-            var currentCoopStatus = backup.Contracts.CurrentCoopStatuses.Where(x => x.ContractIdentifier == farm.ContractId).FirstOrDefault();
+            var currentCoopStatus = backup.Contracts.CurrentCoopStatuses.FirstOrDefault(x => x.ContractIdentifier == farm.ContractId);
             if(currentCoopStatus != null)
                 customFarm.Creator = currentCoopStatus.CreatorId == backup.GetID();
 
             var uuids = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.EiUserId).Select(y => y.Uuid)).ToList();
 
             customFarm.ReportedUUIDs = uuids;
-
 
             customFarm.Artifacts = [];
             var farmIndex = backup.Farms.IndexOf(farm);
@@ -474,8 +472,6 @@ namespace EGG9000.Common.Database {
                 }
             }
 
-
-
             Farms.Add(customFarm);
         }
 
@@ -487,6 +483,91 @@ namespace EGG9000.Common.Database {
                 artifact.Stones = [.. x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null)];
                 return artifact;
             }).Where(x => x != null)];
+        }
+
+        private static SpaceMission ToSpaceMission(Ei.MissionInfo m) {
+            return new SpaceMission {
+                Ship = m.Ship,
+                Duration = m.DurationType,
+                Status = m.Status,
+                DurationSeconds = (long)m.DurationSeconds,
+                StartTime = (long)m.StartTimeDerived,
+                Fuels = [.. m.Fuel.Select(f => new SpaceMissionFuel {
+                    Amount = f.Amount,
+                    Egg = f.Egg
+                })],
+                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? Name.Unknown : Name.Unknown,
+                Capacity = m.Capacity,
+                Stars = m.Level
+            };
+        }
+
+        private static Dictionary<Ei.Egg, double> BuildFuelAmounts(Ei.Backup.Types.Artifacts activeTankArtifacts) {
+            var fuelAmounts = new Dictionary<Ei.Egg, double>();
+            for(var i = 0; i < activeTankArtifacts.TankFuels.Count; i++) {
+                if(activeTankArtifacts.TankFuels[i] > 0)
+                    fuelAmounts.Add((Ei.Egg)(i + 1), activeTankArtifacts.TankFuels[i]);
+            }
+            return fuelAmounts;
+        }
+
+        private static List<(Spaceship ship, DurationType type, int count)> BuildShipsSent(Ei.ArtifactsDB artifactsDb) {
+            List<(Spaceship ship, DurationType type, int count)> shipsSent = [.. artifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => new { x.Ship, x.DurationType }).Select(x => (x.Key.Ship, x.Key.DurationType, x.Count()))];
+            foreach(var ship in artifactsDb.MissionInfos.Where(x => (int)x.Status > 5)) {
+                var shipInfo = shipsSent.FirstOrDefault(x => x.ship == ship.Ship && x.type == ship.DurationType);
+                if(shipInfo != default) {
+                    shipInfo.count++;
+                    shipsSent.RemoveAll(x => x.ship == ship.Ship && x.type == ship.DurationType);
+                    shipsSent.Add(shipInfo);
+                } else {
+                    shipsSent.Add((ship.Ship, ship.DurationType, 1));
+                }
+            }
+            return shipsSent;
+        }
+
+        private static List<ArtifactCount> BuildArtifactHall(Ei.ArtifactsDB artifactsDb) {
+            List<ArtifactCount> artifactHall = [.. artifactsDb.InventoryItems.Select(x => {
+                var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
+                if(artifact is not null) {
+                    artifact.Stones = [.. x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null)];
+                }
+                var artifactStatus = artifactsDb.ArtifactStatus.FirstOrDefault(a =>
+                    a.Spec.Name == x.Artifact.Spec.Name &&
+                    a.Spec.Level == x.Artifact.Spec.Level &&
+                    a.Spec.Rarity == x.Artifact.Spec.Rarity
+                );
+                return new ArtifactCount { Count = (int)x.Quantity, Artifact = artifact, NumberCrafted = artifactStatus?.Count ?? 0 };
+            })];
+
+            artifactHall.AddRange(artifactsDb.ArtifactStatus.Where(a =>
+                !artifactsDb.InventoryItems.Any(x => a.Spec.Name == x.Artifact.Spec.Name &&
+                    a.Spec.Level == x.Artifact.Spec.Level &&
+                    a.Spec.Rarity == x.Artifact.Spec.Rarity
+                )
+            ).Select(a => new ArtifactCount { Count = 0, Artifact = EggIncArtifacts.GetArtifact(a.Spec), NumberCrafted = a.Count }));
+
+            return artifactHall;
+        }
+
+        private static List<List<EggIncArtifactInstance>> BuildArtifactSets(Ei.ArtifactsDB artifactsDb) {
+            var afxSetsProjected = artifactsDb.SavedArtifactSets.Select(s =>
+                s.Slots.Select(sl => {
+                    var x = artifactsDb.InventoryItems.FirstOrDefault(item => item.ItemId == sl.ItemId);
+                    if(x is null) return null;
+                    var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
+                    if(artifact is null) return null;
+                    artifact.Stones = [.. x.Artifact.Stones.Select(EggIncArtifacts.GetArtifact).Where(y => y != null)];
+                    return artifact;
+                })
+            );
+            return Helpers.AfxSets.AfxSetsBuilder.BuildSetsPreservingEmpty(afxSetsProjected);
+        }
+
+        private static Ei.Backup.Types.Artifacts ResolveActiveTankArtifacts(Ei.Backup backup) {
+            var currentFarm = backup.Farms.ElementAtOrDefault((int)backup.Game.CurrentFarm);
+            var inVirtueDimension = currentFarm is not null && (int)currentFarm.EggType >= 50 && (int)currentFarm.EggType <= 54;
+            return inVirtueDimension && backup.Virtue?.Afx is not null ? backup.Virtue.Afx : backup.Artifacts;
         }
 
         private static void MergeMaxFarmSizes(Dictionary<string, ulong> target, Dictionary<string, ulong> source) {
@@ -567,58 +648,155 @@ namespace EGG9000.Common.Database {
         }
     }
 
+    public abstract class CustomFarmBase {
+        [IgnoreMember]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [System.Xml.Serialization.XmlIgnore]
+        [System.Runtime.Serialization.IgnoreDataMember]
+        public Ei.LocalContract LocalContract {
+            get {
+                if(_localContract is null && LocalContractBytesStorage is { Length: > 0 })
+                    _localContract = Ei.LocalContract.Parser.ParseFrom(LocalContractBytesStorage);
+                return _localContract;
+            }
+        }
+        private Ei.LocalContract _localContract;
+
+        protected void InvalidateLocalContract() {
+            _localContract = null;
+        }
+
+        protected abstract byte[] LocalContractBytesStorage { get; }
+
+        protected abstract long TimeAcceptedUnix { get; }
+
+        [IgnoreMember]
+        public DateTimeOffset Started => DateTimeOffset.FromUnixTimeSeconds(TimeAcceptedUnix);
+    }
+
     [MessagePackObject]
-    public class CustomFarm {
+    public class CustomFarm : CustomFarmBase {
         [Key(0)]
-        public Ei.FarmType FarmType { get; set; }
+        public Ei.FarmType FarmType {
+            get => Simulation is { } s ? s.FarmType : field;
+            set;
+        }
         [Key(1)]
-        public string ContractId { get; set; }
+        public string ContractId {
+            get => Simulation is { } s ? s.ContractId : field;
+            set;
+        }
         [Key(2)]
-        public double EggsPaidFor { get; set; }
+        public double EggsPaidFor {
+            get => Simulation is { } s ? s.EggsPaidFor : field;
+            set;
+        }
         [Key(3)]
-        public uint? League { get; set; }
+        public uint? League {
+            get => LocalContract is { } l ? l.League : field;
+            set;
+        }
         [Key(4)]
-        public string CoopId { get; set; }
+        public string CoopId {
+            get => LocalContract is { } l ? l.CoopIdentifier : field;
+            set;
+        }
         [Key(5)]
-        public bool Cancelled { get; set; }
+        public bool Cancelled {
+            get => LocalContract is { } l ? l.Cancelled : field;
+            set;
+        }
         [Key(6)]
         public bool Completed { get; set; }
         [Key(7)]
-        public List<CustomResearch> CommonResearch { get; set; }
+        public List<CustomResearch> CommonResearch {
+            get => Simulation is { } s ? _commonResearch ??= [.. s.CommonResearch.Select(x => new CustomResearch(x))] : field;
+            set {
+                field = value;
+                _commonResearch = null;
+            }
+        }
+        private List<CustomResearch> _commonResearch;
         [Key(8)]
-        public ulong NumChickens { get; set; }
+        public ulong NumChickens {
+            get => Simulation is { } s ? s.NumChickens : field;
+            set;
+        }
         [Key(10)]
-        public Ei.Egg EggType { get; set; }
+        public Ei.Egg EggType {
+            get => Simulation is { } s ? s.EggType : field;
+            set;
+        }
         [Key(11)]
-        public List<uint> TrainLength { get; set; }
+        public List<uint> TrainLength {
+            get => Simulation is { } s ? _trainLength ??= [.. s.TrainLength] : field;
+            set {
+                field = value;
+                _trainLength = null;
+            }
+        }
+        private List<uint> _trainLength;
         [Key(12)]
         public List<uint> Vehicles;
         [Key(13)]
         public List<EggIncArtifactInstance> Artifacts { get; set; }
         [Key(14)]
-        public uint SilosOwned { get; set; }
+        public uint SilosOwned {
+            get => Simulation is { } s ? s.SilosOwned : field;
+            set;
+        }
         [Key(15)]
-        public long TimeAccepted { get; set; }
+        public long TimeAccepted {
+            get => LocalContract is { } l ? (long)l.TimeAccepted : field;
+            set;
+        }
         [Key(16)]
         public bool CoopAllowed { get; set; }
         [Key(17)]
-        public long CoopSharedEndTime { get; set; }
+        public long CoopSharedEndTime {
+            get => LocalContract is { } l ? (long)l.CoopSharedEndTime : field;
+            set;
+        }
         [Key(18)]
-        public ushort BoostTokensReceived { get; set; }
+        public ushort BoostTokensReceived {
+            get => Simulation is { } s ? (ushort)s.BoostTokensReceived : field;
+            set;
+        }
         [Key(19)]
-        public ushort BoostTokensGiven { get; set; }
+        public ushort BoostTokensGiven {
+            get => Simulation is { } s ? (ushort)s.BoostTokensGiven : field;
+            set;
+        }
         [Key(20)]
-        public ushort BoostTokensSpent { get; set; }
+        public ushort BoostTokensSpent {
+            get => Simulation is { } s ? (ushort)s.BoostTokensSpent : field;
+            set;
+        }
         [Key(21)]
-        public double CashEarned { get; set; }
+        public double CashEarned {
+            get => Simulation is { } s ? s.CashEarned : field;
+            set;
+        }
         [Key(22)]
-        public double CashSpent { get; set; }
+        public double CashSpent {
+            get => Simulation is { } s ? s.CashSpent : field;
+            set;
+        }
         [Key(23)]
-        public long TimeCheatDebt { get; set; }
+        public long TimeCheatDebt {
+            get => Simulation is { } s ? (long)s.TimeCheatDebtDEP : field;
+            set;
+        }
         [Key(24)]
-        public ushort BoostsUsed { get; set; }
+        public ushort BoostsUsed {
+            get => LocalContract is { } l ? (ushort)l.BoostsUsed : field;
+            set;
+        }
         [Key(25)]
-        public ushort TimeCheatsDetected { get; set; }
+        public ushort TimeCheatsDetected {
+            get => Simulation is { } s ? (ushort)s.TimeCheatsDetected : field;
+            set;
+        }
         //[Key(26)]
         //public Double CurrentShippingRate { get; set; }
         //[Key(27)]
@@ -632,26 +810,85 @@ namespace EGG9000.Common.Database {
         //[Key(31)]
         //public Double MaxRunningBonus { get; set; }
         [Key(32)]
-        public List<ushort> Habs { get; set; }
+        public List<ushort> Habs {
+            get => Simulation is { } s ? _habs ??= [.. s.Habs.Select(x => (ushort)x)] : field;
+            set {
+                field = value;
+                _habs = null;
+            }
+        }
+        private List<ushort> _habs;
         [Key(33)]
-        public float LastStepTime { get; set; }
+        public float LastStepTime {
+            get => Simulation is { } s ? (float)s.LastStepTime : field;
+            set;
+        }
         [Key(34)]
         public List<string> ReportedUUIDs { get; set; }
         [Key(35)]
-        public PlayerGrade Grade { get; set; }
+        public PlayerGrade Grade {
+            get => LocalContract is { } l ? l.Grade : field;
+            set;
+        }
         [Key(36)]
-        public double EvaluationCxp { get; set; }
+        public double EvaluationCxp {
+            get => LocalContract is { } l ? (l.Evaluation is { } e ? (float)e.Cxp : 0.0) : field;
+            set;
+        }
         [Key(37)]
-        public bool ContributionFinalized { get; set; }
+        public bool ContributionFinalized {
+            get => LocalContract is { } l ? l.CoopContributionFinalized : field;
+            set;
+        }
         [Key(38)]
-        public double CoopSimulationEndTime { get; set; }
+        public double CoopSimulationEndTime {
+            get => LocalContract is { } l ? l.CoopSimulationEndTime : field;
+            set;
+        }
         [Key(39)]
-        public byte NumGoalsAchieved { get; set; }
+        public byte NumGoalsAchieved {
+            get => LocalContract is { } l ? (byte)l.NumGoalsAchieved : field;
+            set;
+        }
         [Key(40)]
         public bool Creator { get; set; }
+        [Key(41)]
+        public byte[] SimulationBytes {
+            get;
+            set {
+                field = value;
+                _simulation = null;
+                _commonResearch = null;
+                _trainLength = null;
+                _habs = null;
+            }
+        }
 
         [IgnoreMember]
-        public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
+        [System.Text.Json.Serialization.JsonIgnore]
+        [System.Xml.Serialization.XmlIgnore]
+        [System.Runtime.Serialization.IgnoreDataMember]
+        public Ei.Backup.Types.Simulation Simulation {
+            get {
+                if(_simulation is null && SimulationBytes is { Length: > 0 })
+                    _simulation = Ei.Backup.Types.Simulation.Parser.ParseFrom(SimulationBytes);
+                return _simulation;
+            }
+        }
+        private Ei.Backup.Types.Simulation _simulation;
+
+        [Key(42)]
+        public byte[] LocalContractBytes {
+            get;
+            set {
+                field = value;
+                InvalidateLocalContract();
+            }
+        }
+
+        protected override byte[] LocalContractBytesStorage => LocalContractBytes;
+
+        protected override long TimeAcceptedUnix => TimeAccepted;
 
         public class Colleggtible {
             public GameDimension Dimension { get; set; }
@@ -725,57 +962,86 @@ namespace EGG9000.Common.Database {
     }
 
     [MessagePackObject]
-    public class CustomArchivedFarms {
+    public class CustomArchivedFarms : CustomFarmBase {
         [Key(0)]
-        public string CoopId { get; set; }
+        public string CoopId {
+            get => LocalContract is { } l ? l.CoopIdentifier : field;
+            set;
+        }
         [Key(1)]
-        public string ContractId { get; set; }
+        public string ContractId {
+            get => LocalContract is { } l && l.HasContractIdentifier ? l.ContractIdentifier : field;
+            set;
+        }
         [Key(2)]
-        public float TimeAccepted { get; set; }
+        public float TimeAccepted {
+            get => LocalContract is { } l ? (float)l.TimeAccepted : field;
+            set;
+        }
         [Key(3)]
         public bool Completed { get; set; }
         [Key(4)]
-        public byte? League { get; set; }
+        public byte? League {
+            get => LocalContract is { } l ? (byte?)l.League : field;
+            set;
+        }
         [Key(5)]
         public byte PEPossible { get; set; }
         [Key(6)]
         public byte PEGained { get; set; }
         [Key(7)]
-        public float ContributionAmount { get; set; }
+        public float ContributionAmount {
+            get => LocalContract is { } l ? (float)l.CoopLastUploadedContribution : field;
+            set;
+        }
         [Key(8)]
-        public PlayerGrade Grade { get; set; }
+        public PlayerGrade Grade {
+            get => LocalContract is { } l ? l.Grade : field;
+            set;
+        }
         [Key(9)]
-        public float EvaluationCxp { get; set; }
+        public float EvaluationCxp {
+            get => LocalContract is { } l ? (l.Evaluation is { } e ? (float)e.Cxp : 0f) : field;
+            set;
+        }
         [Key(10)]
-        public byte NumGoalsAchieved { get; set; }
+        public byte NumGoalsAchieved {
+            get => LocalContract is { } l ? (byte)l.NumGoalsAchieved : field;
+            set;
+        }
         [Key(11)]
-        public List<string> ReportedUUIDs { get; set; }
+        public List<string> ReportedUUIDs {
+            get => LocalContract is { } l ? _reportedUUIDs ??= [.. l.ReportedUuids] : field;
+            set {
+                field = value;
+                _reportedUUIDs = null;
+            }
+        }
+        private List<string> _reportedUUIDs;
+        [Key(12)]
+        public byte[] LocalContractBytes {
+            get;
+            set {
+                field = value;
+                InvalidateLocalContract();
+                _reportedUUIDs = null;
+            }
+        }
 
-        [IgnoreMember]
-        public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
+        protected override byte[] LocalContractBytesStorage => LocalContractBytes;
+
+        protected override long TimeAcceptedUnix => (long)TimeAccepted;
 
         public CustomArchivedFarms() { }
         public CustomArchivedFarms(Ei.LocalContract localContract) {
-            CoopId = localContract.CoopIdentifier;
-            ContractId = localContract.Contract.Identifier;
-            TimeAccepted = (float)localContract.TimeAccepted;
-            Completed = localContract.Completed;
-            League = (byte)localContract.League;
-            ContributionAmount = (float)localContract.CoopLastUploadedContribution;
-            Grade = localContract.Grade;
-
-            if(localContract.Evaluation != null) {
-                EvaluationCxp = ((float?)localContract?.Evaluation?.Cxp) ?? 0.0f;
+            ContractId = localContract.Contract?.Identifier;
+            var goals = localContract.Contract is not null ? localContract.Contract.GetGoals(localContract) : null;
+            Completed = localContract.Contract is not null && localContract.NumGoalsAchieved == goals.Count;
+            if(goals is not null) {
+                PEPossible = (byte)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
+                PEGained = (byte)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
             }
-            var goals = localContract.Contract.Goals;
-            if(localContract.Contract.GoalSets is not null && localContract.Contract.GoalSets.Count > localContract.League)
-                goals = localContract.Contract.GoalSets[(int)localContract.League].Goals;
-            if(localContract.Contract.GradeSpecs is not null && localContract.Contract.GradeSpecs.Count > 0 && localContract.Grade > 0)
-                goals = localContract.Contract.GradeSpecs[(int)localContract.Grade - 1].Goals;
-            PEPossible += (byte)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
-            PEGained += (byte)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
-            NumGoalsAchieved = (byte)localContract.NumGoalsAchieved;
-            ReportedUUIDs = [.. localContract.ReportedUuids];
+            LocalContractBytes = StorageTrimmer.TrimmedBytes(localContract);
         }
     }
 

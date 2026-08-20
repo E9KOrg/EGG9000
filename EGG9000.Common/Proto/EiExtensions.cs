@@ -1,4 +1,5 @@
 ﻿using EGG9000.Common.Helpers;
+using EGG9000.Common.Proto;
 using Humanizer;
 using System;
 using System.Collections.Generic;
@@ -87,9 +88,9 @@ namespace Ei {
             else return [.. GoalSets[league].Goals];
         }
         public List<Goal> GetGoals(LocalContract contract) {
-            if(contract.Grade != PlayerGrade.GradeUnset)
+            if(contract.Grade != PlayerGrade.GradeUnset && GradeSpecs.Count > (int)contract.Grade - 1)
                 return [.. GradeSpecs[(int)contract.Grade - 1].Goals];
-            else if(GoalSets.Count > 0)
+            else if(GoalSets.Count > (int)contract.League)
                 return [.. GoalSets[(int)contract.League].Goals];
             else
                 return [.. Goals];
@@ -100,22 +101,17 @@ namespace Ei {
         }
     }
 
+    [NotStored(nameof(Contract))]
     public partial class LocalContract {
         public DateTimeOffset Started { get { return DateTimeOffset.FromUnixTimeSeconds((long)TimeAccepted); } }
-        public bool Completed {
-            get {
-                if(Contract == null) return false; // Rare corrupted byte
-                var targetGoals = Contract.GradeSpecs.Count > 0 && Grade != PlayerGrade.GradeUnset ?
-                    Contract.GradeSpecs[(int)(Grade - 1)].Goals.Count :
-                    (Contract.GoalSets.Any() ?
-                    Contract.GoalSets[0].Goals.Count : Contract.Goals.Count);
-                return NumGoalsAchieved == targetGoals;
-            }
-        }
     }
 
+    [NotStored(
+        nameof(Farms), nameof(Contracts), nameof(ArtifactsDb), nameof(ShellDb), nameof(Tutorial),
+        nameof(Misc), nameof(Shells), nameof(Mission), nameof(MailState), nameof(Sim),
+        nameof(ReadMailIds), nameof(GameServicesId), nameof(GameServicesIdScoped), nameof(PushUserId),
+        nameof(ApproxTime), nameof(ForceOfferBackup), nameof(ForceBackup), nameof(Checksum), nameof(Signature))]
     public partial class Backup {
-        public DateTime CacheAdded { get; set; }
         public string GetID() {
             if(!string.IsNullOrEmpty(EiUserId)) {
                 return EiUserId;
@@ -124,6 +120,20 @@ namespace Ei {
         }
 
         public partial class Types {
+            [NotStored(nameof(Afx))]
+            public partial class Virtue {
+            }
+
+            [NotStored(
+                nameof(HabPopulation), nameof(HabPopulationIndound), nameof(HabIncubatorPopuplation),
+                nameof(ActiveBoosts), nameof(HatcheryPopulation), nameof(EggsLaid), nameof(EggsShipped),
+                nameof(UnclaimedCash), nameof(NumChickensUnsettled), nameof(NumChickensRunning),
+                nameof(LastCashBoostTime), nameof(UnclaimedBoostTokens), nameof(GametimeUntilNextBoostToken),
+                nameof(TotalStepTime))]
+            public partial class Simulation {
+            }
+
+            [NotStored(nameof(News), nameof(Achievements), nameof(Boosts))]
             public partial class Game {
                 public double SoulEggsTotal { get { return SoulEggsD == 0 ? SoulEggs : SoulEggsD; } }
 
