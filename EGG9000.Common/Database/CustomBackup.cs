@@ -98,14 +98,16 @@ namespace EGG9000.Common.Database {
         public bool HyperloopPurchased { get; set; }
         [Key(26)]
         public uint TankLevel { get; set; }
+        // Retired - see LastContractPlayerInfoBytes
         //[Key(27)]
         //public PlayerGrade Grade { get; set; }
         [Key(28)]
         public byte ClientVersion { get; set; }
         [Key(29)]
         public Dictionary<Ei.Egg, double> FuelAmounts { get; set; }
-        [Key(30)]
-        public double GradeProgress { get; set; }
+        // Retired - see LastContractPlayerInfoBytes 
+        //[Key(30)]
+        //public double GradeProgress { get; set; }
         [Key(31)]
         public Ei.Egg MaxEggReached { get; set; }
         [Key(32)]
@@ -127,7 +129,7 @@ namespace EGG9000.Common.Database {
         [Key(41)]
         public SpaceMission FuelingMission { get; set; }
         [Key(42)]
-        public Dictionary<string, ulong> CustomEggMaxFarmSizeReached = [];
+        public Dictionary<string, ulong> CustomEggMaxFarmSizeReached { get; set; } = [];
 
 
         //[Key(43)]
@@ -147,6 +149,38 @@ namespace EGG9000.Common.Database {
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; } = null;
         [Key(50)]
         public bool NoAliasInLatestBackup { get; set; }
+        [Key(51)]
+        public byte[] LastContractPlayerInfoBytes { get; set; }
+
+        [IgnoreMember]
+        public Ei.ContractPlayerInfo LastContractPlayerInfo {
+            get {
+                if(field is null && LastContractPlayerInfoBytes is { Length: > 0 })
+                    field = Ei.ContractPlayerInfo.Parser.ParseFrom(LastContractPlayerInfoBytes);
+                return field;
+            }
+        }
+
+        [IgnoreMember]
+        public double GradeProgress => LastContractPlayerInfo?.GradeProgress ?? 0;
+        [IgnoreMember]
+        public double GradeScore => LastContractPlayerInfo?.GradeScore ?? 0;
+        [IgnoreMember]
+        public double TargetGradeScore => LastContractPlayerInfo?.TargetGradeScore ?? 0;
+        [IgnoreMember]
+        public double SoulPower => LastContractPlayerInfo?.SoulPower ?? 0;
+        [IgnoreMember]
+        public double TargetSoulPower => LastContractPlayerInfo?.TargetSoulPower ?? 0;
+        [IgnoreMember]
+        public double IssueScore => LastContractPlayerInfo?.IssueScore ?? 0;
+        [IgnoreMember]
+        public IReadOnlyList<Ei.ContractEvaluation.Types.PoorBehavior> Issues => LastContractPlayerInfo?.Issues ?? [];
+        [IgnoreMember]
+        public double LastEvaluationTime => LastContractPlayerInfo?.LastEvaluationTime ?? 0;
+        [IgnoreMember]
+        public string LastEvaluationVersion => LastContractPlayerInfo?.LastEvaluationVersion ?? "";
+        [IgnoreMember]
+        public string AggregationNotes => LastContractPlayerInfo?.AggregationNotes ?? "";
 
 
         [IgnoreMember]
@@ -226,12 +260,12 @@ namespace EGG9000.Common.Database {
             return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
         }
 
-        public CustomBackup() { }
-
         // CS is sourced out-of-band (get_contract_player_info), so the protobuf rebuild has no fresh
         // value. Keep the prior value unless a positive fresh one is supplied. -1 is the legacy
         // "unknown" sentinel and counts as no value.
         public static double CarryForwardCs(double fresh, double last) => fresh > 0 ? fresh : last;
+
+        public CustomBackup() { }
 
         public CustomBackup(Ei.Backup backup, FrozenSet<Ei.Contract> contracts, CustomBackup lastBackup = null) {
             if(backup?.Game == null) {
@@ -267,6 +301,7 @@ namespace EGG9000.Common.Database {
             // rebuild doesn't reset it to 0 and drop the user from CSLeaderboard's "TotalCS > 0" filter.
             TotalCS = CarryForwardCs(0, lastBackup?.TotalCS ?? 0);
             SeasonCS = CarryForwardCs(0, lastBackup?.SeasonCS ?? 0);
+            LastContractPlayerInfoBytes = lastBackup?.LastContractPlayerInfoBytes;
 
             VirtueEggsDelivered = backup.Virtue?.EggsDelivered.ToArray() ?? [];
             Resets = backup.Virtue?.Resets ?? 0;
@@ -344,7 +379,6 @@ namespace EGG9000.Common.Database {
                 MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, lastBackup.CustomEggMaxFarmSizeReached);
 
 
-            var temp = backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => x.Ship);
             if(backup.ArtifactsDb is not null) {
                 ShipsSent = [.. backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => new { x.Ship, x.DurationType }).Select(x => (x.Key.Ship, x.Key.DurationType, x.Count()))];
                 foreach(var ship in backup.ArtifactsDb.MissionInfos.Where(x => (int)x.Status > 5)) {

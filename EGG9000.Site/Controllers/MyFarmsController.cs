@@ -263,10 +263,8 @@ namespace EGG9000.Site.Controllers {
                     foreach(var account in user.EggIncAccounts) {
                         var refreshed = refreshedBackups.FirstOrDefault(x => x.Id == account.Id);
                         if(refreshed.Backup is not null) account.Backup = refreshed.Backup;
-                    }
-                    // Extras stage DB writes, so run them sequentially against the single context.
-                    foreach(var account in user.EggIncAccounts)
                         await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger);
+                    }
                     user.UpdateAccounts();
                     await db.SaveChangesAsync();
                 } catch(Exception e) {
