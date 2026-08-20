@@ -37,14 +37,12 @@ namespace EGG9000.Bot.Commands {
             if(pullFreshBackup) {
                 var cachedContracts = await db.CachedEiContractsAsync();
                 foreach(var account in dbuser.EggIncAccounts) {
-                    // Capture before RefreshBackupAsync - the Backup setter auto-syncs account.SubscriptionLevel.
                     var oldLevel = account.SubscriptionLevel;
-                    var backup = await AccountRefresh.RefreshBackupAsync(account, cachedContracts, logger);
+                    var backup = await AccountRefresh.RefreshFullAsync(account, cachedContracts, dbuser, db, logger);
                     if(backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;
                     }
-                    await AccountRefresh.ApplyExtrasAsync(dbuser, account, db, logger);
                     await EnforceUltraAsync(_client, dbGuild, socketGuild, dbuser, account, logger, oldLevel);
                 }
                 dbuser.LastBackupCheck = DateTime.UtcNow;
@@ -125,12 +123,17 @@ namespace EGG9000.Bot.Commands {
 
                 if(account.GetGrade() != default) {
                     var pGrade = account.GetGrade();
-                    var gradeProgressPercent = Math.Round(account.Backup?.GradeProgress ?? 0 * 100, 2);
+                    var gradeProgressPercent = Math.Round((account.Backup?.GradeProgress ?? 0) * 100, 2);
 
                     if(gradeProgressPercent > 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeAaa) {
                         builder.AddField("Rankup Percentage", $"{gradeProgressPercent}% to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade + 1))} :chart_with_upwards_trend:", true);
                     } else if(gradeProgressPercent < 0 && pGrade != Ei.Contract.Types.PlayerGrade.GradeC) {
                         builder.AddField("Rankdown Percentage", $"\n\t{gradeProgressPercent * -1}% to {PlayerGradeDetails.GetEmoji((Ei.Contract.Types.PlayerGrade)((int)pGrade - 1))} :chart_with_downwards_trend:", true);
+                    }
+
+                    if(account.PendingGrade.HasValue) {
+                        var pendingMinutes = (int)(DateTimeOffset.UtcNow - account.PendingGradeSince).TotalMinutes;
+                        builder.AddField("Grade Check Pending", $"Egg Inc reports {PlayerGradeDetails.GetEmoji(account.PendingGrade.Value)}, still calculating ({pendingMinutes}m) - will apply automatically after 1h if it persists.", true);
                     }
                 }
 
@@ -191,6 +194,17 @@ namespace EGG9000.Bot.Commands {
 
                 var recentDemeritsString = $"{await DemeritCommands.GetDemerits(user.Id, db)}";
                 if(recentDemeritsString != "") {
+                    if(recentDemeritsString.Length > 1000) {
+                        var demeritLines = recentDemeritsString.Split('\n');
+                        var shownLines = new List<string>();
+                        var runningLength = 0;
+                        foreach(var line in demeritLines) {
+                            if(runningLength + line.Length + 1 > 950) break;
+                            shownLines.Add(line);
+                            runningLength += line.Length + 1;
+                        }
+                        recentDemeritsString = $"{string.Join("\n", shownLines)}\n_(+{demeritLines.Length - shownLines.Count} more - see /demerits)_";
+                    }
                     AddInfoSeparatorIfNeeded();
                     lastBuilder.AddField("Recent Demerits", recentDemeritsString);
                 }

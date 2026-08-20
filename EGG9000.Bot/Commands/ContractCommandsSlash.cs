@@ -297,7 +297,6 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            //Add the grade role before moving them, to give them access to the header channel (if applicable)
             var currentGuild = _gateway.Guilds.FirstOrDefault(g => g.Id == Context.Interaction.GuildId);
             var discordUser = currentGuild.GetUser(dbuser.DiscordId);
             var gradeRole = dbGuild.ChannelDetails.FirstOrDefault(x => x.ChannelType == newgrade switch {
@@ -308,26 +307,24 @@ namespace EGG9000.Bot.Commands {
                 5 => GuildChannelType.GradeAAA,
                 _ => default
             });
+
+            var freshBackup = await AccountRefresh.RefreshFullAsync(account, await Db.CachedEiContractsAsync(), dbuser, Db, _logger);
+            if(freshBackup is not null) {
+                dbuser.UpdateAccounts();
+            }
+
+            if((uint)account.LastGrade != newgrade) {
+                await Context.Interaction.ModifyOriginalResponseAsync(x => {
+                    x.Content = ""; x.Embed = EmbedWarning($"A new backup was pulled, and the obtained grade " +
+                    $"({PlayerGradeDetails.GetEmoji(account.LastGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji((PlayerGrade)newgrade)}).\nTry forcing a new backup?");
+                });
+                await Db.SaveChangesAsync();
+                return;
+            }
+
             if(gradeRole != null) {
                 var mainGuild = _gateway.Guilds.FirstOrDefault(g => g.Id == dbGuild.DiscordSeverId);
                 var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
-
-                //Pull a fresh backup (so they keep channel access through the role update) and refresh the
-                //grade via the extras path - the backup alone no longer carries the grade, ApplyExtrasAsync
-                //fetches it through get_contract_player_info so account.LastGrade is genuinely current.
-                var freshBackup = await AccountRefresh.RefreshBackupAsync(account, await Db.CachedEiContractsAsync(), _logger);
-                await AccountRefresh.ApplyExtrasAsync(dbuser, account, Db, _logger);
-
-                if((uint)account.LastGrade != newgrade) {
-                    await Context.Interaction.ModifyOriginalResponseAsync(x => {
-                        x.Content = ""; x.Embed = EmbedWarning($"A new backup was pulled, and the obtained grade " +
-                        $"({PlayerGradeDetails.GetEmoji(account.LastGrade)}) did not match the new target grade ({PlayerGradeDetails.GetEmoji((PlayerGrade)newgrade)}).\nTry forcing a new backup?");
-                    });
-                    return;
-                }
-                if(freshBackup is not null) {
-                    dbuser.UpdateAccounts();
-                }
                 await mainGuild.GetUser(dbuser.DiscordId).AddRoleAsync(socketGradeRole.Id);
                 if(mainGuild.Id != currentGuild.Id) {
                     var currentGuildSocketRole = currentGuild.Roles.FirstOrDefault(r => r.Name == socketGradeRole.Name);
@@ -987,7 +984,7 @@ namespace EGG9000.Bot.Commands {
             }
             // A brand new ephemeral message, not an update of the Test Assignment message: that message
             // is flagged ComponentsV2, and Discord will not allow downgrading it back to V1 components.
-            await component.RespondAsync(text: "Select which account you would like to manage", components: ContractSettingsCommands.GetAccountButtons(dbUser, "MCSMenu"), ephemeral: true);
+            await component.RespondAsync(components: ContractSettingsCommands.GetAccountButtons(dbUser, "MCSMenu"), flags: MessageFlags.ComponentsV2, ephemeral: true);
         }
 
         [ComponentInteraction("AcceptCoopOffer:*", ignoreGroupNames: true)]
@@ -1142,8 +1139,8 @@ namespace EGG9000.Bot.Commands {
     // Flat (non-grouped) staff commands. These were top-level /commands before the Discord.NET
     // migration and were incorrectly nested under /admin in that migration - kept flat here to
     // preserve the pre-migration command names.
-    [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
-    [StaffOnly(StaffTier.Admin)]
+    [DefaultMemberPermissions(GuildPermission.ManageChannels)]
+    [StaffOnly(StaffTier.CluckingCoordinator)]
     public partial class ContractStaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<ContractStaffModule> logger, DiscordSocketClient gateway) : E9KModuleBase(dbFactory) {
         private readonly ILogger<ContractStaffModule> _logger = logger;
 

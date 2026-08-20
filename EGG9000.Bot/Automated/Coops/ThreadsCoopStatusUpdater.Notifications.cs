@@ -19,6 +19,7 @@ namespace EGG9000.Bot.Automated.Coops {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFull ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFull = false;
                 userStatus.Xref.UpdateCoopSetting();
+                await db.SaveChangesAsyncRetry(cancellationToken: System.Threading.CancellationToken.None);
 
                 if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
@@ -34,6 +35,7 @@ namespace EGG9000.Bot.Automated.Coops {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnEveryoneCheckedIn ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnEveryoneCheckedIn = false;
                 userStatus.Xref.UpdateCoopSetting();
+                await db.SaveChangesAsyncRetry(cancellationToken: System.Threading.CancellationToken.None);
 
                 if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
@@ -50,6 +52,7 @@ namespace EGG9000.Bot.Automated.Coops {
             foreach(var userStatus in userFarmDetails.Where(x => x.Xref?.CoopSetting?.PingOnFinished ?? false)) {
                 userStatus.Xref.CoopSetting.PingOnFinished = false;
                 userStatus.Xref.UpdateCoopSetting();
+                await db.SaveChangesAsyncRetry(cancellationToken: System.Threading.CancellationToken.None);
                 if(userStatus.DiscordUser is null || !notifiedDiscordIds.Add(userStatus.DiscordUser.Id)) continue;
 
                 var dmResult = await BoolSendDm(userStatus.DiscordUser, $"The co-op {coopChannel.Mention} has finished.", db);

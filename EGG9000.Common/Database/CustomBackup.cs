@@ -98,14 +98,16 @@ namespace EGG9000.Common.Database {
         public bool HyperloopPurchased { get; set; }
         [Key(26)]
         public uint TankLevel { get; set; }
+        // Retired - see LastContractPlayerInfoBytes
         //[Key(27)]
         //public PlayerGrade Grade { get; set; }
         [Key(28)]
         public byte ClientVersion { get; set; }
         [Key(29)]
         public Dictionary<Ei.Egg, double> FuelAmounts { get; set; }
-        [Key(30)]
-        public double GradeProgress { get; set; }
+        // Retired - see LastContractPlayerInfoBytes 
+        //[Key(30)]
+        //public double GradeProgress { get; set; }
         [Key(31)]
         public Ei.Egg MaxEggReached { get; set; }
         [Key(32)]
@@ -127,14 +129,14 @@ namespace EGG9000.Common.Database {
         [Key(41)]
         public SpaceMission FuelingMission { get; set; }
         [Key(42)]
-        public Dictionary<string, ulong> CustomEggMaxFarmSizeReached = [];
+        public Dictionary<string, ulong> CustomEggMaxFarmSizeReached { get; set; } = [];
 
 
         //[Key(43)]
         //public uint EoV { get; set; } = 0;
 
         [Key(44)]
-        public double[] VirtueEggsDelivered { get; set; }
+        public double[] VirtueEggsDelivered { get; set; } = [];
         [Key(45)]
         public uint Resets { get; set; }
         [Key(46)]
@@ -145,6 +147,47 @@ namespace EGG9000.Common.Database {
         public double SubscriptionEnds { get; set; } = 0;
         [Key(49)]
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; } = null;
+        [Key(50)]
+        public bool NoAliasInLatestBackup { get; set; }
+        [Key(51)]
+        public byte[] LastContractPlayerInfoBytes {
+            get;
+            set {
+                field = value;
+                _lastContractPlayerInfo = null;
+            }
+        }
+
+        [IgnoreMember]
+        public Ei.ContractPlayerInfo LastContractPlayerInfo {
+            get {
+                if(_lastContractPlayerInfo is null && LastContractPlayerInfoBytes is { Length: > 0 })
+                    _lastContractPlayerInfo = Ei.ContractPlayerInfo.Parser.ParseFrom(LastContractPlayerInfoBytes);
+                return _lastContractPlayerInfo;
+            }
+        }
+        private Ei.ContractPlayerInfo _lastContractPlayerInfo;
+
+        [IgnoreMember]
+        public double GradeProgress => LastContractPlayerInfo?.GradeProgress ?? 0;
+        [IgnoreMember]
+        public double GradeScore => LastContractPlayerInfo?.GradeScore ?? 0;
+        [IgnoreMember]
+        public double TargetGradeScore => LastContractPlayerInfo?.TargetGradeScore ?? 0;
+        [IgnoreMember]
+        public double SoulPower => LastContractPlayerInfo?.SoulPower ?? 0;
+        [IgnoreMember]
+        public double TargetSoulPower => LastContractPlayerInfo?.TargetSoulPower ?? 0;
+        [IgnoreMember]
+        public double IssueScore => LastContractPlayerInfo?.IssueScore ?? 0;
+        [IgnoreMember]
+        public IReadOnlyList<Ei.ContractEvaluation.Types.PoorBehavior> Issues => LastContractPlayerInfo?.Issues ?? [];
+        [IgnoreMember]
+        public double LastEvaluationTime => LastContractPlayerInfo?.LastEvaluationTime ?? 0;
+        [IgnoreMember]
+        public string LastEvaluationVersion => LastContractPlayerInfo?.LastEvaluationVersion ?? "";
+        [IgnoreMember]
+        public string AggregationNotes => LastContractPlayerInfo?.AggregationNotes ?? "";
 
 
         [IgnoreMember]
@@ -153,53 +196,11 @@ namespace EGG9000.Common.Database {
         [IgnoreMember]
         public int EggsOfTruthTotal { get { return VirtueEggsDelivered?.Select(x => VirtueHelper.CurrentLevel(x)).Sum() ?? 0; } }
 
-        // Bonus schedule per https://egg-inc.fandom.com/wiki/Piggy_Bank: 2% at level 1, 25% at
-        // level 2, then 10n+10% after. NumPiggyBreaks starts at 1 for a new account, hence the
-        // < 2 / < 3 offsets below.
         [IgnoreMember]
-        public ulong TotalGEInPiggyBank {
-            get {
-                try {
-                    return NumPiggyBreaks switch {
-                        < 2 => (ulong)(PiggyBank * 1.02),
-                        < 3 => (ulong)(PiggyBank * 1.25),
-                        _ => PiggyBank + (PiggyBank * (10 * (NumPiggyBreaks + 1) + 10) / 100 + 1)
-                    };
-                } catch(OverflowException) {
-                    return ulong.MaxValue;
-                }
-            }
-        }
+        public ulong TotalGEInPiggyBank => AccountFormulas.TotalGeInPiggyBank(PiggyBank, NumPiggyBreaks);
 
         [IgnoreMember]
-        public int PEFromTrophies {
-            get {
-                if(EggMedalLevel is null)
-                    return -1;
-                if(EggMedalLevel.Count != 19)
-                    throw new Exception($"Unexpected number of trophies, should be 19 but instead got {EggMedalLevel.Count}");
-                var count = 0;
-
-                if(EggMedalLevel[(int)Ei.Egg.Edible - 1] >= (uint)TrophyLevel.Diamond) count += 5;
-                if(EggMedalLevel[(int)Ei.Egg.Superfood - 1] >= (uint)TrophyLevel.Diamond) count += 4;
-                if(EggMedalLevel[(int)Ei.Egg.Medical - 1] >= (uint)TrophyLevel.Diamond) count += 3;
-                if(EggMedalLevel[(int)Ei.Egg.RocketFuel - 1] >= (uint)TrophyLevel.Diamond) count += 2;
-
-                if(EggMedalLevel[(int)Ei.Egg.SuperMaterial - 1] >= (uint)TrophyLevel.Diamond) count += 1;
-                if(EggMedalLevel[(int)Ei.Egg.Fusion - 1] >= (uint)TrophyLevel.Diamond) count += 1;
-                if(EggMedalLevel[(int)Ei.Egg.Quantum - 1] >= (uint)TrophyLevel.Diamond) count += 1;
-                if(EggMedalLevel[(int)Ei.Egg.Immortality - 1] >= (uint)TrophyLevel.Diamond) count += 1;
-                if(EggMedalLevel[(int)Ei.Egg.Tachyon - 1] >= (uint)TrophyLevel.Diamond) count += 1;
-
-                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Diamond) count += 10;
-                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Platinum) count += 5;
-                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Gold) count += 3;
-                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Silver) count += 2;
-                if(EggMedalLevel[(int)Ei.Egg.Enlightenment - 1] >= (uint)TrophyLevel.Bronze) count += 1;
-
-                return count;
-            }
-        }
+        public int PEFromTrophies => AccountFormulas.PeFromTrophies(EggMedalLevel);
 
         public List<ArtifactCount> GetAvailableArtifacts() {
             if(ArtifactHall is null || ArtifactHall.Count == 0) {
@@ -224,12 +225,12 @@ namespace EGG9000.Common.Database {
             return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
         }
 
-        public CustomBackup() { }
-
         // CS is sourced out-of-band (get_contract_player_info), so the protobuf rebuild has no fresh
         // value. Keep the prior value unless a positive fresh one is supplied. -1 is the legacy
         // "unknown" sentinel and counts as no value.
         public static double CarryForwardCs(double fresh, double last) => fresh > 0 ? fresh : last;
+
+        public CustomBackup() { }
 
         public CustomBackup(Ei.Backup backup, FrozenSet<Ei.Contract> contracts, CustomBackup lastBackup = null) {
             if(backup?.Game == null) {
@@ -240,6 +241,7 @@ namespace EGG9000.Common.Database {
             CurrentMultiplier = backup.Game.CurrentMultiplier;
             EggIncId = backup.GetID();
             UserName = string.IsNullOrEmpty(backup.UserName) ? lastBackup?.UserName ?? "" : backup.UserName;
+            NoAliasInLatestBackup = string.IsNullOrEmpty(backup.UserName);
             LastBackupTime = (long)backup.Settings.LastBackupTime;
             PermitLevel = (ushort)backup.Game.PermitLevel;
             SoulEggs = backup.Game.SoulEggsTotal;
@@ -264,6 +266,7 @@ namespace EGG9000.Common.Database {
             // rebuild doesn't reset it to 0 and drop the user from CSLeaderboard's "TotalCS > 0" filter.
             TotalCS = CarryForwardCs(0, lastBackup?.TotalCS ?? 0);
             SeasonCS = CarryForwardCs(0, lastBackup?.SeasonCS ?? 0);
+            LastContractPlayerInfoBytes = lastBackup?.LastContractPlayerInfoBytes;
 
             VirtueEggsDelivered = backup.Virtue?.EggsDelivered.ToArray() ?? [];
             Resets = backup.Virtue?.Resets ?? 0;
@@ -341,7 +344,6 @@ namespace EGG9000.Common.Database {
                 MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, lastBackup.CustomEggMaxFarmSizeReached);
 
 
-            var temp = backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => x.Ship);
             if(backup.ArtifactsDb is not null) {
                 ShipsSent = [.. backup.ArtifactsDb.MissionArchive.Where(x => x.DurationSeconds > 0).GroupBy(x => new { x.Ship, x.DurationType }).Select(x => (x.Key.Ship, x.Key.DurationType, x.Count()))];
                 foreach(var ship in backup.ArtifactsDb.MissionInfos.Where(x => (int)x.Status > 5)) {
@@ -453,9 +455,6 @@ namespace EGG9000.Common.Database {
             if(currentCoopStatus != null)
                 customFarm.Creator = currentCoopStatus.CreatorId == backup.GetID();
 
-
-            var coops = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier);
-
             var uuids = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.EiUserId).Select(y => y.Uuid)).ToList();
 
             customFarm.ReportedUUIDs = uuids;
@@ -465,39 +464,29 @@ namespace EGG9000.Common.Database {
             var farmIndex = backup.Farms.IndexOf(farm);
             if(backup.ArtifactsDb != null) {
                 if(farmIndex == 0 && (int)farm.EggType >= 50 && (int)farm.EggType <= 54) {
-                    //Handle Virtue Eggs
-
                     var activeArtifactSlots = backup.ArtifactsDb.VirtueAfxDb.ActiveArtifacts.Slots;
                     var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.VirtueAfxDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
-
-                    customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null).Select(x => {
-                        var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
-                        if(artifact == null)
-                            return null;
-                        artifact.Stones = [.. x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null)];
-                        return artifact;
-                    }).Where(x => x != null));
-
-                    customFarm.Artifacts = [.. customFarm.Artifacts.Where(x => x != null)];
+                    customFarm.Artifacts = ResolveActiveArtifacts(activeArtifacts);
                 } else {
                     var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets.Count - 1 < farmIndex ? [] : backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
                     var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
-
-                    customFarm.Artifacts.AddRange(activeArtifacts.Where(x => x != null).Select(x => {
-                        var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
-                        if(artifact == null)
-                            return null;
-                        artifact.Stones = [.. x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null)];
-                        return artifact;
-                    }).Where(x => x != null));
-
-                    customFarm.Artifacts = [.. customFarm.Artifacts.Where(x => x != null)];
+                    customFarm.Artifacts = ResolveActiveArtifacts(activeArtifacts);
                 }
             }
 
 
 
             Farms.Add(customFarm);
+        }
+
+        private static List<EggIncArtifactInstance> ResolveActiveArtifacts(IEnumerable<Ei.ArtifactInventoryItem> activeArtifacts) {
+            return [.. activeArtifacts.Where(x => x != null).Select(x => {
+                var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
+                if(artifact == null)
+                    return null;
+                artifact.Stones = [.. x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null)];
+                return artifact;
+            }).Where(x => x != null)];
         }
 
         private static void MergeMaxFarmSizes(Dictionary<string, ulong> target, Dictionary<string, ulong> source) {
@@ -560,13 +549,7 @@ namespace EGG9000.Common.Database {
         public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy) * (Math.Pow(1.01, EggsOfTruth)); } }
 
         [IgnoreMember]
-        public double MER => Math.Round(MerValue(SoulEggs, EggsOfProphecy), 2);
-
-        public static double MerValue(double soulEggs, double eggsOfProphecy) {
-            if(soulEggs <= 0 || !double.IsFinite(soulEggs)) return 0.0;
-            var seQ = soulEggs / 1e18; // Convert to quintillions
-            return (91 * Math.Log10(seQ) + 200 - eggsOfProphecy) / 10;
-        }
+        public double MER => Math.Round(AccountFormulas.MerValue(SoulEggs, EggsOfProphecy), 2);
     }
 
     [MessagePackObject]
@@ -677,31 +660,34 @@ namespace EGG9000.Common.Database {
         [IgnoreMember]
         public bool isVirtueEgg { get { return (int)EggType >= 50 && (int)EggType <= 54; } }
 
+        private double GetEggLayingBuff(Coop coop, double? ignoreBuff) {
+            if(coop?.LastStatusUpdate is null)
+                return 1.0;
+            var eggLayingBuff = coop.LastStatusUpdate.Participants.Where(x => x.BuffHistory.Any())
+                .Sum(x => x.BuffHistory.Last().EggLayingRate - 1);
+            ignoreBuff ??= (Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1;
+            if(ignoreBuff.HasValue)
+                eggLayingBuff -= ignoreBuff.Value;
+            return eggLayingBuff + 1;
+        }
+
+        private static (double eggLayRatePerc, double shipCapPerc) GetLeagueModifierPercentages(Coop coop, DBContract contract) {
+            if(coop is null || (coop.Contract is null && contract is null) || coop.League <= 1)
+                return (1.0, 1.0);
+            var modifiers = (coop.Contract ?? contract).Details.GradeSpecs[(int)coop.League - 1].Modifiers;
+            var eggLayRateMod = modifiers.FirstOrDefault(x => x.Dimension == GameDimension.EggLayingRate);
+            var shipCapMod = modifiers.FirstOrDefault(x => x.Dimension == GameDimension.ShippingCapacity);
+            return (
+                eggLayRateMod is not null ? (double)eggLayRateMod.Value : 1.0,
+                shipCapMod is not null ? (double)shipCapMod.Value : 1.0
+            );
+        }
+
         private CustomFarmStats _stats = null;
         public CustomFarmStats WithStats(CustomBackup backup, Coop coop, List<DBCustomEgg> customEggs, double? ignoreBuff = null, DBContract contract = null) {
             if(_stats == null) {
-                var eggLayingBuff = 1.0;
-                if(coop != null && coop.LastStatusUpdate is not null) {
-                    eggLayingBuff = coop.LastStatusUpdate.Participants.Where(x => x.BuffHistory.Any())
-                        .Sum(x => x.BuffHistory.Last().EggLayingRate - 1);
-                    ignoreBuff = ignoreBuff ?? (Artifacts.FirstOrDefault(x => x.Boost == EggIncBoostTypeEnum.CoopMembersEggLayingRates)?.Value ?? 1) - 1;
-                    if(ignoreBuff.HasValue) {
-                        eggLayingBuff -= ignoreBuff.Value;
-                    }
-                    eggLayingBuff += 1;
-                }
-
-                var shipCapPerc = 1.0;
-                var eggLayRatePerc = 1.0;
-                if(coop is not null && (coop.Contract is not null || contract is not null) && coop.League > 1) {
-                    //Very uncommon, but contracts may have nerfs/buffs associated with them
-                    var modifiers = (coop.Contract ?? contract).Details.GradeSpecs[(int)coop.League - 1].Modifiers;
-                    var eggLayRateMod = modifiers.FirstOrDefault(x => x.Dimension == GameDimension.EggLayingRate);
-                    eggLayRatePerc = eggLayRateMod is not null ? (double)eggLayRateMod.Value : 1.0;
-
-                    var shipCapMod = modifiers.FirstOrDefault(x => x.Dimension == GameDimension.ShippingCapacity);
-                    shipCapPerc = shipCapMod is not null ? (double)shipCapMod.Value : 1.0;
-                }
+                var eggLayingBuff = GetEggLayingBuff(coop, ignoreBuff);
+                var (eggLayRatePerc, shipCapPerc) = GetLeagueModifierPercentages(coop, contract);
 
                 var eggLayingResearch = Research.GetEggLayingRatePerSec(this, backup.EpicResearch);
                 var eggLayingArtifact = EggIncArtifacts.GetEggLayingRateMultiple(this);
@@ -718,8 +704,7 @@ namespace EGG9000.Common.Database {
                 _stats.MaxRunningBonus = Research.MaxRunningBonus(this, backup.EpicResearch) + EggIncArtifacts.GetMaxRunningBonusAdditive(this);
                 _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * Math.Round(EggIncArtifacts.GetHabSpaceMultiple(this), 5) * dimensionColleggtibleEffect[GameDimension.HabCapacity];
                 _stats.InternalHatchery = (int)(Research.InternalHatchery(this, backup.EpicResearch) * EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.InternalHatchery, this) * dimensionColleggtibleEffect[GameDimension.InternalHatcheryRate]);
-                if((int)EggType >= 50 && (int)EggType <= 54) {
-                    //Virtue Egg
+                if(isVirtueEgg) {
                     _stats.InternalHatchery = (int)((double)_stats.InternalHatchery * Math.Pow(1.1, backup.EggsOfTruth));
                 }
             }

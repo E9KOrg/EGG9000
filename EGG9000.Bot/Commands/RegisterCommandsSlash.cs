@@ -263,6 +263,8 @@ namespace EGG9000.Bot.Commands {
                 dbuser.UpdateAccounts();
             }
 
+            await AccountRefresh.ApplyExtrasAsync(dbuser, newAccount, db, logger);
+
             await db.SaveChangesAsync();
 
             var socketGuildUser = user as SocketGuildUser

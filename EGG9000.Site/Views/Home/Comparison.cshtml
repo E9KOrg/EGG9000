@@ -79,6 +79,7 @@
 </div>
 
 <partial name="_ApexCharts" />
+@section Scripts {
 <script>
 var ebOptions = {
     series: [{
@@ -167,3 +168,4 @@ var ebOptions = {
     var ebChart = new ApexCharts(document.querySelector("#chartEb"), ebOptions);
     ebChart.render();
 </script>
+}
