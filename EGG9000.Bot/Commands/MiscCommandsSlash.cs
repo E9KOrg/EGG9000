@@ -245,7 +245,7 @@ namespace EGG9000.Bot.Commands {
 
                 if(keepPrivate) {
                     var dmResult = await BoolSendDm(Context.User, infoText, Db);
-                    if(dmResult != DMResult.Success) await Context.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
+                    if(!dmResult.Success) await Context.Channel.SendMessageAsync($"Private callstaff sent. {(dmResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}");
                 }
             }
         }

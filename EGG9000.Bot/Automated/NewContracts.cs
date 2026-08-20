@@ -313,8 +313,8 @@ namespace EGG9000.Bot.Automated {
                         var capturedUltraMessage = ultraMessageOut;
                         var capturedDb = _db;
                         var dmResult = await _queue.EnqueueLowAsync(() => BoolSendDm(capturedPingUser, capturedUltraMessage, capturedDb));
-                        if(dmResult != DMResult.Success) {
-                            _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} {reason}.", pingableUser.DiscordUsername, dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)");
+                        if(!dmResult.Success) {
+                            _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} {reason}.", pingableUser.DiscordUsername, dmResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)");
                         }
                     }
                 }
