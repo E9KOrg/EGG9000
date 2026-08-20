@@ -185,14 +185,15 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
-        public void CustomFarm_SimulationBytes_ClearsHabPopulation_KeepsHabs() {
+        public void CustomFarm_SimulationBytes_StoresWholeSimulation() {
             var (backup, contracts) = BuildBackupWithFarm("contract-trim-sim", 0, 1_600_000_000);
             var result = new CustomBackup(backup, contracts);
             var farm = result.Farms.Single();
 
             var simulation = Ei.Backup.Types.Simulation.Parser.ParseFrom(farm.SimulationBytes);
 
-            Assert.AreEqual(0, simulation.HabPopulation.Count);
+            Assert.AreEqual(backup.Farms[0], simulation);
+            Assert.AreEqual(4, simulation.HabPopulation.Count);
             CollectionAssert.AreEqual(new List<uint> { 10u, 20u, 30u, 40u }, simulation.Habs);
             Assert.AreEqual("contract-trim-sim", simulation.ContractId);
             Assert.AreEqual(12345UL, simulation.NumChickens);
