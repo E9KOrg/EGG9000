@@ -175,22 +175,13 @@ namespace EGG9000.Common.Database {
         }
         [Key(32)]
         public Dictionary<Ei.Egg, ulong> MaxFarmSizeReached {
-            get => EiBackup?.Game is { } g ? _maxFarmSizeReached ??= BuildMaxFarmSizeReached(g) : field;
+            get => EiBackup?.Game is { } g ? _maxFarmSizeReached ??= BackupProjections.BuildMaxFarmSizeReached(g) : field;
             set {
                 field = value;
                 _maxFarmSizeReached = null;
             }
         }
         private Dictionary<Ei.Egg, ulong> _maxFarmSizeReached;
-
-        private static Dictionary<Ei.Egg, ulong> BuildMaxFarmSizeReached(Ei.Backup.Types.Game game) {
-            var sizes = new Dictionary<Ei.Egg, ulong>();
-            for(var i = 0; i < game.MaxFarmSizeReached.Count; i++) {
-                if(game.MaxFarmSizeReached[i] > 0)
-                    sizes.Add((Ei.Egg)(i + 1), game.MaxFarmSizeReached[i]);
-            }
-            return sizes;
-        }
 
         [Key(33)]
         public bool HasDeviceId {
@@ -378,7 +369,7 @@ namespace EGG9000.Common.Database {
             }
             EiBackupBytes = StorageTrimmer.TrimmedBytes(backup);
             UserName = string.IsNullOrEmpty(backup.UserName) ? lastBackup?.UserName ?? "" : backup.UserName;
-            var activeTankArtifacts = ResolveActiveTankArtifacts(backup);
+            var activeTankArtifacts = BackupProjections.ResolveActiveTankArtifacts(backup);
             TankLevel = activeTankArtifacts.TankLevel;
 
             // CS is written out-of-band by AccountRefresh.ApplyExtrasAsync (from get_contract_player_info),
@@ -399,27 +390,27 @@ namespace EGG9000.Common.Database {
                 AddFarm(farm, backup);
             }
 
-            SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(ToSpaceMission).ToList();
+            SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(BackupProjections.ToSpaceMission).ToList();
 
             var fm = backup.ArtifactsDb?.FuelingMission ?? null;
             if(fm != null) {
-                FuelingMission = ToSpaceMission(fm);
+                FuelingMission = BackupProjections.ToSpaceMission(fm);
             }
 
-            FuelAmounts = BuildFuelAmounts(activeTankArtifacts);
+            FuelAmounts = BackupProjections.BuildFuelAmounts(activeTankArtifacts);
 
             CustomEggMaxFarmSizeReached = [];
-            MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, backup.Contracts.Archive.Concat(backup.Contracts.Contracts), contracts);
+            BackupProjections.MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, backup.Contracts.Archive.Concat(backup.Contracts.Contracts), contracts);
             if(lastBackup?.CustomEggMaxFarmSizeReached is not null)
-                MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, lastBackup.CustomEggMaxFarmSizeReached);
+                BackupProjections.MergeMaxFarmSizes(CustomEggMaxFarmSizeReached, lastBackup.CustomEggMaxFarmSizeReached);
 
             if(backup.ArtifactsDb is not null) {
-                ShipsSent = BuildShipsSent(backup.ArtifactsDb);
+                ShipsSent = BackupProjections.BuildShipsSent(backup.ArtifactsDb);
             }
 
-            ArtifactHall = BuildArtifactHall(backup.ArtifactsDb);
+            ArtifactHall = BackupProjections.BuildArtifactHall(backup.ArtifactsDb);
 
-            ArtifactSets = BuildArtifactSets(backup.ArtifactsDb);
+            ArtifactSets = BackupProjections.BuildArtifactSets(backup.ArtifactsDb);
         }
 
         private void SetSubscriptionInfo(Ei.Backup backup) {
@@ -464,11 +455,11 @@ namespace EGG9000.Common.Database {
                 if(farmIndex == 0 && (int)farm.EggType >= 50 && (int)farm.EggType <= 54) {
                     var activeArtifactSlots = backup.ArtifactsDb.VirtueAfxDb.ActiveArtifacts.Slots;
                     var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.VirtueAfxDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
-                    customFarm.Artifacts = ResolveActiveArtifacts(activeArtifacts);
+                    customFarm.Artifacts = BackupProjections.ResolveActiveArtifacts(activeArtifacts);
                 } else {
                     var activeArtifactSlots = backup.ArtifactsDb.ActiveArtifactSets.Count - 1 < farmIndex ? [] : backup.ArtifactsDb.ActiveArtifactSets[farmIndex].Slots.Where(x => x.Occupied);
                     var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
-                    customFarm.Artifacts = ResolveActiveArtifacts(activeArtifacts);
+                    customFarm.Artifacts = BackupProjections.ResolveActiveArtifacts(activeArtifacts);
                 }
             }
 
