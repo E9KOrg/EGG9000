@@ -37,7 +37,7 @@ namespace EGG9000.Bot.Jobs {
                             $"\n\nPlease use the {(mcs is not null ? $"</mycontractsettings:{mcs?.Id ?? 0}>" : "`/mycontractsettings`")} command to extend your break if you need more time, otherwise you will be assigned co-ops after " +
                             $"{DiscordHelpers.TimeStamper(account.OnBreakUntil, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)}. (If this time is after a contract release but before the last BG, you would be assigned during a later BG)";
                         var dmResult = await DiscordHelpersExt.BoolSendDm(discorduser, message, _db);
-                        if(dmResult != DiscordHelpersExt.DMResult.DiscordError) account.BreakWarningSent(user);
+                        if(dmResult.Success) account.BreakWarningSent(user);
                     }
                 }
             }

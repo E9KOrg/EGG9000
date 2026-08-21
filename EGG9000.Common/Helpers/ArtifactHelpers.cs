@@ -191,7 +191,6 @@ namespace EGG9000.Common.Helpers {
                 //Don't account for Lunar totems in LLC calc, re: sync with Menno data
                 if(craftType.Key.Artifact == "Lunar Totem" && craftType.Key.Tier == 4) continue;
 
-                //Get the number of crafts that have been performed for this artifact
                 var numCrafted = (double)(afHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Tier == craftType.Key.Tier && a.Artifact.Artifact == craftType.Key.Artifact)?.NumberCrafted ?? 0.0);
                 if(numCrafted == 0) continue;
                 var assumedXpPerCraft = account.Backup.CraftingXP / numCrafted;
@@ -416,9 +415,9 @@ namespace EGG9000.Common.Helpers {
             var size = context.GetCurrentSize();
             context.SetGraphicsOptions(new GraphicsOptions() {
                 Antialias = true,
-                AlphaCompositionMode = PixelAlphaCompositionMode.DestOut // Enforces that any part of this shape that has color is punched out of the background
+                AlphaCompositionMode = PixelAlphaCompositionMode.DestOut // punches any colored part of this shape out of the background
             });
-            BuildCorners(size.Width, size.Height, cornerRadius).ToList().ForEach(p => context = context.Fill(Color.Red, p)); //Color here is un-important, just can't be transparent
+            BuildCorners(size.Width, size.Height, cornerRadius).ToList().ForEach(p => context = context.Fill(Color.Red, p)); // color is arbitrary, just can't be transparent
             return context;
         }
 
@@ -438,7 +437,7 @@ namespace EGG9000.Common.Helpers {
             var graphicsOptions = new GraphicsOptions {
                 Antialias = true,
             };
-            image.Mutate(x => x.Fill(backgroundColor)); // Fill the image with a background 
+            image.Mutate(x => x.Fill(backgroundColor));
             image.Mutate(x => x.ApplyRoundedCorners(radius));
             return image;
         }
@@ -574,10 +573,6 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static async Task<(string B64, InventoryCreatorConfig Config)> InventoryB64(EggIncAccount account, bool removeB64Header = true) {
-            /*
-            * Constants that will determine how the image comes out
-            */
-
             var orderedList = GetOrderedInventory(account);
             if(orderedList is null) return ("$ERROR$:orderedList is null", null);
 
@@ -602,7 +597,6 @@ namespace EGG9000.Common.Helpers {
                 if(!response.IsSuccessStatusCode) return ("$ERROR$:response status code is not success", null);
 
                 var contentType = response.Content.Headers.ContentType?.MediaType;
-                // Check if the response contains an image
                 if(contentType?.StartsWith("image/") != true) return ("$ERROR$:response was not an image", null);
 
                 var imageBytes = await response.Content.ReadAsByteArrayAsync();
@@ -610,7 +604,6 @@ namespace EGG9000.Common.Helpers {
                 var image = Image.Load(ms);
                 var imageB64 = image.ToBase64String(JpegFormat.Instance);
                 if(removeB64Header) {
-                    // Remove everything up until, and including 'base64,'
                     var splits = imageB64.Split("base64,");
                     if(splits.Length > 1) imageB64 = splits[1];
                 }

@@ -39,7 +39,8 @@ namespace EGG9000.Bot.Automated {
 
                             if(info is not null) {
                                 var mutated = AccountRefresh.ApplyExtras(user, account, info, _logger);
-                                await AccountRefresh.UpsertSeasonProgress(account.Id, info.SeasonProgress, db, CancellationToken.None);
+                                if(info.Status == Ei.ContractPlayerInfo.Types.Status.Complete)
+                                    await AccountRefresh.UpsertSeasonProgress(account.Id, info.SeasonProgress, db, CancellationToken.None);
                                 if(mutated) {
                                     await db.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
                                         .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));

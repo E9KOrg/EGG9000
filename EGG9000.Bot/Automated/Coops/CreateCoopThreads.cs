@@ -45,7 +45,7 @@ namespace EGG9000.Bot.Automated.Coops {
             Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats = [];
 
             while(
-                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnThread).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
+                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnThread && x.ContractID != "first-contract").OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
                 .Count > 0) {
                 if(cancellationToken.IsCancellationRequested) return;
 
@@ -91,7 +91,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(coops.Count > 5) {
                     _coopsBeingCreatedService.SetCoopThreadsAreBeingCreated(true);
                 }
-                foreach(var coop in coops) {
+                foreach(var coop in coops.Where(x => x.ContractID != "first-contract")) {
                     var timings = new TimingsFactory(_logger);
                     timings.Start();
 
@@ -219,7 +219,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 var allTasks = Task.WhenAll(tasks);
                 var completedTask = await Task.WhenAny(allTasks, watchdogTask);
 
-                if(completedTask == watchdogTask) { // Timeout occurred
+                if(completedTask == watchdogTask) {
                     watchdogCancellationSource.Cancel();
                     _logger.LogWarning("Watchdog Task Called, not all tasks finished. (Completed {count} of {total})", tasks.Count(x => x.IsCompleted), tasks.Count);
                 }
@@ -259,7 +259,6 @@ namespace EGG9000.Bot.Automated.Coops {
                 return thread;
             } catch(HttpException dException) {
                 if(dException.DiscordCode == DiscordErrorCode.MaximumActiveThreadsReached) {
-                    //Expected?
                 }
             } catch(Exception e) {
                 _logger.LogWarning(e, "Failed to create thread {thread}", threadName);
@@ -328,7 +327,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 headerChannelsForGuild.LastAccessed.AddRange(guild.OverflowServers.Select(x => new LastAccessedByServer { ServerId = x, LastAccessed = DateTimeOffset.MinValue }));
 
                 var contractGroups = coops.Where(x => x.GuildId == guild.Id).GroupBy(x => new { x.ContractID, x.GuildId, x.League });
-                foreach(var contractGroup in contractGroups) {
+                foreach(var contractGroup in contractGroups.Where(x => x.Key.ContractID != "first-contract")) {
                     var mainServer = _client.Guilds.First(x => x.Id == guild.Id);
                     var guildContract = guildContracts.First(x => x.GuildID == guild.Id && x.ContractID == contractGroup.Key.ContractID);
                     if(guild.OverflowServers.Any() && PlayerGradeDetails.GetGradeFromLeague(contractGroup.Key.League) == Ei.Contract.Types.PlayerGrade.GradeAaa) {

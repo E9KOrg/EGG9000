@@ -15,16 +15,21 @@ namespace EGG9000.Common.Contracts.Assignment {
             AssignmentSettings settings,
             IReadOnlySet<AssignmentRuleId> forbidden = null,
             bool filtersDisabled = false,
-            bool verbose = false) {
+            bool verbose = false,
+            bool explainAll = false) {
 
             var results = new List<RuleResult>();
             settings ??= new AssignmentSettings();
+            bool? decided = null;
 
             foreach(var rule in AssignmentRuleSet.Gate) {
                 if(SkipRecorded(results, rule, contract, forbidden, filtersDisabled, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
                 Record(results, rule, outcome, verbose);
-                if(outcome == RuleOutcome.Exclude) return Decision(false, results);
+                if(outcome == RuleOutcome.Exclude) {
+                    decided ??= false;
+                    if(!explainAll) return Decision(false, results);
+                }
             }
 
             // DisableBG: gates apply, the reward filter and seasonal rule are disabled, but the
@@ -34,29 +39,40 @@ namespace EGG9000.Common.Contracts.Assignment {
                 if(SkipRecorded(results, rule, contract, forbidden, filtersDisabled, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
                 Record(results, rule, outcome, verbose);
-                if(outcome == RuleOutcome.ForceInclude) return Decision(true, results);
-                if(outcome == RuleOutcome.Exclude) return Decision(false, results);
+                if(outcome == RuleOutcome.ForceInclude) {
+                    decided ??= true;
+                    if(!explainAll) return Decision(true, results);
+                }
+                if(outcome == RuleOutcome.Exclude) {
+                    decided ??= false;
+                    if(!explainAll) return Decision(false, results);
+                }
             }
 
             foreach(var rule in AssignmentRuleSet.Include) {
                 if(SkipRecorded(results, rule, contract, forbidden, filtersDisabled, verbose)) continue;
                 var outcome = rule.Evaluate(facts, contract, settings);
                 Record(results, rule, outcome, verbose);
-                if(outcome == RuleOutcome.Exclude) return Decision(false, results);
+                if(outcome == RuleOutcome.Exclude) {
+                    decided ??= false;
+                    if(!explainAll) return Decision(false, results);
+                }
             }
 
-            return Decision(true, results);
+            return Decision(decided ?? true, results);
         }
 
         public static IReadOnlyList<(AccountFacts facts, AssignmentDecision decision)> EvaluateUser(
             IReadOnlyList<(AccountFacts facts, AssignmentSettings settings)> accounts,
             ContractFacts contract,
             IReadOnlySet<AssignmentRuleId> forbidden = null,
-            bool filtersDisabled = false) {
+            bool filtersDisabled = false,
+            bool verbose = false,
+            bool explainAll = false) {
 
             // Pass 1: provisional decisions with YesOtherAccountMatch unresolved (sibling flag false).
             var provisional = accounts
-                .Select(a => (a.facts, a.settings, decision: Evaluate(a.facts, contract, a.settings, forbidden, filtersDisabled)))
+                .Select(a => (a.facts, a.settings, decision: Evaluate(a.facts, contract, a.settings, forbidden, filtersDisabled, verbose, explainAll)))
                 .ToList();
 
             // Resolve sibling matches for YesOtherAccountMatch accounts, then re-evaluate them.
@@ -80,7 +96,7 @@ namespace EGG9000.Common.Contracts.Assignment {
                 }
 
                 entry.facts.SiblingMatchProvisionalInclude = true;
-                final.Add((entry.facts, Evaluate(entry.facts, contract, entry.settings, forbidden, filtersDisabled)));
+                final.Add((entry.facts, Evaluate(entry.facts, contract, entry.settings, forbidden, filtersDisabled, verbose, explainAll)));
             }
 
             return final;

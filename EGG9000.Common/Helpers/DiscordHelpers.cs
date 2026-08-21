@@ -46,45 +46,64 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public enum DMResult {
-            Success = 0,
-            CannotSendToUser = 1,
-            DiscordError = 2,
+        public class DMResult {
+            public bool Success { get; set; }
+            public bool CannotSendToUser { get; set; } = false;
+            public Exception Exception { get; set; }
         };
 
         public static async Task<DMResult> BoolSendDm(IUser dmUser, string message, ApplicationDbContext db) {
-            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
+            if(dmUser is null || dmUser?.Id is null) return new DMResult { Success = false };
             DBUser dbUser = null;
-            var result = DMResult.Success;
+            var result = new DMResult();
+            result.Success = true;
             try {
                 dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
                 var dmChannel = await dmUser.CreateDMChannelAsync();
-                if(dmChannel is null) return DMResult.DiscordError;
+                if(dmChannel is null) return new DMResult { Success = false };
                 await dmChannel.SendMessageAsync(message);
             } catch(HttpException ex) {
-                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
-            } catch(Exception) {
-                return DMResult.DiscordError;
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? new DMResult { CannotSendToUser = true, Success = false } : new DMResult { Success = false, Exception = ex };
+            } catch(Exception ex) {
+                result = new DMResult { Success = false, Exception = ex };
             }
             if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
             return result;
         }
 
         public static async Task<DMResult> BoolSendDm(IUser dmUser, Embed embed, MessageComponent components, ApplicationDbContext db) {
-            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
+            if(dmUser is null || dmUser?.Id is null) return new DMResult { Success = false };
             DBUser dbUser = null;
-            var result = DMResult.Success;
+            var result = new DMResult { Success = true };
             try {
                 dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
                 var dmChannel = await dmUser.CreateDMChannelAsync();
-                if(dmChannel is null) return DMResult.DiscordError;
+                if(dmChannel is null) return new DMResult { Success = false };
                 await dmChannel.SendMessageAsync(embed: embed, components: components);
             } catch(HttpException ex) {
-                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
-            } catch(Exception) {
-                return DMResult.DiscordError;
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? new DMResult { CannotSendToUser = true, Success = false } : new DMResult { Success = false, Exception = ex };
+            } catch(Exception ex) {
+                result = new DMResult { Success = false, Exception = ex };
             }
             if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
+            return result;
+        }
+
+        // Sends without touching the DbContext. Applies blocked status to the passed dbUser in memory.
+        // Should be safe to run many of these concurrently against one shared context.
+        public static async Task<DMResult> BoolSendDmDeferred(IUser dmUser, Embed embed, MessageComponent components, DBUser dbUser) {
+            if(dmUser is null || dmUser?.Id is null) return new DMResult { Success = false };
+            var result = new DMResult { Success = true };
+            try {
+                var dmChannel = await dmUser.CreateDMChannelAsync();
+                if(dmChannel is null) return new DMResult { Success = false };
+                await dmChannel.SendMessageAsync(embed: embed, components: components);
+            } catch(HttpException ex) {
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? new DMResult { CannotSendToUser = true, Success = false } : new DMResult { Success = false, Exception = ex };
+            } catch(Exception ex) {
+                result = new DMResult { Success = false, Exception = ex };
+            }
+            dbUser?.UpdateDMStatus(result);
             return result;
         }
 
@@ -173,6 +192,7 @@ namespace EGG9000.Common.Helpers {
                 await CheckPermitRoles(_client, guild, discordUser, dbUser);
                 await CheckGrades(db, _client, discordUser, dbUser, grades);
                 await CheckOudatedGameRole(_client, guild, discordUser, dbUser);
+                await CheckNoAliasRole(_client, guild, discordUser, dbUser);
                 await CheckUserOSRole(_client, guild, discordUser, dbUser);
                 await CheckUnjoined(guild, discordUser, leaderboardUsers.FirstOrDefault(x => x.User.Id == dbUser.Id));
                 await CheckEnDRole(_client, guild, discordUser, dbUser);
@@ -285,7 +305,7 @@ namespace EGG9000.Common.Helpers {
             }
 
             if(extraRoles.Count > 0) {
-                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived && !x.Coop.DeletedChannel).ToListAsync();
+                var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.UserId == dbuser.Id && !x.Coop.ThreadArchived).ToListAsync();
 
                 //Handle the case where users rank up, and need to still see existing coops
                 var lostXrefs = xrefs.Where(x => extraGrades.Any(eg => eg.grade == (Ei.Contract.Types.PlayerGrade)x.Coop.League));
@@ -294,7 +314,6 @@ namespace EGG9000.Common.Helpers {
                     if(guild is null) continue;
                     var header = guild.GetTextChannel(lostXref.Coop.ThreadParentChannel);
                     if(header is null) continue;
-                    //Make sure user is in the server
                     if(header.Guild.GetUser(DiscordUser.Id) is null) continue;
                     try {
                         await header.AddPermissionOverwriteAsync(DiscordUser,
@@ -317,6 +336,11 @@ namespace EGG9000.Common.Helpers {
             var gameOutdatedRole = await _client.GetRoleAsync(GuildChannelType.GameVersionOutdated, Guild);
             var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.ClientVersion > 0 && x.Backup.ClientVersion < EggIncApi.ClientVersion);
             await RoleToggle.ApplyAsync(DiscordUser, gameOutdatedRole, needsRole, "outdated role");
+        }
+        private static async Task CheckNoAliasRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {
+            var noAliasRole = await _client.GetRoleAsync(GuildChannelType.NoAliasRole, Guild);
+            var needsRole = user.EggIncAccounts.Where(x => x.Backup is not null).Any(x => x.Backup.NoAliasInLatestBackup);
+            await RoleToggle.ApplyAsync(DiscordUser, noAliasRole, needsRole, "no alias role");
         }
 
         private static async Task CheckEnDRole(DiscordHostedService _client, SocketGuild Guild, IGuildUser DiscordUser, DBUser user) {

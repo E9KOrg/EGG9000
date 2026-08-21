@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Prometheus;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
@@ -115,7 +116,7 @@ namespace EGG9000.Bot.Services {
         }
 
         private Task OnInteractionCreated(IDiscordInteraction interaction) {
-            var ctx = new SocketInteractionContext(_discord.Gateway, (SocketInteraction)interaction);
+            var ctx = new E9KInteractionContext(_discord.Gateway, (SocketInteraction)interaction);
             _ = Task.Run(async () => {
                 var acquired = await _semaphore.WaitAsync(TimeSpan.FromSeconds(2.5));
                 if(!acquired) {
@@ -135,7 +136,8 @@ namespace EGG9000.Bot.Services {
                     _logger.LogDebug("Autocomplete for {command} by {username}", CommandName(interaction), interaction.User?.Username);
                 else {
                     RuntimeMetrics.AddCommands();
-                    _logger.LogInformation("Running command {command} for user: {username}", CommandName(interaction), interaction.User?.Username);
+                    _logger.LogInformation("Running command {command}({params}) for user: {username} in guild {guild} channel {channel}",
+                        CommandName(interaction), CommandParams(interaction), interaction.User?.Username, DescribeGuild(ctx.Guild), DescribeChannel(ctx.Channel));
                 }
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 try {
@@ -143,7 +145,8 @@ namespace EGG9000.Bot.Services {
                 } catch(Exception e) {
                     Failures.Inc();
                     RuntimeMetrics.AddCommandFailures();
-                    _logger.LogError(e, "Interaction {command} threw", CommandName(interaction));
+                    _logger.LogError(e, "Interaction {command}({params}) threw for user {username} in guild {guild}",
+                        CommandName(interaction), CommandParams(interaction), interaction.User?.Username, DescribeGuild(ctx.Guild));
                     _bugsnag.Notify(e);
                 } finally {
                     _semaphore.Release();
@@ -161,11 +164,13 @@ namespace EGG9000.Bot.Services {
             var interaction = ctx.Interaction;
             MessageComponent component;
             if(result is ExecuteResult er && er.Exception is not null) {
-                _logger.LogError(er.Exception, "Command {command} failed for {username}", info?.Name, interaction.User?.Username);
+                _logger.LogError(er.Exception, "Command {command}({params}) failed for {username} in guild {guild}",
+                    info?.Name, CommandParams(interaction), interaction.User?.Username, DescribeGuild(ctx.Guild));
                 _bugsnag.Notify(er.Exception);
                 component = ComponentsV2EmbedHelpers.ExceptionFrame(er.Exception);
             } else {
-                _logger.LogWarning("Command {command} failed for {username}: {error} - {reason}", info?.Name, interaction.User?.Username, result.Error, result.ErrorReason);
+                _logger.LogWarning("Command {command}({params}) failed for {username} in guild {guild}: {error} - {reason}",
+                    info?.Name, CommandParams(interaction), interaction.User?.Username, DescribeGuild(ctx.Guild), result.Error, result.ErrorReason);
                 component = ComponentsV2EmbedHelpers.Error(result.ErrorReason ?? "Command could not be completed.");
             }
             try {
@@ -175,14 +180,48 @@ namespace EGG9000.Bot.Services {
         }
 
         private static string CommandName(IDiscordInteraction interaction) => interaction switch {
-            SocketSlashCommand s when s.Data.Options.Any(o => o.Type == ApplicationCommandOptionType.SubCommand)
-                => $"{s.Data.Name} {s.Data.Options.First(o => o.Type == ApplicationCommandOptionType.SubCommand).Name}",
-            SocketSlashCommand s => s.Data.Name,
+            SocketSlashCommand s => string.Join(" ", new[] { s.Data.Name }.Concat(SubCommandPath(s.Data.Options))),
             SocketUserCommand u => u.Data.Name,
             SocketMessageComponent c => c.Data.CustomId,
             SocketModal m => m.Data.CustomId,
             SocketAutocompleteInteraction a => a.Data.CommandName,
             _ => interaction.Type.ToString()
         };
+
+        private static IEnumerable<string> SubCommandPath(IReadOnlyCollection<SocketSlashCommandDataOption> options) {
+            var sub = options?.FirstOrDefault(o => o.Type is ApplicationCommandOptionType.SubCommand or ApplicationCommandOptionType.SubCommandGroup);
+            if(sub is null) yield break;
+            yield return sub.Name;
+            foreach(var nested in SubCommandPath(sub.Options)) yield return nested;
+        }
+
+        private static string CommandParams(IDiscordInteraction interaction) => interaction switch {
+            SocketSlashCommand s => FormatSlashOptions(s.Data.Options),
+            SocketMessageComponent { Data.Values.Count: > 0 } c => string.Join(", ", c.Data.Values),
+            SocketModal m => string.Join(", ", m.Data.Components.Select(comp => $"{comp.CustomId}={comp.Value}")),
+            _ => ""
+        };
+
+        private static string FormatSlashOptions(IReadOnlyCollection<SocketSlashCommandDataOption> options) {
+            if(options is null) return "";
+            var parts = new List<string>();
+            foreach(var opt in options) {
+                if(opt.Type is ApplicationCommandOptionType.SubCommand or ApplicationCommandOptionType.SubCommandGroup) parts.Add(FormatSlashOptions(opt.Options));
+                else parts.Add($"{opt.Name}={FormatOptionValue(opt.Value)}");
+            }
+            return string.Join(", ", parts.Where(p => !string.IsNullOrEmpty(p)));
+        }
+
+        private static string FormatOptionValue(object value) => value switch {
+            null => "null",
+            IUser u => $"{u.Username}({u.Id})",
+            IChannel c => $"{c.Name}({c.Id})",
+            IRole r => $"{r.Name}({r.Id})",
+            IAttachment a => a.Filename,
+            _ => value.ToString()
+        };
+
+        private static string DescribeGuild(IGuild guild) => guild is null ? "DM" : $"{guild.Name}({guild.Id})";
+        private static string DescribeChannel(IMessageChannel channel) => channel is null ? "unknown" : $"{channel.Name}({channel.Id})";
     }
 }

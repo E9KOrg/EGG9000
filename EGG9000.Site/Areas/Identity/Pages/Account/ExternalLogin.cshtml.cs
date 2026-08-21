@@ -46,7 +46,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
         }
 
         public IActionResult OnPost(string provider, string returnUrl = null) {
-            // Request a redirect to the external login provider.
             var redirectUrl = Url.Page("./ExternalLogin", pageHandler: "Callback", values: new { returnUrl });
             var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
             properties.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(45);
@@ -66,7 +65,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
                 return RedirectToPage("./Login", new { ReturnUrl = returnUrl });
             }
 
-            // Sign in the user with this external login provider if the user already has a login.
             Microsoft.AspNetCore.Identity.SignInResult result;
             try {
                 result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
@@ -94,7 +92,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
 
         public async Task<IActionResult> OnPostConfirmationAsync(string returnUrl = null) {
             returnUrl ??= Url.Content("~/");
-            // Get the information about the user from the external login provider
             var info = await _signInManager.GetExternalLoginInfoAsync();
             if(info == null) {
                 ErrorMessage = "Error loading external login information during confirmation.";
@@ -125,7 +122,6 @@ namespace EGG9000.Site.Areas.Identity.Pages.Account {
                         await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
                             $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
 
-                        // If account confirmation is required, we need to show the link if we don't have a real email sender
                         if(_userManager.Options.SignIn.RequireConfirmedAccount) {
                             return RedirectToPage("./RegisterConfirmation", new { Email = Input.Email });
                         }

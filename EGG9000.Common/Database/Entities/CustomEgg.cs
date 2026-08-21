@@ -181,13 +181,13 @@ namespace EGG9000.Common.Database.Entities {
 
         public override bool Equals(object another) {
             if(ReferenceEquals(this, another)) return true;
-            if(another is DBCustomEggModifier modifier) return modifier.GetHashCode() == GetHashCode();
+            if(another is DBCustomEggModifier modifier) return modifier.Dimension == Dimension && modifier.Value.Equals(Value) && modifier.Description == Description;
             else if(another is GameModifier gameModifier) return new DBCustomEggModifier(gameModifier).Equals(this);
             else return false;
         }
 
         public override int GetHashCode() {
-            return base.GetHashCode();
+            return HashCode.Combine(Dimension, Value, Description);
         }
     }
 }

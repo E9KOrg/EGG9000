@@ -1,4 +1,5 @@
-﻿@model EGG9000.Site.Controllers.AdminController.IndexViewModel
+﻿@using EGG9000.Site.Models.Admin
+@model Admin_IndexViewModel
 @using static EGG9000.Common.Helpers.CreateCoopsV2;
 @{
 	ViewData["Title"] = "Admin";
@@ -11,6 +12,13 @@
 		Super-Admin<br />
 		<a href="/admin/editusers" class="btn btn-primary">Edit Users</a>
 		<a href="/admin/restartbot" class="btn btn-danger" onclick="return confirm('Are you sure you want to restart the bot?');">Restart Bot</a>
+		<form method="post" action="/admin/setapiversions" style="margin-top:0.5%" onsubmit="return confirm('Validate and apply these API versions to all instances?');">
+			@Html.AntiForgeryToken()
+			<input type="number" name="clientVersion" aria-label="Client version" placeholder="Client (e.g. 72)" required />
+			<input type="text" name="appVersion" aria-label="App version" placeholder="App version (e.g. 1.35.6)" required />
+			<input type="text" name="appBuild" aria-label="App build" placeholder="App build (e.g. 1.35.6.3)" required />
+			<button type="submit" class="btn btn-warning">Set API Versions</button>
+		</form>
 	</div>
 }
 @if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin")) {
@@ -119,7 +127,7 @@
 			</h5>
 
 			@foreach (var contract in Model.Contracts) {
-				<div>@*<a href="/admin/contract?contractid=@contract.ID">@contract.Name</a> *@<a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
+				<div><a href="/admin/contractscores?contractid=@contract.ID">@contract.Name</a></div>
 			}
 		</div>
 	</div>

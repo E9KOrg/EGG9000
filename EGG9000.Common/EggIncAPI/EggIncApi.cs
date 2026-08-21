@@ -22,7 +22,7 @@ namespace EGG9000.Common.EggIncAPI {
 
         public static readonly List<(string EggIncId, Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = [];
 
-        public static uint ClientVersion { get; set; } = 72;
+        public static uint ClientVersion { get; set; } = 75;
         public static string AppVersion { get; set; } = "1.35.6";
         public static string AppBuild { get; set; } = "1.35.6.3";
 
@@ -87,7 +87,7 @@ namespace EGG9000.Common.EggIncAPI {
             [typeof(ContractsInfoRequest)] = new("ei_ctx/get_contracts_info", HeaderProfile.Ios, RinfoMode.WithUser, true, true),
             [typeof(CreateCoopRequest)] = new("ei/create_coop", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
             [typeof(UpdateCoopPermissionsRequest)] = new("ei/update_coop_permissions", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
-            [typeof(ContractCoopStatusUpdateRequest)] = new("ei/update_coop_status", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
+            [typeof(ContractCoopStatusUpdateRequest)] = new("ei/update_coop_status_secure", HeaderProfile.Ios, RinfoMode.WithUser, true, false),
             [typeof(ConfigRequest)] = new("ei/get_config", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
             // Send (fire-and-forget) endpoints (Android headers; legacy behavior sent no Rinfo in the payload)
             [typeof(KickPlayerCoopRequest)] = new("ei/kick_player_coop", HeaderProfile.Android, RinfoMode.None, false, false),
@@ -265,6 +265,7 @@ namespace EGG9000.Common.EggIncAPI {
                 if(responseBytes == null) {
                     return ApiResult<TResponse>.Fail(error ?? "No response");
                 }
+                var base64 = Convert.ToBase64String(responseBytes);
                 return (descriptor.AuthenticatedResponse || authenticated)
                     ? GetFromAuthenticatedMessage<TResponse>(responseBytes)
                     : ParseTolerant<TResponse>(responseBytes);

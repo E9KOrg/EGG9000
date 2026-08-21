@@ -19,6 +19,7 @@ namespace EGG9000.Bot.Automated {
 
         private static readonly DateTimeOffset StableUltraInfoDTO = new(2026,6,11,0,0,0,DateTimeOffset.UtcNow.Offset);
 
+        private uint clientVersion = 0;
         public async override Task Run(object state, CancellationToken cancellationToken) {
 
             var times = new TimingsFactory(_logger).Start();
@@ -29,7 +30,7 @@ namespace EGG9000.Bot.Automated {
             var guilds = await _db.Guilds.ToListAsync();
             var guildIDs = guilds.Select(x => x.Id).ToHashSet();
 
-            var usersToCheck = await _db.DBUsers.Where(x => !x.StaleBackup && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(75).ToListAsync();
+            var usersToCheck = await _db.DBUsers.Where(x => !x.StaleBackup && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck == null  ? 0 : 1).ThenBy(x => x.LastBackupCheck).Take(75).ToListAsync();
             var longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
             _logger.LogInformation("Longest backup check ago: {offset}", (DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2));
 
@@ -70,7 +71,18 @@ namespace EGG9000.Bot.Automated {
             times.Set("Updated Backups");
             await _db.SaveChangesAsync(cancellationToken);
 
-            var registered = await _db.RegisterMissingContractsAsync(discoveredContractDefs.Values, cancellationToken);
+            if(clientVersion > EggIncApi.ClientVersion) {
+                try {
+                    _logger.LogWarning("New Client Version Detected: {old} -> {new}", EggIncApi.ClientVersion, clientVersion);
+                    await _client.SendDMToKendrome($"New Client Version Detected: {EggIncApi.ClientVersion} -> {clientVersion}");
+                } finally {
+                    EggIncApi.ClientVersion = clientVersion;
+                }
+            }
+
+
+            var publishEndpoint = _provider.GetService<MassTransit.IPublishEndpoint>();
+            var registered = await _db.RegisterMissingContractsAsync(discoveredContractDefs.Values, publishEndpoint, cancellationToken);
             if(registered > 0)
                 _logger.LogInformation("Self-healed {count} contract(s) missing from the DB from player backups", registered);
 
@@ -167,7 +179,10 @@ namespace EGG9000.Bot.Automated {
 
                     update = true;
 
-                    // TODO: Track current game version and notify if newer version is available
+                    if(backup.ClientVersion != clientVersion) {
+                        clientVersion = backup.ClientVersion;
+                    }
+
                 } else {
                     _logger.LogWarning("Failed to get backup for {user} {account}", user.DiscordUsername, account.Name ?? account.Id);
                 }

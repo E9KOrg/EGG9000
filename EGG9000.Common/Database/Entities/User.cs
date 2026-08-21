@@ -189,7 +189,6 @@ namespace EGG9000.Common.Database.Entities {
                                 account.LastGrade = backupGrade;
                                 needsUpdate = true;
                             }
-                            //Sync account's Device ID from backup
                             if(account.Backup is not null && account.Backup.HasDeviceId && (account.DeviceID == "" || account.DeviceID != account.Backup.DeviceId)) {
                                 account.DeviceID = account.Backup.DeviceId;
                             }
@@ -276,16 +275,14 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool UpdateDMStatus(DiscordHelpersExt.DMResult dmResult) {
-            switch(dmResult) {
-                case DiscordHelpersExt.DMResult.Success:
-                    if(DMSBlocked) { DMSBlocked = false; return true; }
-                    return false;
-                case DiscordHelpersExt.DMResult.CannotSendToUser:
-                    if(!DMSBlocked) { DMSBlocked = true; return true; }
-                    return false;
-                default:
-                    break;
+            if(dmResult.Success) {
+                if(DMSBlocked) { DMSBlocked = false; return true; }
+                return false;
+            } else if(dmResult.CannotSendToUser) {
+                if(!DMSBlocked) { DMSBlocked = true; return true; }
+                return false;
             }
+
             return false;
         }
 
@@ -362,7 +359,7 @@ namespace EGG9000.Common.Database.Entities {
         [Key(5)]
         public byte Group { get; set; }
         [Key(6)]
-        public bool bool2 { get; set; } //Not being user
+        public bool bool2 { get; set; } //Not being used
         [Key(7)]
         public bool RedoLeggacy { get; set; }
         [Key(8)]
@@ -414,9 +411,7 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset BreakSetTime { get; set; } = DateTimeOffset.MaxValue;
         [Key(30)]
         public bool BreakCoopWarningSent { get; set; } = false;
-        /*
-         * [Key(31)] and [Key(31)] currently in progress of development.
-         */
+        // Key(31) and Key(32) reserved: in-progress fields not yet committed to this shape.
         [Key(33)]
         public bool CraftingWarningSent { get; set; } = false;
         [Key(34)]
@@ -443,6 +438,10 @@ namespace EGG9000.Common.Database.Entities {
         // (which are retained as a recovery copy). See AssignmentSettingsMigration.
         [Key(44)]
         public Contracts.Assignment.AssignmentSettings Assignment { get; set; }
+        [Key(45)]
+        public Contract.Types.PlayerGrade? PendingGrade { get; set; }
+        [Key(46)]
+        public DateTimeOffset PendingGradeSince { get; set; }
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
                 return UltraGroup;

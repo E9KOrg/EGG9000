@@ -5,6 +5,7 @@ using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord.ComponentsV2;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.ComponentModel;
@@ -21,23 +22,17 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.DeferAsync(ephemeral: true);
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             if(dbuser == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ComponentsV2EmbedHelpers.Error($"Unable to locate DBUser entry for <@{Context.User.Id}>.\nAre you registered?"); });
                 return;
             }
 
-            var inCoopChannel = await Db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == Context.Interaction.ChannelId || x.Coop.DiscordChannelId == Context.Interaction.ChannelId));
-
+            var inCoopChannel = await Db.UserCoopXrefs.AnyAsync(x => x.UserId == dbuser.Id && x.Coop.ThreadID == Context.Interaction.ChannelId);
 
             if(inCoopChannel) {
-                var builder = new ComponentBuilder();
-                builder.WithButton("This Co-op Only", $"CSCoop:{dbuser.DiscordId}");
-                builder.WithButton("This and Future Co-ops", $"CSAccountMenu:{dbuser.DiscordId},false,false");
-
-
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = "Would you like to edit settings for just this co-op or this and future co-ops?"; x.Components = builder.Build(); x.Embed = null; });
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ChooserComponents(dbuser); });
             } else {
-                var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", false, false, Db, dbuser);
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+                var components = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", false, false, Db, dbuser);
+                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
             }
         }
 
@@ -50,51 +45,57 @@ namespace EGG9000.Bot.Commands {
             var coopOnly = data.Split(",").Length > 2 && Convert.ToBoolean(data.Split(",")[2]);
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
 
-            var props = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", coopOnly, openedFromContSets, Db, dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            var components = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", coopOnly, openedFromContSets, Db, dbuser);
+            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
-        public static MessageProperties MainMenu(CoopSetting coopSetting, string prefix, string title, bool coopOnly, bool mcs, ApplicationDbContext db, DBUser dbuser) {
-            var props = new MessageProperties();
+        public static MessageComponent MainMenu(CoopSetting coopSetting, string prefix, string title, bool coopOnly, bool mcs, ApplicationDbContext db, DBUser dbuser) =>
+            MainMenu(coopSetting, prefix, title, coopOnly, mcs, db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId), dbuser);
 
-            var eBuilder = new EmbedBuilder()
-                .WithTitle($"Co-op Settings for {title}");
-
-            eBuilder.Description += "\n\nReceive a DM from the bot for any of the following";
-            var builder = new ComponentBuilder();
-
-            var guild = db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
+        public static MessageComponent MainMenu(CoopSetting coopSetting, string prefix, string title, bool coopOnly, bool mcs, Guild guild, DBUser dbuser) {
+            var page = new MenuPageBuilder($"Co-op Settings for {title}")
+                .WithDescription("Receive a DM from the bot for any of the following")
+                .AddDivider();
 
             foreach(var coopSettingEnum in Enum.GetValues<GuildCoopSetting>()) {
                 if(typeof(CoopSetting).GetProperty(coopSettingEnum.ToString()) is null)
                     continue;
-                var fi = coopSettingEnum.GetType().GetField(coopSettingEnum.ToString());
-                var description = (fi.GetCustomAttributes(typeof(DescriptionAttribute), false) is DescriptionAttribute[] attributes && attributes.Any()) ? attributes.First().Description : coopSettingEnum.ToString();
-                var option = new {
-                    Property = coopSettingEnum.ToString(),
-                    Description = description
-                };
+                var property = coopSettingEnum.ToString();
+                if(coopOnly && (property == "PingOnCoopCreated" || property == "PingOnCoopCreatedEvenIfJoined"))
+                    continue;
+                var fi = coopSettingEnum.GetType().GetField(property);
+                var description = (fi.GetCustomAttributes(typeof(DescriptionAttribute), false) is DescriptionAttribute[] attributes && attributes.Any()) ? attributes.First().Description : property;
+
+                var label = PrettySettingName(property);
 
                 var guildOverride = guild.GetCoopSetting(coopSettingEnum);
-                var nextToText = guildOverride.Locked ? (guildOverride.Enabled ? "✅ Yes **(Locked by Server)**" : "❌ No **(Locked by Server)**") : (coopSetting[option.Property] ? "✅ Yes" : "❌ No");
+                var nextToText = guildOverride.Locked ? (guildOverride.Enabled ? "✅ Yes **(Locked by Server)**" : "❌ No **(Locked by Server)**") : (coopSetting[property] ? "✅ Yes" : "❌ No");
 
-                if(coopOnly && (option.Property == "PingOnCoopCreated" || option.Property == "PingOnCoopCreatedEvenIfJoined"))
-                    continue;
-                eBuilder.AddField($"{option.Property}: {nextToText}", option.Description);
-                if(!guildOverride.Locked) {
-                    builder.WithButton(option.Property, $"{prefix}:{option.Property},{dbuser.DiscordId},{!coopOnly}");
-                }
+                if(guildOverride.Locked)
+                    page.AddRow($"{label}: {nextToText}", description);
+                else
+                    page.AddRow($"{label}: {nextToText}", description, new ButtonBuilder("Toggle", $"{prefix}:{property},{dbuser.DiscordId},{!coopOnly}", ButtonStyle.Primary));
             }
 
-            if(mcs) {
-                builder.WithButton("↵Contract Settings", $"MCSAccounts:{dbuser.DiscordId}", ButtonStyle.Secondary);
-            }
-
-            props.Components = builder.Build();
-            props.Embed = eBuilder.Build();
-
-            return props;
+            if(mcs)
+                page.WithReturn($"MCSAccounts:{dbuser.DiscordId}", "← Contract Settings");
+            return page.Build();
         }
+
+        // Display label only - the raw property name still goes in the button custom ID.
+        // "PingOnCoopCreatedEvenIfJoined" -> "Co-op Created Even If Joined".
+        public static string PrettySettingName(string property) {
+            var name = property.StartsWith("PingOn") ? property["PingOn".Length..] : property;
+            return name.SplitPascalCase().Replace("Coop", "Co-op");
+        }
+
+        public static MessageComponent ChooserComponents(DBUser dbuser) =>
+            new MenuPageBuilder("Co-op Settings")
+                .WithDescription("Would you like to edit settings for just this co-op or this and future co-ops?")
+                .AddButtons(
+                    new ButtonBuilder("This Co-op Only", $"CSCoop:{dbuser.DiscordId}", ButtonStyle.Primary),
+                    new ButtonBuilder("This and Future Co-ops", $"CSAccountMenu:{dbuser.DiscordId},false,false", ButtonStyle.Primary))
+                .Build();
         #endregion
 
         [ComponentInteraction("CSCoop:*", ignoreGroupNames: true)]
@@ -106,9 +107,9 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var dbGuild = Db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
 
-            var xref = await Db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
-            var props = MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild), "CSCoopOnly", "This Co-op", true, false, Db, dbuser);
-            await component.ModifyOriginalResponseAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            var xref = await Db.UserCoopXrefs.FirstAsync(x => x.UserId == dbuser.Id && x.Coop.ThreadID == component.ChannelId);
+            var components = MainMenu(xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild), "CSCoopOnly", "This Co-op", true, false, Db, dbuser);
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("CSAll:*", ignoreGroupNames: true)]
@@ -126,7 +127,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.CoopSetting[settingName] = !dbuser.CoopSetting[settingName];
             dbuser.CoopSetting = dbuser.CoopSetting;
 
-            var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
+            var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && x.Coop.ThreadID == component.ChannelId);
             if(xref is not null) {
                 var setting = xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild);
                 setting[settingName] = dbuser.CoopSetting[settingName];
@@ -135,8 +136,8 @@ namespace EGG9000.Bot.Commands {
 
             await Db.SaveChangesAsync();
 
-            var props = MainMenu(dbuser.CoopSetting, "CSAll", "Default Settings", false, openedFromContSets, Db, dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            var components = MainMenu(dbuser.CoopSetting, "CSAll", "Default Settings", false, openedFromContSets, Db, dbuser);
+            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("CSCoopOnly:*", ignoreGroupNames: true)]
@@ -150,15 +151,15 @@ namespace EGG9000.Bot.Commands {
 
             var settingName = data.Split(",")[0];
 
-            var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && (x.Coop.ThreadID == component.ChannelId || x.Coop.DiscordChannelId == component.ChannelId));
+            var xref = await Db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == dbuser.Id && x.Coop.ThreadID == component.ChannelId);
             var setting = xref.CoopSetting ?? new CoopSetting(xref, dbuser, dbGuild);
             setting[settingName] = !setting[settingName];
             xref.CoopSetting = setting;
 
             await Db.SaveChangesAsync();
 
-            var props = MainMenu(setting, "CSCoopOnly", "This Co-op", true, openedFromContSets, Db, dbuser);
-            await component.UpdateAsync(x => { x.Content = props.Content.GetValueOrDefault(null); x.Components = props.Components.GetValueOrDefault(null); x.Embed = props.Embed.GetValueOrDefault(null); });
+            var components = MainMenu(setting, "CSCoopOnly", "This Co-op", true, openedFromContSets, Db, dbuser);
+            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [SlashCommand("showeb", "Have the bot add your EB to your nickname in this server (will auto update)")]

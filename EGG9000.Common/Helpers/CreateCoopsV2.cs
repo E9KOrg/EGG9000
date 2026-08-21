@@ -6,6 +6,10 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Newtonsoft.Json;
+
 using Polly;
 using System;
 using System.Collections.Generic;
@@ -87,7 +91,7 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true, TimingsFactory timings = null) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true, TimingsFactory timings = null, ILogger logger = null) {
             userId ??= EggIncApi.UserId;
             var policy = Policy
               .Handle<Exception>()
@@ -124,7 +128,14 @@ namespace EGG9000.Common.Helpers {
             };
 
 
-            var response = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
+            var statusResult = await EggIncApi.PostResult<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, false);
+            if(statusResult.Failed) {
+                logger?.LogWarning("CoopStatusUpdate failed for {CoopName} (user {UserId}): {Error}", coopName, userId, statusResult.Error);
+            } else if(!statusResult.Value.Exists) {
+                logger?.LogWarning("CoopStatusUpdate returned invalid status for {CoopName} (user {UserId}): {Status}", coopName, userId, JsonConvert.SerializeObject(statusResult.Value));
+            } else {
+                logger?.LogInformation("CoopStatusUpdate succeeded for {CoopName} (user {UserId}): {Status}", coopName, userId, JsonConvert.SerializeObject(statusResult.Value));
+            }
             timings?.Set("CoopStatusUpdate");
 
 
@@ -137,6 +148,9 @@ namespace EGG9000.Common.Helpers {
                     Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
                     RequestingUserId = userId
                 }, userId);
+                if(!r) {
+                    logger?.LogWarning("KickPlayerCoopRequest failed for {CoopName} (user {UserId}): {Error}", coopName, userId, "Request failed");
+                }
                 timings?.Set("Kick Creator");
             }
 

@@ -169,7 +169,7 @@ namespace EGG9000.Bot.Automated {
                         var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
                         if(mainServerUser == null)
                             continue;
-                        if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot && overflowUser.Guild.OwnerId != overflowUser.Id) { // && !overflowUser.Roles.Any(x => x.Id == 764467748226334720)
+                        if(overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot && overflowUser.Guild.OwnerId != overflowUser.Id) {
                             try {
                                 _logger.LogInformation("Changing nickname for {newName}, it was {currentName} in {overflow}", mainServerUser.Nickname, overflowUser.Nickname, overflowServer.Name);
                                 await overflowUser.ModifyAsync(x => x.Nickname = mainServerUser.Nickname);
@@ -275,7 +275,6 @@ namespace EGG9000.Bot.Automated {
                 StillAlive();
                 if(cancellationToken.IsCancellationRequested) break;
 
-                //Add missing roles
                 foreach(var role in rolesToSync.OrderByDescending(x => x.Position)) {
                     if(cancellationToken.IsCancellationRequested) break;
 
@@ -287,9 +286,7 @@ namespace EGG9000.Bot.Automated {
                         : RoleColors.Solid(role.Colors.PrimaryColor);
                     if(overflowRole is null) {
                         overflowRole = await overflowServer.CreateRoleAsync(role.Name, color: syncColors);
-                    }/* else if(overflowRole.Icon is null && role.Icon is not null) {
-                    }*/
-                    else if(!role.Permissions.Equals(overflowRole.Permissions)) {
+                    } else if(!role.Permissions.Equals(overflowRole.Permissions)) {
                         await overflowRole.ModifyAsync(x => {
                             x.Name = role.Name;
                             x.Colors = syncColors;

@@ -48,7 +48,7 @@
                         </tr>
                         <tr>
                             <td>Median Total CS:</td>
-                            <td>@($"{allGradeData.Select(o => o.Item2).OrderByDescending(o => o).ToList()[allGradeData.Select(o => o.Item2).ToList().Count() / 2]:n0}")</td>
+                            <td>@($"{ArgumentsHelper.Median(allGradeData.Select(o => o.Item2)):n0}")</td>
                         </tr>
                         <tr>
                             <td>Combined Server Total CS:</td>
@@ -69,6 +69,7 @@
 </div>
 
 <partial name="_ApexCharts" />
+@section Scripts {
 <script>
     var ebOptions = {
         series: [{
@@ -81,7 +82,7 @@
             ]
         }],
         theme: {
-            mode: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light'
+            mode: chartThemeMode()
         },
         annotations: {
             points: [
@@ -149,3 +150,4 @@
     var gradeChart = new ApexCharts(document.querySelector("#chartGrade"), ebOptions);
     gradeChart.render();
 </script>
+}

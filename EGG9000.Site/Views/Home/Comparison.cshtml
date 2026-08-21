@@ -53,7 +53,7 @@
                             <td>Median Eb:</td>
                             <td>
                                 @{
-                                    var medianEb = listOfEb.Select(o => o.Item1).OrderByDescending(o => o).ToList()[listOfEb.Select(o => o.Item1).ToList().Count() / 2];
+                                    var medianEb = ArgumentsHelper.Median(listOfEb.Select(o => o.Item1));
                                 }
                                 @ArgumentsHelper.NumberToString(medianEb,true,2)
                             </td>
@@ -79,6 +79,7 @@
 </div>
 
 <partial name="_ApexCharts" />
+@section Scripts {
 <script>
 var ebOptions = {
     series: [{
@@ -93,7 +94,7 @@ var ebOptions = {
         ]
     }],
     theme: {
-        mode: document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light'
+        mode: chartThemeMode()
     },
     annotations: {
         points: [
@@ -167,3 +168,4 @@ var ebOptions = {
     var ebChart = new ApexCharts(document.querySelector("#chartEb"), ebOptions);
     ebChart.render();
 </script>
+}

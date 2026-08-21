@@ -19,20 +19,19 @@ namespace Ei {
         public string Error { get; set; }
 
 
-        private List<Types.ContributionInfo> _participants { get; set; }
         public List<Types.ContributionInfo> Participants {
             get {
-                if(_participants != null)
-                    return _participants;
-                _participants = [];
+                if(field != null)
+                    return field;
+                field = [];
                 if(Contributors == null || Contributors.Count == 0) {
-                    return _participants;
+                    return field;
                 }
                 foreach(var p in Contributors) {
                     p.TimeLeftSeconds = SecondsRemaining;
-                    _participants.Add(p);
+                    field.Add(p);
                 }
-                return _participants;
+                return field;
             }
         }
 
