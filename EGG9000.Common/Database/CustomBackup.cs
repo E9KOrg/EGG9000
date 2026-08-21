@@ -20,8 +20,9 @@ namespace EGG9000.Common.Database {
         [Key(0)]
         public List<CustomFarm> Farms { get; set; }
         [Key(1)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public string EggIncId {
-            get => EiBackup is { } p ? p.GetID() : field;
+            get => EiBackup is { } p ? p.GetID() : field ?? string.Empty;
             set;
         }
         [Key(2)]
@@ -32,6 +33,7 @@ namespace EGG9000.Common.Database {
         //[Key(3)]
         //public double EarningsBonus { get; set; }
         [Key(4)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public long LastBackupTime {
             get => EiBackup?.Settings is { } s ? (long)s.LastBackupTime : field;
             set;
@@ -55,6 +57,7 @@ namespace EGG9000.Common.Database {
             return (grade, DateTimeOffset.FromUnixTimeSeconds((long)time));
         }
         [Key(5)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public List<CustomResearch> EpicResearch {
             get => EiBackup?.Game is { } g ? _epicResearch ??= [.. g.EpicResearch.Select(x => new CustomResearch(x))] : field;
             set {
@@ -64,21 +67,25 @@ namespace EGG9000.Common.Database {
         }
         private List<CustomResearch> _epicResearch;
         [Key(6)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ushort PermitLevel {
             get => EiBackup?.Game is { } g ? (ushort)g.PermitLevel : field;
             set;
         }
         [Key(8)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ushort EggsOfProphecy {
             get => EiBackup?.Game is { } g ? (ushort)g.EggsOfProphecy : field;
             set;
         }
         [Key(9)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public double SoulEggs {
             get => EiBackup?.Game is { } g ? g.SoulEggsTotal : field;
             set;
         }
         [Key(10)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public double CurrentMultiplier {
             get => EiBackup?.Game is { } g ? g.CurrentMultiplier : field;
             set;
@@ -90,6 +97,7 @@ namespace EGG9000.Common.Database {
         [Key(13)]
         public List<CustomArchivedFarms> ArchivedFarms { get; set; }
         [Key(14)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ulong NumPrestiges {
             get => EiBackup?.Stats is { } s ? s.NumPrestiges : field;
             set;
@@ -98,6 +106,7 @@ namespace EGG9000.Common.Database {
         public List<SpaceMission> SpaceMissions { get; set; }
 
         [Key(16)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public uint NumDailyGiftsCollected {
             get => EiBackup?.Game is { } g ? g.NumDailyGiftsCollected : field;
             set;
@@ -107,6 +116,7 @@ namespace EGG9000.Common.Database {
         public uint PEFromDailyGifts => Math.Min(24, NumDailyGiftsCollected / 28);
 
         [Key(17)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public List<uint> EggMedalLevel {
             get => EiBackup?.Game is { } g ? _eggMedalLevel ??= [.. g.EggMedalLevel] : field;
             set {
@@ -117,31 +127,37 @@ namespace EGG9000.Common.Database {
         private List<uint> _eggMedalLevel;
 
         [Key(18)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ulong GoldenEggsEarned {
             get => EiBackup?.Game is { } g ? g.GoldenEggsEarned : field;
             set;
         }
         [Key(19)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ulong GoldenEggsSpent {
             get => EiBackup?.Game is { } g ? g.GoldenEggsSpent : field;
             set;
         }
         [Key(20)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ulong PiggyBank {
             get => EiBackup?.Game is { } g ? g.PiggyBank : field;
             set;
         }
         [Key(21)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ulong DroneTakedowns {
             get => EiBackup?.Stats is { } s ? s.DroneTakedowns : field;
             set;
         }
         [Key(22)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ulong DroneTakedownsElite {
             get => EiBackup?.Stats is { } s ? s.DroneTakedownsElite : field;
             set;
         }
         [Key(23)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public ulong NumPiggyBreaks {
             get => EiBackup?.Stats is { } s ? s.NumPiggyBreaks : field;
             set;
@@ -149,6 +165,7 @@ namespace EGG9000.Common.Database {
         [Key(24)]
         public List<ArtifactCount> ArtifactHall { get; set; }
         [Key(25)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public bool HyperloopPurchased {
             get => EiBackup?.Game is { } g ? g.HyperloopStation : field;
             set;
@@ -159,6 +176,7 @@ namespace EGG9000.Common.Database {
         //[Key(27)]
         //public PlayerGrade Grade { get; set; }
         [Key(28)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public byte ClientVersion {
             get => EiBackup is { } p ? (byte)p.Version : field;
             set;
@@ -169,11 +187,13 @@ namespace EGG9000.Common.Database {
         //[Key(30)]
         //public double GradeProgress { get; set; }
         [Key(31)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public Ei.Egg MaxEggReached {
             get => EiBackup?.Game is { } g ? g.MaxEggReached : field;
             set;
         }
         [Key(32)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public Dictionary<Ei.Egg, ulong> MaxFarmSizeReached {
             get => EiBackup?.Game is { } g ? _maxFarmSizeReached ??= BackupProjections.BuildMaxFarmSizeReached(g) : field;
             set {
@@ -184,13 +204,15 @@ namespace EGG9000.Common.Database {
         private Dictionary<Ei.Egg, ulong> _maxFarmSizeReached;
 
         [Key(33)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public bool HasDeviceId {
             get => EiBackup is { } p ? p.HasDeviceId : field;
             set;
         } = false;
         [Key(34)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public string DeviceId {
-            get => EiBackup is { HasDeviceId: true } p ? p.DeviceId : field;
+            get => EiBackup is { HasDeviceId: true } p ? p.DeviceId : field ?? string.Empty;
             set;
         } = string.Empty;
         [Key(36)]
@@ -202,6 +224,7 @@ namespace EGG9000.Common.Database {
         [Key(39)]
         public List<List<EggIncArtifactInstance>> ArtifactSets { get; set; } = [];
         [Key(40)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public double CraftingXP {
             get => EiBackup?.Artifacts is { } a ? a.CraftingXp : field;
             set;
@@ -216,8 +239,9 @@ namespace EGG9000.Common.Database {
         //public uint EoV { get; set; } = 0;
 
         [Key(44)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public double[] VirtueEggsDelivered {
-            get => EiBackup?.Virtue is { } v ? _virtueEggsDelivered ??= [.. v.EggsDelivered] : field;
+            get => EiBackup?.Virtue is { } v ? _virtueEggsDelivered ??= [.. v.EggsDelivered] : field ?? [];
             set {
                 field = value;
                 _virtueEggsDelivered = null;
@@ -225,18 +249,21 @@ namespace EGG9000.Common.Database {
         } = [];
         private double[] _virtueEggsDelivered;
         [Key(45)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public uint Resets {
             get => EiBackup?.Virtue is { } v ? v.Resets : field;
             set;
         }
         [Key(46)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public uint ShiftCount {
             get => EiBackup?.Virtue is { } v ? v.ShiftCount : field;
             set;
         }
         [Key(47)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public uint[] EovEarned {
-            get => EiBackup?.Virtue is { } v ? _eovEarned ??= [.. v.EovEarned] : field;
+            get => EiBackup?.Virtue is { } v ? _eovEarned ??= [.. v.EovEarned] : field ?? [];
             set {
                 field = value;
                 _eovEarned = null;
@@ -248,6 +275,7 @@ namespace EGG9000.Common.Database {
         [Key(49)]
         public Ei.UserSubscriptionInfo.Types.Level? SubscriptionLevel { get; set; } = null;
         [Key(50)]
+        [DerivedSlot(nameof(EiBackupBytes))]
         public bool NoAliasInLatestBackup {
             get => EiBackup is { } p ? string.IsNullOrEmpty(p.UserName) : field;
             set;
@@ -668,31 +696,37 @@ namespace EGG9000.Common.Database {
     [MessagePackObject]
     public class CustomFarm : CustomFarmBase {
         [Key(0)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public Ei.FarmType FarmType {
             get => Simulation is { } s ? s.FarmType : field;
             set;
         }
         [Key(1)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public string ContractId {
             get => Simulation is { } s ? s.ContractId : field;
             set;
         }
         [Key(2)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public double EggsPaidFor {
             get => Simulation is { } s ? s.EggsPaidFor : field;
             set;
         }
         [Key(3)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public uint? League {
             get => LocalContract is { } l ? l.League : field;
             set;
         }
         [Key(4)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public string CoopId {
             get => LocalContract is { } l ? l.CoopIdentifier : field;
             set;
         }
         [Key(5)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public bool Cancelled {
             get => LocalContract is { } l ? l.Cancelled : field;
             set;
@@ -700,6 +734,7 @@ namespace EGG9000.Common.Database {
         [Key(6)]
         public bool Completed { get; set; }
         [Key(7)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public List<CustomResearch> CommonResearch {
             get => Simulation is { } s ? _commonResearch ??= [.. s.CommonResearch.Select(x => new CustomResearch(x))] : field;
             set {
@@ -709,16 +744,19 @@ namespace EGG9000.Common.Database {
         }
         private List<CustomResearch> _commonResearch;
         [Key(8)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public ulong NumChickens {
             get => Simulation is { } s ? s.NumChickens : field;
             set;
         }
         [Key(10)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public Ei.Egg EggType {
             get => Simulation is { } s ? s.EggType : field;
             set;
         }
         [Key(11)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public List<uint> TrainLength {
             get => Simulation is { } s ? _trainLength ??= [.. s.TrainLength] : field;
             set {
@@ -732,11 +770,13 @@ namespace EGG9000.Common.Database {
         [Key(13)]
         public List<EggIncArtifactInstance> Artifacts { get; set; }
         [Key(14)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public uint SilosOwned {
             get => Simulation is { } s ? s.SilosOwned : field;
             set;
         }
         [Key(15)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public long TimeAccepted {
             get => LocalContract is { } l ? (long)l.TimeAccepted : field;
             set;
@@ -744,46 +784,55 @@ namespace EGG9000.Common.Database {
         [Key(16)]
         public bool CoopAllowed { get; set; }
         [Key(17)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public long CoopSharedEndTime {
             get => LocalContract is { } l ? (long)l.CoopSharedEndTime : field;
             set;
         }
         [Key(18)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public ushort BoostTokensReceived {
             get => Simulation is { } s ? (ushort)s.BoostTokensReceived : field;
             set;
         }
         [Key(19)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public ushort BoostTokensGiven {
             get => Simulation is { } s ? (ushort)s.BoostTokensGiven : field;
             set;
         }
         [Key(20)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public ushort BoostTokensSpent {
             get => Simulation is { } s ? (ushort)s.BoostTokensSpent : field;
             set;
         }
         [Key(21)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public double CashEarned {
             get => Simulation is { } s ? s.CashEarned : field;
             set;
         }
         [Key(22)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public double CashSpent {
             get => Simulation is { } s ? s.CashSpent : field;
             set;
         }
         [Key(23)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public long TimeCheatDebt {
             get => Simulation is { } s ? (long)s.TimeCheatDebtDEP : field;
             set;
         }
         [Key(24)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public ushort BoostsUsed {
             get => LocalContract is { } l ? (ushort)l.BoostsUsed : field;
             set;
         }
         [Key(25)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public ushort TimeCheatsDetected {
             get => Simulation is { } s ? (ushort)s.TimeCheatsDetected : field;
             set;
@@ -801,6 +850,7 @@ namespace EGG9000.Common.Database {
         //[Key(31)]
         //public Double MaxRunningBonus { get; set; }
         [Key(32)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public List<ushort> Habs {
             get => Simulation is { } s ? _habs ??= [.. s.Habs.Select(x => (ushort)x)] : field;
             set {
@@ -810,6 +860,7 @@ namespace EGG9000.Common.Database {
         }
         private List<ushort> _habs;
         [Key(33)]
+        [DerivedSlot(nameof(SimulationBytes))]
         public float LastStepTime {
             get => Simulation is { } s ? (float)s.LastStepTime : field;
             set;
@@ -817,26 +868,31 @@ namespace EGG9000.Common.Database {
         [Key(34)]
         public List<string> ReportedUUIDs { get; set; }
         [Key(35)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public PlayerGrade Grade {
             get => LocalContract is { } l ? l.Grade : field;
             set;
         }
         [Key(36)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public double EvaluationCxp {
             get => LocalContract is { } l ? (l.Evaluation is { } e ? (float)e.Cxp : 0.0) : field;
             set;
         }
         [Key(37)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public bool ContributionFinalized {
             get => LocalContract is { } l ? l.CoopContributionFinalized : field;
             set;
         }
         [Key(38)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public double CoopSimulationEndTime {
             get => LocalContract is { } l ? l.CoopSimulationEndTime : field;
             set;
         }
         [Key(39)]
+        [DerivedSlot(nameof(LocalContractBytes))]
         public byte NumGoalsAchieved {
             get => LocalContract is { } l ? (byte)l.NumGoalsAchieved : field;
             set;

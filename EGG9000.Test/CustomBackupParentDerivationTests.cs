@@ -300,7 +300,7 @@ namespace EGG9000.Test {
             Assert.IsTrue(backup.EmptyBackup);
             Assert.IsNull(backup.EiBackupBytes);
             Assert.IsNull(backup.Farms);
-            Assert.IsNull(backup.EggIncId);
+            Assert.AreEqual(string.Empty, backup.EggIncId);
             Assert.AreEqual((ushort)0, backup.PermitLevel);
             Assert.AreEqual(0d, backup.SoulEggs);
             Assert.AreEqual((byte)0, backup.ClientVersion);
