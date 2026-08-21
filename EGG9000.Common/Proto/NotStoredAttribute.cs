@@ -59,9 +59,24 @@ namespace EGG9000.Common.Proto {
             }
 
             var clearedSet = cleared.ToHashSet();
+
+            foreach(var field in fields)
+                GuardRepeatedElement(descriptor, field, clearedSet);
+
             FieldDescriptor[] children = [.. fields.Where(x => x.FieldType == FieldType.Message && !x.IsRepeated && !x.IsMap && !clearedSet.Contains(x))];
 
             return new TrimPlan { Cleared = [.. cleared], Children = children };
+        }
+
+        private static void GuardRepeatedElement(MessageDescriptor descriptor, FieldDescriptor field, HashSet<FieldDescriptor> clearedSet) {
+            if(field.FieldType != FieldType.Message || (!field.IsRepeated && !field.IsMap) || clearedSet.Contains(field))
+                return;
+            var elementField = field.IsMap ? field.MessageType.Fields.InFieldNumberOrder()[1] : field;
+            if(elementField.FieldType != FieldType.Message)
+                return;
+            var element = elementField.MessageType;
+            if(element.ClrType?.GetCustomAttribute<NotStoredAttribute>(false) is not null)
+                throw new InvalidOperationException($"{descriptor.ClrType.FullName}.{field.PropertyName} is a repeated or map field whose element type {element.ClrType.FullName} carries [NotStored]; StorageTrimmer cannot trim inside repeated or map fields.");
         }
     }
 }

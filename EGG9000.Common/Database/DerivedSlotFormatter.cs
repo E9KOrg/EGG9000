@@ -43,6 +43,13 @@ namespace EGG9000.Common.Database {
                 return;
             }
 
+            var present = new bool[Gates.Length];
+            var anyPresent = false;
+            for(var g = 0; g < Gates.Length; g++) {
+                present[g] = Gates[g](value) is { Length: > 0 };
+                anyPresent |= present[g];
+            }
+
             var buffer = new ArrayBufferWriter<byte>(_initialBufferSize);
             var inner = writer.Clone(buffer);
             Inner.Serialize(ref inner, value, options);
@@ -51,13 +58,6 @@ namespace EGG9000.Common.Database {
             if(Plan.Length == 0) {
                 writer.WriteRaw(buffer.WrittenSpan);
                 return;
-            }
-
-            var present = new bool[Gates.Length];
-            var anyPresent = false;
-            for(var g = 0; g < Gates.Length; g++) {
-                present[g] = Gates[g](value) is { Length: > 0 };
-                anyPresent |= present[g];
             }
 
             var reader = new MessagePackReader(buffer.WrittenMemory);
