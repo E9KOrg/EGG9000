@@ -134,6 +134,16 @@ namespace Ei {
                 }
 
             }
+
+            [NotStored(nameof(Afx))]
+            public partial class Virtue { }
+
+            [NotStored(
+                nameof(HabPopulation), nameof(HabPopulationIndound), nameof(HabIncubatorPopuplation), nameof(ActiveBoosts),
+                nameof(HatcheryPopulation), nameof(EggsLaid), nameof(EggsShipped), nameof(UnclaimedCash), nameof(NumChickensUnsettled),
+                nameof(NumChickensRunning), nameof(LastCashBoostTime), nameof(UnclaimedBoostTokens), nameof(GametimeUntilNextBoostToken),
+                nameof(TotalStepTime))]
+            public partial class Simulation { }
         }
     }
 
