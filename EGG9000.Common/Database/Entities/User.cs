@@ -20,7 +20,7 @@ namespace EGG9000.Common.Database.Entities {
     [Index(nameof(LastBackupCheck))]
     public class DBUser : ILastModified {
         [NotMapped]
-        public static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+        public static readonly MessagePackSerializerOptions lz4Options = StorageMessagePack.Options;
 
         public Guid Id { get; set; }
         public DateTimeOffset LastModified { get; set; } = DateTimeOffset.UtcNow;
