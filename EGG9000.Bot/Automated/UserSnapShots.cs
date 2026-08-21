@@ -75,18 +75,7 @@ namespace EGG9000.Bot.Automated {
                             && lastSnapshot.VirtueStats.Equals(newVirtueStats);
                         if(unchanged && !forceWrite) continue;
 
-                        //_db.UserSnapShots.Add(new UserSnapShot {
-                        //    Date = DateTime.UtcNow.Date,
-                        //    UserId = user.Id,
-                        //    Prestiges = backup.NumPrestiges,
-                        //    EarningsBonus = backup.EarningsBonus,
-                        //    EggIncID = backup.EggIncId,
-                        //    EggsOfProphecy = backup.EggsOfProphecy,
-                        //    SoulEggs = backup.SoulEggs,
-                        //    EggsOfTruth = backup.EggsOfTruth,
-                        //    VirtueStats = newVirtueStats,
-                        //});
-                        var a = new UserSnapShot {
+                        _db.UserSnapShots.Add(new UserSnapShot {
                             Date = DateTime.UtcNow.Date,
                             UserId = user.Id,
                             Prestiges = backup.NumPrestiges,
@@ -96,19 +85,19 @@ namespace EGG9000.Bot.Automated {
                             SoulEggs = backup.SoulEggs,
                             EggsOfTruth = backup.EggsOfTruth,
                             VirtueStats = newVirtueStats,
-                        };
+                        });
 
                         _logger.LogTrace("Adding Snapshot for {user}", user.Id);
                         if(snapshots++ >= 50) {
                             snapshots = 0;
-                            //await _db.SaveChangesAsync(cancellationToken);
+                            await _db.SaveChangesAsync(cancellationToken);
                         }
                     }
                 } catch(Exception e) {
                     _bugSnag.Notify(e);
                 }
             }
-            //await _db.SaveChangesAsync(cancellationToken);
+            await _db.SaveChangesAsync(cancellationToken);
         }
     }
 }
