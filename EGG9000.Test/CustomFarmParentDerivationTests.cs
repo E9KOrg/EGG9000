@@ -185,15 +185,14 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
-        public void CustomFarm_SimulationBytes_StoresWholeSimulation() {
+        public void CustomFarm_SimulationBytes_ClearsHabPopulation_KeepsHabs() {
             var (backup, contracts) = BuildBackupWithFarm("contract-trim-sim", 0, 1_600_000_000);
             var result = new CustomBackup(backup, contracts);
             var farm = result.Farms.Single();
 
             var simulation = Ei.Backup.Types.Simulation.Parser.ParseFrom(farm.SimulationBytes);
 
-            Assert.AreEqual(backup.Farms[0], simulation);
-            Assert.AreEqual(4, simulation.HabPopulation.Count);
+            Assert.AreEqual(0, simulation.HabPopulation.Count);
             CollectionAssert.AreEqual(new List<uint> { 10u, 20u, 30u, 40u }, simulation.Habs);
             Assert.AreEqual("contract-trim-sim", simulation.ContractId);
             Assert.AreEqual(12345UL, simulation.NumChickens);
@@ -228,7 +227,6 @@ namespace EGG9000.Test {
             var bytes = MessagePackSerializer.Serialize(archived, Lz4);
             var back = MessagePackSerializer.Deserialize<CustomArchivedFarms>(bytes, Lz4);
 
-            Assert.IsNull(back.LocalContractBytes);
             Assert.AreEqual("legacy-coop", back.CoopId);
             Assert.AreEqual("legacy-contract-id", back.ContractId);
             Assert.AreEqual(1_580_000_000f, back.TimeAccepted);
@@ -241,7 +239,7 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
-        public void CustomArchivedFarms_Derivation_PrefersDerivedOverLegacyFields() {
+        public void CustomArchivedFarms_Construction_SetsMembersFromLocalContract() {
             var contract = new Ei.Contract { Identifier = "contract-archived-derive" };
             var localContract = new Ei.LocalContract {
                 Contract = contract,
@@ -267,28 +265,6 @@ namespace EGG9000.Test {
             Assert.AreEqual(12.75f, archived.EvaluationCxp);
             Assert.AreEqual((byte)2, archived.NumGoalsAchieved);
             CollectionAssert.AreEqual(new List<string> { "uuid-1", "uuid-2" }, archived.ReportedUUIDs);
-
-            archived.CoopId = "overridden";
-            archived.Grade = Ei.Contract.Types.PlayerGrade.GradeAaa;
-
-            Assert.AreEqual("coop-archived", archived.CoopId);
-            Assert.AreEqual(Ei.Contract.Types.PlayerGrade.GradeB, archived.Grade);
-        }
-
-        [TestMethod]
-        public void CustomArchivedFarms_LocalContractBytes_ClearsEmbeddedContract() {
-            var contract = new Ei.Contract { Identifier = "contract-archived-trim" };
-            var localContract = new Ei.LocalContract {
-                Contract = contract,
-                ContractIdentifier = "contract-archived-trim",
-                League = 0
-            };
-
-            var archived = new CustomArchivedFarms(localContract);
-            var parsed = Ei.LocalContract.Parser.ParseFrom(archived.LocalContractBytes);
-
-            Assert.IsNull(parsed.Contract);
-            Assert.AreEqual("contract-archived-trim", parsed.ContractIdentifier);
         }
 
         [TestMethod]

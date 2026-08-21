@@ -269,8 +269,7 @@ namespace EGG9000.Test {
             Assert.IsNotNull(trimmed.Virtue);
             Assert.AreEqual(5u, trimmed.Virtue.Resets);
             Assert.AreEqual(9u, trimmed.Virtue.ShiftCount);
-            Assert.IsNotNull(trimmed.Virtue.Afx);
-            Assert.AreEqual(12.5, trimmed.Virtue.Afx.CraftingXp);
+            Assert.IsNull(trimmed.Virtue.Afx);
         }
 
         [TestMethod]
