@@ -110,7 +110,8 @@ namespace Ei {
         nameof(Farms), nameof(Contracts), nameof(ArtifactsDb), nameof(ShellDb), nameof(Tutorial),
         nameof(Misc), nameof(Shells), nameof(Mission), nameof(MailState), nameof(Sim),
         nameof(ReadMailIds), nameof(GameServicesId), nameof(GameServicesIdScoped), nameof(PushUserId),
-        nameof(ApproxTime), nameof(ForceOfferBackup), nameof(ForceBackup), nameof(Checksum), nameof(Signature))]
+        nameof(ApproxTime), nameof(ForceOfferBackup), nameof(ForceBackup), nameof(Checksum), nameof(Signature),
+        nameof(SubInfo))]
     public partial class Backup {
         public string GetID() {
             if(!string.IsNullOrEmpty(EiUserId)) {
@@ -139,10 +140,25 @@ namespace Ei {
             public partial class Virtue { }
 
             [NotStored(
+                nameof(EggTotalsOLD), nameof(EggTotals), nameof(UnlimitedChickensUses), nameof(RefillUses),
+                nameof(Warp1Uses), nameof(Warp8Uses), nameof(BoostsUsed), nameof(VideoDoublerUses),
+                nameof(IapPacksPurchased), nameof(PiggyFull), nameof(PiggyFoundFull),
+                nameof(TimePiggyFilledRealtime), nameof(TimePiggyFullGametime), nameof(LostPiggyIncrements))]
+            public partial class Stats { }
+
+            [NotStored(
+                nameof(Infusing), nameof(ItemBeingInfused), nameof(SpecBeingInfused), nameof(EggTypeInfusing),
+                nameof(InfusingEggsRequired), nameof(EggsInfused), nameof(FlowPercentageArtifacts),
+                nameof(FuelingEnabled), nameof(TankFillingEnabled), nameof(TankLevel), nameof(TankFuels),
+                nameof(TankLimits), nameof(LastFueledShip), nameof(InventoryScore), nameof(Enabled),
+                nameof(IntroShown), nameof(InfusingEnabledDEPRECATED))]
+            public partial class Artifacts { }
+
+            [NotStored(
                 nameof(HabPopulation), nameof(HabPopulationIndound), nameof(HabIncubatorPopuplation), nameof(ActiveBoosts),
                 nameof(HatcheryPopulation), nameof(EggsLaid), nameof(EggsShipped), nameof(UnclaimedCash), nameof(NumChickensUnsettled),
                 nameof(NumChickensRunning), nameof(LastCashBoostTime), nameof(UnclaimedBoostTokens), nameof(GametimeUntilNextBoostToken),
-                nameof(TotalStepTime))]
+                nameof(TotalStepTime), nameof(Vehicles))]
             public partial class Simulation { }
         }
     }
