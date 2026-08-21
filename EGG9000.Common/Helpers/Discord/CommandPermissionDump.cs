@@ -13,11 +13,11 @@ namespace EGG9000.Common.Helpers.Discord {
         // Discord.NET only exposes per-command permission reads via RestGuildCommand, which globally-registered commands aren't.
         // The guild-wide batch read (GET /guilds/{id}/commands/permissions) lives on the internal InteractionHelper, so we can reach it by reflection.
         private static readonly MethodInfo GetGuildCommandPermissions = typeof(BaseDiscordClient).Assembly
-            .GetType("Discord.Rest.InteractionHelper")!
-            .GetMethod("GetGuildCommandPermissionsAsync", BindingFlags.Public | BindingFlags.Static)!;
+            .GetType("Discord.Rest.InteractionHelper")
+            .GetMethod("GetGuildCommandPermissionsAsync", BindingFlags.Public | BindingFlags.Static);
 
         public static async Task<IReadOnlyCollection<GuildApplicationCommandPermission>> FetchAsync(DiscordSocketClient gateway, ulong guildId) {
-            var task = (Task)GetGuildCommandPermissions.Invoke(null, [gateway.Rest, guildId, null])!;
+            var task = (Task)GetGuildCommandPermissions.Invoke(null, [gateway.Rest, guildId, null]);
             await task.ConfigureAwait(false);
             return (IReadOnlyCollection<GuildApplicationCommandPermission>)((dynamic)task).Result;
         }
