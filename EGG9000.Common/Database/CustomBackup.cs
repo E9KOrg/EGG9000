@@ -72,6 +72,8 @@ namespace EGG9000.Common.Database {
             get => EiBackup?.Game is { } g ? (ushort)g.PermitLevel : field;
             set;
         }
+        [Key(7)]
+        public DateTime CacheAdded { get; set; }
         [Key(8)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ushort EggsOfProphecy {
@@ -290,6 +292,9 @@ namespace EGG9000.Common.Database {
         }
 
         [IgnoreMember]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [System.Xml.Serialization.XmlIgnore]
+        [System.Runtime.Serialization.IgnoreDataMember]
         public Ei.ContractPlayerInfo LastContractPlayerInfo {
             get {
                 if(_lastContractPlayerInfo is null && LastContractPlayerInfoBytes is { Length: > 0 })
@@ -300,6 +305,8 @@ namespace EGG9000.Common.Database {
         private Ei.ContractPlayerInfo _lastContractPlayerInfo;
 
         [Key(52)]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [System.Xml.Serialization.XmlIgnore]
         public byte[] EiBackupBytes {
             get;
             set {
@@ -900,6 +907,8 @@ namespace EGG9000.Common.Database {
         [Key(40)]
         public bool Creator { get; set; }
         [Key(41)]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [System.Xml.Serialization.XmlIgnore]
         public byte[] SimulationBytes {
             get;
             set {
@@ -925,6 +934,8 @@ namespace EGG9000.Common.Database {
         private Ei.Backup.Types.Simulation _simulation;
 
         [Key(42)]
+        [System.Text.Json.Serialization.JsonIgnore]
+        [System.Xml.Serialization.XmlIgnore]
         public byte[] LocalContractBytes {
             get;
             set {
