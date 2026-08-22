@@ -1,3 +1,4 @@
+
 using Discord;
 using Discord.WebSocket;
 using EGG9000.Common.Database;
