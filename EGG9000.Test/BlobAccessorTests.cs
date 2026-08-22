@@ -61,12 +61,13 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void MessagePack_OptionsRespected() {
-            var value = new ContributionInfoCompact { UserName = "Tester", ContributionAmount = 1e12 };
+            var value = new ContributionInfoCompact { UserName = new string('a', 2048), ContributionAmount = 1e12 };
             var lz4 = new MessagePackBlobAccessor<ContributionInfoCompact>(Lz4Options).Set(value, null);
             var plain = new MessagePackBlobAccessor<ContributionInfoCompact>().Set(value, null);
 
-            CollectionAssert.AreNotEqual(lz4, plain);
-            Assert.AreEqual("Tester", new MessagePackBlobAccessor<ContributionInfoCompact>().Get(plain).UserName);
+            Assert.IsTrue(lz4.Length < plain.Length);
+            Assert.AreEqual(value.UserName, new MessagePackBlobAccessor<ContributionInfoCompact>().Get(plain).UserName);
+            Assert.AreEqual(value.UserName, new MessagePackBlobAccessor<ContributionInfoCompact>(Lz4Options).Get(lz4).UserName);
         }
 
         [TestMethod]
