@@ -207,15 +207,14 @@ namespace EGG9000.Bot.Commands.CommonTypes {
                 var dbUser = db.DBUsers.FirstOrDefault(x => x.DiscordId == arg.User.Id);
                 var hasSubscriptionAccounts = dbUser?.EggIncAccounts.Where(x => x.HasActiveSubscription()).Any() ?? false;
 
-                var contracts = db.Contracts.Where(x => x.MaxUsers > 1 && (hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.UtcNow) : (x.GoodUntil > DateTimeOffset.UtcNow && !x.cc_only))).ToList();
+                var contracts = db.Contracts.Where(x => x.MaxUsers > 1 && (hasSubscriptionAccounts ? (x.GoodUntil > DateTimeOffset.UtcNow) : (x.GoodUntil > DateTimeOffset.UtcNow && !x.cc_only))).Select(x => new { x.ID, x.Name, x.Created }).ToList();
                 var stringArg = (string)arg.Data.Current.Value;
                 if(!string.IsNullOrEmpty(stringArg) && stringArg != " ") contracts = [.. contracts.Where(x => x.Name.Contains(stringArg) || x.ID.Contains(stringArg))];
                 if(guild is not null && !guild.DisableBG && !isStaff) {
                     contracts = [.. contracts.Where(x => (DateTimeOffset.UtcNow - x.Created).TotalHours > 17)];
                 }
 
-                var contractObjs = contracts.Select(x => new { x.ID, x.Name }).ToList();
-                return [.. contractObjs.Select(c => new AutocompleteResult(c.Name, c.ID))];
+                return [.. contracts.Select(c => new AutocompleteResult(c.Name, c.ID))];
             }
 
             public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {

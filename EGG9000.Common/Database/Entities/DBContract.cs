@@ -4,28 +4,20 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EGG9000.Common.Database.Entities {
+    // TODO: Rename table to DBContract
     [Table("Contracts")]
     public class DBContract {
         public string ID { get; set; }
         public string Name { get; set; }
-        public string Description { get; set; }
         public DateTimeOffset GoodUntil { get; set; } //expiration_time
         public string egg { get; set; }
-        public string goals { get; set; }
-        public bool coop_allowed { get; set; }
         public int MaxUsers { get; set; }
-        public int max_boosts { get; set; }
-        public double max_soul_eggs { get; set; }
-        public int min_client_version { get; set; }
-        public bool debug { get; set; }
         public double length_seconds { get; set; }
         public bool cc_only { get; set; } //Subscription needed
 
         public string _response { get; set; }
 
         public bool HadTwoRewards { get; set; }
-
-        public double egg_value { get; set; }
 
         [NotMapped]
         private Ei.Contract _details { get; set; }
@@ -35,9 +27,7 @@ namespace EGG9000.Common.Database.Entities {
                 if(_response == null) {
                     return null;
                 }
-                if(_details == null) {
-                    _details = JsonConvert.DeserializeObject<Ei.Contract>(_response);
-                }
+                _details ??= JsonConvert.DeserializeObject<Ei.Contract>(_response);
                 return _details;
             }
         }
@@ -46,27 +36,32 @@ namespace EGG9000.Common.Database.Entities {
             _response = JsonConvert.SerializeObject(details);
         }
 
+        public void ApplyDetails(Ei.Contract details) {
+            OverwriteDetails(details);
+            Name = details.Name;
+            GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)details.ExpirationTime);
+            MaxUsers = (int)details.MaxCoopSize;
+            egg = details.Egg.ToString();
+            cc_only = details.CcOnly;
+        }
 
-        public string Rewards { get; set; }
-        public int P2 { get; set; }
-        public int P4 { get; set; }
-        public double P6 { get; set; }
+
         public double P7 { get; set; }
-        public int P11 { get; set; }
 
 
         [NotMapped]
         public TimeSpan ContractTime {
             get {
-                if(length_seconds == 0) {
-                    return TimeSpan.FromSeconds(P7);
+                var fromDetails = Details?.LengthSeconds ?? 0;
+                if(fromDetails > 0) {
+                    return TimeSpan.FromSeconds(fromDetails);
                 }
-                return TimeSpan.FromSeconds(length_seconds);
+                if(length_seconds > 0) {
+                    return TimeSpan.FromSeconds(length_seconds);
+                }
+                return TimeSpan.FromSeconds(P7);
             }
         }
-
-        [NotMapped]
-        public List<Ei.Contract.Types.Goal> GoalsDetail => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(goals);
 
         // Derived from the proto rather than a DB column so legacy re-runs of old seasonal contracts keep the original season ID
         [NotMapped]
