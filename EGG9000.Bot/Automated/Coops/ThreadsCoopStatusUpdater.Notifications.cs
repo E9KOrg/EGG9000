@@ -1,4 +1,3 @@
-
 using Discord;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
