@@ -86,21 +86,11 @@ namespace EGG9000.Common.Database.Entities {
         public bool StaleBackup { get; set; } = false;
 
         [NotMapped]
-        private CoopSetting _coopSetting { get; set; }
+        private readonly MessagePackBlobAccessor<CoopSetting> _coopSetting = new(lz4Options);
         [NotMapped]
         public CoopSetting CoopSetting {
-            get {
-                if(_coopSetting != null)
-                    return _coopSetting;
-                if(_coopSettingByte == null)
-                    return null;
-                _coopSetting = MessagePackSerializer.Deserialize<CoopSetting>(_coopSettingByte, lz4Options);
-                return _coopSetting;
-            }
-            set {
-                _coopSetting = value;
-                _coopSettingByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            get => _coopSetting.Get(_coopSettingByte);
+            set => _coopSettingByte = _coopSetting.Set(value, _coopSettingByte);
         }
 
         public bool Banned { get; set; } = false;
@@ -117,22 +107,12 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? LastFAQPosted { get; set; }
 
         [NotMapped]
-        private List<ShipDM> _shipDMs { get; set; }
+        private readonly MessagePackBlobAccessor<List<ShipDM>> _shipDMs = new(lz4Options);
 
         [NotMapped]
         public List<ShipDM> ShipDMs {
-            get {
-                if(_shipDMs != null)
-                    return _shipDMs;
-                if(_shipDMsByte == null)
-                    return null;
-                _shipDMs = MessagePackSerializer.Deserialize<List<ShipDM>>(_shipDMsByte, lz4Options);
-                return _shipDMs;
-            }
-            set {
-                _shipDMs = value;
-                _shipDMsByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            get => _shipDMs.Get(_shipDMsByte);
+            set => _shipDMsByte = _shipDMs.Set(value, _shipDMsByte);
         }
 
         public byte[] _contractRegistrationByte { get; set; }

@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -18,21 +17,12 @@ namespace EGG9000.Common.Database.Entities {
         public bool Archived { get; set; }
 
         [NotMapped]
-        private Ei.ShellObjectSpec _details { get; set; }
+        private readonly JsonBlobAccessor<Ei.ShellObjectSpec> _details = new();
         [NotMapped]
-        public Ei.ShellObjectSpec Details {
-            get {
-                if(Json == null) {
-                    return null;
-                }
-                _details ??= JsonConvert.DeserializeObject<Ei.ShellObjectSpec>(Json);
-                return _details;
-            }
-        }
+        public Ei.ShellObjectSpec Details => _details.Get(Json);
 
         public void ApplyDetails(Ei.ShellObjectSpec e) {
-            _details = e;
-            Json = JsonConvert.SerializeObject(e);
+            Json = _details.Set(e, Json);
             Identifier = e.Identifier;
             Name = e.Name;
             Expires = DateTimeOffset.UtcNow.AddSeconds(e.SecondsRemaining);
