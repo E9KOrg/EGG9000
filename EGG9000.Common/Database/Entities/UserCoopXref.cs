@@ -39,29 +39,17 @@ namespace EGG9000.Common.Database.Entities {
 
         public byte[] _lastStatusByte { get; set; }
         [NotMapped]
-        private ContributionInfoCompact _lastStatus { get; set; }
+        private readonly MessagePackBlobAccessor<ContributionInfoCompact> _lastStatus = new(lz4Options);
         [NotMapped]
         public ContributionInfoCompact LastStatus {
             get {
                 if(Status != null && Status != "null") {
-                    var status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(Status);
-                    _lastStatus = new ContributionInfoCompact(status);
+                    _lastStatus.Prime(new ContributionInfoCompact(JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(Status)));
                     Status = null;
                 }
-                if(_lastStatus != null)
-                    return _lastStatus;
-                if(_lastStatusByte == null)
-                    return null;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-
-                _lastStatus = MessagePackSerializer.Deserialize<ContributionInfoCompact>(_lastStatusByte, lz4Options);
-                return _lastStatus;
+                return _lastStatus.Get(_lastStatusByte);
             }
-            set {
-                _lastStatus = value;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _lastStatusByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            set => _lastStatusByte = _lastStatus.Set(value, _lastStatusByte);
         }
 
         public ulong SleepingDiscordMessageID { get; set; }

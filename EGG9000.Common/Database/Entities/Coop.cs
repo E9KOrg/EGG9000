@@ -62,27 +62,16 @@ namespace EGG9000.Common.Database.Entities {
         public byte[] _StatusCompressed { get; set; }
 
         [NotMapped]
-        private Ei.ContractCoopStatusResponse _status { get; set; }
+        private readonly CodecBlobAccessor<Ei.ContractCoopStatusResponse> _status = new(CoopStatusCodec.Decode, CoopStatusCodec.Encode);
 
         [NotMapped]
         public Ei.ContractCoopStatusResponse LastStatusUpdate {
-            get {
-                if(_status != null)
-                    return _status;
-                if(_StatusCompressed == null)
-                    return null;
-                _status = CoopStatusCodec.Decode(_StatusCompressed);
-                return _status;
-            }
+            get => _status.Get(_StatusCompressed);
             set {
-                _status = value;
-                var encoded = CoopStatusCodec.Encode(value);
-
                 // Only reassign the mapped LOB column when the payload actually changed, so EF Core
                 // does not rewrite _StatusCompressed every status cycle. That blob write is the
                 // heaviest and most lock-contended write on Coops during contract launches.
-                if(_StatusCompressed is null || !_StatusCompressed.AsSpan().SequenceEqual(encoded))
-                    _StatusCompressed = encoded;
+                _StatusCompressed = _status.Set(value, _StatusCompressed);
             }
         }
 

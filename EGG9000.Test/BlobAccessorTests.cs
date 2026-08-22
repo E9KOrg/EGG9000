@@ -71,6 +71,56 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
+        public void MessagePack_EmptyColumn_UsesFallback() {
+            var value = new MessagePackBlobAccessor<List<ContributionInfoCompact>>(Lz4Options, () => []).Get([]);
+
+            Assert.IsNotNull(value);
+            Assert.AreEqual(0, value.Count);
+        }
+
+        [TestMethod]
+        public void MessagePack_ParsedNull_UsesFallback() {
+            var value = new MessagePackBlobAccessor<List<ContributionInfoCompact>>(Lz4Options, () => []).Get([MessagePackCode.Nil]);
+
+            Assert.IsNotNull(value);
+        }
+
+        [TestMethod]
+        public void MessagePack_Prime_SeedsCache() {
+            var accessor = new MessagePackBlobAccessor<ContributionInfoCompact>(Lz4Options);
+            var value = new ContributionInfoCompact { UserName = "Primed" };
+            accessor.Prime(value);
+
+            Assert.AreSame(value, accessor.Get(null));
+        }
+
+        [TestMethod]
+        public void Codec_RoundTrip() {
+            var stored = NewCodecAccessor().Set(new ContributionInfoCompact { UserName = "Tester" }, null);
+            var value = NewCodecAccessor().Get(stored);
+
+            Assert.AreEqual("Tester", value.UserName);
+        }
+
+        [TestMethod]
+        public void Codec_NullColumn_ReturnsNull() {
+            Assert.IsNull(NewCodecAccessor().Get(null));
+        }
+
+        [TestMethod]
+        public void Codec_Set_SuppressesUnchangedWrites() {
+            var accessor = NewCodecAccessor();
+            var value = new ContributionInfoCompact { UserName = "Tester" };
+            var stored = accessor.Set(value, null);
+
+            Assert.AreSame(stored, accessor.Set(value, stored));
+        }
+
+        private static CodecBlobAccessor<ContributionInfoCompact> NewCodecAccessor()
+            => new(stored => MessagePackSerializer.Deserialize<ContributionInfoCompact>(stored, Lz4Options),
+                value => MessagePackSerializer.Serialize(value, Lz4Options));
+
+        [TestMethod]
         public void Json_RoundTrip() {
             var stored = new JsonBlobAccessor<VirtueSnapshotStats>().Set(new VirtueSnapshotStats { TeTotal = 5 }, null);
             var value = new JsonBlobAccessor<VirtueSnapshotStats>().Get(stored);
