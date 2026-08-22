@@ -1,5 +1,4 @@
 ﻿using Discord;
-using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -16,10 +15,11 @@ namespace EGG9000.Common.Database.Entities {
         public string Name { get; set; } = "";
         public string _keywords { get; set; } = "";
         [NotMapped]
+        private readonly JsonBlobAccessor<List<string>> _keywordsAccessor = new();
+        [NotMapped]
         public List<string> Keywords {
-            get {
-                return JsonConvert.DeserializeObject<List<string>>(_keywords);
-            }
+            get => _keywordsAccessor.Get(_keywords);
+            set => _keywords = _keywordsAccessor.Set(value, _keywords);
         }
         public int Weight { get; set; } = 0;
         public string Explanation { get; set; } = "";

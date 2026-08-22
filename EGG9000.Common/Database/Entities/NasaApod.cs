@@ -51,27 +51,18 @@ public class NasaApod {
     [JsonIgnore]
     public byte[] _postedToBytes { get; set; }
     [NotMapped]
-    private PostedToEntry[] _postedToEntries;
+    private readonly MessagePackBlobAccessor<PostedToEntry[]> _postedTo = new(whenNull: () => []);
     [NotMapped]
     private readonly Lock _postedToLock = new();
     [NotMapped]
     public PostedToEntry[] PostedToEntries {
         get {
-            if(_postedToEntries != null) return _postedToEntries;
-            lock(_postedToLock) {
-                if(_postedToBytes == null || _postedToBytes.Length == 0)
-                    _postedToEntries = [];
-                else
-                    _postedToEntries = MessagePackSerializer.Deserialize<PostedToEntry[]>(_postedToBytes) ?? [];
-
-                return _postedToEntries;
-            }
+            lock(_postedToLock)
+                return _postedTo.Get(_postedToBytes);
         }
         set {
-            lock(_postedToLock) {
-                _postedToEntries = value ?? [];
-                _postedToBytes = MessagePackSerializer.Serialize(_postedToEntries);
-            }
+            lock(_postedToLock)
+                _postedToBytes = _postedTo.Set(value ?? [], _postedToBytes);
         }
     }
 
