@@ -113,7 +113,7 @@ namespace EGG9000.Common.Helpers {
         public double Rate {
             get {
                 if(CoopStatus is not null && CoopStatus.ContributionRate == 0)
-                    return CoopStatus.ContributionAmount / Contract.length_seconds;
+                    return CoopStatus.ContributionAmount / Contract.ContractTime.TotalSeconds;
                 if(CoopStatus is not null)
                     return CoopStatus.ContributionRate;
                 return 0;
@@ -195,8 +195,8 @@ namespace EGG9000.Common.Helpers {
                         _farmingEnds = DateTimeOffset.FromUnixTimeSeconds(Farm.CoopSharedEndTime);
                     else if(Farm is not null)
                         _farmingEnds = Contract.MaxUsers > 1 ?
-                            DateTimeOffset.UtcNow.AddSeconds(Contract.length_seconds) :
-                            DateTimeOffset.FromUnixTimeSeconds((Farm.TimeAccepted + (long)Contract.length_seconds));
+                            DateTimeOffset.UtcNow.AddSeconds(Contract.ContractTime.TotalSeconds) :
+                            DateTimeOffset.FromUnixTimeSeconds((Farm.TimeAccepted + (long)Contract.ContractTime.TotalSeconds));
                     else
                         _farmingEnds = DateTimeOffset.UtcNow;
                 }

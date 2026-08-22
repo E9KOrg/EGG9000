@@ -207,24 +207,12 @@ namespace EGG9000.Common.Database {
             if(missing.Count == 0) return 0;
 
             foreach(var def in missing) {
-                Contracts.Add(new DBContract {
+                var row = new DBContract {
                     ID = def.Identifier,
-                    Created = DateTimeOffset.UtcNow,
-                    Description = def.Description,
-                    Name = def.Name,
-                    goals = Newtonsoft.Json.JsonConvert.SerializeObject(def.Goals),
-                    GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)def.ExpirationTime),
-                    MaxUsers = (int)def.MaxCoopSize,
-                    coop_allowed = def.CoopAllowed,
-                    max_boosts = (int)def.MaxBoosts,
-                    max_soul_eggs = def.MaxSoulEggs,
-                    min_client_version = (int)def.MinClientVersion,
-                    debug = def.Debug,
-                    length_seconds = def.LengthSeconds,
-                    egg = def.Egg.ToString(),
-                    cc_only = def.CcOnly,
-                    _response = Newtonsoft.Json.JsonConvert.SerializeObject(def)
-                });
+                    Created = DateTimeOffset.UtcNow
+                };
+                row.ApplyDetails(def);
+                Contracts.Add(row);
             }
 
             await SaveChangesAsync(ct);
