@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 
 namespace EGG9000.Common.Database.Entities {
@@ -16,8 +17,17 @@ namespace EGG9000.Common.Database.Entities {
         /// Only stores goals where RewardType == EggsOfProphecy.
         /// </summary>
         public string GoalsJson { get; set; } = string.Empty;
+        public string _response { get; set; }
+        [NotMapped]
+        private readonly JsonBlobAccessor<ContractSeasonInfo> _details = new();
+        [NotMapped]
+        public ContractSeasonInfo Details => _details.Get(_response);
 
-        public static SeasonInfo FromProto(ContractSeasonInfo proto) {
+        public void ApplyDetails(ContractSeasonInfo proto) {
+            _response = _details.Set(proto, _response);
+            Id = proto.Id;
+            Name = proto.Name;
+            StartTime = DateTimeOffset.UnixEpoch.AddSeconds(proto.StartTime);
             var goals = new Dictionary<int, List<SeasonPeGoal>>();
             foreach(var gs in proto.GradeGoals) {
                 var peGoals = gs.Goals
@@ -27,12 +37,13 @@ namespace EGG9000.Common.Database.Entities {
                 if(peGoals.Count > 0)
                     goals[(int)gs.Grade] = peGoals;
             }
-            return new SeasonInfo {
-                Id = proto.Id,
-                Name = proto.Name,
-                StartTime = DateTimeOffset.UnixEpoch.AddSeconds(proto.StartTime),
-                GoalsJson = JsonConvert.SerializeObject(goals)
-            };
+            GoalsJson = JsonConvert.SerializeObject(goals);
+        }
+
+        public static SeasonInfo FromProto(ContractSeasonInfo proto) {
+            var info = new SeasonInfo();
+            info.ApplyDetails(proto);
+            return info;
         }
 
         public static bool HasPeRewards(ContractSeasonInfo proto) =>
