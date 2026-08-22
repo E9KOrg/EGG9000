@@ -23,12 +23,7 @@ namespace EGG9000.Common.Database {
         public static byte[] Encode(Ei.ContractCoopStatusResponse status) {
             if(!ProtoWriteEnabled || status == null)
                 return EncodeLegacy(status);
-            var plain = status.ToByteArray();
-            using var output = new MemoryStream();
-            output.WriteByte(ProtoMarker);
-            using(var gzip = new GZipStream(output, CompressionLevel.Optimal))
-                gzip.Write(plain, 0, plain.Length);
-            return output.ToArray();
+            return StorageCompression.Compress(status.ToByteArray(), StorageCompressionStrategy.CoopStatus);
         }
 
         private static byte[] EncodeLegacy(Ei.ContractCoopStatusResponse status) {
@@ -46,6 +41,8 @@ namespace EGG9000.Common.Database {
                 return DecodeLegacy(stored);
             if(stored is { Length: >= 2 } && stored[0] == ProtoMarker)
                 return DecodeProto(stored);
+            if(StorageCompression.IsEnveloped(stored))
+                return WithRecomputedTimeLeft(Ei.ContractCoopStatusResponse.Parser.ParseFrom(StorageCompression.Decompress(stored)));
             throw new InvalidDataException("Unknown coop status payload format.");
         }
 
@@ -60,7 +57,10 @@ namespace EGG9000.Common.Database {
         private static Ei.ContractCoopStatusResponse DecodeProto(byte[] stored) {
             using var input = new MemoryStream(stored, 1, stored.Length - 1, writable: false);
             using var gzip = new GZipStream(input, CompressionMode.Decompress);
-            var status = Ei.ContractCoopStatusResponse.Parser.ParseFrom(gzip);
+            return WithRecomputedTimeLeft(Ei.ContractCoopStatusResponse.Parser.ParseFrom(gzip));
+        }
+
+        private static Ei.ContractCoopStatusResponse WithRecomputedTimeLeft(Ei.ContractCoopStatusResponse status) {
             foreach(var contributor in status.Contributors)
                 contributor.TimeLeftSeconds = status.SecondsRemaining;
             return status;
