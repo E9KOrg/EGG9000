@@ -9,6 +9,7 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Helpers.Discord.ComponentsV2;
 using EGG9000.Common.Services;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
@@ -55,32 +56,6 @@ namespace EGG9000.Bot.Commands {
 
     public class StaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
-
-        [SlashCommand("clearcustomeggs", "Clear ALL custom eggs from the DB, and remove Emoji.")]
-        [StaffOnly(StaffTier.Admin)]
-        [DefaultMemberPermissions(GuildPermission.Administrator | GuildPermission.ManageChannels | GuildPermission.ManageRoles)]
-        public async Task ClearCustomEggs() {
-            await Context.Interaction.DeferAsync();
-
-            var customEggs = await Db.GetCustomEggsAsync();
-
-            foreach(var egg in customEggs) {
-                // DEV9K Overflow Server in dev/debug, Cluckingham Overflow 4 in release
-                var emojiServer = (BuildConfig.IsDev9002 || BuildConfig.IsDebug)
-                    ? _client.GetGuild(1130233910966620290)
-                    : _client.GetGuild(1147264073659064420);
-                if(emojiServer != null) {
-                    var emote = await emojiServer.GetEmoteAsync(egg.EmojiId);
-                    await emojiServer.DeleteEmoteAsync(emote);
-                }
-
-                Db.CustomEggs.Remove(egg);
-            }
-            await Db.SaveChangesAsync();
-            Db._cache.InvalidateCustomEggs();
-
-            await Context.Interaction.ModifyOriginalResponseAsync(async r => r.Content = $"Size before: {customEggs.Count}\nSize after: {(await Db.GetCustomEggsAsync()).Count}");
-        }
 
         [SlashCommand("as", "Log a Message")]
         [StaffOnly(StaffTier.Admin)]
@@ -180,29 +155,19 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("pingeveryoneincoop", "Ping everyone in a co-op with a message")]
+        [ChannelContext(CoopWithUsers = true)]
         public async Task PingEveryoneInCoop([Summary("message")] string message) {
-            var coop = await Db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == Context.Interaction.ChannelId);
-            if(coop == null) {
-                await Context.Interaction.RespondAsyncGettingMessage($"Error finding co-op for this thread", ephemeral: true);
-                return;
-            }
-
             await Context.Interaction.RespondAsyncGettingMessage($"Pinging now", ephemeral: true);
 
-            var pings = String.Join(" ", coop.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
+            var pings = string.Join(" ", CoopChannel.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
 
             await Context.Channel.SendMessageAsync($"{pings} {message}");
         }
 
         [SlashCommand("fixjoinissue", "Fix where the server doesn't show them as joined")]
+        [ChannelContext(Coop = true)]
         public async Task FixJoinIssue([Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Summary("useraccount")] string useraccount) {
             await Context.Interaction.DeferAsync(ephemeral: true);
-
-            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id);
-            if(coop == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
-                return;
-            }
 
             var userid = useraccount.Split("|")[0];
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
@@ -219,16 +184,16 @@ namespace EGG9000.Bot.Commands {
 
             var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
 
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                ContractIdentifier = CoopChannel.ContractID,
+                CoopIdentifier = CoopChannel.Name.ToLower(),
                 UserId = account.Id,
-                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
+                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)CoopChannel.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
             }, account.Id);
 
 
             var updateResponse = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                ContractIdentifier = CoopChannel.ContractID,
+                CoopIdentifier = CoopChannel.Name.ToLower(),
                 Eop = 1, SoulPower = 24, UserId = account.Id, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = account.Backup.DeviceId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
                 ProductionParams = new Ei.FarmProductionParams {
                     FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
@@ -240,48 +205,24 @@ namespace EGG9000.Bot.Commands {
     }
 
     public partial class BotGroupModule {
-        [SlashCommand("status", "Get the bot's status")]
-        public async Task Status() {
-            var command = Context.Interaction;
-            var lastComplete = await Db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(x => x.OrderByDescending(y => y.EndTime).First()).ToListAsync();
-            var last24 = await Db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1) && x.EndTime.HasValue).ToListAsync();
-            var averages = last24.GroupBy(x => x.Type).Select(x => new { Type = x.Key, Avg = x.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()) }).ToList();
-            var table = new List<List<FixedWidthCell>> {new() {
-                new("Name"),
-                new("Avg"),
-                new("Last🏁"),
-                new("Attempts"),
-                new("Status")
-            }};
-            foreach(var log in lastComplete.OrderBy(x => x.Type)) {
-                var incompletes = await Db.AutomationLogs.Where(x => x.StartTime > log.EndTime && x.Type == log.Type).ToListAsync();
-                var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == log.Type);
-                if(service == null || service is not IUpdaterService castedService) continue;
-
-                table.Add([
-                    new(log.Type),
-                    new(
-                        averages.Any(x => x.Type == log.Type) ?
-                        TimeSpan.FromSeconds(averages.First(x => x.Type == log.Type).Avg).Humanize().ShortenTime()
-                        : ""),
-                    new((DateTimeOffset.UtcNow - log.EndTime.Value).Humanize().ShortenTime()),
-                    new(incompletes.Count.ToString()),
-                    new(
-                        castedService.Running() ?
-                            (incompletes.Any(x => !x.Skipped) ?
-                            $"Current run {(DateTimeOffset.UtcNow - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}"
-                            : "Started"
-                            )
-                        : "Stopped"
-                        )
-                ]);
-            }
-
-            await command.RespondAsyncGettingMessage($"```\n{GetTable(table)}```");
+        public enum ServiceAction {
+            Restart,
+            Stop,
+            Run,
+            Start,
         }
 
-        [SlashCommand("restartservice", "Restart an automated service")]
-        public async Task RestartService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+        [SlashCommand("service", "Control an automated service")]
+        public async Task Service([Summary("action")] ServiceAction action, [Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+            switch(action) {
+                case ServiceAction.Restart: await RestartServiceImpl(serviceName); break;
+                case ServiceAction.Stop: await StopServiceImpl(serviceName); break;
+                case ServiceAction.Run: await RunServiceImpl(serviceName); break;
+                case ServiceAction.Start: await StartServiceImpl(serviceName); break;
+            }
+        }
+
+        private async Task RestartServiceImpl(string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -325,8 +266,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Restarted {serviceName}"); });
         }
 
-        [SlashCommand("stopservice", "Stop an automated service")]
-        public async Task StopService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+        private async Task StopServiceImpl(string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -361,8 +301,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Stopped {serviceName}"); });
         }
 
-        [SlashCommand("runservice", "Run automated service now")]
-        public async Task RunService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+        private async Task RunServiceImpl(string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -397,8 +336,7 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Ran {serviceName}"); });
         }
 
-        [SlashCommand("startservice", "Start an automated service")]
-        public async Task StartService([Autocomplete(typeof(ServiceNameAutoComplete))][Summary("servicename")] string serviceName) {
+        private async Task StartServiceImpl(string serviceName) {
             var command = Context.Interaction;
             await command.DeferAsync();
             var service = serviceProvider.GetServices<IHostedService>().FirstOrDefault(x => x.GetType().Name == serviceName);
@@ -430,49 +368,6 @@ namespace EGG9000.Bot.Commands {
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Started {serviceName}"); });
         }
 
-        [SlashCommand("dbload", "Database load, cache sizes, and process memory")]
-        public async Task DbLoad() {
-            var command = Context.Interaction;
-            await command.DeferAsync(ephemeral: true);
-
-            var sw = Stopwatch.StartNew();
-            await Db.Database.ExecuteSqlRawAsync("SELECT 1");
-            var pingMs = sw.ElapsedMilliseconds;
-
-            var proc = Process.GetCurrentProcess();
-            var workingMb = proc.WorkingSet64 / 1_048_576.0;
-            var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
-
-            var cacheCount = Db._cache is MemoryCache mc ? mc.Count : -1;
-
-            var trackerEntries = Db.ChangeTracker.Entries().ToList();
-            var pending = trackerEntries.Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
-
-            var activeCoops = await Db.Coops.CountAsync(x => !x.Finished && x.CoopEnds > DateTimeOffset.UtcNow);
-            var dbUsers = await Db.DBUsers.CountAsync();
-            var contracts = await Db.Contracts.CountAsync();
-            var events = await Db.Events.CountAsync();
-            var autoLogs = await Db.AutomationLogs.CountAsync(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1));
-
-            var rows = new List<List<FixedWidthCell>> {
-                new() { new("DB Ping"), new($"{pingMs} ms", CellAlignment.Right) },
-                new() { new("Working Set"), new($"{workingMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC Heap"), new($"{gcHeapMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC (0/1/2)"), new($"{GC.CollectionCount(0)} / {GC.CollectionCount(1)} / {GC.CollectionCount(2)}", CellAlignment.Right) },
-                new() { new("Cache"), new(cacheCount >= 0 ? $"{cacheCount}" : "n/a", CellAlignment.Right) },
-                new() { new("Tracked"), new($"{trackerEntries.Count}", CellAlignment.Right) },
-                new() { new("Pending"), new($"{pending}", CellAlignment.Right) },
-                null,
-                new() { new("DBUsers"), new($"{dbUsers:N0}", CellAlignment.Right) },
-                new() { new("Active Coops"), new($"{activeCoops:N0}", CellAlignment.Right) },
-                new() { new("Contracts"), new($"{contracts:N0}", CellAlignment.Right) },
-                new() { new("Events"), new($"{events:N0}", CellAlignment.Right) },
-                new() { new("AutoLogs 24h"), new($"{autoLogs:N0}", CellAlignment.Right) },
-            };
-
-            await command.RespondAsyncGettingMessage($"```\n{GetTable(rows)}```", ephemeral: true);
-        }
-
         [SlashCommand("coopstats", "Active Co-op Stats")]
         public async Task CoopStats() {
             var command = Context.Interaction;
@@ -501,6 +396,72 @@ namespace EGG9000.Bot.Commands {
             for(var i = 1; i < messages.Count; i++) {
                 await command.Channel.SendMessageAsync(messages[i]);
             }
+        }
+
+        [SlashCommand("identify", "Identify what a Discord ID refers to (user, channel, guild, role, emoji)")]
+        public async Task Identify([Summary("id", "The Discord ID (snowflake) to identify")] string id) {
+            var command = Context.Interaction;
+            await command.DeferAsync(ephemeral: true);
+
+            var digits = new string(id.Where(char.IsDigit).ToArray());
+            if(!ulong.TryParse(digits, out var snowflake)) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ComponentsV2EmbedHelpers.Error($"`{id}` is not a valid Discord ID."); });
+                return;
+            }
+
+            var createdAt = SnowflakeUtils.FromSnowflake(snowflake);
+            var createdLine = $"Created: {DiscordHelpers.TimeStamper(createdAt, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)} ({DiscordHelpers.TimeStamper(createdAt, DiscordHelpers.DiscordTimestampFormat.Relative)})";
+
+            IDiscordClient client = gateway;
+            var guild = await client.GetGuildAsync(snowflake);
+            var channel = await client.GetChannelAsync(snowflake);
+            var role = gateway.Guilds.SelectMany(g => g.Roles).FirstOrDefault(r => r.Id == snowflake);
+            var emoteMatch = gateway.Guilds.SelectMany(g => g.Emotes.Select(e => (Guild: g, Emote: e))).FirstOrDefault(x => x.Emote.Id == snowflake);
+            var user = await client.GetUserAsync(snowflake);
+
+            string title, body;
+            if(guild is not null) {
+                title = "Guild";
+                body = $"**{guild.Name}**\nOwner: <@{guild.OwnerId}>\nID: `{guild.Id}`";
+            } else if(channel is not null) {
+                var kind = channel switch {
+                    IThreadChannel => "Thread",
+                    IForumChannel => "Forum Channel",
+                    IStageChannel => "Stage Channel",
+                    IVoiceChannel => "Voice Channel",
+                    ICategoryChannel => "Category",
+                    ITextChannel => "Text Channel",
+                    IDMChannel => "DM Channel",
+                    _ => channel.GetType().Name
+                };
+                title = kind;
+                var guildLine = channel is IGuildChannel gc ? $"\nGuild: {gc.Guild.Name} (`{gc.Guild.Id}`)" : "";
+                body = $"**{channel.Name}**{guildLine}\nMention: <#{channel.Id}>\nID: `{channel.Id}`";
+            } else if(role is not null) {
+                title = "Role";
+                body = $"**{role.Name}**\nGuild: {role.Guild.Name} (`{role.Guild.Id}`)\nPosition: {role.Position}\nMention: <@&{role.Id}>\nID: `{role.Id}`";
+            } else if(emoteMatch.Emote is not null) {
+                title = "Emoji";
+                body = $"**{emoteMatch.Emote.Name}**{(emoteMatch.Emote.Animated ? " (animated)" : "")}\nGuild: {emoteMatch.Guild.Name} (`{emoteMatch.Guild.Id}`)\nID: `{emoteMatch.Emote.Id}`";
+            } else if(user is not null) {
+                title = "User";
+                body = $"**{user.Username}**{(user.IsBot ? " (bot)" : "")}\nMention: <@{user.Id}>\nID: `{user.Id}`";
+            } else {
+                title = "Unknown";
+                body = $"Not found as a guild, channel, role, emoji, or user visible to the bot.\nID: `{snowflake}`\n\n_Could be a message, attachment, or interaction ID - those can't be looked up without channel context._";
+            }
+
+            await command.ModifyOriginalResponseAsync(x => {
+                x.Content = "";
+                x.Embed = null;
+                x.Flags = MessageFlags.ComponentsV2;
+                x.Components = new ComponentBuilderV2()
+                    .AddComponent(new ContainerBuilder()
+                        .WithAccentColor(title == "Unknown" ? Color.LightGrey : Color.Blue)
+                        .WithHeader($"Identify: {title}")
+                        .WithTextDisplay($"{body}\n\n{createdLine}"))
+                    .Build();
+            });
         }
     }
 }

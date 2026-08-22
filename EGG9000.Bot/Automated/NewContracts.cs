@@ -35,6 +35,8 @@ namespace EGG9000.Bot.Automated {
 
         private static readonly bool _debug = BuildConfig.IsDev9002 || BuildConfig.IsDebug;
 
+        private DateTimeOffset _lastWarningSent = DateTimeOffset.MinValue;
+
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var needsUpdate = false;
@@ -45,9 +47,17 @@ namespace EGG9000.Bot.Automated {
             await _db.Database.CloseConnectionAsync();
             var contractsResponse = await EggIncApi.GetPeriodicalsAsync();
 
+
             if(contractsResponse == null) {
                 _logger.LogWarning("⚠️ERROR: Invalid Contract Response");
             } else {
+                if(!string.IsNullOrEmpty(contractsResponse.Contracts.WarningMessage) && _lastWarningSent.AddHours(6) < DateTimeOffset.UtcNow) {
+                    _lastWarningSent = DateTimeOffset.UtcNow;
+                    _logger.LogWarning(contractsResponse.Contracts.WarningMessage);
+                    await _client.SendDMToKendrome($"Contracts Response Warning: {contractsResponse.Contracts.WarningMessage}");
+
+                }
+
                 var existingContracts = await _db.Contracts.Include(x => x.GuildContracts).ToListAsync(CancellationToken.None);
 
                 var contracts = contractsResponse.Contracts.Contracts.ToList();
@@ -209,7 +219,7 @@ namespace EGG9000.Bot.Automated {
             await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
 
             if(cachesChanged)
-                await _db.ExpireCachedEiContractsAsync(_provider.GetRequiredService<MassTransit.IPublishEndpoint>());
+                await _db.ExpireCachedEiContractsAsync(_provider.GetService<MassTransit.IPublishEndpoint>());
 
             if(needsUpdate)
                 ContractUpdater.ResetTimeStatic();
@@ -303,8 +313,8 @@ namespace EGG9000.Bot.Automated {
                         var capturedUltraMessage = ultraMessageOut;
                         var capturedDb = _db;
                         var dmResult = await _queue.EnqueueLowAsync(() => BoolSendDm(capturedPingUser, capturedUltraMessage, capturedDb));
-                        if(dmResult != DMResult.Success) {
-                            _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} {reason}.", pingableUser.DiscordUsername, dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)");
+                        if(!dmResult.Success) {
+                            _logger.LogInformation("Unable to send 'Ultra Contract Release' message to {username} {reason}.", pingableUser.DiscordUsername, dmResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)");
                         }
                     }
                 }

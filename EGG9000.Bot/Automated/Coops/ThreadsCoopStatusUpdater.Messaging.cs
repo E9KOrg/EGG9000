@@ -250,12 +250,15 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var percent = coopDetails.GetProjectedShare(x);
 
-                if(x.DBUser is null) {
+                var igUsername = !string.IsNullOrWhiteSpace(x.CoopStatus?.UserName) ? x.CoopStatus.UserName : x.Backup?.UserName;
+                var csStrippedUsername = MyRegex().Replace(igUsername, "");
 
-                }
+                var usernameEmoji = (everyoneJoined || x.DBUser is null) ? "" : (x.CoopStatus is not null ? "✅" : "❌");
+                if(x.DBUser is null)
+                    usernameEmoji += "👽";
 
                 return new List<FixedWidthCell> {
-                    new(Truncate((everyoneJoined || x.DBUser is null ? "" : x.CoopStatus is not null ? "✅" : "❌") + (x.DBUser is null ? "👽" : "") + MyRegex().Replace(x.CoopStatus?.UserName ?? x.Backup?.UserName, ""), 11)),
+                    new(Truncate($"{usernameEmoji}{csStrippedUsername}", 11)),
                     new(Truncate(MyRegex().Replace(x.DiscordUser?.GetCleanName() ?? "", ""), 11)),
                     new(x.EarningsBonus.ToEggString(), CellAlignment.Right),
                     new(x.EggsShipped.ToEggString(), CellAlignment.Right),

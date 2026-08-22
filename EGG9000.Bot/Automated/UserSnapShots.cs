@@ -46,16 +46,16 @@ namespace EGG9000.Bot.Automated {
                         // per-day guard, so a partial run (cancel/restart) is safe to re-run -
                         // accounts already snapped today are skipped and missed ones get picked
                         // up on the next pass, instead of a single global flag starving the tail.
-                        if(lastSnapshot?.Date == DateTime.UtcNow.Date) continue;
+                        //if(lastSnapshot?.Date == DateTime.UtcNow.Date) continue;
 
                         var newVirtueStats = new VirtueSnapshotStats {
                             CurrentEgg = backup.MaxEggReached,
                             Delivered = new Dictionary<Ei.Egg, double> {
-                                [Ei.Egg.Curiosity] = backup.VirtueEggsDelivered.ElementAtOrDefault(0),
-                                [Ei.Egg.Integrity] = backup.VirtueEggsDelivered.ElementAtOrDefault(1),
-                                [Ei.Egg.Humility] = backup.VirtueEggsDelivered.ElementAtOrDefault(2),
-                                [Ei.Egg.Resilience] = backup.VirtueEggsDelivered.ElementAtOrDefault(3),
-                                [Ei.Egg.Kindness] = backup.VirtueEggsDelivered.ElementAtOrDefault(4),
+                                [Ei.Egg.Curiosity] = backup.VirtueEggsDelivered?.ElementAtOrDefault(0) ?? 0,
+                                [Ei.Egg.Integrity] = backup.VirtueEggsDelivered?.ElementAtOrDefault(1) ?? 0,
+                                [Ei.Egg.Humility] = backup.VirtueEggsDelivered?.ElementAtOrDefault(2) ?? 0,
+                                [Ei.Egg.Resilience] = backup.VirtueEggsDelivered?.ElementAtOrDefault(3) ?? 0,
+                                [Ei.Egg.Kindness] = backup.VirtueEggsDelivered?.ElementAtOrDefault(4) ?? 0,
                             },
                             TeTotal = backup.EggsOfTruthTotal,
                             TeEarned = backup.EggsOfTruth,
@@ -86,6 +86,7 @@ namespace EGG9000.Bot.Automated {
                             EggsOfTruth = backup.EggsOfTruth,
                             VirtueStats = newVirtueStats,
                         });
+
                         _logger.LogTrace("Adding Snapshot for {user}", user.Id);
                         if(snapshots++ >= 50) {
                             snapshots = 0;

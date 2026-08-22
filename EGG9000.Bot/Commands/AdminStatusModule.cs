@@ -16,7 +16,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.FixedWidthTable;
@@ -24,64 +26,6 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Commands {
     public partial class BotGroupModule {
-
-        [SlashCommand("botstatus", "One-look bot/DB/deploy/load status")]
-        public async Task BotStatus() {
-            await Context.Interaction.DeferAsync(ephemeral: true);
-            var stats = serviceProvider.GetRequiredService<CoopStatsCache>();
-
-            var buildConfig = BuildConfig.Current switch {
-                BuildConfiguration.Debug => "Debug",
-                BuildConfiguration.Dev9001 => "DEV9001",
-                BuildConfiguration.Dev9002 => "DEV9002",
-                BuildConfiguration.Release => "Release",
-                _ => "Unknown"
-            };
-
-            var proc = Process.GetCurrentProcess();
-            var uptime = (DateTime.Now - proc.StartTime).Humanize();
-
-            var updaters = serviceProvider.GetServices<IHostedService>().OfType<IUpdaterService>().ToList();
-            var runningServices = updaters.Count(x => x.Running());
-
-            var sw = Stopwatch.StartNew();
-            await Db.Database.ExecuteSqlRawAsync("SELECT 1");
-            var pingMs = sw.ElapsedMilliseconds;
-
-            var trackerEntries = Db.ChangeTracker.Entries().ToList();
-            var pending = trackerEntries.Count(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted);
-
-            var workingMb = proc.WorkingSet64 / 1_048_576.0;
-            var gcHeapMb = GC.GetTotalMemory(false) / 1_048_576.0;
-            var cacheCount = Db._cache is MemoryCache mc ? mc.Count : -1;
-
-            var statsAge = stats.LastRefresh is { } t ? (DateTimeOffset.UtcNow - t).Humanize().ShortenTime() : "never";
-            var server = Context.Guild?.Id is ulong gid ? stats.GetServerStats(gid) : null;
-
-            var rows = new List<List<FixedWidthCell>> {
-                new() { new("Build"), new(buildConfig, CellAlignment.Right) },
-                new() { new("Uptime"), new(uptime, CellAlignment.Right) },
-                null,
-                new() { new("Services Up"), new($"{runningServices}/{updaters.Count}", CellAlignment.Right) },
-                null,
-                new() { new("DB Ping"), new($"{pingMs} ms", CellAlignment.Right) },
-                new() { new("Tracked"), new($"{trackerEntries.Count}", CellAlignment.Right) },
-                new() { new("Pending"), new($"{pending}", CellAlignment.Right) },
-                null,
-                new() { new("Working Set"), new($"{workingMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC Heap"), new($"{gcHeapMb:F1} MB", CellAlignment.Right) },
-                new() { new("GC (0/1/2)"), new($"{GC.CollectionCount(0)} / {GC.CollectionCount(1)} / {GC.CollectionCount(2)}", CellAlignment.Right) },
-                new() { new("Cache"), new(cacheCount >= 0 ? $"{cacheCount}" : "n/a", CellAlignment.Right) },
-                new() { new("Stats Age"), new(statsAge, CellAlignment.Right) },
-                null,
-                new() { new("Active Contracts"), new($"{server?.ActiveContracts ?? 0}", CellAlignment.Right) },
-                new() { new("Active Coops"), new($"{server?.ActiveCoops ?? 0}", CellAlignment.Right) },
-                new() { new("Pending Threads"), new($"{server?.PendingThreads ?? 0}", CellAlignment.Right) },
-                new() { new("Players In Coops"), new($"{server?.UsersAssigned ?? 0}", CellAlignment.Right) },
-            };
-
-            await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = $"```\n{GetTable(rows)}```"; });
-        }
 
         // Live /a sysload sessions, keyed by message id. Tracks current section + cancellation
         // source so refresh re-renders the right section and Stop / dismiss / 30s cap can cancel.
@@ -110,13 +54,15 @@ namespace EGG9000.Bot.Commands {
         private static string HealthDot(double h) => h >= 0.8 ? "\U0001F7E2" : h >= 0.5 ? "\U0001F7E1" : "\U0001F534";
         private static int HealthPct(double h) => (int)Math.Round(Math.Clamp(h, 0, 1) * 100);
 
+        private sealed record ServiceRow(string Name, string Avg, string Last, int Attempts, string Status);
+
         private sealed record SysLoadSnapshot(
             long Ping, double WorkingMb, double GcHeapMb, int Threads, double CpuMin, int CacheCount,
             int Tracked, int Pending, int ActiveCoops, int DbUsers, int Contracts, int Events, int AutoLogs,
             long ApiCalls, long ApiFails, long DbQueries, long Commands, long CmdFails, long DiscordOps,
             int Latency, int Guilds, int QHigh, int QLow, int QHighW, int QLowW,
             double RuntimeHealth, double DiscordHealth, double ProcessHealth, double DbHealth,
-            long StartedUnix, long NowUnix) {
+            long StartedUnix, long NowUnix, IReadOnlyList<ServiceRow> Services) {
             public double Worst {
                 get {
                     return Math.Min(Math.Min(RuntimeHealth, DiscordHealth), Math.Min(ProcessHealth, DbHealth));
@@ -124,7 +70,7 @@ namespace EGG9000.Bot.Commands {
             }
         }
 
-        private static async Task<SysLoadSnapshot> GatherSysLoad(ApplicationDbContext db, DiscordSocketClient client, IDiscordQueue queue) {
+        private static async Task<SysLoadSnapshot> GatherSysLoad(ApplicationDbContext db, DiscordSocketClient client, IDiscordQueue queue, IServiceProvider serviceProvider) {
             var sw = Stopwatch.StartNew();
             await db.Database.ExecuteSqlRawAsync("SELECT 1");
             var pingMs = sw.ElapsedMilliseconds;
@@ -158,16 +104,39 @@ namespace EGG9000.Bot.Commands {
             var processHealth = Math.Min(HealthRange(workingMb, 1200, 4000), HealthRange(gcHeapMb, 500, 3000));
             var dbHealth = Math.Min(HealthRange(pingMs, 50, 500), HealthRange(pending, 25, 250));
 
+            var lastComplete = await db.AutomationLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).Select(g => g.OrderByDescending(y => y.EndTime).First()).ToListAsync();
+            var recentLogs = await db.AutomationLogs.Where(x => x.StartTime > DateTimeOffset.UtcNow.AddDays(-1)).ToListAsync();
+            var serviceAverages = recentLogs.Where(x => x.EndTime.HasValue).GroupBy(x => x.Type).ToDictionary(g => g.Key, g => g.Average(y => y.EndTime.Value.ToUnixTimeSeconds() - y.StartTime.ToUnixTimeSeconds()));
+            var updaterServices = serviceProvider.GetServices<IHostedService>().ToList();
+            var serviceRows = new List<ServiceRow>();
+            foreach(var log in lastComplete.OrderBy(x => x.Type)) {
+                if(updaterServices.FirstOrDefault(x => x.GetType().Name == log.Type) is not IUpdaterService updater) continue;
+                var incompletes = recentLogs.Where(x => x.Type == log.Type && x.StartTime > log.EndTime).ToList();
+                var avg = serviceAverages.TryGetValue(log.Type, out var a) ? TimeSpan.FromSeconds(a).Humanize().ShortenTime() : "";
+                var last = (DateTimeOffset.UtcNow - log.EndTime.Value).Humanize().ShortenTime();
+                var status = updater.Running()
+                    ? (incompletes.Any(x => !x.Skipped) ? $"Run {(DateTimeOffset.UtcNow - incompletes.Last(x => !x.Skipped).StartTime).Humanize().ShortenTime()}" : "Started")
+                    : "Stopped";
+                serviceRows.Add(new ServiceRow(log.Type, avg, last, incompletes.Count, status));
+            }
+
             return new SysLoadSnapshot(pingMs, workingMb, gcHeapMb, proc.Threads.Count, proc.TotalProcessorTime.TotalMinutes, cacheCount,
                 tracked, pending, activeCoops, dbUsers, contracts, events, autoLogs,
                 apiCalls, apiFails, RuntimeMetrics.DbQueries, commands, cmdFails, RuntimeMetrics.DiscordOps,
                 latency, guilds, qHigh, qLow, queue?.HighWorkers ?? 0, queue?.LowWorkers ?? 0,
                 runtimeHealth, discordHealth, processHealth, dbHealth,
-                RuntimeMetrics.StartedAt.ToUnixTimeSeconds(), DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                RuntimeMetrics.StartedAt.ToUnixTimeSeconds(), DateTimeOffset.UtcNow.ToUnixTimeSeconds(), serviceRows);
         }
 
         private static string SysLoadContent(SysLoadSnapshot s) =>
             $"-# Counters since <t:{s.StartedUnix}:R> · updated <t:{s.NowUnix}:R>";
+
+        private static List<List<FixedWidthCell>> BuildServiceTable(IReadOnlyList<ServiceRow> services) {
+            var table = new List<List<FixedWidthCell>> { new() { new("Name"), new("Avg"), new("Last"), new("Att"), new("Status") } };
+            foreach(var svc in services)
+                table.Add([new(svc.Name), new(svc.Avg), new(svc.Last), new(svc.Attempts.ToString()), new(svc.Status)]);
+            return table;
+        }
 
         private static Embed SysLoadSection(string section, SysLoadSnapshot s) {
             string Metric(long total, double perMin) => $"`{total:N0}` total\n`{perMin:F1}`/min";
@@ -211,6 +180,11 @@ namespace EGG9000.Bot.Commands {
                     .AddField("Events", $"`{s.Events:N0}`", inline: true)
                     .AddField("AutoLogs 24h", $"`{s.AutoLogs:N0}`", inline: true)
                     .Build(),
+                "services" => new EmbedBuilder()
+                    .WithAuthor($"Automated Services  -  {(s.Services.Count == 0 ? 100 : HealthPct((double)s.Services.Count(x => x.Status != "Stopped") / s.Services.Count))}% up")
+                    .WithColor(HealthColor(s.Services.Count == 0 ? 1 : (double)s.Services.Count(x => x.Status != "Stopped") / s.Services.Count))
+                    .WithDescription(s.Services.Count == 0 ? "No service runs recorded yet." : $"```\n{GetTable(BuildServiceTable(s.Services))}```")
+                    .Build(),
                 _ => new EmbedBuilder()
                     .WithAuthor($"System Load  -  {HealthPct(s.Worst)}% healthy")
                     .WithColor(HealthColor(s.Worst))
@@ -233,7 +207,8 @@ namespace EGG9000.Bot.Commands {
                 .AddOption("Runtime Usage", "runtime", isDefault: section == "runtime")
                 .AddOption("Discord", "discord", isDefault: section == "discord")
                 .AddOption("Process", "process", isDefault: section == "process")
-                .AddOption("Database", "database", isDefault: section == "database");
+                .AddOption("Database", "database", isDefault: section == "database")
+                .AddOption("Services", "services", isDefault: section == "services");
             var cb = new ComponentBuilder().WithSelectMenu(menu);
             if(autoRefreshing)
                 cb.WithButton("Stop refreshing", customId: "SysLoadStop", style: ButtonStyle.Secondary, row: 1);
@@ -253,11 +228,11 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.DeferAsync(ephemeral: !showinchannel);
 
             var queue = serviceProvider.GetService<IDiscordQueue>();
-            var snap = await GatherSysLoad(Db, gateway, queue);
+            var snap = await GatherSysLoad(Db, gateway, queue, serviceProvider);
             var refreshing = refreshseconds > 0;
             var interval = Math.Clamp(refreshseconds, 1, 30);
 
-            var interactionStart = (SocketInteraction)Context.Interaction;
+            var interactionStart = Context.Interaction;
             var message = await interactionStart.RespondAsyncGettingMessage(content: SysLoadContent(snap), embed: SysLoadSection("overview", snap),
                 ephemeral: !showinchannel, components: SysLoadComponents("overview", refreshing, !showinchannel));
             if(!refreshing || message is null)
@@ -268,6 +243,7 @@ namespace EGG9000.Bot.Commands {
             _sysLoad[message.Id] = session;
             var factory = serviceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
             var gatewayCapt = gateway;
+            var spCapt = serviceProvider;
             var interaction = Context.Interaction;
 
             _ = Task.Run(async () => {
@@ -277,7 +253,7 @@ namespace EGG9000.Bot.Commands {
                         await Task.Delay(TimeSpan.FromSeconds(interval), cts.Token);
                         if(cts.IsCancellationRequested) break;
                         await using var tickDb = await factory.CreateDbContextAsync();
-                        var fresh = await GatherSysLoad(tickDb, gatewayCapt, queue);
+                        var fresh = await GatherSysLoad(tickDb, gatewayCapt, queue, spCapt);
                         var sec = session.Section;
                         await interaction.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(fresh); x.Embed = SysLoadSection(sec, fresh); x.Components = SysLoadComponents(sec, true, !showinchannel); });
                     }
@@ -290,6 +266,19 @@ namespace EGG9000.Bot.Commands {
             }, cts.Token);
         }
 
+        [SlashCommand("dumpperms", "Dump this server's command permission overrides to a file")]
+        [StaffOnly(StaffTier.Admin)]
+        public async Task DumpPerms() {
+            await Context.Interaction.DeferAsync(ephemeral: true);
+
+            var report = await CommandPermissionDump.BuildReportAsync(gateway, Context.Guild.Id);
+            var bytes = Encoding.UTF8.GetBytes(report);
+
+            await Context.Interaction.FollowupWithFileAsync(
+                new FileAttachment(new MemoryStream(bytes), $"command-perms-{Context.Guild.Id}.txt"),
+                text: "Command permission overrides attached.", ephemeral: true);
+        }
+
         [ComponentInteraction("SysLoadNav", ignoreGroupNames: true)]
         public async Task SysLoadNav(string[] values) {
             await Context.Interaction.DeferAsync();
@@ -298,7 +287,7 @@ namespace EGG9000.Bot.Commands {
             var refreshing = _sysLoad.TryGetValue(component.Message.Id, out var session);
             if(refreshing) session.Section = section;
 
-            var snap = await GatherSysLoad(Db, gateway, serviceProvider.GetService<IDiscordQueue>());
+            var snap = await GatherSysLoad(Db, gateway, serviceProvider.GetService<IDiscordQueue>(), serviceProvider);
             await component.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(snap); x.Embed = SysLoadSection(section, snap); x.Components = SysLoadComponents(section, refreshing, IsEphemeral(component.Message)); });
         }
 
@@ -308,7 +297,7 @@ namespace EGG9000.Bot.Commands {
             var component = (SocketMessageComponent)Context.Interaction;
             var section = string.IsNullOrEmpty(data) ? "overview" : data;
             var refreshing = _sysLoad.ContainsKey(component.Message.Id);
-            var snap = await GatherSysLoad(Db, gateway, serviceProvider.GetService<IDiscordQueue>());
+            var snap = await GatherSysLoad(Db, gateway, serviceProvider.GetService<IDiscordQueue>(), serviceProvider);
             await component.ModifyOriginalResponseAsync(x => { x.Content = SysLoadContent(snap); x.Embed = SysLoadSection(section, snap); x.Components = SysLoadComponents(section, refreshing, IsEphemeral(component.Message)); });
         }
 
@@ -317,14 +306,14 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.DeferAsync();
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
-                session.Cts.Cancel();
+                await session.Cts.CancelAsync();
         }
 
         [ComponentInteraction("SysLoadDismiss", ignoreGroupNames: true)]
         public async Task SysLoadDismiss() {
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
-                session.Cts.Cancel();
+                await session.Cts.CancelAsync();
             try {
                 await component.Message.DeleteAsync();
             } catch {

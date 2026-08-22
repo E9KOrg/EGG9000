@@ -185,6 +185,8 @@ namespace EGG9000.Common.Database {
         // instead of waiting out the 1h TTL.
         public async Task ExpireCachedEiContractsAsync(MassTransit.IPublishEndpoint publishEndpoint) {
             ExpireCachedEiContracts();
+            if(publishEndpoint is null)
+                return;
             foreach(var key in _contractCacheKeys)
                 await publishEndpoint.Publish(new Consumers.ExpireCacheMessage(key));
         }
