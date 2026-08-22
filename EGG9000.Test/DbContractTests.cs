@@ -45,8 +45,9 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void ContractTime_BlobZeroLength_FallsThrough() {
-            var contract = new DBContract { length_seconds = 1200 };
+            var contract = new DBContract();
             contract.ApplyDetails(new Ei.Contract { Identifier = "x", LengthSeconds = 0 });
+            contract.length_seconds = 1200;
 
             Assert.AreEqual(TimeSpan.FromMinutes(20), contract.ContractTime);
         }
