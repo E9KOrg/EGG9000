@@ -3,7 +3,6 @@ using Ei;
 using Google.Protobuf.Reflection;
 using Humanizer;
 using MessagePack;
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -29,19 +28,12 @@ namespace EGG9000.Common.Database.Entities {
         public double Value { get; set; }
         public string _response { get; set; }
         [NotMapped]
-        private CustomEgg _details { get; set; }
+        private readonly JsonBlobAccessor<CustomEgg> _details = new();
         [NotMapped]
-        public CustomEgg Details {
-            get {
-                if(_response == null) return null;
-                _details ??= JsonConvert.DeserializeObject<CustomEgg>(_response);
-                return _details;
-            }
-        }
+        public CustomEgg Details => _details.Get(_response);
 
         public void ApplyDetails(CustomEgg egg) {
-            _details = egg;
-            _response = JsonConvert.SerializeObject(egg);
+            _response = _details.Set(egg, _response);
             Identifier = egg.Identifier;
             Name = egg.Name;
             Description = egg.Description;
@@ -52,35 +44,19 @@ namespace EGG9000.Common.Database.Entities {
 
         public byte[] _iconBytes { get; set; }
         [NotMapped]
-        private DBCustomEggIcon _icon { get; set; }
+        private readonly MessagePackBlobAccessor<DBCustomEggIcon> _icon = new();
         [NotMapped]
         public DBCustomEggIcon Icon {
-            get {
-                if(_icon != null) return _icon;
-                if(_iconBytes == null) return null;
-                _icon = MessagePackSerializer.Deserialize<DBCustomEggIcon>(_iconBytes);
-                return _icon;
-            }
-            set {
-                _icon = value;
-                _iconBytes = MessagePackSerializer.Serialize(value);
-            }
+            get => _icon.Get(_iconBytes);
+            set => _iconBytes = _icon.Set(value, _iconBytes);
         }
         public byte[] _modifiersBytes { get; set; }
         [NotMapped]
-        private List<DBCustomEggModifier> _modifiers { get; set; }
+        private readonly MessagePackBlobAccessor<List<DBCustomEggModifier>> _modifiers = new();
         [NotMapped]
         public List<DBCustomEggModifier> Modifiers {
-            get {
-                if(_modifiers != null) return _modifiers;
-                if(_modifiersBytes == null) return null;
-                _modifiers = MessagePackSerializer.Deserialize<List<DBCustomEggModifier>>(_modifiersBytes);
-                return _modifiers;
-            }
-            set {
-                _modifiers = value;
-                _modifiersBytes = MessagePackSerializer.Serialize(value);
-            }
+            get => _modifiers.Get(_modifiersBytes);
+            set => _modifiersBytes = _modifiers.Set(value, _modifiersBytes);
         }
         public string EmojiName { get; set; }
         public ulong EmojiId { get; set; }

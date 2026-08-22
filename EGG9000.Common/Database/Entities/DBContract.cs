@@ -29,20 +29,11 @@ namespace EGG9000.Common.Database.Entities {
         public bool HadTwoRewards { get; set; }
 
         [NotMapped]
-        private Ei.Contract _details { get; set; }
+        private readonly JsonBlobAccessor<Ei.Contract> _details = new();
         [NotMapped]
-        public Ei.Contract Details {
-            get {
-                if(_response == null) {
-                    return null;
-                }
-                _details ??= JsonConvert.DeserializeObject<Ei.Contract>(_response);
-                return _details;
-            }
-        }
+        public Ei.Contract Details => _details.Get(_response);
         public void OverwriteDetails(Ei.Contract details) {
-            _details = details;
-            _response = JsonConvert.SerializeObject(details);
+            _response = _details.Set(details, _response);
         }
 
         public void ApplyDetails(Ei.Contract details) {

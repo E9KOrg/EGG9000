@@ -89,48 +89,23 @@ namespace EGG9000.Common.Database.Entities {
         public ulong Group { get; set; }
         public bool GussetCheatDetected { get; set; } = false;
 
+        private static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]
-        private List<SleepTracking> _sleepTracking { get; set; }
+        private readonly MessagePackBlobAccessor<List<SleepTracking>> _sleepTracking = new(lz4Options, () => []);
         [NotMapped]
         public List<SleepTracking> SleepTracking {
-            get {
-                if(_sleepTracking != null)
-                    return _sleepTracking;
-                if(_sleepTrackingByte == null) {
-                    _sleepTracking = [];
-                    return _sleepTracking;
-                }
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _sleepTracking = MessagePackSerializer.Deserialize<List<SleepTracking>>(_sleepTrackingByte, lz4Options);
-                return _sleepTracking;
-            }
-            set {
-                _sleepTracking = value;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _sleepTrackingByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            get => _sleepTracking.Get(_sleepTrackingByte);
+            set => _sleepTrackingByte = _sleepTracking.Set(value, _sleepTrackingByte);
         }
 
         public byte[] _coopSettingByte { get; set; }
         [NotMapped]
-        private CoopSetting _coopSetting { get; set; }
+        private readonly MessagePackBlobAccessor<CoopSetting> _coopSetting = new(lz4Options);
         [NotMapped]
         public CoopSetting CoopSetting {
-            get {
-                if(_coopSetting != null)
-                    return _coopSetting;
-                if(_coopSettingByte == null)
-                    return null;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _coopSetting = MessagePackSerializer.Deserialize<CoopSetting>(_coopSettingByte, lz4Options);
-                return _coopSetting;
-            }
-            set {
-                _coopSetting = value;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _coopSettingByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            get => _coopSetting.Get(_coopSettingByte);
+            set => _coopSettingByte = _coopSetting.Set(value, _coopSettingByte);
         }
 
         public void UpdateCoopSetting() {
