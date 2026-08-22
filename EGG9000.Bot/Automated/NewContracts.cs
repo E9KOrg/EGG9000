@@ -167,16 +167,13 @@ namespace EGG9000.Bot.Automated {
                     _logger.LogWarning("Failed to fetch season infos: {error}", seasonInfosError);
                 } else {
                     foreach(var proto in seasonInfos.Infos.Where(SeasonInfo.HasPeRewards)) {
-                        var newInfo = SeasonInfo.FromProto(proto);
                         var existingSeason = await _db.SeasonInfos.FindAsync(proto.Id);
                         if(existingSeason == null) {
-                            _db.SeasonInfos.Add(newInfo);
+                            _db.SeasonInfos.Add(SeasonInfo.FromProto(proto));
                             cachesChanged = true;
                             _logger.LogInformation("New season {seasonId} added to DB", proto.Id);
-                        } else if(existingSeason.Name != newInfo.Name || existingSeason.StartTime != newInfo.StartTime || existingSeason.GoalsJson != newInfo.GoalsJson) {
-                            existingSeason.Name = newInfo.Name;
-                            existingSeason.StartTime = newInfo.StartTime;
-                            existingSeason.GoalsJson = newInfo.GoalsJson;
+                        } else if(existingSeason._response != JsonConvert.SerializeObject(proto)) {
+                            existingSeason.ApplyDetails(proto);
                             cachesChanged = true;
                         }
                     }
