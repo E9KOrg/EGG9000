@@ -3,6 +3,7 @@ using Ei;
 using Google.Protobuf.Reflection;
 using Humanizer;
 using MessagePack;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -17,12 +18,7 @@ namespace EGG9000.Common.Database.Entities {
 #pragma warning disable CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
         public DBCustomEgg(CustomEgg customEgg, Emote? emoji) {
 #pragma warning restore CS8632 // The annotation for nullable reference types should only be used in code within a '#nullable' annotations context.
-            Identifier = customEgg.Identifier;
-            Name = customEgg.Name;
-            Description = customEgg.Description;
-            Value = customEgg.Value;
-            Icon = new(customEgg.Icon);
-            Modifiers = [.. customEgg.Buffs.Select(b => new DBCustomEggModifier(b))];
+            ApplyDetails(customEgg);
             GuildEmote = emoji;
             Released = false;
         }
@@ -31,6 +27,29 @@ namespace EGG9000.Common.Database.Entities {
         public string Name { get; set; }
         public string Description { get; set; }
         public double Value { get; set; }
+        public string _response { get; set; }
+        [NotMapped]
+        private CustomEgg _details { get; set; }
+        [NotMapped]
+        public CustomEgg Details {
+            get {
+                if(_response == null) return null;
+                _details ??= JsonConvert.DeserializeObject<CustomEgg>(_response);
+                return _details;
+            }
+        }
+
+        public void ApplyDetails(CustomEgg egg) {
+            _details = egg;
+            _response = JsonConvert.SerializeObject(egg);
+            Identifier = egg.Identifier;
+            Name = egg.Name;
+            Description = egg.Description;
+            Value = egg.Value;
+            Icon = new(egg.Icon);
+            Modifiers = [.. egg.Buffs.Select(b => new DBCustomEggModifier(b))];
+        }
+
         public byte[] _iconBytes { get; set; }
         [NotMapped]
         private DBCustomEggIcon _icon { get; set; }
