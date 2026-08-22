@@ -127,6 +127,11 @@ namespace EGG9000.Bot.Automated {
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
 
                     var json = JsonConvert.SerializeObject(contractResponse);
+                    if(!contractResponse.Leggacy && contract != null && contract._response != json) {
+                        _logger.LogWarning("Contract {contractid} changed without the leggacy flag, marking it leggacy via fallback detection", contractResponse.Identifier);
+                        contractResponse.Leggacy = true;
+                        json = JsonConvert.SerializeObject(contractResponse);
+                    }
 
                     if(contract == null) {
                         contract = new DBContract {
@@ -149,6 +154,7 @@ namespace EGG9000.Bot.Automated {
                         }
                         _logger.LogInformation("Contract {contractid} updated", contract.ID);
                         contract.ApplyDetails(contractResponse);
+                        contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.GetCustomEggsAsync()).value;
                         await _db.SaveChangesAsync(CancellationToken.None);
                     }
 
