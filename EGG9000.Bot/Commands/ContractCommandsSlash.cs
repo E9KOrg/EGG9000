@@ -121,10 +121,15 @@ namespace EGG9000.Bot.Commands {
             public Coop FoundCoop { get; set; } = null;
         }
 
+        internal static async Task<List<UserCoopXref>> GetActiveUserCoopXrefsAsync(ApplicationDbContext db, DBUser user) {
+            var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Where(x => x.User == user).ToListAsync();
+            return [.. xrefs.Where(x => !x.Coop.FinishedOrFailedOrExpired())];
+        }
+
         public static async Task<PotentialCoopResponse> FindPotentialCoopForUser(EggIncAccount account, DBContract contract, Guild guild, DiscordSocketClient _client, ApplicationDbContext db, FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
 
             var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).Where(x => x.EggIncId == account.Id).ToListAsync();
-            var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && (int)r.Coop.Status > 2 && (int)r.Coop.Status < 13 && r.Coop.CoopEnds > DateTimeOffset.UtcNow);
+            var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && r.Coop.IsOpenForAssignment() && r.Coop.CoopEnds > DateTimeOffset.UtcNow);
 
             if(contract.cc_only && !account.HasActiveSubscription()) {
                 return new() { Response = PotentialCoopCode.NonUltra };
@@ -139,24 +144,21 @@ namespace EGG9000.Bot.Commands {
                 && c.GuildId == guild.Id
                 && (c.League == (uint)account.GetGrade() || c.AnyLeague)
                 && c.CurrentUsers < c.MaxUsers
-                && (int)c.Status > 2 && (int)c.Status < 13
+                && CoopStatusSets.OpenForAssignment.Contains(c.Status)
                 && c.CoopEnds > DateTimeOffset.UtcNow
                 && !c.PseudoExpired
                 && c.ProjectedFinish > DateTimeOffset.UtcNow
             ).ToListAsync();
+            if(coops.Count == 0) return new() { Response = PotentialCoopCode.NoSpots1 };
 
-            if(!coops.Any()) {
-                return new() { Response = PotentialCoopCode.NoSpots1 };
-            }
-
-            _ = priority switch {
-                FindCoopPrioritization.FinishTimeLow => coops = [.. coops.OrderBy(c => c.ProjectedFinish)],
-                FindCoopPrioritization.FinishTimeHigh => coops = [.. coops.OrderByDescending(c => c.ProjectedFinish)],
-                FindCoopPrioritization.LowPlayerCount => coops = [.. coops.OrderBy(c => c.UserCoopsXrefs.Count)],
-                FindCoopPrioritization.HighPlayerCount => coops = [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Count)],
-                FindCoopPrioritization.NeedsHighEB => coops = [.. coops.OrderBy(c => c.UserCoopsXrefs.Max(x => x.SoulPower))],
-                FindCoopPrioritization.HasHighEB => coops = [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Max(x => x.SoulPower))],
-                _ => coops = [.. coops.OrderBy(c => c.ProjectedFinish)],
+            coops = priority switch {
+                FindCoopPrioritization.FinishTimeLow => [.. coops.OrderBy(c => c.ProjectedFinish)],
+                FindCoopPrioritization.FinishTimeHigh => [.. coops.OrderByDescending(c => c.ProjectedFinish)],
+                FindCoopPrioritization.LowPlayerCount => [.. coops.OrderBy(c => c.UserCoopsXrefs.Count)],
+                FindCoopPrioritization.HighPlayerCount => [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Count)],
+                FindCoopPrioritization.NeedsHighEB => [.. coops.OrderBy(c => c.UserCoopsXrefs.Max(x => x.SoulPower))],
+                FindCoopPrioritization.HasHighEB => [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Max(x => x.SoulPower))],
+                _ => [.. coops.OrderBy(c => c.ProjectedFinish)],
             };
 
             var customEggs = await db.GetCustomEggsAsync();
@@ -258,7 +260,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var coops = await Db.Coops.Include(x => x.UserCoopsXrefs).Where(x => x.GuildId == targetCoop.GuildId && x.ContractID == targetCoop.ContractID && x.League == newgrade
-                && x.CurrentUsers < x.MaxUsers && (int)x.Status > 2 && (int)x.Status < 13 && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
+                && x.CurrentUsers < x.MaxUsers && CoopStatusSets.OpenForAssignment.Contains(x.Status) && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
 
             if(coops.Count == 0) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No open spots found for {PlayerGradeDetails.GetEmoji((PlayerGrade)newgrade)} {targetCoop.Contract.Name}"); });
@@ -418,7 +420,7 @@ namespace EGG9000.Bot.Commands {
                     GuildId = guildContract.GuildID,
                     Name = coopname,
                     MaxUsers = guildContract.Contract.MaxUsers,
-                    Status = CoopStatusEnum.WaitingOnThread,
+                    Status = CoopStatus.WaitingOnThread,
                     League = grade,
                     AnyLeague = anygrade,
                     CoopEnds = DateTimeOffset.UtcNow.AddSeconds(status.SecondsRemaining),
@@ -607,10 +609,10 @@ namespace EGG9000.Bot.Commands {
             var dbguild = await Db.Guilds.FirstAsync(x => x.Id == user.GuildId);
             var guildContract = await Db.GuildContracts.FirstOrDefaultAsync(gc => gc.GuildID == dbguild.Id && gc.Contract == contract);
 
-            var subscriptionAccountsCount = user.EggIncAccounts.Where(x => x.HasActiveSubscription()).Count();
+            var subscriptionAccountsCount = user.EggIncAccounts.Count(x => x.HasActiveSubscription());
 
-            var existContractXrefs = await Db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
-            var activeXrefs = await Db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
+            var activeXrefs = await ContractCommandsSlash.GetActiveUserCoopXrefsAsync(Db, user);
+            var existContractXrefs = activeXrefs.Where(x => x.Coop.Contract == contract).ToList();
             if(user.EggIncAccounts.Count == 1 || (contract.cc_only && subscriptionAccountsCount == 1)) {
 
                 EggIncAccount subAccountBypass = null;
@@ -625,7 +627,7 @@ namespace EGG9000.Bot.Commands {
 
                 var accountHasUltra = (subAccountBypass ?? user.EggIncAccounts.First()).HasActiveSubscription();
 
-                if(existContractXrefs is not null && existContractXrefs.Any(x => x.EggIncId == (subAccountBypass?.Id ?? user.EggIncAccounts?.First().Id))) {
+                if(existContractXrefs.Any(x => x.EggIncId == (subAccountBypass?.Id ?? user.EggIncAccounts?.First().Id))) {
                     var xref = existContractXrefs.First();
                     await Context.Interaction.ModifyOriginalResponseAsync(x => {
                         x.Content = ""; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: " +
@@ -634,7 +636,7 @@ namespace EGG9000.Bot.Commands {
                     return;
                 }
 
-                if(activeXrefs is not null && activeXrefs.Count(x => x.EggIncId == (subAccountBypass?.Id ?? user.EggIncAccounts?.First().Id)) >= 4) {
+                if(activeXrefs.Count(x => x.EggIncId == (subAccountBypass?.Id ?? user.EggIncAccounts?.First().Id)) >= 4) {
                     await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"You have 4 active coops, and cannot be assigned a new one at this time. Try again when a current coop finishes."); });
                     return;
                 }
@@ -682,7 +684,7 @@ namespace EGG9000.Bot.Commands {
                     .Where(x => x.UserId == dbUser.Id
                              && !x.JoinedCoop
                              && x.Coop.ContractID == guildContract.ContractID
-                             && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
+                             && CoopStatusSets.OpenForAssignment.Contains(x.Coop.Status)
                              && x.Coop.CoopEnds > DateTimeOffset.UtcNow && !x.Coop.PseudoExpired)
                     .Select(x => new AssignedCoop(x.Coop.Id, x.Coop.ThreadID, x.Coop.Name, x.Coop.ContractID))
                     .ToListAsync())
@@ -726,8 +728,8 @@ namespace EGG9000.Bot.Commands {
             var account = user.EggIncAccounts.First(x => x.Id == data.Split("|")[1]);
 
             var guildContract = await Db.GuildContracts.FirstAsync(gc => gc.GuildID == user.GuildId && gc.Contract == contract);
-            var existingXrefs = await Db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
-            var activeXrefs = await Db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
+            var activeXrefs = await ContractCommandsSlash.GetActiveUserCoopXrefsAsync(Db, user);
+            var existingXrefs = activeXrefs.Where(x => x.Coop.Contract == contract).ToList();
 
             var userList = new List<UserByAccount> { new() {
                     Account = account,
@@ -825,13 +827,13 @@ namespace EGG9000.Bot.Commands {
                     return;
                 case ContractCommandsSlash.PotentialCoopCode.NoSpots1:
                 case ContractCommandsSlash.PotentialCoopCode.NoSpots2:
-                    _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.LastGrade), out var emote);
-                    await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No open{(contract.cc_only ? "" : $" Grade {PlayerGradeDetails.GetEmoji(account.GetGrade())}")} coop spots found for {contract.Name}"); });
+                    _ = Emote.TryParse(PlayerGradeDetails.GetEmoji(account.GetGrade()), out var gradeEmote);
+                    await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"No open{(contract.cc_only ? "" : $" {gradeEmote}")} coop spots found for {contract.Name}"); });
                     return;
                 default:
                     var customEggs = await Db.GetCustomEggsAsync();
                     var coop = newCoopResponse.FoundCoop;
-                    var users = coop.UserCoopsXrefs.Select(c => c.User).ToList().SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
+                    var users = coop.UserCoopsXrefs.Select(c => c.User).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
                     var statusReponse = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
                     if(statusReponse is null || !statusReponse.Success || statusReponse.Contributors is null) {
                         statusReponse = coop.LastStatusUpdate; //Fallback to last known status
@@ -1009,8 +1011,8 @@ namespace EGG9000.Bot.Commands {
             var account = user.EggIncAccounts.First(x => x.Id == data.Split("|")[1]);
 
             var guildContract = await Db.GuildContracts.FirstAsync(gc => gc.GuildID == user.GuildId && gc.Contract == contract);
-            var existingXrefs = await Db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Contract == contract && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
-            var activeXrefs = await Db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User == user && x.Coop.Status != CoopStatusEnum.Failed && x.Coop.Status != CoopStatusEnum.Completed && x.Coop.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
+            var activeXrefs = await ContractCommandsSlash.GetActiveUserCoopXrefsAsync(Db, user);
+            var existingXrefs = activeXrefs.Where(x => x.Coop.Contract == contract).ToList();
 
             var userList = new List<UserByAccount> { new() {
                 Account = account,
@@ -1138,8 +1140,8 @@ namespace EGG9000.Bot.Commands {
             var verbiage = response.Success ? "is now private." : "**may** now be private.\n-# (API success was false)";
             var embedType = response.Success ? EmbedHelpers.EmbedType.Success : EmbedHelpers.EmbedType.Warning;
             await Context.Interaction.ModifyOriginalResponseAsync(x => {
-               x.Content = "";
-               x.Embed =  EmbedCustom(embedType, titleVerbiage, $"{coop.Name} {verbiage}");
+                x.Content = "";
+                x.Embed = EmbedCustom(embedType, titleVerbiage, $"{coop.Name} {verbiage}");
             });
         }
 

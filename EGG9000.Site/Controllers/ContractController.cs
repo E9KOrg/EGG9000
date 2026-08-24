@@ -218,7 +218,7 @@ namespace EGG9000.Site.Controllers {
             var targetCoop = await _db.Coops.Include(x => x.Contract).FirstAsync(x => x.Id == CoopId);
             var dbuser = await _db.DBUsers.FirstAsync(x => x.Id == UserId);
 
-            var existingXref = await _db.UserCoopXrefs.FirstOrDefaultAsync(x => x.Coop.Created > DateTimeOffset.UtcNow.AddMonths(-6) && x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatusEnum.Failed);
+            var existingXref = await _db.UserCoopXrefs.FirstOrDefaultAsync(x => x.Coop.Created > DateTimeOffset.UtcNow.AddMonths(-6) && x.Coop.ContractID == targetCoop.ContractID && x.EggIncId == EggIncId && x.Coop.Status != CoopStatus.Failed);
             if(existingXref != null) {
                 return Json(new { error = $"{dbuser.DiscordUsername} has already been assigned a co-op." });
             }
@@ -273,7 +273,7 @@ namespace EGG9000.Site.Controllers {
             var contracts = await _db.Contracts.OrderByDescending(x => x.Created).Take(10).ToListAsync();
             times.Set("Get Contracts");
             var contractIDs = contracts.Select(x => x.ID).ToArray();
-            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => contractIDs.Contains(x.ContractID) && x.Status == CoopStatusEnum.Completed && x.GuildId == guildid).ToListAsync();
+            var coops = await _db.Coops.Include(x => x.UserCoopsXrefs).Where(x => contractIDs.Contains(x.ContractID) && x.Status == CoopStatus.Completed && x.GuildId == guildid).ToListAsync();
             times.Set("Get Coops");
             var userids = coops.SelectMany(x => x.UserCoopsXrefs).Select(x => x.UserId).Distinct().ToArray();
             var users = await _db.DBUsers.Where(x => userids.Contains(x.Id)).ToListAsync();
