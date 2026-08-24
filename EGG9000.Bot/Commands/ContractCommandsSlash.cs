@@ -122,8 +122,9 @@ namespace EGG9000.Bot.Commands {
         }
 
         internal static async Task<List<UserCoopXref>> GetActiveUserCoopXrefsAsync(ApplicationDbContext db, DBUser user) {
-            var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Where(x => x.User == user).ToListAsync();
-            return [.. xrefs.Where(x => !x.Coop.FinishedOrFailedOrExpired())];
+            return await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract)
+                .Where(x => x.User == user && !CoopStatusSets.FinishedOrFailed.Contains(x.Coop.Status) && x.Coop.CoopEnds > DateTimeOffset.UtcNow)
+                .ToListAsync();
         }
 
         public static async Task<PotentialCoopResponse> FindPotentialCoopForUser(EggIncAccount account, DBContract contract, Guild guild, DiscordSocketClient _client, ApplicationDbContext db, FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
@@ -313,7 +314,7 @@ namespace EGG9000.Bot.Commands {
 
             if(gradeRole != null) {
                 var mainGuild = _gateway.Guilds.FirstOrDefault(g => g.Id == dbGuild.DiscordSeverId);
-                var socketGradeRole = mainGuild.GetRole(gradeRole.Id);
+                var socketGradeRole = await mainGuild.GetRoleAsync(gradeRole.Id);
                 await mainGuild.GetUser(dbuser.DiscordId).AddRoleAsync(socketGradeRole.Id);
                 if(mainGuild.Id != currentGuild.Id) {
                     var currentGuildSocketRole = currentGuild.Roles.FirstOrDefault(r => r.Name == socketGradeRole.Name);
@@ -323,7 +324,7 @@ namespace EGG9000.Bot.Commands {
                 }
             }
 
-            var coopChannel = _gateway.GetChannel(newCoop.ThreadID);
+            var coopChannel = await _gateway.GetChannelAsync(newCoop.ThreadID);
 
             var newxref = await CreateCoopsV2.MoveUser(newCoop, dbuser.Id, account.Id, account.Backup?.UserName ?? "(No Name)", Db, discordUser, dbuser, (SocketThreadChannel)coopChannel, (SocketTextChannel)Context.Channel);
             if(newxref == null) {
