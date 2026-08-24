@@ -154,8 +154,8 @@ namespace EGG9000.Common.Database {
                 var contracts = eiContracts?.Archive?.Select(x => x.Contract).ToList() ?? [];
                 // Archive fetch failed (e.g. API timeout) - fall back to DB contracts and retry soon instead of caching the degraded set for an hour.
                 entry.AbsoluteExpirationRelativeToNow = contracts.Count > 0 ? TimeSpan.FromHours(1) : TimeSpan.FromMinutes(1);
-                contracts.AddRange(dbcontracts.Where(dbc => !contracts.Any(c => c.Identifier == dbc.ID)).Select(x => x.Details));
-                return contracts.ToFrozenSet();
+                contracts.AddRange(dbcontracts.Where(dbc => !contracts.Any(c => c.Identifier == dbc.ID)).Select(x => x.Details).Where(x => x != null));
+                return contracts.DistinctBy(x => x.Identifier).ToFrozenSet();
             });
 
         }
