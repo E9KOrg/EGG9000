@@ -91,16 +91,6 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        // An account's legendary count vs. what its actual ship launches/crafts predict (LLC.LLCPercent)
-        // is the strongest single cheat signal since it's grounded in that account's own play history,
-        // not a population comparison. AFS (relative artifact-rarity stacking) is corroborating only -
-        // it catches inventory anomalies LLC doesn't model (e.g. hoarded rares with no legendary craft),
-        // but alone it flags legit whales with huge launch counts, so it never fires without LLC agreeing
-        // something is at least somewhat off too.
-        private const int LLCPercentHardCutoff = 50;
-        private const int LLCPercentSoftCutoff = 15;
-        private const double AFSZScoreCutoff = 1.0;
-
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var _cache = _provider.CreateScope().ServiceProvider.GetRequiredService<IMemoryCache>();
@@ -137,7 +127,7 @@ namespace EGG9000.Bot.Automated {
                 // concurrency instead of firing one request per account at once.
                 var throttler = new SemaphoreSlim(8);
                 var tasks = candidateAccounts
-                    .Where(a => afsZScores.TryGetValue(a, out var z) && z > AFSZScoreCutoff / 2)
+                    .Where(a => afsZScores.TryGetValue(a, out var z) && z > ArtifactHelpers.AFSZScoreCutoff / 2)
                     .Select(async account => {
                         await throttler.WaitAsync(cancellationToken);
                         try {
@@ -154,15 +144,10 @@ namespace EGG9000.Bot.Automated {
                 await Task.WhenAll(tasks);
             }
 
-            // Informed combination: a lone-standing implausible legendary excess is damning on its own.
-            // A merely elevated one only counts alongside a corroborating AFS outlier, so a legit whale
-            // with a big launch history (which pushes AFS up too, but LLC stays near zero) never flags.
             bool IsFlagged(EggIncAccount account) {
                 var hasLlc = llcResults.TryGetValue(account, out var llc);
                 var hasAfs = afsZScores.TryGetValue(account, out var afsZ);
-                if(hasLlc && llc.LLCPercent >= LLCPercentHardCutoff) return true;
-                if(hasLlc && hasAfs && llc.LLCPercent >= LLCPercentSoftCutoff && afsZ > AFSZScoreCutoff) return true;
-                return false;
+                return ArtifactHelpers.IsCheatFlagged(hasLlc, hasLlc ? llc.LLCPercent : 0, hasAfs, hasAfs ? afsZ : 0);
             }
 
             var upperOutliers = scoreSet
