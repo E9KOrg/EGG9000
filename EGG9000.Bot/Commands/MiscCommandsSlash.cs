@@ -294,7 +294,7 @@ namespace EGG9000.Bot.Commands {
             [Summary("role")] SocketRole role,
             [Summary("timespan")] string timespan,
             [Summary("reason")] string reason,
-            [ComplexParameter] Interactions.UserSlots userSlots) {
+            [ComplexParameter] Interactions.GuildUserSlots userSlots) {
             var users = userSlots.Users;
             DateTimeOffset expireTime;
             try {
