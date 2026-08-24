@@ -40,11 +40,11 @@ public class DepartedMemberPurgeTests {
         ctx.DBUsers.Add(new DBUser { Id = userId, DiscordId = 999_111_001, GuildId = 0, DiscordUsername = "departed" });
         ctx.Contracts.Add(new DBContract { ID = "test-contract", Created = now });
 
-        var match = NewCoop(guildId, CoopStatusEnum.WaitingOnAssigned, now.AddDays(1));
-        var joined = NewCoop(guildId, CoopStatusEnum.WaitingOnAssigned, now.AddDays(1));
-        var wrongGuild = NewCoop(otherGuildId, CoopStatusEnum.WaitingOnAssigned, now.AddDays(1));
-        var expired = NewCoop(guildId, CoopStatusEnum.WaitingOnAssigned, now.AddDays(-1));
-        var full = NewCoop(guildId, CoopStatusEnum.Full, now.AddDays(1));
+        var match = NewCoop(guildId, CoopStatus.WaitingOnAssigned, now.AddDays(1));
+        var joined = NewCoop(guildId, CoopStatus.WaitingOnAssigned, now.AddDays(1));
+        var wrongGuild = NewCoop(otherGuildId, CoopStatus.WaitingOnAssigned, now.AddDays(1));
+        var expired = NewCoop(guildId, CoopStatus.WaitingOnAssigned, now.AddDays(-1));
+        var full = NewCoop(guildId, CoopStatus.Full, now.AddDays(1));
         ctx.Coops.AddRange(match, joined, wrongGuild, expired, full);
 
         ctx.UserCoopXrefs.AddRange(
@@ -65,7 +65,7 @@ public class DepartedMemberPurgeTests {
             "Only the active, unjoined, same-guild assignment should be selected for purge.");
     }
 
-    private static Coop NewCoop(ulong guildId, CoopStatusEnum status, DateTimeOffset ends) {
+    private static Coop NewCoop(ulong guildId, CoopStatus status, DateTimeOffset ends) {
         return new() {
             Id = Guid.NewGuid(),
             ContractID = "test-contract",

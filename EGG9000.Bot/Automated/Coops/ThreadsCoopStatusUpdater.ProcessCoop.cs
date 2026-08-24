@@ -334,11 +334,11 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 if(!ctx.Coop.Finished && ctx.Status.Finished()) {
                     if(ctx.WaitingOn.Any()) {
-                        ctx.Coop.Status = CoopStatusEnum.Completed;
+                        ctx.Coop.Status = CoopStatus.Completed;
                         _queue.EnqueueLow(() => ctx.CoopThread.SendMessageAsync($"Coop {ctx.Coop.Name} is finished, and is waiting for users to check-in!"));
                     } else {
                         ctx.FinalChannelUpdate = true;
-                        ctx.Coop.Status = CoopStatusEnum.CompletedAllCheckIn;
+                        ctx.Coop.Status = CoopStatus.CompletedAllCheckIn;
                         ctx.Coop.ThreadArchived = true;
                         _queue.EnqueueLow(() => ctx.CoopThread.ModifyAsync(t => t.AutoArchiveDuration = ThreadArchiveDuration.OneDay));
                         _queue.EnqueueLow(() => ctx.CoopThread.SendMessageAsync($"Coop {ctx.Coop.Name} is finished!"));
@@ -350,9 +350,9 @@ namespace EGG9000.Bot.Automated.Coops {
                     await HandleUnjoins(ctx.UsersNotJoined, ctx.Users, ctx.DbGuild, ctx.Coop, ctx.Db, ctx.CoopThread);
                 }
 
-                if(ctx.Coop.Finished && ctx.Coop.Status != CoopStatusEnum.CompletedAllCheckIn && !ctx.WaitingOn.Any()) {
+                if(ctx.Coop.Finished && ctx.Coop.Status != CoopStatus.CompletedAllCheckIn && !ctx.WaitingOn.Any()) {
                     ctx.FinalChannelUpdate = true;
-                    ctx.Coop.Status = CoopStatusEnum.CompletedAllCheckIn;
+                    ctx.Coop.Status = CoopStatus.CompletedAllCheckIn;
                     ctx.Coop.ThreadArchived = true;
                     _queue.EnqueueLow(() => ctx.CoopThread.ModifyAsync(t => t.AutoArchiveDuration = ThreadArchiveDuration.OneDay));
                     await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
@@ -484,8 +484,8 @@ namespace EGG9000.Bot.Automated.Coops {
         private async Task ProcessUnjoinedParticipants(CoopProcessingContext ctx) {
             ctx.MissingFromServer = false;
             ctx.Timings.Set("5.4");
-            if(ctx.UsersNotJoined.Count == 0 && ctx.Coop.Status != CoopStatusEnum.Completed && ctx.Coop.Status != CoopStatusEnum.Failed && ctx.Coop.Status != CoopStatusEnum.CompletedAllCheckIn) {
-                ctx.Coop.Status = CoopStatusEnum.AllAssignedJoined;
+            if(ctx.UsersNotJoined.Count == 0 && !ctx.Coop.FinishedOrFailed()) {
+                ctx.Coop.Status = CoopStatus.AllAssignedJoined;
             } else {
                 var userList = new List<string>();
                 foreach(var userFarmDetails in ctx.UsersNotJoined) {
@@ -517,7 +517,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                         userList.Add(mention);
 
-                        if(!ctx.Coop.Finished && ctx.Coop.Status != CoopStatusEnum.Failed && ctx.Coop.CoopEnds > DateTimeOffset.UtcNow) {
+                        if(!ctx.Coop.Finished && ctx.Coop.Status != CoopStatus.Failed && ctx.Coop.CoopEnds > DateTimeOffset.UtcNow) {
                             if(discordUser != null) {
                                 if(!userFarmDetails.Xref.JoinWarning24TillFinish && ctx.TimeRemaining.TotalHours < 24 && userFarmDetails.Xref.CreatedOn < DateTimeOffset.UtcNow.AddHours(-1)) {
                                     userFarmDetails.Xref.JoinWarning24TillFinish = true;
@@ -741,19 +741,19 @@ namespace EGG9000.Bot.Automated.Coops {
         }
 
         private void ApplyFullStatus(CoopProcessingContext ctx) {
-            if(ctx.Status.Contributors.Count == ctx.Coop.MaxUsers && ctx.Coop.Status != CoopStatusEnum.Completed && ctx.Coop.Status != CoopStatusEnum.Failed) {
-                ctx.Coop.Status = CoopStatusEnum.Full;
+            if(ctx.Status.Contributors.Count == ctx.Coop.MaxUsers && ctx.Coop.Status != CoopStatus.Completed && ctx.Coop.Status != CoopStatus.Failed) {
+                ctx.Coop.Status = CoopStatus.Full;
             }
         }
 
         private async Task ApplyFailedStatus(CoopProcessingContext ctx) {
-            if(ctx.Coop.Status != CoopStatusEnum.Failed && ctx.Status.Failed()) {
+            if(ctx.Coop.Status != CoopStatus.Failed && ctx.Status.Failed()) {
                 if(ctx.Coop.Contract.GoodUntil > DateTimeOffset.UtcNow) {
                     _queue.EnqueueLow(() => ctx.CoopThread.SendMessageAsync($"Co-op {ctx.Coop.Name} failed to reach all the goals and the contract is still available for {(ctx.Coop.Contract.GoodUntil - DateTimeOffset.UtcNow).Humanize()} if you want to restart and try again."));
                 } else {
                     _queue.EnqueueLow(() => ctx.CoopThread.SendMessageAsync($"Co-op {ctx.Coop.Name} failed to reach all the goals and the contract is no longer available."));
                 }
-                ctx.Coop.Status = CoopStatusEnum.Failed;
+                ctx.Coop.Status = CoopStatus.Failed;
                 ctx.FinalChannelUpdate = true;
                 ctx.Coop.ThreadArchived = true;
                 await ctx.Db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
@@ -783,7 +783,7 @@ namespace EGG9000.Bot.Automated.Coops {
         private void BuildEmojisAndColor(CoopProcessingContext ctx) {
             ctx.Emojis = "";
             ctx.EmbedColor = Color.DarkGrey;
-            if(ctx.Coop.Status == CoopStatusEnum.Failed) {
+            if(ctx.Coop.Status == CoopStatus.Failed) {
                 ctx.Emojis += "🚩";
             } else if(ctx.Coop.Finished) {
                 ctx.Emojis += "🏁";
@@ -932,7 +932,7 @@ namespace EGG9000.Bot.Automated.Coops {
                     if(ctx.Status.TotalAmount > goal.TargetAmount) {
                         title += "✅";
                         time = "";
-                    } else if(ctx.Coop.Status == CoopStatusEnum.Failed) {
+                    } else if(ctx.Coop.Status == CoopStatus.Failed) {
                         title += "❌";
                         time = "";
                     } else if(ctx.CoopDetails.PercentProjectedForJoined > goal.TargetAmount) {
@@ -952,7 +952,7 @@ namespace EGG9000.Bot.Automated.Coops {
             }
 
             var totalRatePerHour = ctx.TotalRate * 60 * 60;
-            if(ctx.Coop.Status != CoopStatusEnum.Completed && ctx.Coop.Status != CoopStatusEnum.Failed) {
+            if(ctx.Coop.Status != CoopStatus.Completed && ctx.Coop.Status != CoopStatus.Failed) {
                 ctx.EmbedBuilder.AddField("Co-op Expires", ends, inline: true);
 
                 if(ctx.RemainingAmount > 0) {
@@ -980,10 +980,10 @@ namespace EGG9000.Bot.Automated.Coops {
                 ctx.EmbedBuilder.AddField("Projected Amount", $"{ctx.CoopDetails.Projected.ToEggString()} of {ctx.TargetAmount.ToEggString()} {Math.Round(ctx.CoopDetails.PercentProjectedForJoined)}%", inline: true);
                 ctx.EmbedBuilder.AddField("Current Amount", ctx.Status.TotalAmount.ToEggString(), inline: true);
                 ctx.EmbedBuilder.AddField("Current With Offline", ctx.AmountWithOffline.ToEggString(), inline: true);
-            } else if(ctx.Coop.Status == CoopStatusEnum.Completed) {
+            } else if(ctx.Coop.Status == CoopStatus.Completed) {
                 ctx.EmbedBuilder.AddField("Final Amount", ctx.Status.TotalAmount.ToEggString(), inline: true);
                 ctx.EmbedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
-            } else if(ctx.Coop.Status == CoopStatusEnum.Failed) {
+            } else if(ctx.Coop.Status == CoopStatus.Failed) {
                 ctx.EmbedBuilder.AddField("Final Amount", ctx.Status.TotalAmount.ToEggString(), inline: true);
                 ctx.EmbedBuilder.AddField("Final Rate", totalRatePerHour.ToEggString() + "/h", inline: true);
             }
