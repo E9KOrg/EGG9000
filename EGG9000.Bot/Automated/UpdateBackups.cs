@@ -32,7 +32,7 @@ namespace EGG9000.Bot.Automated {
 
             var usersToCheck = await _db.DBUsers.Where(x => !x.StaleBackup && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck == null  ? 0 : 1).ThenBy(x => x.LastBackupCheck).Take(75).ToListAsync();
             var longestBackupAgo = usersToCheck.Where(x => x.LastBackupCheck != null).OrderBy(x => x.LastBackupCheck).Select(x => x.LastBackupCheck).FirstOrDefault() ?? DateTimeOffset.UtcNow;
-            _logger.LogInformation("Longest backup check ago: {offset}", (DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2));
+            //_logger.LogInformation("Longest backup check ago: {offset}", (DateTimeOffset.UtcNow - longestBackupAgo).Humanize(precision: 2));
 
             
             var staleUsersToCheck = await _db.DBUsers.Where(x => x.StaleBackup && x.LastBackupCheck < DateTimeOffset.UtcNow.AddDays(-1) && guildIDs.Contains(x.GuildId) && x.GuildId > 0 && !x.TempDisabled).OrderBy(x => x.LastBackupCheck).Take(5).ToListAsync();
@@ -88,7 +88,7 @@ namespace EGG9000.Bot.Automated {
 
             await ShipReturnDM.UpdateNextShipDM(usersToCheck, _db, _logger);
             var finished = times.Finished();
-            _logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
+            //_logger.LogInformation($"Updated {usersToCheck.Count} user backups. in {finished.Last().time.Humanize(precision: 2)}");
         }
 
         // Contract identifiers the server has explicitly reported as not-found, so we stop re-fetching
