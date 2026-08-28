@@ -178,7 +178,7 @@ namespace EGG9000.Bot.Automated.Coops {
                                     }
                                 }
                             } catch(Discord.Net.HttpException httpEx) when(httpEx.DiscordCode == DiscordErrorCode.MissingPermissions) {
-                                _logger.LogWarning("Missing permissions to update message in coop {coop}", coop.Name);
+                                //_logger.LogWarning("Missing permissions to update message in coop {coop}", coop.Name);
                             } catch(Exception e) {
                                 _logger.LogError(e, "Error updating messages");
                                 _bugSnag.Notify(e);
@@ -248,7 +248,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
                 var percent = coopDetails.GetProjectedShare(x);
 
-                var igUsername = !string.IsNullOrWhiteSpace(x.CoopStatus?.UserName) ? x.CoopStatus.UserName : x.Backup?.UserName;
+                var igUsername = !string.IsNullOrWhiteSpace(x.CoopStatus?.UserName) ? x.CoopStatus.UserName : x.Backup?.UserName ?? "[Blank]";
                 var csStrippedUsername = MyRegex().Replace(igUsername, "");
 
                 var usernameEmoji = (everyoneJoined || x.DBUser is null) ? "" : (x.CoopStatus is not null ? "✅" : "❌");

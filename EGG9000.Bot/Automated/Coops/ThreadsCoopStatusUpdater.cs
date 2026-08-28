@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Automated.Coops {
             var dbguilds = await _db.Guilds.AsNoTracking().ToListAsync(CancellationToken.None);
 
             if(BuildConfig.IsDebug) {
-                //coops = [.. coops.Where(x => x.Name == "NapLure49")];
+                coops = [.. coops.Where(x => x.Name == "ColdPlaza61")];
             }
 
 
