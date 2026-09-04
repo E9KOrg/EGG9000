@@ -88,6 +88,7 @@
     <PackageReference Include="NLog" Version="6.2.0" />
     <PackageReference Include="NLog.Extensions.Logging" Version="6.2.0" />
     <PackageReference Include="NLog.Targets.Network" Version="6.1.5" />
+    <PackageReference Include="NLog.Targets.OpenTelemetryProtocol" Version="1.2.9" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.17.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.17.0" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.17.0" />

@@ -91,6 +91,7 @@ namespace EGG9000.Bot.Automated {
                         if(snapshots++ >= 50) {
                             snapshots = 0;
                             await _db.SaveChangesAsync(cancellationToken);
+                            _db.ChangeTracker.Clear();
                         }
                     }
                 } catch(Exception e) {

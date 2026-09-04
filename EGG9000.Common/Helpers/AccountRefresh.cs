@@ -129,7 +129,6 @@ namespace EGG9000.Common.Helpers {
                 return true;
             }
 
-            logger.LogInformation("No grade change for user {User} ({Account}) grade: {Grade}", user.DiscordUsername, account.Name, info.Grade);
             return pendingCleared;
         }
 

@@ -148,7 +148,7 @@ namespace EGG9000.Bot.Automated {
                 try {
                     using var scope = _provider.CreateScope();
                     var _db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                    _logger.LogInformation("Running");
+                    //_logger.LogInformation("Running");
                     LastStarted = DateTime.Now;
                     _lastAlive = DateTimeOffset.UtcNow;
                     var log = new AutomationLog { Type = GetType().Name, StartTime = DateTimeOffset.UtcNow };
@@ -159,7 +159,7 @@ namespace EGG9000.Bot.Automated {
                     await _db.SaveChangesAsync();
 
                     LastCompleted = DateTime.Now;
-                    _logger.LogInformation("Completed");
+                    //_logger.LogInformation("Completed");
                     if(Restarted) {
                         Restarted = false;
                         await _client.SendDMToKendrome($"{GetType().Name} successfully restarted.");

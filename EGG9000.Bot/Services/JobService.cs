@@ -44,15 +44,15 @@ namespace EGG9000.Bot.Services {
                     var jobs = _jobs.Where(x => x.NextRun < DateTimeOffset.UtcNow && !x.Running).OrderBy(x => x.NextRun);
                     foreach(var job in jobs) {
                         job.NextRun = GetNextRun(job.Details.Cron);
-                        _logger.LogInformation("Running Job {jobDeclareType}.{jobName}, Current time: {currentTime}, next run at {nextRun}",
-                            job.DeclaringType.Name, job.Name, $"{DateTimeOffset.UtcNow:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
+                        //_logger.LogInformation("Running Job {jobDeclareType}.{jobName}, Current time: {currentTime}, next run at {nextRun}",
+                        //    job.DeclaringType.Name, job.Name, $"{DateTimeOffset.UtcNow:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
 
                         _ = Task.Run(async () => {
                             job.Running = true;
                             var timer = System.Diagnostics.Stopwatch.StartNew();
                             await RunJobAsync(job);
-                            _logger.LogInformation("{jobDeclareType}.{jobName} took {timerHumanized}",
-                                job.DeclaringType.Name, job.Name, timer.Elapsed.Humanize());
+                            //_logger.LogInformation("{jobDeclareType}.{jobName} took {timerHumanized}",
+                            //    job.DeclaringType.Name, job.Name, timer.Elapsed.Humanize());
                             job.Running = false;
                         });
                     }
@@ -66,11 +66,11 @@ namespace EGG9000.Bot.Services {
                     if(delay < TimeSpan.Zero) {
                         delay = TimeSpan.FromSeconds(1);
                     }
-                    _logger.LogInformation("Next job {jobDeclareType}.{jobName} in {delaySeconds} seconds, delaying for {delaySeconds} seconds",
-                        nextJob.DeclaringType.Name, nextJob.Name, delay.TotalSeconds, delay.TotalSeconds);
+                    //_logger.LogInformation("Next job {jobDeclareType}.{jobName} in {delaySeconds} seconds, delaying for {delaySeconds} seconds",
+                    //    nextJob.DeclaringType.Name, nextJob.Name, delay.TotalSeconds, delay.TotalSeconds);
                     await Task.Delay((int)delay.TotalMilliseconds, cancellationToken);
                 } else {
-                    _logger.LogInformation("No jobs found, delaying for 1 second");
+                    //_logger.LogInformation("No jobs found, delaying for 1 second");
                     await Task.Delay(1000, cancellationToken);
                 }
 
