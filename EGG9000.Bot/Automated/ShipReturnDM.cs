@@ -101,17 +101,17 @@ namespace EGG9000.Bot.Automated {
 
                         timings.Set("Build");
 
-                        if(shipReturnTime > DateTimeOffset.UtcNow) {
-                            _logger.LogInformation("Sending on time ShipReturnDM to {user}", user.DiscordUsername);
-                        } else {
-                            _logger.LogInformation("Sending ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.UtcNow - shipReturnTime).Humanize().ShortenTime());
-                        }
+                        //if(shipReturnTime > DateTimeOffset.UtcNow) {
+                        //    _logger.LogInformation("Sending on time ShipReturnDM to {user}", user.DiscordUsername);
+                        //} else {
+                        //    _logger.LogInformation("Sending ShipReturnDM to {user}, the ship returned {relativetime} ago", user.DiscordUsername, (DateTimeOffset.UtcNow - shipReturnTime).Humanize().ShortenTime());
+                        //}
 
                         shipDm.Sent = true;
                         user.ShipDMs = user.ShipDMs;
                         touched = true;
                         pending.Add(new PendingSend(user, shipDm, discordUser, embed, components));
-                        _logger.LogInformation("Timings: {timings}", String.Join(", ", timings.Finished().Select(x => $"[{x.name}: {x.time.TotalMilliseconds}ms]")));
+                        //_logger.LogInformation("Timings: {timings}", String.Join(", ", timings.Finished().Select(x => $"[{x.name}: {x.time.TotalMilliseconds}ms]")));
                     } catch(Exception e) {
                         _bugSnag.Notify(e);
                         _logger.LogError(e, "UpdateNextShipDM Error");
@@ -139,7 +139,8 @@ namespace EGG9000.Bot.Automated {
                     p.ShipDm.Sent = false;
                     p.User.ShipDMs = p.User.ShipDMs;
                     retryTouched = true;
-                    _logger.LogWarning("ShipReturnDM to {user} failed transiently ({result}); will retry next tick", p.User.DiscordUsername, result.Exception.Message);
+                    //Re-enable the below after the Sept 15th, 2026
+                    //_logger.LogWarning("ShipReturnDM to {user} failed transiently ({result}); will retry next tick", p.User.DiscordUsername, result.Exception.Message);
                 }
             }
 
@@ -154,7 +155,7 @@ namespace EGG9000.Bot.Automated {
             await _db.SaveChangesAsync(CancellationToken.None);
 
             var timingsResult = totalTimings.Finished(); 
-            _logger.LogInformation("ShipReturnDM Run(): {timings}", String.Join(", ", timingsResult.Select(x => $"[{x.name}: {x.time.TotalMilliseconds}ms]")));
+            //_logger.LogInformation("ShipReturnDM Run(): {timings}", String.Join(", ", timingsResult.Select(x => $"[{x.name}: {x.time.TotalMilliseconds}ms]")));
         }
 
         public static async Task<TimeSpan> UpdateNextShipDM(List<DBUser> dbusers, ApplicationDbContext _db, ILogger logger) {

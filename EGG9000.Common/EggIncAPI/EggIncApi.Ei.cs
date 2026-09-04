@@ -152,10 +152,10 @@ namespace EGG9000.Common.EggIncAPI {
                 _logger?.LogWarning("bot_first_contact failed for {UserId} ({Error}) and no salt is configured for first_contact_secure fallback", UserId, botResult?.Error);
                 return botResult;
             }
-            _logger?.LogInformation("bot_first_contact did not return a backup for {UserId} ({Error}); falling back to first_contact_secure", UserId, botResult?.Error);
+            //_logger?.LogInformation("bot_first_contact did not return a backup for {UserId} ({Error}); falling back to first_contact_secure", UserId, botResult?.Error);
             var secureResult = await FirstContactSecure(UserId);
             if(secureResult is { Success: true }) {
-                _logger?.LogInformation("first_contact_secure recovered a backup for {UserId} that bot_first_contact missed", UserId);
+                //_logger?.LogInformation("first_contact_secure recovered a backup for {UserId} that bot_first_contact missed", UserId);
             } else {
                 _logger?.LogWarning("first_contact_secure also failed for {UserId} ({Error})", UserId, secureResult?.Error);
             }
