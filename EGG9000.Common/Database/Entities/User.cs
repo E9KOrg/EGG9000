@@ -157,7 +157,7 @@ namespace EGG9000.Common.Database.Entities {
                         return _accounts;
                     } else {
                         try {
-                            _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
+                            _accounts = StorageCodec.Unpack<List<EggIncAccount>>(_contractRegistrationByte);
                         } catch(MessagePackSerializationException) {
                             _accounts = [];
                             return _accounts;
@@ -238,7 +238,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool UpdateAccounts() {
             if(_eggIncIds is not null)
                 _eggIncIds = null;
-            var compressedAccounts = MessagePackSerializer.Serialize(_accounts, lz4Options);
+            var compressedAccounts = StorageCodec.Pack(_accounts);
             var changed = compressedAccounts != _contractRegistrationByte;
             _contractRegistrationByte = compressedAccounts;
             Usernames = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.UserName) ?? []);
