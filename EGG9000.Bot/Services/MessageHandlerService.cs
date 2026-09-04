@@ -1,4 +1,5 @@
 using Discord;
+using Discord.Interactions;
 using Discord.WebSocket;
 
 using EGG9000.Bot.Commands;
@@ -31,13 +32,13 @@ namespace EGG9000.Bot.Services {
             Bugsnag.IClient bugsnag,
             ILogger<MessageHandlerService> logger,
             IConfiguration configuration,
-            Discord.Interactions.InteractionService interactions
+            InteractionService interactions
         ) : IHostedService {
         private readonly DiscordHostedService _discord = discord;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory = dbContextFactory;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
         private readonly ILogger<MessageHandlerService> _logger = logger;
-        private readonly Discord.Interactions.InteractionService _interactions = interactions;
+        private readonly InteractionService _interactions = interactions;
         private readonly Guild _cpGuild = ResolveCpGuild(configuration, dbContextFactory);
 
         private static Guild ResolveCpGuild(IConfiguration configuration, IDbContextFactory<ApplicationDbContext> dbContextFactory) {

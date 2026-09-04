@@ -1,4 +1,5 @@
 using Bugsnag.AspNet.Core;
+using Discord.Interactions;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Services;
@@ -161,10 +162,10 @@ public static class BotHostFactory {
 
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
-            services.AddSingleton(provider => new Discord.Interactions.InteractionService(
+            services.AddSingleton(provider => new InteractionService(
                 provider.GetRequiredService<DiscordHostedService>().Gateway,
-                new Discord.Interactions.InteractionServiceConfig {
-                    DefaultRunMode = Discord.Interactions.RunMode.Sync,
+                new InteractionServiceConfig {
+                    DefaultRunMode = RunMode.Sync,
                     UseCompiledLambda = true
                 }));
             services.AddHostedService<InteractionRoutingService>();

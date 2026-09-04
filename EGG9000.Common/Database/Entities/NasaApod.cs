@@ -1,24 +1,24 @@
-﻿
-using MessagePack;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
 namespace EGG9000.Common.Database.Entities;
 
 [Table("NasaApods")]
-public class NasaApod {
+public partial class NasaApod {
     // There's no ID for APOD (thanks NASA!), so we hash the url and the title to ID it
-    [System.ComponentModel.DataAnnotations.Key]
+    [Key]
     public Guid ID {
         get {
             if(_idCache == Guid.Empty) {
                 var inputBytes = Encoding.UTF8.GetBytes($"{Url}|{Title}");
-                var hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
+                var hashBytes = SHA256.HashData(inputBytes);
                 _idCache = new Guid([.. hashBytes.Take(16)]);
             }
             return _idCache;
@@ -65,27 +65,6 @@ public class NasaApod {
                 _postedToBytes = _postedTo.Set(value ?? [], _postedToBytes);
         }
     }
-
-    [MessagePackObject]
-    public class PostedToEntry {
-        public PostedToEntry() { }
-
-        public PostedToEntry(Guild dbGuild, ulong channelId = 0) {
-            GuildID = dbGuild.Id;
-            ChannelID = dbGuild.GetChannelId(GuildChannelType.NasaApod) ?? channelId;
-        }
-
-        public PostedToEntry(ulong guildId, ulong channelId) {
-            GuildID = guildId;
-            ChannelID = channelId;
-        }
-
-        [Key(0)]
-        public ulong GuildID { get; set; }
-        [Key(1)]
-        public ulong ChannelID { get; set; }
-    }
-
 
     [JsonIgnore]
     [NotMapped]

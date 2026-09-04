@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
+using EGG9000.Bot.Interactions;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
@@ -26,8 +27,8 @@ namespace EGG9000.Bot.Commands.CommonTypes {
         // path, so [StaffOnly] alone leaves admin-only params open if a guild ever grants the
         // parent command to a non-staff role. Re-check it here as a backstop.
         private static async Task<bool> PassesStaffGate(IInteractionContext context, IParameterInfo parameter, IServiceProvider services) {
-            var staffOnly = parameter.Command.Preconditions.OfType<Interactions.StaffOnlyAttribute>().FirstOrDefault()
-                ?? parameter.Command.Module.Preconditions.OfType<Interactions.StaffOnlyAttribute>().FirstOrDefault();
+            var staffOnly = parameter.Command.Preconditions.OfType<StaffOnlyAttribute>().FirstOrDefault()
+                ?? parameter.Command.Module.Preconditions.OfType<StaffOnlyAttribute>().FirstOrDefault();
             if(staffOnly is null) return true;
             var result = await staffOnly.CheckRequirementsAsync(context, parameter.Command, services);
             return result.IsSuccess;
