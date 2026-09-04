@@ -109,17 +109,25 @@ namespace EGG9000.Test {
             Assert.AreEqual(1, derived.ArchivedFarms.Count);
         }
 
-        private static void AssertGzipMagic(byte[] bytes) {
+        private static void AssertEnvelope(byte[] bytes) {
             Assert.IsNotNull(bytes);
             Assert.IsTrue(bytes.Length >= 2);
-            Assert.AreEqual((byte)0x1F, bytes[0]);
-            Assert.AreEqual((byte)0x8B, bytes[1]);
+            Assert.AreEqual(StorageCompression.Marker, bytes[0]);
+            Assert.AreEqual((byte)StorageCompressionAlgorithm.Brotli, bytes[1]);
+        }
+
+        private static byte[] GzipStoredFixture(List<EggIncAccount> accounts) {
+            var plain = MessagePackSerializer.Serialize(accounts, Plain);
+            using var output = new System.IO.MemoryStream();
+            using(var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Optimal))
+                gzip.Write(plain, 0, plain.Length);
+            return output.ToArray();
         }
 
         [TestMethod]
         public void Pack_DefaultOff_IsByteIdenticalToLegacyLz4_AndUnpacks() {
-            var prior = StorageCodec.GZipWriteEnabled;
-            StorageCodec.GZipWriteEnabled = false;
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = false;
             try {
                 var accounts = BuildAccounts();
                 var packed = StorageCodec.Pack(accounts);
@@ -127,22 +135,27 @@ namespace EGG9000.Test {
                 CollectionAssert.AreEqual(expected, packed);
                 AssertAccountsShape(StorageCodec.Unpack<List<EggIncAccount>>(packed));
             } finally {
-                StorageCodec.GZipWriteEnabled = prior;
+                StorageCodec.CompressWriteEnabled = prior;
             }
         }
 
         [TestMethod]
-        public void Pack_ToggleOn_WritesGzipMagic_AndRoundTrips() {
-            var prior = StorageCodec.GZipWriteEnabled;
-            StorageCodec.GZipWriteEnabled = true;
+        public void Pack_ToggleOn_WritesEnvelope_AndRoundTrips() {
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = true;
             try {
                 var accounts = BuildAccounts();
                 var packed = StorageCodec.Pack(accounts);
-                AssertGzipMagic(packed);
+                AssertEnvelope(packed);
                 AssertAccountsShape(StorageCodec.Unpack<List<EggIncAccount>>(packed));
             } finally {
-                StorageCodec.GZipWriteEnabled = prior;
+                StorageCodec.CompressWriteEnabled = prior;
             }
+        }
+
+        [TestMethod]
+        public void Unpack_GzipStoredBytes_ReadsIntact() {
+            AssertAccountsShape(StorageCodec.Unpack<List<EggIncAccount>>(GzipStoredFixture(BuildAccounts())));
         }
 
         [TestMethod]
@@ -166,15 +179,21 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
-        public void DBUser_ToggleOn_WritesGzipColumn_SecondUserRehydrates() {
-            var prior = StorageCodec.GZipWriteEnabled;
-            StorageCodec.GZipWriteEnabled = true;
+        public void Unpack_EnvelopeFollowedByGarbage_ThrowsMessagePackSerializationException() {
+            var corrupt = new byte[] { StorageCompression.Marker, (byte)StorageCompressionAlgorithm.Brotli, 0x99, 0x11, 0x22 };
+            Assert.ThrowsExactly<MessagePackSerializationException>(() => StorageCodec.Unpack<List<EggIncAccount>>(corrupt));
+        }
+
+        [TestMethod]
+        public void DBUser_ToggleOn_WritesEnvelopeColumn_SecondUserRehydrates() {
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = true;
             try {
                 var (proto, contracts) = BuildBackup();
                 var user = new DBUser();
                 user.EggIncAccounts = [new EggIncAccount { Id = "EI0000000000012345", Backup = new CustomBackup(proto, contracts) }];
 
-                AssertGzipMagic(user._contractRegistrationByte);
+                AssertEnvelope(user._contractRegistrationByte);
 
                 var rehydrated = new DBUser { _contractRegistrationByte = user._contractRegistrationByte };
                 var accounts = rehydrated.EggIncAccounts;
@@ -189,26 +208,36 @@ namespace EGG9000.Test {
                 Assert.AreEqual(1, account.Backup.ArchivedFarms.Count);
                 Assert.AreEqual("device-proto-1", account.DeviceID);
             } finally {
-                StorageCodec.GZipWriteEnabled = prior;
+                StorageCodec.CompressWriteEnabled = prior;
             }
         }
 
         [TestMethod]
         public void DBUser_ToggleOn_LegacyLz4Row_StillReads() {
-            var prior = StorageCodec.GZipWriteEnabled;
-            StorageCodec.GZipWriteEnabled = true;
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = true;
             try {
                 var stored = MessagePackSerializer.Serialize(BuildAccounts(), DBUser.lz4Options);
                 var user = new DBUser { _contractRegistrationByte = stored };
                 AssertAccountsShape(user.EggIncAccounts);
             } finally {
-                StorageCodec.GZipWriteEnabled = prior;
+                StorageCodec.CompressWriteEnabled = prior;
             }
         }
 
         [TestMethod]
         public void DBUser_CorruptGzipColumn_YieldsEmptyAccountsWithoutThrowing() {
             var user = new DBUser { _contractRegistrationByte = [0x1F, 0x8B, 0x99, 0x11, 0x22] };
+
+            var accounts = user.EggIncAccounts;
+
+            Assert.IsNotNull(accounts);
+            Assert.AreEqual(0, accounts.Count);
+        }
+
+        [TestMethod]
+        public void DBUser_CorruptEnvelopeColumn_YieldsEmptyAccountsWithoutThrowing() {
+            var user = new DBUser { _contractRegistrationByte = [StorageCompression.Marker, (byte)StorageCompressionAlgorithm.Brotli, 0x99, 0x11, 0x22] };
 
             var accounts = user.EggIncAccounts;
 

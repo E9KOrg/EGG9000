@@ -99,7 +99,24 @@ namespace EGG9000.Test {
 
             Assert.AreEqual(0x1F, legacy[0]);
             Assert.AreEqual(0x8B, legacy[1]);
-            Assert.AreEqual(0xE9, proto[0]);
+            Assert.AreEqual(StorageCompression.Marker, proto[0]);
+        }
+
+        [TestMethod]
+        public void Decode_LegacyProtoMarkerBytes_StillReads() {
+            var plain = Google.Protobuf.MessageExtensions.ToByteArray(SampleStatus());
+            byte[] stored;
+            using(var output = new MemoryStream()) {
+                output.WriteByte(0xE9);
+                using(var gzip = new GZipStream(output, CompressionLevel.Optimal))
+                    gzip.Write(plain, 0, plain.Length);
+                stored = output.ToArray();
+            }
+
+            var decoded = CoopStatusCodec.Decode(stored);
+
+            Assert.AreEqual("test-coop", decoded.CoopIdentifier);
+            Assert.AreEqual(3600d, decoded.Contributors[0].TimeLeftSeconds);
         }
 
         [TestMethod]
