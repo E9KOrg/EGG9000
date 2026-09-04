@@ -28,7 +28,6 @@ namespace EGG9000.Site.Services {
             else if(coopCount < 10 && WaitingOnCoops == true)
                 WaitingOnCoops = false;
             sw.Stop();
-            _logger.LogInformation("NewCoopChecker Hosted Service is working. Count: {Count}, Time: {sw}", coopCount, TimeSpan.FromTicks(sw.ElapsedTicks).Humanize());
         }
     }
 }
