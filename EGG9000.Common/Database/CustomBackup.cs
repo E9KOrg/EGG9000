@@ -136,7 +136,11 @@ namespace EGG9000.Common.Database {
         //public uint EoV { get; set; } = 0;
 
         [Key(44)]
-        public double[] VirtueEggsDelivered { get; set; } = [];
+        public double[] VirtueEggsDelivered {
+            get => _virtueEggsDelivered ?? [];
+            set => _virtueEggsDelivered = value;
+        }
+        private double[] _virtueEggsDelivered = [];
         [Key(45)]
         public uint Resets { get; set; }
         [Key(46)]

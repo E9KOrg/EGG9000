@@ -82,17 +82,20 @@ namespace Ei {
     public partial class Contract {
 
         public List<Goal> GetGoals(int league) {
-            if(GradeSpecs.Count > 0)
+            if(league >= 1 && league <= GradeSpecs.Count)
                 return [.. GradeSpecs[league - 1].Goals];
-            else return [.. GoalSets[league].Goals];
+            if(league >= 0 && league < GoalSets.Count)
+                return [.. GoalSets[league].Goals];
+            return [.. Goals];
         }
         public List<Goal> GetGoals(LocalContract contract) {
-            if(contract.Grade != PlayerGrade.GradeUnset)
-                return [.. GradeSpecs[(int)contract.Grade - 1].Goals];
-            else if(GoalSets.Count > 0)
-                return [.. GoalSets[(int)contract.League].Goals];
-            else
-                return [.. Goals];
+            var grade = (int)contract.Grade;
+            if(grade >= 1 && grade <= GradeSpecs.Count)
+                return [.. GradeSpecs[grade - 1].Goals];
+            var league = (int)contract.League;
+            if(league >= 0 && league < GoalSets.Count)
+                return [.. GoalSets[league].Goals];
+            return [.. Goals];
         }
 
         public int GetPossiblePE() {
