@@ -107,28 +107,15 @@ namespace EGG9000.Common.Helpers {
             return result;
         }
 
-        public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
-            var tokenSource2 = new CancellationTokenSource();
-            var token2 = tokenSource2.Token;
+        public static async Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(9));
             options ??= new RequestOptions();
-            options.CancelToken = token2;
-
-            var thread = message.ModifyAsync(msgProperties, options);
-            tokenSource2.CancelAfter(9000);
-            var tokenSource = new CancellationTokenSource();
-            var token = tokenSource.Token;
-            var timer = Task.Delay(10000, token);
-            Task.WaitAny(thread, timer);
-            if(timer.IsCompleted) {
-                GetLogger<IUserMessage>().LogWarning($"Timer Expired");
-            } else {
-                tokenSource.Cancel();
-                if(thread.IsCanceled) {
-                    GetLogger<IUserMessage>().LogWarning($"Modify Task CANCELLED!");
-                }
+            options.CancelToken = cts.Token;
+            try {
+                await message.ModifyAsync(msgProperties, options);
+            } catch(OperationCanceledException) when(cts.IsCancellationRequested) {
+                GetLogger<IUserMessage>().LogWarning("Modify timed out after 9s for message {MessageId}", message.Id);
             }
-
-            return Task.CompletedTask;
         }
 
         public static FileAttachment GetFileAttachment(this SixLabors.ImageSharp.Image image, string imageName = "Image.png", string imageDescription = "An image") {
