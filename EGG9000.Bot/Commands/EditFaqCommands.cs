@@ -8,7 +8,6 @@ using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
 
-using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
@@ -189,7 +188,7 @@ namespace EGG9000.Bot.Commands {
                 }
                 if(t is not null) {
                     t.Name = form.Name;
-                    t._keywords = JsonConvert.SerializeObject(keywords);
+                    t.Keywords = keywords;
                     t.Explanation = form.Explanation;
                     t.EmbedColorHex = color;
                     t.ImageUrl = form.Image;
