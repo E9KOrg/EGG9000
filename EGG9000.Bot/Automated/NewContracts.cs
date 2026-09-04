@@ -82,8 +82,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
-                // If any eggs had their modifiers or icons changed
-                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && !e.Equals(ce)));
+                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && e._response != JsonConvert.SerializeObject(ce)));
                 if(updatedCustomEggs.Any()) {
                     foreach(var updatedEgg in updatedCustomEggs) {
                         var existingEgg = _db.CustomEggs.FirstOrDefault(dbe => dbe.Identifier == updatedEgg.Identifier);
@@ -93,8 +92,7 @@ namespace EGG9000.Bot.Automated {
                             emote = await _client.CreateCustomEggEmoji(updatedEgg, emote);
                             if(emote != null) existingEgg.GuildEmote = emote;
                         }
-                        existingEgg.Modifiers = [.. updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b))];
-                        existingEgg.Icon = new(updatedEgg.Icon);
+                        existingEgg.ApplyDetails(updatedEgg);
                         dbNeedsUpdate = true;
                     }
                 }
