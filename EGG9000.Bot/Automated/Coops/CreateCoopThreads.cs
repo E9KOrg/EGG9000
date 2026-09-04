@@ -172,14 +172,15 @@ namespace EGG9000.Bot.Automated.Coops {
 
                                         var capturedThread = coopThread;
                                         var introText = $"Coop **{coop.Name}** for the contract **{guildContract.Contract.Name}** is ready for the following to join: {string.Join(", ", xrefs.Select(x => $"<@{x.User.DiscordId}>" + (x.User.EggIncAccounts.Count > 1 ? $"({x.User.EggIncAccounts.FirstOrDefault(e => e.Id == x.EggIncId)?.Backup.UserName ?? "Check website"})" : "")))}\n";
+                                        var placeholderSlots = Math.Max(0, ThreadsCoopStatusUpdater.EstimateWorstCaseMessageSlotsV2(coop.MaxUsers.GetValueOrDefault()) - 1);
                                         var msgIds = await _queue.EnqueueLowAsync<List<ulong>>(async () => {
-                                            var m1 = await capturedThread.SendMessageAsync(introText);
-                                            var m2 = await capturedThread.SendMessageAsync("\u17B5");
-                                            var m3 = await capturedThread.SendMessageAsync("\u17B5");
-                                            var m4 = await capturedThread.SendMessageAsync("\u17B5");
-                                            var m5 = await capturedThread.SendMessageAsync("\u17B5");
-                                            return [m1.Id, m2.Id, m3.Id, m4.Id, m5.Id];
+                                            var ids = new List<ulong> { (await capturedThread.SendMessageAsync(components: ThreadsCoopStatusUpdater.BuildV2StatusComponent(introText), flags: MessageFlags.ComponentsV2)).Id };
+                                            for(var i = 0; i < placeholderSlots; i++) {
+                                                ids.Add((await capturedThread.SendMessageAsync(components: ThreadsCoopStatusUpdater.BuildV2StatusComponent("\u17B5"), flags: MessageFlags.ComponentsV2)).Id);
+                                            }
+                                            return ids;
                                         });
+                                        coopToUpdate.StatusMessagesUseComponentsV2 = true;
                                         coopToUpdate.UpdateMessagesId = JsonConvert.SerializeObject(msgIds);
                                         await db2.SaveChangesAsyncRetry(cancellationToken: cancellationToken);
                                     } finally {
@@ -399,12 +400,14 @@ namespace EGG9000.Bot.Automated.Coops {
             var category = categories?.OrderBy(x => x.DiscordCategory.Position)?.FirstOrDefault(x => x.CurrentCount < 50);
 
             if(BuildConfig.IsDev9002 && category == null) {
-                var newCategory = await OverflowSocketGuild.CreateCategoryChannelAsync("Coops");
+                if(!OverflowSocketGuild.CategoryChannels.Any(c => c.Name == "Coops")) {
+                    await OverflowSocketGuild.CreateCategoryChannelAsync("Coops");
+                }
                 categories = (await _client.GetAllCoopCategories(OverflowSocketGuild)).Select(x => new CoopCategories(OverflowSocketGuild, x)).ToList();
                 category = categories.OrderBy(x => x.DiscordCategory.Position).FirstOrDefault(x => x.CurrentCount < 50);
             }
             if(category == null) {
-                _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
+                _logger.LogError("No coop category with available space found in {server} for {contract} grade {grade}. If this is a primary guild, a newly created 'Coops' category must be added to its CoopCategories config before it will be used.", OverflowSocketGuild.Name, GuildContract.Contract.GetE9KName(), PlayerGradeDetails.GetNameFromLeague(League));
                 return null;
             }
             return await _queue.EnqueueLowAsync(() => OverflowSocketGuild.CreateCoopThreadHeaderAsync(gradeRole, ultraRoles, contractEmbed, category.DiscordCategory, League, GuildContract.Contract, _logger));

@@ -10,12 +10,31 @@ namespace Discord {
         public const int TextDisplayMax = 4000;
         public const int ComponentsPerMessageMax = 40;
 
+        public sealed class MessageTextBudget {
+            private int _remaining = TextDisplayMax;
+            public int Remaining => _remaining;
+            public string Consume(string content) {
+                if(string.IsNullOrEmpty(content) || _remaining <= 0) return "";
+                var truncated = content.Length <= _remaining ? content : content[.._remaining];
+                _remaining -= truncated.Length;
+                return truncated;
+            }
+        }
+
         public static T WithTextDisplaySafe<T>(this T container, string content, int? id = null) where T : class, IComponentContainer, IStaticComponentContainer =>
             container.WithTextDisplay(content.Truncate(TextDisplayMax), id);
+
+        public static T WithTextDisplaySafe<T>(this T container, string content, MessageTextBudget budget, int? id = null) where T : class, IComponentContainer, IStaticComponentContainer =>
+            container.WithTextDisplay(budget.Consume(content), id);
 
         public static T WithHeaderSafe<T>(this T container, string title, string accountLine = null) where T : class, IComponentContainer, IStaticComponentContainer {
             var header = accountLine is null ? $"# {title}" : $"# {title}\n{accountLine}";
             return container.WithTextDisplaySafe(header);
+        }
+
+        public static T WithHeaderSafe<T>(this T container, string title, MessageTextBudget budget, string accountLine = null) where T : class, IComponentContainer, IStaticComponentContainer {
+            var header = accountLine is null ? $"# {title}" : $"# {title}\n{accountLine}";
+            return container.WithTextDisplaySafe(header, budget);
         }
 
         public static bool IsComponentsV2(this MessageFlags? flags) =>

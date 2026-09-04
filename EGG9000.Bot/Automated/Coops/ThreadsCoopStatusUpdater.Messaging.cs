@@ -8,7 +8,6 @@ using Humanizer;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly;
-using static EGG9000.Common.Helpers.Prefarm;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,6 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated.Coops {
     public partial class ThreadsCoopStatusUpdater {
@@ -25,7 +25,7 @@ namespace EGG9000.Bot.Automated.Coops {
             public List<IMessage> DiscordMessages { get; set; }
         }
 
-        private static async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop, CancellationToken cancellationToken) {
+        internal static async Task<List<IMessage>> GetDiscordMessages(ITextChannel coopChannel, Coop coop, CancellationToken cancellationToken) {
             var UpdateMessageIDs = JsonConvert.DeserializeObject<List<ulong>>(coop.UpdateMessagesId ?? "[]");
 
             IEnumerable<IMessage> discordMessages;
@@ -96,7 +96,7 @@ namespace EGG9000.Bot.Automated.Coops {
             };
         }
 
-        private async Task UpdateChannel(List<string> msgs, Embed embed, IThreadChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
+        internal async Task UpdateChannel(List<string> msgs, Embed embed, IThreadChannel coopChannel, Coop coop, List<IMessage> existingMessages) {
             var sw = new Stopwatch();
             sw.Restart();
             var times = new List<long>();
@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
             msgs.Insert(0, "@@@EMBED");
 
-            for(var i = msgs.Count; i < (coop.MaxUsers > 40 ? 5 : 4); i++) {
+            for(var i = msgs.Count; i < EstimateWorstCaseMessageSlots(coop.MaxUsers.GetValueOrDefault()); i++) {
                 msgs.Add("឵");
             }
             if(string.IsNullOrWhiteSpace(coop.UpdateMessagesId)) {
@@ -245,6 +245,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 if(x.CoopStatus?.TimeCheatDetected ?? false)
                     sleeping += " ⏱️";
 
+                sleeping = Truncate(sleeping, 24);
+
 
                 var percent = coopDetails.GetProjectedShare(x);
 
@@ -272,22 +274,41 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-            var lstr = new List<string>();
+            return ChunkTableAtLimit(table, V1MessageContentCharBudget);
+        }
 
+        public static List<string> ChunkTableAtLimit(List<List<FixedWidthCell>> table, int limit) {
+            var header = table[0];
+            var columnWidths = ComputeColumnWidths(table);
+            string Render(List<List<FixedWidthCell>> rows) => $"```{GetTable(rows, columnWidths)}```";
 
+            var chunks = new List<string>();
+            var current = new List<List<FixedWidthCell>> { header };
+            foreach(var row in table.Skip(1)) {
+                var candidate = new List<List<FixedWidthCell>>(current) { row };
+                if(current.Count > 1 && Render(candidate).Length > limit) {
+                    chunks.Add(Render(current));
+                    current = [header, row];
+                } else {
+                    current.Add(row);
+                }
+            }
+            chunks.Add(Render(current));
 
-            var tableString = $"```{GetTable(table)}```";
+            return chunks;
+        }
 
+        public static List<string> ChunkAtDiscordMessageLimit(string text, int limit = 2000) {
             var msgs = new List<string>();
 
-            while(tableString.Length > 2000) {
-                var index = tableString.LastIndexOf('\n', 1997);
+            while(text.Length > limit) {
+                var index = text.LastIndexOf('\n', limit - 3);
 
-                msgs.Add(tableString[..index] + "```");
-                tableString = "```" + tableString[index..];
+                msgs.Add(text[..index] + "```");
+                text = "```" + text[index..];
             }
 
-            msgs.Add(tableString);
+            msgs.Add(text);
 
             return msgs;
         }
