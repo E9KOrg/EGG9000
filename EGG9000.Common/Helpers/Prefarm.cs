@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using static Ei.ContractCoopStatusResponse.Types;
 
@@ -48,8 +49,8 @@ namespace EGG9000.Common.Helpers {
             public double TotalCraftingXP { get; set; }
             public uint CraftingLevel { get; set; }
 
-            [System.Text.RegularExpressions.GeneratedRegex(@"\(.+?\)")]
-            private static partial System.Text.RegularExpressions.Regex MyRegex();
+            [GeneratedRegex(@"\(.+?\)")]
+            private static partial Regex MyRegex();
         }
 
         public class SimpleXref {

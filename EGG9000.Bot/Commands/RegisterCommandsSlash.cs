@@ -3,6 +3,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
@@ -376,7 +377,7 @@ namespace EGG9000.Bot.Commands {
         private static partial Regex MyRegex1();
     }
 
-    public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger) : Interactions.E9KModuleBase(dbFactory) {
+    public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly IClient _bugsnag = bugsnag;
         private readonly ILogger<RegisterModule> _logger = logger;

@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -12,7 +13,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
-    public class ShipReturnDmModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
+    public class ShipReturnDmModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
 
         [ComponentInteraction("SRDMenu:*", ignoreGroupNames: true)]
         public async Task SRDMenu(string data) {
