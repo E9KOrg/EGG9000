@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EGG9000.Common.Database.Entities {
+    // TODO: Rename table to DBContract
     [Table("Contracts")]
     public class DBContract {
         public string ID { get; set; }
@@ -20,12 +21,12 @@ namespace EGG9000.Common.Database.Entities {
         public bool debug { get; set; }
         public double length_seconds { get; set; }
         public bool cc_only { get; set; } //Subscription needed
+        public double egg_value { get; set; }
+        public string Rewards { get; set; }
 
         public string _response { get; set; }
 
         public bool HadTwoRewards { get; set; }
-
-        public double egg_value { get; set; }
 
         [NotMapped]
         private Ei.Contract _details { get; set; }
@@ -35,9 +36,7 @@ namespace EGG9000.Common.Database.Entities {
                 if(_response == null) {
                     return null;
                 }
-                if(_details == null) {
-                    _details = JsonConvert.DeserializeObject<Ei.Contract>(_response);
-                }
+                _details ??= JsonConvert.DeserializeObject<Ei.Contract>(_response);
                 return _details;
             }
         }
@@ -46,8 +45,24 @@ namespace EGG9000.Common.Database.Entities {
             _response = JsonConvert.SerializeObject(details);
         }
 
+        public void ApplyDetails(Ei.Contract details) {
+            OverwriteDetails(details);
+            Name = details.Name;
+            Description = details.Description;
+            goals = JsonConvert.SerializeObject(details.Goals);
+            GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)details.ExpirationTime);
+            MaxUsers = (int)details.MaxCoopSize;
+            coop_allowed = details.CoopAllowed;
+            max_boosts = (int)details.MaxBoosts;
+            max_soul_eggs = details.MaxSoulEggs;
+            min_client_version = (int)details.MinClientVersion;
+            debug = details.Debug;
+            length_seconds = details.LengthSeconds;
+            egg = details.Egg.ToString();
+            cc_only = details.CcOnly;
+        }
 
-        public string Rewards { get; set; }
+
         public int P2 { get; set; }
         public int P4 { get; set; }
         public double P6 { get; set; }
@@ -58,10 +73,14 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public TimeSpan ContractTime {
             get {
-                if(length_seconds == 0) {
-                    return TimeSpan.FromSeconds(P7);
+                var fromDetails = Details?.LengthSeconds ?? 0;
+                if(fromDetails > 0) {
+                    return TimeSpan.FromSeconds(fromDetails);
                 }
-                return TimeSpan.FromSeconds(length_seconds);
+                if(length_seconds > 0) {
+                    return TimeSpan.FromSeconds(length_seconds);
+                }
+                return TimeSpan.FromSeconds(P7);
             }
         }
 
