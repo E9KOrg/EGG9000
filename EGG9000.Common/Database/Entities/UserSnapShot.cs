@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -21,14 +20,11 @@ namespace EGG9000.Common.Database.Entities {
         public string VirtueStatsJson { get; set; } = "{}";
 
         [NotMapped]
-        private VirtueSnapshotStats _virtueStats;
+        private readonly JsonBlobAccessor<VirtueSnapshotStats> _virtueStats = new("{}", () => new VirtueSnapshotStats());
         [NotMapped]
         public VirtueSnapshotStats VirtueStats {
-            get => _virtueStats ??= JsonConvert.DeserializeObject<VirtueSnapshotStats>(VirtueStatsJson ?? "{}") ?? new VirtueSnapshotStats();
-            set {
-                _virtueStats = value;
-                VirtueStatsJson = JsonConvert.SerializeObject(value);
-            }
+            get => _virtueStats.Get(VirtueStatsJson);
+            set => VirtueStatsJson = _virtueStats.Set(value, VirtueStatsJson);
         }
     }
 
