@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -158,7 +159,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class FaqModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<FaqModule> logger) : Interactions.E9KModuleBase(dbFactory) {
+    public class FaqModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<FaqModule> logger) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly ILogger<FaqModule> _logger = logger;
 

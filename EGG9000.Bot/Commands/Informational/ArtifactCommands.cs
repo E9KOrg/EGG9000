@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
@@ -74,7 +75,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public partial class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
+    public partial class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
 
         [SlashCommand("viewinventory", "View your inventory")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
