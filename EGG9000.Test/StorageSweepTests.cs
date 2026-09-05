@@ -69,9 +69,9 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
-        [DataRow(null, 250)]
+        [DataRow(null, 0)]
         [DataRow("0", 0)]
-        [DataRow("abc", 250)]
+        [DataRow("abc", 0)]
         [DataRow("-5", 0)]
         [DataRow("1000", 1000)]
         public void Options_Parse_BatchDelay(string? delayRaw, int expected) {
