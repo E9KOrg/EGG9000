@@ -50,19 +50,19 @@ namespace EGG9000.Common.Database {
                 anyPresent |= present[g];
             }
 
+            if(Plan.Length == 0 || !anyPresent) {
+                Inner.Serialize(ref writer, value, options);
+                return;
+            }
+
             var buffer = new ArrayBufferWriter<byte>(_initialBufferSize);
             var inner = writer.Clone(buffer);
             Inner.Serialize(ref inner, value, options);
             inner.Flush();
 
-            if(Plan.Length == 0) {
-                writer.WriteRaw(buffer.WrittenSpan);
-                return;
-            }
-
             var reader = new MessagePackReader(buffer.WrittenMemory);
-            if(!anyPresent || reader.NextMessagePackType != MessagePackType.Array) {
-                writer.WriteRaw(buffer.WrittenSpan);
+            if(reader.NextMessagePackType != MessagePackType.Array) {
+                WriteContiguous(ref writer, buffer.WrittenSpan);
                 return;
             }
 
@@ -74,8 +74,18 @@ namespace EGG9000.Common.Database {
                     WriteDefault(ref writer, slot.Default);
                     continue;
                 }
-                writer.WriteRaw(reader.ReadRaw());
+                var raw = reader.ReadRaw();
+                if(raw.IsSingleSegment)
+                    WriteContiguous(ref writer, raw.FirstSpan);
+                else
+                    WriteContiguous(ref writer, raw.ToArray());
             }
+        }
+
+        private static void WriteContiguous(ref MessagePackWriter writer, ReadOnlySpan<byte> bytes) {
+            var span = writer.GetSpan(bytes.Length);
+            bytes.CopyTo(span);
+            writer.Advance(bytes.Length);
         }
 
         public T Deserialize(ref MessagePackReader reader, MessagePackSerializerOptions options) {

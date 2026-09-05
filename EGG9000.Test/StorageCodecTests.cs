@@ -140,6 +140,34 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
+        public void Pack_DefaultOff_LegacyGraph_MatchesMasterLz4BytesAcrossBlocks() {
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = false;
+            try {
+                var legacy = BuildLegacyBackup();
+                legacy.ArchivedFarms = [.. Enumerable.Range(0, 240).Select(i => new CustomArchivedFarms {
+                    CoopId = $"coop-{i % 37}",
+                    ContractId = $"contract-{i % 250}",
+                    TimeAccepted = 1_600_000_000 + i * 86400f,
+                    Completed = i % 7 != 0,
+                    League = (byte)(i % 2),
+                    PEPossible = 1,
+                    Grade = Ei.Contract.Types.PlayerGrade.GradeAaa,
+                    EvaluationCxp = 100 + i,
+                    NumGoalsAchieved = 3,
+                    ReportedUUIDs = [$"{i:x8}-0000-0000-0000-000000000000"]
+                })];
+                List<EggIncAccount> accounts = [new EggIncAccount { Id = "EI-legacy-0001", Backup = legacy }];
+                var masterOptions = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+                var plainLength = MessagePackSerializer.Serialize(accounts, MessagePackSerializerOptions.Standard).Length;
+                Assert.IsTrue(plainLength > 12_000, $"fixture must span several LZ4 scratch segments, plain length {plainLength}");
+                CollectionAssert.AreEqual(MessagePackSerializer.Serialize(accounts, masterOptions), StorageCodec.Pack(accounts));
+            } finally {
+                StorageCodec.CompressWriteEnabled = prior;
+            }
+        }
+
+        [TestMethod]
         public void Pack_ToggleOn_WritesEnvelope_AndRoundTrips() {
             var prior = StorageCodec.CompressWriteEnabled;
             StorageCodec.CompressWriteEnabled = true;
@@ -233,6 +261,9 @@ namespace EGG9000.Test {
 
             Assert.IsNotNull(accounts);
             Assert.AreEqual(0, accounts.Count);
+            Assert.IsTrue(user.AccountsUnreadable);
+            Assert.IsFalse(user.UpdateAccounts());
+            CollectionAssert.AreEqual(new byte[] { 0x1F, 0x8B, 0x99, 0x11, 0x22 }, user._contractRegistrationByte);
         }
 
         [TestMethod]
@@ -243,6 +274,10 @@ namespace EGG9000.Test {
 
             Assert.IsNotNull(accounts);
             Assert.AreEqual(0, accounts.Count);
+            Assert.IsTrue(user.AccountsUnreadable);
+            Assert.IsFalse(user.UpdateAccounts());
+            Assert.AreEqual(StorageCompression.Marker, user._contractRegistrationByte[0]);
+            Assert.AreEqual(5, user._contractRegistrationByte.Length);
         }
     }
 }

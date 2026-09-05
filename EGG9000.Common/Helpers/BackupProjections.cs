@@ -119,8 +119,9 @@ namespace EGG9000.Common.Helpers {
 
         public static void MergeMaxFarmSizes(Dictionary<string, ulong> target, IEnumerable<Ei.LocalContract> farms, FrozenSet<Ei.Contract> contracts) {
             var eggIdByContractId = contracts
-                .Where(c => c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
-                .ToDictionary(c => c.Identifier, c => c.CustomEggId.ToLower());
+                .Where(c => c != null && c.Egg == Ei.Egg.CustomEgg && !string.IsNullOrEmpty(c.CustomEggId))
+                .GroupBy(c => c.Identifier)
+                .ToDictionary(g => g.Key, g => g.First().CustomEggId.ToLower());
             MergeMaxFarmSizes(target,
                 farms.Where(f => f.MaxFarmSizeReached > 0 && eggIdByContractId.ContainsKey(f.ContractIdentifier))
                      .GroupBy(f => eggIdByContractId[f.ContractIdentifier])

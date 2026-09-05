@@ -123,6 +123,8 @@ namespace EGG9000.Bot.Automated {
                         continue;
                     }
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
+                    if(contract?.Details?.Leggacy == true)
+                        contractResponse.Leggacy = true;
 
                     var json = JsonConvert.SerializeObject(contractResponse);
                     if(!contractResponse.Leggacy && contract != null && contract._response != json) {

@@ -854,7 +854,7 @@ namespace EGG9000.Bot.Commands {
             account.Guild = name.Truncate(100);
             var changed = dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
-            var noChangeWarning = (!changed && !guildNameDifferent)
+            var noChangeWarning = (guildNameDifferent && !changed)
                 ? "No changes were made but were supposed to, please try again. (Kendrome is attempting to figure out why this is happening to fix it)"
                 : null;
             var components = ContractSettingsCommands.MainMenu(dbuser, account, index, Db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId), noChangeWarning);
