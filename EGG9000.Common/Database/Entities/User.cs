@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 using Newtonsoft.Json;
 
+using NLog;
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -126,7 +128,12 @@ namespace EGG9000.Common.Database.Entities {
             => new() { _eggIncIds = eggIncIds, _contractRegistrationByte = contractRegistrationByte };
 
         [NotMapped]
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
+
+        [NotMapped]
         private List<EggIncAccount> _accounts = null;
+        [NotMapped]
+        public bool AccountsUnreadable { get; private set; }
         [NotMapped]
         public List<EggIncAccount> EggIncAccounts {
             get {
@@ -138,7 +145,8 @@ namespace EGG9000.Common.Database.Entities {
                     } else {
                         try {
                             _accounts = StorageCodec.Unpack<List<EggIncAccount>>(_contractRegistrationByte);
-                        } catch(MessagePackSerializationException) {
+                        } catch(MessagePackSerializationException e) {
+                            MarkAccountsUnreadable(e);
                             _accounts = [];
                             return _accounts;
                         }
@@ -203,8 +211,9 @@ namespace EGG9000.Common.Database.Entities {
                         }
                     }
                     return _accounts;
-                } catch(MessagePackSerializationException) {
-                    return [];
+                } catch(MessagePackSerializationException e) {
+                    MarkAccountsUnreadable(e);
+                    return _accounts ?? [];
                 } catch(Exception) { throw; }
             }
             set {
@@ -215,12 +224,30 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
+        private void MarkAccountsUnreadable(Exception e) {
+            if(AccountsUnreadable)
+                return;
+            AccountsUnreadable = true;
+            var length = _contractRegistrationByte?.Length ?? 0;
+            var head = length > 0 ? Convert.ToHexString(_contractRegistrationByte.AsSpan(0, Math.Min(12, length))) : "";
+            _logger.Error(e, "Accounts column unreadable for user {DiscordId} ({Id}): {Length} bytes, head {Head}. Column left untouched.", DiscordId, Id, length, head);
+        }
+
         public bool UpdateAccounts() {
+            if(AccountsUnreadable) {
+                if(_accounts is null || _accounts.Count == 0) {
+                    _logger.Warn("Refused to overwrite unreadable accounts column for user {DiscordId} ({Id}) with an empty list.", DiscordId, Id);
+                    return false;
+                }
+                _logger.Error("Replacing unreadable accounts column for user {DiscordId} ({Id}) with {Count} account(s); previous contents are lost.", DiscordId, Id, _accounts.Count);
+                AccountsUnreadable = false;
+            }
             if(_eggIncIds is not null)
                 _eggIncIds = null;
             var compressedAccounts = StorageCodec.Pack(_accounts);
-            var changed = compressedAccounts != _contractRegistrationByte;
-            _contractRegistrationByte = compressedAccounts;
+            var changed = _contractRegistrationByte is null || !compressedAccounts.AsSpan().SequenceEqual(_contractRegistrationByte);
+            if(changed)
+                _contractRegistrationByte = compressedAccounts;
             Usernames = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.UserName) ?? []);
             EIDs = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId) ?? []);
             return changed;

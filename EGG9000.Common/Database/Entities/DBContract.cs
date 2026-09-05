@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace EGG9000.Common.Database.Entities {
-    // TODO: Rename table to DBContract
     [Table("Contracts")]
     public class DBContract {
         public string ID { get; set; }

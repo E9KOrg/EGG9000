@@ -126,6 +126,24 @@ namespace EGG9000.Test {
 
             Assert.IsNotNull(accounts);
             Assert.AreEqual(0, accounts.Count);
+            Assert.IsTrue(user.AccountsUnreadable);
+            Assert.IsFalse(user.UpdateAccounts());
+            CollectionAssert.AreEqual(new byte[] { 0xC1, 0xFF, 0x00 }, user._contractRegistrationByte);
+        }
+
+        [TestMethod]
+        public void UpdateAccounts_ReportsChangedOnlyWhenBytesDiffer() {
+            var user = new DBUser { DiscordId = 9 };
+            user.EggIncAccounts = [new EggIncAccount { Id = "EI0000000000000009", Guild = "before" }];
+            var stored = user._contractRegistrationByte;
+
+            Assert.IsFalse(user.UpdateAccounts());
+            Assert.AreSame(stored, user._contractRegistrationByte);
+
+            user.EggIncAccounts[0].Guild = "after";
+            Assert.IsTrue(user.UpdateAccounts());
+            Assert.AreNotSame(stored, user._contractRegistrationByte);
+            Assert.AreEqual("after", new DBUser { _contractRegistrationByte = user._contractRegistrationByte }.EggIncAccounts[0].Guild);
         }
 
         [TestMethod]

@@ -102,7 +102,8 @@ namespace EGG9000.Bot.Automated {
                         significantChangeCount++;
                     }
 
-                    currentEvent.ApplyDetails(evt);
+                    if(currentEvent.DetailsChanged(evt))
+                        currentEvent.ApplyDetails(evt);
                     currentEvent.Ended = false;
 
                     if(!string.IsNullOrEmpty(currentEvent.MessageIds)) {

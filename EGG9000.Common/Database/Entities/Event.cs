@@ -23,6 +23,14 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public Ei.EggIncEvent Details => _details.Get(_response);
 
+        public bool DetailsChanged(Ei.EggIncEvent e) {
+            if(Details is not { } stored)
+                return true;
+            var incoming = e.Clone();
+            incoming.SecondsRemaining = stored.SecondsRemaining;
+            return !stored.Equals(incoming);
+        }
+
         public void ApplyDetails(Ei.EggIncEvent e) {
             _response = _details.Set(e, _response);
             Identifier = e.Identifier;
