@@ -34,6 +34,22 @@ public static class BotHostFactory {
 
             services.AddMemoryCache();
 
+            var allowlist = ServiceAllowlist.Default;
+            var skipped = new List<string>();
+            void AddGated<T>(Func<IServiceProvider, T> factory = null) where T : class, IHostedService {
+                if(!allowlist.IsEnabled(typeof(T))) {
+                    skipped.Add(typeof(T).Name);
+                    return;
+                }
+                if(factory is null) {
+                    services.AddHostedService<T>();
+                } else {
+                    services.AddHostedService(factory);
+                }
+            }
+
+            AddGated<StorageSweep>();
+
             services.AddSingleton<DiscordQueueService>();
             services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
             services.AddHostedService(provider => provider.GetRequiredService<DiscordQueueService>());
@@ -171,20 +187,6 @@ public static class BotHostFactory {
                 }));
             services.AddHostedService<InteractionRoutingService>();
 
-            var allowlist = ServiceAllowlist.Default;
-            var skipped = new List<string>();
-            void AddGated<T>(Func<IServiceProvider, T> factory = null) where T : class, IHostedService {
-                if(!allowlist.IsEnabled(typeof(T))) {
-                    skipped.Add(typeof(T).Name);
-                    return;
-                }
-                if(factory is null) {
-                    services.AddHostedService<T>();
-                } else {
-                    services.AddHostedService(factory);
-                }
-            }
-
             services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             AddGated<LeaderboardUpdater>();
 
@@ -214,7 +216,6 @@ public static class BotHostFactory {
             AddGated<CleanAutomationLogs>();
             AddGated<CleanApiKeyRequestLogs>();
             AddGated<RankupMessageSeeder>();
-            AddGated<StorageSweep>();
 
             services.AddSingleton<CoopsBeingCreatedService>();
             services.AddSingleton<JobService>();

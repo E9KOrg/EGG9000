@@ -27,6 +27,11 @@ try {
     GlobalDiagnosticsContext.Set("CustomAppName", "EGG9000.Bot");
     logger.Log(NLog.LogLevel.Info, "Main Start");
 
+    if(EGG9000.Bot.Automated.StorageSweepCli.Requested(args)) {
+        logger.Log(NLog.LogLevel.Info, "Storage sweep CLI mode: no Discord, no caches, explicit connection only");
+        return await EGG9000.Bot.Automated.StorageSweepCli.RunAsync(EGG9000.Bot.Automated.StorageSweepCli.ConnectionArgument(args));
+    }
+
     using var sentry = SentrySdk.Init(o =>
     {
         o.Dsn = SecretsHelper.GetConfigOrSecret(
@@ -83,6 +88,7 @@ try {
     }
 
     await host.RunAsync();
+    return 0;
 } catch(Exception ex) {
     SentrySdk.CaptureException(ex);
     logger.Error(ex, "Fatal error during startup");

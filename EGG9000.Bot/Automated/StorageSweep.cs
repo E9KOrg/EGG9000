@@ -17,7 +17,7 @@ namespace EGG9000.Bot.Automated {
     public record StorageSweepOptions(bool Enabled, int BatchDelayMs) {
         public const string EnabledVariable = "EGG9000_STORAGE_SWEEP";
         public const string BatchDelayVariable = "EGG9000_STORAGE_SWEEP_BATCH_DELAY_MS";
-        public const int DefaultBatchDelayMs = 250;
+        public const int DefaultBatchDelayMs = 0;
 
         public static StorageSweepOptions FromEnvironment() {
             return Parse(Environment.GetEnvironmentVariable(EnabledVariable), Environment.GetEnvironmentVariable(BatchDelayVariable));
@@ -50,6 +50,7 @@ namespace EGG9000.Bot.Automated {
         public const string AutomationLogType = "StorageSweep";
         public const int UsersBatchSize = 500;
         public const int CoopsBatchSize = 2000;
+        public const int CommandTimeoutSeconds = 1800;
 
         private const string UsersPredicate = "\"_contractRegistrationByte\" IS NOT NULL AND octet_length(\"_contractRegistrationByte\") > 0 AND get_byte(\"_contractRegistrationByte\", 0) <> @marker";
         private const string CoopsPredicate = "\"_StatusCompressed\" IS NOT NULL AND octet_length(\"_StatusCompressed\") > 0 AND get_byte(\"_StatusCompressed\", 0) <> @marker";
@@ -72,9 +73,10 @@ namespace EGG9000.Bot.Automated {
 
         public Task StartAsync(CancellationToken cancellationToken) {
             if(!StorageSweepOptions.FromEnvironment().Enabled) {
-                logger.LogDebug("storage sweep disabled ({Variable} not set)", StorageSweepOptions.EnabledVariable);
+                logger.LogInformation("storage sweep disabled ({Variable} not set)", StorageSweepOptions.EnabledVariable);
                 return Task.CompletedTask;
             }
+            logger.LogInformation("storage sweep enabled, running in the background");
             _run = Task.Run(() => RunOnceAsync(_stopping.Token), CancellationToken.None);
             return Task.CompletedTask;
         }
@@ -88,8 +90,11 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        public async Task RunOnceAsync(CancellationToken token) {
-            var options = StorageSweepOptions.FromEnvironment();
+        public Task RunOnceAsync(CancellationToken token) {
+            return RunOnceAsync(StorageSweepOptions.FromEnvironment(), token);
+        }
+
+        public async Task RunOnceAsync(StorageSweepOptions options, CancellationToken token) {
             if(!options.Enabled)
                 return;
             var started = DateTimeOffset.UtcNow;
@@ -99,12 +104,16 @@ namespace EGG9000.Bot.Automated {
             try {
                 using var scope = scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var connection = db.Database.GetDbConnection();
+                logger.LogInformation("storage sweep starting: database {Database} on {DataSource}, compress={Compress}, proto={Proto}, batch delay {Delay} ms",
+                    connection.Database, connection.DataSource, StorageCodec.CompressWriteEnabled, CoopStatusCodec.ProtoWriteEnabled, options.BatchDelayMs);
                 await db.Database.OpenConnectionAsync(token);
                 try {
-                    var connection = db.Database.GetDbConnection();
+                    logger.LogInformation("storage sweep: connected, counting users");
                     var usersRemaining = await CountAsync(connection, UsersCountSql, token);
+                    logger.LogInformation("storage sweep: {Users} users remaining ({Elapsed}), counting coops (full scan of the status blobs, can take minutes)", usersRemaining, stopwatch.Elapsed);
                     var coopsRemaining = await CountAsync(connection, CoopsCountSql, token);
-                    logger.LogInformation("storage sweep: {Users} users, {Coops} coops remaining", usersRemaining, coopsRemaining);
+                    logger.LogInformation("storage sweep: {Coops} coops remaining ({Elapsed})", coopsRemaining, stopwatch.Elapsed);
                     await SweepTableAsync(connection, UsersTarget, users, options, token);
                     await SweepTableAsync(connection, CoopsTarget, coops, options, token);
                 } finally {
@@ -129,33 +138,46 @@ namespace EGG9000.Bot.Automated {
                 if(rows.Count == 0)
                     break;
                 batchNumber++;
-                foreach(var (id, stored) in rows) {
-                    token.ThrowIfCancellationRequested();
+                var encodeWatch = Stopwatch.StartNew();
+                var outcomes = new SweepOutcome[rows.Count];
+                Parallel.For(0, rows.Count, new ParallelOptions { CancellationToken = token }, i => outcomes[i] = target.Reencode(rows[i].Stored));
+                encodeWatch.Stop();
+
+                var converted = new List<(Guid Id, byte[] Old, byte[] Updated)>(rows.Count);
+                for(var i = 0; i < rows.Count; i++) {
+                    var (id, stored) = rows[i];
                     counters.Scanned++;
-                    var outcome = target.Reencode(stored);
-                    switch(outcome.Kind) {
+                    switch(outcomes[i].Kind) {
                         case SweepOutcomeKind.Current:
                             counters.Current++;
                             break;
                         case SweepOutcomeKind.Failed:
                             counters.Failed++;
-                            logger.LogError(outcome.Error, "storage sweep: {Table} row {Id} could not be re-encoded ({Length} bytes, head {Head})",
+                            logger.LogError(outcomes[i].Error, "storage sweep: {Table} row {Id} could not be re-encoded ({Length} bytes, head {Head})",
                                 target.Table, id, stored.Length, Convert.ToHexString(stored.AsSpan(0, Math.Min(12, stored.Length))));
                             break;
                         case SweepOutcomeKind.Converted:
-                            var affected = await CasUpdateAsync(connection, target.UpdateSql, id, stored, outcome.Bytes, token);
-                            if(affected == 0) {
-                                counters.SkippedChanged++;
-                            } else {
-                                counters.Converted++;
-                                counters.BytesBefore += stored.Length;
-                                counters.BytesAfter += outcome.Bytes.Length;
-                            }
+                            converted.Add((id, stored, outcomes[i].Bytes));
                             break;
                     }
                 }
+
+                var writeWatch = Stopwatch.StartNew();
+                var affected = await CasUpdateBatchAsync(connection, target.UpdateSql, converted, token);
+                writeWatch.Stop();
+                for(var i = 0; i < converted.Count; i++) {
+                    if(affected[i] == 0) {
+                        counters.SkippedChanged++;
+                    } else {
+                        counters.Converted++;
+                        counters.BytesBefore += converted[i].Old.Length;
+                        counters.BytesAfter += converted[i].Updated.Length;
+                    }
+                }
+
                 lastId = rows[^1].Id;
-                logger.LogInformation("storage sweep: {Table} batch {Batch}, {Counters}, elapsed {Elapsed}", target.Table, batchNumber, counters, stopwatch.Elapsed);
+                logger.LogInformation("storage sweep: {Table} batch {Batch}, {Counters}, encode {EncodeMs} ms, write {WriteMs} ms, elapsed {Elapsed}",
+                    target.Table, batchNumber, counters, encodeWatch.ElapsedMilliseconds, writeWatch.ElapsedMilliseconds, stopwatch.Elapsed);
                 if(options.BatchDelayMs > 0)
                     await Task.Delay(options.BatchDelayMs, token);
             }
@@ -182,20 +204,50 @@ namespace EGG9000.Bot.Automated {
             return rows;
         }
 
-        private static async Task<int> CasUpdateAsync(DbConnection connection, string sql, Guid id, byte[] old, byte[] updated, CancellationToken token) {
+        private static async Task<int[]> CasUpdateBatchAsync(DbConnection connection, string sql, List<(Guid Id, byte[] Old, byte[] Updated)> converted, CancellationToken token) {
+            var affected = new int[converted.Count];
+            if(converted.Count == 0)
+                return affected;
+            if(!connection.CanCreateBatch) {
+                for(var i = 0; i < converted.Count; i++)
+                    affected[i] = await CasUpdateAsync(connection, sql, converted[i], token);
+                return affected;
+            }
+            await using var batch = connection.CreateBatch();
+            batch.Timeout = CommandTimeoutSeconds;
+            foreach(var row in converted) {
+                var command = batch.CreateBatchCommand();
+                command.CommandText = sql;
+                AddParameter(command.CreateParameter, command.Parameters, "new", row.Updated);
+                AddParameter(command.CreateParameter, command.Parameters, "id", row.Id);
+                AddParameter(command.CreateParameter, command.Parameters, "old", row.Old);
+                batch.BatchCommands.Add(command);
+            }
+            await batch.ExecuteNonQueryAsync(token);
+            for(var i = 0; i < converted.Count; i++)
+                affected[i] = batch.BatchCommands[i].RecordsAffected;
+            return affected;
+        }
+
+        private static async Task<int> CasUpdateAsync(DbConnection connection, string sql, (Guid Id, byte[] Old, byte[] Updated) row, CancellationToken token) {
             await using var command = connection.CreateCommand();
             command.CommandText = sql;
-            AddParameter(command, "new", updated);
-            AddParameter(command, "id", id);
-            AddParameter(command, "old", old);
+            AddParameter(command, "new", row.Updated);
+            AddParameter(command, "id", row.Id);
+            AddParameter(command, "old", row.Old);
             return await command.ExecuteNonQueryAsync(token);
         }
 
         private static void AddParameter(DbCommand command, string name, object value) {
-            var parameter = command.CreateParameter();
+            command.CommandTimeout = CommandTimeoutSeconds;
+            AddParameter(command.CreateParameter, command.Parameters, name, value);
+        }
+
+        private static void AddParameter(Func<DbParameter> create, DbParameterCollection parameters, string name, object value) {
+            var parameter = create();
             parameter.ParameterName = name;
             parameter.Value = value;
-            command.Parameters.Add(parameter);
+            parameters.Add(parameter);
         }
 
         private async Task WriteAutomationLogAsync(DateTimeOffset started) {
