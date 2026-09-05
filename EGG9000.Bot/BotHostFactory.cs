@@ -15,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace EGG9000.Bot;
@@ -170,47 +171,66 @@ public static class BotHostFactory {
                 }));
             services.AddHostedService<InteractionRoutingService>();
 
-            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
-            services.AddHostedService<LeaderboardUpdater>();
+            var allowlist = ServiceAllowlist.Default;
+            var skipped = new List<string>();
+            void AddGated<T>(Func<IServiceProvider, T> factory = null) where T : class, IHostedService {
+                if(!allowlist.IsEnabled(typeof(T))) {
+                    skipped.Add(typeof(T).Name);
+                    return;
+                }
+                if(factory is null) {
+                    services.AddHostedService<T>();
+                } else {
+                    services.AddHostedService(factory);
+                }
+            }
 
-            services.AddHostedService<ArtifactCheaters>();
-            services.AddHostedService<StaffCoopsMessage>();
-            services.AddHostedService<CoopStatsRefreshService>();
-            services.AddHostedService<EventUpdater>();
+            services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
+            AddGated<LeaderboardUpdater>();
+
+            AddGated<ArtifactCheaters>();
+            AddGated<StaffCoopsMessage>();
+            AddGated<CoopStatsRefreshService>();
+            AddGated<EventUpdater>();
 
             services.Configure<UpdaterOptions<ThreadsCoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
             services.AddSingleton<ThreadsCoopStatusUpdater>();
-            services.AddHostedService(provider => provider.GetService<ThreadsCoopStatusUpdater>());
+            AddGated(provider => provider.GetService<ThreadsCoopStatusUpdater>());
 
             services.AddSingleton<ContractUpdater>();
-            services.AddHostedService(provider => provider.GetService<ContractUpdater>());
+            AddGated(provider => provider.GetService<ContractUpdater>());
 
-            services.AddHostedService<UserCXPUpdater>();
-            services.AddHostedService<NewContracts>();
-            services.AddHostedService<CreateCoopViaAPI>();
-            services.AddHostedService<CreateCoopThreads>();
-            services.AddHostedService<ShipReturnDM>();
-            services.AddHostedService<UserSnapShots>();
-            services.AddHostedService<ManageOverflow>();
-            services.AddHostedService<RemoveTempRoles>();
-            services.AddHostedService<HandleGradeChanges>();
-            services.AddHostedService<RefreshNasaApod>();
-            services.AddHostedService<UpdateBackups>();
-            services.AddHostedService<CleanAutomationLogs>();
-            services.AddHostedService<CleanApiKeyRequestLogs>();
-            services.AddHostedService<RankupMessageSeeder>();
+            AddGated<UserCXPUpdater>();
+            AddGated<NewContracts>();
+            AddGated<CreateCoopViaAPI>();
+            AddGated<CreateCoopThreads>();
+            AddGated<ShipReturnDM>();
+            AddGated<UserSnapShots>();
+            AddGated<ManageOverflow>();
+            AddGated<RemoveTempRoles>();
+            AddGated<HandleGradeChanges>();
+            AddGated<RefreshNasaApod>();
+            AddGated<UpdateBackups>();
+            AddGated<CleanAutomationLogs>();
+            AddGated<CleanApiKeyRequestLogs>();
+            AddGated<RankupMessageSeeder>();
 
             services.AddSingleton<CoopsBeingCreatedService>();
             services.AddSingleton<JobService>();
             services.AddHostedService(provider => provider.GetService<JobService>());
 
-            services.AddHostedService<MessageHandlerService>();
-            services.AddHostedService<DiscordUserService>();
-            services.AddHostedService<UserGrades>();
+            AddGated<MessageHandlerService>();
+            AddGated<DiscordUserService>();
+            AddGated<UserGrades>();
 
             // Publishes a runtime snapshot over the bus every 15s; the site re-exposes it as bot_*
             // gauges on its /metrics for cross-scope reporting.
             services.AddHostedService<BotMetricsPublisher>();
+
+            if(allowlist.Active) {
+                logger.Info("Service allowlist active ({entries}); skipped hosted services: {skipped}",
+                    string.Join(", ", allowlist.Entries), string.Join(", ", skipped));
+            }
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");
             throw;

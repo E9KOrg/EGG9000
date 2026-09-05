@@ -17,9 +17,9 @@ namespace EGG9000.Common.Database {
         [Key(4)]
         public byte? League { get; set; }
         [Key(5)]
-        public byte PEPossible { get; set; }
+        public uint PEPossible { get; set; }
         [Key(6)]
-        public byte PEGained { get; set; }
+        public uint PEGained { get; set; }
         [Key(7)]
         public float ContributionAmount { get; set; }
         [Key(8)]
@@ -49,8 +49,8 @@ namespace EGG9000.Common.Database {
             var goals = localContract.Contract is not null ? localContract.Contract.GetGoals(localContract) : null;
             Completed = localContract.Contract is not null && localContract.NumGoalsAchieved == goals.Count;
             if(goals is not null) {
-                PEPossible = (byte)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
-                PEGained = (byte)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
+                PEPossible = (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
+                PEGained = (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);
             }
         }
     }
