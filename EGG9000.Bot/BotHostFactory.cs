@@ -214,6 +214,7 @@ public static class BotHostFactory {
             AddGated<CleanAutomationLogs>();
             AddGated<CleanApiKeyRequestLogs>();
             AddGated<RankupMessageSeeder>();
+            AddGated<StorageSweep>();
 
             services.AddSingleton<CoopsBeingCreatedService>();
             services.AddSingleton<JobService>();
