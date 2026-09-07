@@ -29,7 +29,8 @@ namespace EGG9000.ConvertProbe {
 
         public static string AlgoOf(byte[] blob) {
             if(blob is not { Length: >= 2 } || blob[0] != StorageCompression.Marker) return "";
-            return AlgoName(blob[1]);
+            var algo = AlgoName(blob[1]);
+            return blob[1] == (byte)StorageCompressionAlgorithm.Zstd && blob.Length >= 3 ? $"{algo}/dict{blob[2]}" : algo;
         }
 
         public static string AlgoName(byte algo) {

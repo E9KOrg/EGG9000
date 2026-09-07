@@ -92,6 +92,55 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
+        public void Accounts_BrotliEnvelope_CompressOn_ConvertsToCurrentStrategy() {
+            var plain = MessagePackSerializer.Serialize(BuildAccounts(), StorageMessagePack.Options.WithCompression(MessagePackCompression.None));
+            var brotli = StorageCompression.Compress(plain, new StorageCompressionStrategy(StorageCompressionAlgorithm.Brotli, rawThreshold: 0));
+            Assert.AreEqual((byte)StorageCompressionAlgorithm.Brotli, brotli[1]);
+
+            var outcome = WithCompressWrite(true, () => StorageSweepCodec.Accounts(brotli));
+
+            Assert.AreEqual(SweepOutcomeKind.Converted, outcome.Kind);
+            Assert.AreEqual((byte)StorageCompressionStrategy.AccountGraph.Algorithm, outcome.Bytes[1]);
+            Assert.AreEqual("EI0000000000012345", StorageCodec.Unpack<List<EggIncAccount>>(outcome.Bytes).Single().Id);
+        }
+
+        [TestMethod]
+        public void Accounts_CurrentStrategyEnvelope_CompressOn_IsCurrent() {
+            var stored = WithCompressWrite(true, () => StorageCodec.Pack(BuildAccounts()));
+            var outcome = WithCompressWrite(true, () => StorageSweepCodec.Accounts(stored));
+
+            Assert.AreEqual(SweepOutcomeKind.Current, outcome.Kind);
+        }
+
+        [TestMethod]
+        public void StalePredicate_Zstd_ChecksMarkerAlgorithmAndDictionary() {
+            var predicate = StorageSweep.StalePredicate("\"col\"", new StorageCompressionStrategy(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.Accounts1));
+
+            StringAssert.Contains(predicate, "@marker");
+            StringAssert.Contains(predicate, "@algo");
+            StringAssert.Contains(predicate, "@dict");
+            StringAssert.Contains(predicate, "@raw AND octet_length(\"col\") <= @rawMax");
+            StringAssert.Contains(predicate, "get_byte(\"col\", 2)");
+        }
+
+        [TestMethod]
+        public void StalePredicate_Brotli_DoesNotReadDictionaryByte() {
+            var predicate = StorageSweep.StalePredicate("\"col\"", new StorageCompressionStrategy(StorageCompressionAlgorithm.Brotli));
+
+            StringAssert.Contains(predicate, "@algo");
+            Assert.IsFalse(predicate.Contains("@dict"));
+            Assert.IsFalse(predicate.Contains("get_byte(\"col\", 2)"));
+        }
+
+        [TestMethod]
+        public void BatchSql_UsesStrategyPredicate() {
+            StringAssert.Contains(StorageSweep.UsersBatchSql, StorageSweep.UsersPredicate);
+            StringAssert.Contains(StorageSweep.CoopsBatchSql, StorageSweep.CoopsPredicate);
+            StringAssert.Contains(StorageSweep.UsersCountSql, StorageSweep.UsersPredicate);
+            StringAssert.Contains(StorageSweep.CoopsCountSql, StorageSweep.CoopsPredicate);
+        }
+
+        [TestMethod]
         public void Accounts_LegacyLz4_CompressOff_IsCurrent() {
             var stored = LegacyAccountBytes();
             var outcome = WithCompressWrite(false, () => StorageSweepCodec.Accounts(stored));

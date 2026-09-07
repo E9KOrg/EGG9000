@@ -29,6 +29,7 @@ namespace EGG9000.ConvertProbe {
                     "dump" => await DumpVerb.RunAsync(options),
                     "diff" => await DiffVerb.RunAsync(options),
                     "bench" => await BenchVerb.RunAsync(options),
+                    "traindict" => await TrainDictVerb.RunAsync(options),
                     "query-demo" => await QueryDemoVerb.RunAsync(options),
                     "all" => await AllVerb.RunAsync(options),
                     _ => Unknown(options.Verb)
@@ -61,6 +62,7 @@ namespace EGG9000.ConvertProbe {
             Console.WriteLine("  dump                          canonical JSON per CustomBackup into <out>/dump");
             Console.WriteLine("  diff <dirA> <dirB> [--volatile <file>]  compare two dumps, write diff.csv");
             Console.WriteLine("  bench                         decode/encode timings and sizes (legacy, envelope, master-equivalent) plus LZ4 block layout, write bench.md");
+            Console.WriteLine("  traindict [--limit N]         train zstd dictionaries from N random accounts blobs (default 3000) and proportionally more coop status blobs, hold out 500 of each, write accounts.zdict, coopstatus.zdict, traindict.md");
             Console.WriteLine("  query-demo                    LINQ over a parsed EiBackup field no legacy projection stored");
             Console.WriteLine("  all                           formats, coverage, goalsets, bench, query-demo, dump into <out>/<utc stamp>/ plus summary.md; formats also appended to <out>/formats-timeline.csv");
             Console.WriteLine();

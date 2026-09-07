@@ -140,6 +140,15 @@ namespace EGG9000.ConvertProbe {
             LIMIT @limit
             """;
 
+        public static string RandomCoopBlobs => $"""
+            SELECT {CoopsStatusBlob}
+            FROM {CoopsTable}
+            WHERE {CoopsStatusBlob} IS NOT NULL AND octet_length({CoopsStatusBlob}) > 0
+              AND {CoopsCreatorId} IS DISTINCT FROM '{Coop.TestSeedCreatorId}'
+            ORDER BY random()
+            LIMIT @limit
+            """;
+
         public static string PreferActiveCoopBlobs => $"""
             SELECT {CoopsStatusBlob}
             FROM {CoopsTable}

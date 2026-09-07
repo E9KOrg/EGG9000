@@ -2,24 +2,33 @@ using System;
 using System.IO;
 using System.IO.Compression;
 
+using ZstdSharp;
+
 namespace EGG9000.Common.Database {
     public enum StorageCompressionAlgorithm : byte {
         Raw = 0x00,
         GZip = 0x01,
-        Brotli = 0x02
+        Brotli = 0x02,
+        Zstd = 0x03
     }
 
-    public sealed class StorageCompressionStrategy(StorageCompressionAlgorithm algorithm, int brotliQuality = 6, int rawThreshold = 64) {
-        public static readonly StorageCompressionStrategy AccountGraph = new(StorageCompressionAlgorithm.Brotli);
-        public static readonly StorageCompressionStrategy CoopStatus = new(StorageCompressionAlgorithm.Brotli);
+    public sealed class StorageCompressionStrategy(StorageCompressionAlgorithm algorithm, int brotliQuality = 6, int rawThreshold = 64, int zstdLevel = 9, StorageDictionary dictionary = null) {
+        public static readonly StorageCompressionStrategy AccountGraph = new(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.Accounts1);
+        public static readonly StorageCompressionStrategy CoopStatus = new(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.CoopStatus1);
 
         public StorageCompressionAlgorithm Algorithm { get; } = algorithm;
         public int BrotliQuality { get; } = brotliQuality;
         public int RawThreshold { get; } = rawThreshold;
+        public int ZstdLevel { get; } = zstdLevel;
+        public StorageDictionary Dictionary { get; } = dictionary;
+        public byte DictionaryId => Dictionary?.Id ?? StorageDictionary.None;
+        public int HeaderLength => StorageCompression.HeaderLength(Algorithm);
     }
 
     public static class StorageCompression {
         public const byte Marker = 0xEB;
+
+        public static int HeaderLength(StorageCompressionAlgorithm algorithm) => algorithm == StorageCompressionAlgorithm.Zstd ? 3 : 2;
 
         public static byte[] Compress(byte[] plain, StorageCompressionStrategy strategy) {
             ArgumentNullException.ThrowIfNull(plain);
@@ -27,8 +36,8 @@ namespace EGG9000.Common.Database {
             if(strategy.Algorithm == StorageCompressionAlgorithm.Raw || plain.Length <= strategy.RawThreshold)
                 return Envelope(StorageCompressionAlgorithm.Raw, plain);
             var compressed = Encode(plain, strategy);
-            return compressed.Length < plain.Length
-                ? Envelope(strategy.Algorithm, compressed)
+            return compressed.Length + strategy.HeaderLength < plain.Length + HeaderLength(StorageCompressionAlgorithm.Raw)
+                ? Envelope(strategy.Algorithm, compressed, strategy.DictionaryId)
                 : Envelope(StorageCompressionAlgorithm.Raw, plain);
         }
 
@@ -41,19 +50,25 @@ namespace EGG9000.Common.Database {
                 StorageCompressionAlgorithm.Raw => stored.AsSpan(2).ToArray(),
                 StorageCompressionAlgorithm.GZip => Decode(stored, s => new GZipStream(s, CompressionMode.Decompress)),
                 StorageCompressionAlgorithm.Brotli => Decode(stored, s => new BrotliStream(s, CompressionMode.Decompress)),
+                StorageCompressionAlgorithm.Zstd => DecodeZstd(stored),
                 _ => throw new InvalidDataException($"Unknown storage compression algorithm 0x{stored[1]:X2}.")
             };
         }
 
-        private static byte[] Envelope(StorageCompressionAlgorithm algorithm, byte[] payload) {
-            var output = new byte[payload.Length + 2];
+        private static byte[] Envelope(StorageCompressionAlgorithm algorithm, byte[] payload, byte dictionaryId = StorageDictionary.None) {
+            var header = HeaderLength(algorithm);
+            var output = new byte[payload.Length + header];
             output[0] = Marker;
             output[1] = (byte)algorithm;
-            payload.CopyTo(output, 2);
+            if(header > 2)
+                output[2] = dictionaryId;
+            payload.CopyTo(output, header);
             return output;
         }
 
         private static byte[] Encode(byte[] plain, StorageCompressionStrategy strategy) {
+            if(strategy.Algorithm == StorageCompressionAlgorithm.Zstd)
+                return StorageZstd.Compress(plain, strategy.ZstdLevel, strategy.Dictionary);
             using var output = new MemoryStream();
             using(Stream stream = strategy.Algorithm switch {
                 StorageCompressionAlgorithm.GZip => new GZipStream(output, CompressionLevel.Optimal),
@@ -70,6 +85,16 @@ namespace EGG9000.Common.Database {
             using var output = new MemoryStream();
             stream.CopyTo(output);
             return output.ToArray();
+        }
+
+        private static byte[] DecodeZstd(byte[] stored) {
+            if(stored.Length < 3)
+                throw new InvalidDataException("Zstd storage envelope is missing its dictionary byte.");
+            try {
+                return StorageZstd.Decompress(stored.AsSpan(3), stored[2]);
+            } catch(ZstdException e) {
+                throw new InvalidDataException($"Zstd storage payload could not be decoded with dictionary {stored[2]}.", e);
+            }
         }
     }
 }

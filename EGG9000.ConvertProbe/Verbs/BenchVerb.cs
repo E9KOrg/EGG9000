@@ -18,6 +18,7 @@ namespace EGG9000.ConvertProbe.Verbs {
         private const int DistinctLengthsShown = 12;
 
         private static readonly MessagePackSerializerOptions MasterOptions = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+        private static readonly StorageCompressionStrategy BrotliStrategy = new(StorageCompressionAlgorithm.Brotli);
 
         private sealed class OpTimings(string name) {
             public string Name { get; } = name;
@@ -46,6 +47,7 @@ namespace EGG9000.ConvertProbe.Verbs {
             public long Stored;
             public long Legacy;
             public long Envelope;
+            public long Brotli;
             public long? Master;
             public int Blobs;
             public int Failed;
@@ -119,7 +121,8 @@ namespace EGG9000.ConvertProbe.Verbs {
             List<IReadOnlyList<string>> sizeRows = [
                 ["stored", Markdown.Bytes(sizes.Stored), Avg(sizes.Stored, sizes.Blobs), "", ""],
                 ["legacy re-encode", Markdown.Bytes(sizes.Legacy), Avg(sizes.Legacy, sizes.Blobs), Reduction(sizes.Legacy, sizes.Stored), ""],
-                ["envelope re-encode", Markdown.Bytes(sizes.Envelope), Avg(sizes.Envelope, sizes.Blobs), Reduction(sizes.Envelope, sizes.Stored), Reduction(sizes.Envelope, sizes.Legacy)]
+                ["envelope re-encode (current strategy)", Markdown.Bytes(sizes.Envelope), Avg(sizes.Envelope, sizes.Blobs), Reduction(sizes.Envelope, sizes.Stored), Reduction(sizes.Envelope, sizes.Legacy)],
+                ["brotli q6 envelope re-encode", Markdown.Bytes(sizes.Brotli), Avg(sizes.Brotli, sizes.Blobs), Reduction(sizes.Brotli, sizes.Stored), Reduction(sizes.Brotli, sizes.Legacy)]
             ];
             if(sizes.Master is { } master)
                 sizeRows.Add(["master-equivalent re-encode", Markdown.Bytes(master), Avg(master, sizes.Blobs), Reduction(master, sizes.Stored), Reduction(master, sizes.Legacy)]);
@@ -186,7 +189,14 @@ namespace EGG9000.ConvertProbe.Verbs {
             Record(timings, "encode master-equivalent", () => master = MessagePackSerializer.Serialize(decoded, MasterOptions));
             Record(timings, "decode legacy", () => StorageCodec.Unpack<List<EggIncAccount>>(legacy));
             Record(timings, "decode envelope", () => StorageCodec.Unpack<List<EggIncAccount>>(envelope));
+            var plain = StorageCompression.Decompress(envelope);
+            byte[] brotli = null;
+            Record(timings, "compress brotli q6 (plain bytes)", () => brotli = StorageCompression.Compress(plain, BrotliStrategy));
+            Record(timings, "compress current strategy (plain bytes)", () => StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph));
+            Record(timings, "decompress brotli q6", () => StorageCompression.Decompress(brotli));
+            Record(timings, "decompress current strategy", () => StorageCompression.Decompress(envelope));
             Tally(sizes, stored, legacy, envelope, master);
+            sizes.Brotli += brotli.Length;
             if(AccountDecoder.FormatOf(stored) == "legacy") sizes.Layout("stored").Add(stored);
             sizes.Layout("legacy re-encode").Add(legacy);
             sizes.Layout("master-equivalent re-encode").Add(master);
@@ -206,7 +216,14 @@ namespace EGG9000.ConvertProbe.Verbs {
             });
             Record(timings, "decode legacy", () => CoopStatusCodec.Decode(legacy));
             Record(timings, "decode envelope", () => CoopStatusCodec.Decode(envelope));
+            var plain = StorageCompression.Decompress(envelope);
+            byte[] brotli = null;
+            Record(timings, "compress brotli q6 (plain bytes)", () => brotli = StorageCompression.Compress(plain, BrotliStrategy));
+            Record(timings, "compress current strategy (plain bytes)", () => StorageCompression.Compress(plain, StorageCompressionStrategy.CoopStatus));
+            Record(timings, "decompress brotli q6", () => StorageCompression.Decompress(brotli));
+            Record(timings, "decompress current strategy", () => StorageCompression.Decompress(envelope));
             Tally(sizes, stored, legacy, envelope);
+            sizes.Brotli += brotli.Length;
         }
 
         private static void Tally(SizeTotals sizes, byte[] stored, byte[] legacy, byte[] envelope, byte[] master = null) {

@@ -52,24 +52,37 @@ namespace EGG9000.Bot.Automated {
         public const int CoopsBatchSize = 2000;
         public const int CommandTimeoutSeconds = 1800;
 
-        private const string UsersPredicate = "\"_contractRegistrationByte\" IS NOT NULL AND octet_length(\"_contractRegistrationByte\") > 0 AND get_byte(\"_contractRegistrationByte\", 0) <> @marker";
-        private const string CoopsPredicate = "\"_StatusCompressed\" IS NOT NULL AND octet_length(\"_StatusCompressed\") > 0 AND get_byte(\"_StatusCompressed\", 0) <> @marker";
+        private const string UsersColumn = "\"_contractRegistrationByte\"";
+        private const string CoopsColumn = "\"_StatusCompressed\"";
 
-        public const string UsersCountSql = "SELECT COUNT(*) FROM \"Users\" WHERE " + UsersPredicate;
-        public const string UsersBatchSql = "SELECT \"Id\", \"_contractRegistrationByte\" FROM \"Users\" WHERE " + UsersPredicate + " AND \"Id\" > @lastId ORDER BY \"Id\" LIMIT @batch";
+        public static readonly string UsersPredicate = StalePredicate(UsersColumn, StorageCompressionStrategy.AccountGraph);
+        public static readonly string CoopsPredicate = StalePredicate(CoopsColumn, StorageCompressionStrategy.CoopStatus);
+
+        public static readonly string UsersCountSql = "SELECT COUNT(*) FROM \"Users\" WHERE " + UsersPredicate;
+        public static readonly string UsersBatchSql = "SELECT \"Id\", " + UsersColumn + " FROM \"Users\" WHERE " + UsersPredicate + " AND \"Id\" > @lastId ORDER BY \"Id\" LIMIT @batch";
         public const string UsersCasUpdateSql = "UPDATE \"Users\" SET \"_contractRegistrationByte\" = @new WHERE \"Id\" = @id AND \"_contractRegistrationByte\" = @old";
 
-        public const string CoopsCountSql = "SELECT COUNT(*) FROM \"Coops\" WHERE " + CoopsPredicate;
-        public const string CoopsBatchSql = "SELECT \"Id\", \"_StatusCompressed\" FROM \"Coops\" WHERE " + CoopsPredicate + " AND \"Id\" > @lastId ORDER BY \"Id\" LIMIT @batch";
+        public static readonly string CoopsCountSql = "SELECT COUNT(*) FROM \"Coops\" WHERE " + CoopsPredicate;
+        public static readonly string CoopsBatchSql = "SELECT \"Id\", " + CoopsColumn + " FROM \"Coops\" WHERE " + CoopsPredicate + " AND \"Id\" > @lastId ORDER BY \"Id\" LIMIT @batch";
         public const string CoopsCasUpdateSql = "UPDATE \"Coops\" SET \"_StatusCompressed\" = @new WHERE \"Id\" = @id AND \"_StatusCompressed\" = @old";
 
-        private static readonly SweepTarget UsersTarget = new("Users", UsersBatchSql, UsersCasUpdateSql, UsersBatchSize, StorageSweepCodec.Accounts);
-        private static readonly SweepTarget CoopsTarget = new("Coops", CoopsBatchSql, CoopsCasUpdateSql, CoopsBatchSize, StorageSweepCodec.CoopStatus);
+        private static readonly SweepTarget UsersTarget = new("Users", UsersCountSql, UsersBatchSql, UsersCasUpdateSql, UsersBatchSize, StorageCompressionStrategy.AccountGraph, StorageSweepCodec.Accounts);
+        private static readonly SweepTarget CoopsTarget = new("Coops", CoopsCountSql, CoopsBatchSql, CoopsCasUpdateSql, CoopsBatchSize, StorageCompressionStrategy.CoopStatus, StorageSweepCodec.CoopStatus);
 
         private readonly CancellationTokenSource _stopping = new();
         private Task _run = Task.CompletedTask;
 
-        private sealed record SweepTarget(string Table, string BatchSql, string UpdateSql, int BatchSize, Func<byte[], SweepOutcome> Reencode);
+        private sealed record SweepTarget(string Table, string CountSql, string BatchSql, string UpdateSql, int BatchSize, StorageCompressionStrategy Strategy, Func<byte[], SweepOutcome> Reencode);
+
+        public static string StalePredicate(string column, StorageCompressionStrategy strategy) {
+            var firstByte = $"CASE WHEN octet_length({column}) > 0 THEN get_byte({column}, 0) END";
+            var algorithm = $"CASE WHEN octet_length({column}) > 1 THEN get_byte({column}, 1) END";
+            var rawCurrent = $"({algorithm} = @raw AND octet_length({column}) <= @rawMax)";
+            var encodedCurrent = strategy.Algorithm == StorageCompressionAlgorithm.Zstd
+                ? $"({algorithm} = @algo AND CASE WHEN octet_length({column}) > 2 THEN get_byte({column}, 2) END = @dict)"
+                : $"({algorithm} = @algo)";
+            return $"{column} IS NOT NULL AND octet_length({column}) > 0 AND NOT ({firstByte} = @marker AND ({rawCurrent} OR {encodedCurrent}))";
+        }
 
         public Task StartAsync(CancellationToken cancellationToken) {
             if(!StorageSweepOptions.FromEnvironment().Enabled) {
@@ -109,10 +122,11 @@ namespace EGG9000.Bot.Automated {
                     connection.Database, connection.DataSource, StorageCodec.CompressWriteEnabled, CoopStatusCodec.ProtoWriteEnabled, options.BatchDelayMs);
                 await db.Database.OpenConnectionAsync(token);
                 try {
-                    logger.LogInformation("storage sweep: connected, counting users");
-                    var usersRemaining = await CountAsync(connection, UsersCountSql, token);
+                    logger.LogInformation("storage sweep: connected, target format accounts {AccountsAlgo} dict {AccountsDict}, coop status {CoopAlgo} dict {CoopDict}, counting users",
+                        UsersTarget.Strategy.Algorithm, UsersTarget.Strategy.DictionaryId, CoopsTarget.Strategy.Algorithm, CoopsTarget.Strategy.DictionaryId);
+                    var usersRemaining = await CountAsync(connection, UsersTarget, token);
                     logger.LogInformation("storage sweep: {Users} users remaining ({Elapsed}), counting coops (full scan of the status blobs, can take minutes)", usersRemaining, stopwatch.Elapsed);
-                    var coopsRemaining = await CountAsync(connection, CoopsCountSql, token);
+                    var coopsRemaining = await CountAsync(connection, CoopsTarget, token);
                     logger.LogInformation("storage sweep: {Coops} coops remaining ({Elapsed})", coopsRemaining, stopwatch.Elapsed);
                     await SweepTableAsync(connection, UsersTarget, users, options, token);
                     await SweepTableAsync(connection, CoopsTarget, coops, options, token);
@@ -183,19 +197,28 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        private static async Task<long> CountAsync(DbConnection connection, string sql, CancellationToken token) {
+        private static async Task<long> CountAsync(DbConnection connection, SweepTarget target, CancellationToken token) {
             await using var command = connection.CreateCommand();
-            command.CommandText = sql;
-            AddParameter(command, "marker", (int)StorageCompression.Marker);
+            command.CommandText = target.CountSql;
+            AddFormatParameters(command, target.Strategy);
             var result = await command.ExecuteScalarAsync(token);
             return Convert.ToInt64(result);
+        }
+
+        private static void AddFormatParameters(DbCommand command, StorageCompressionStrategy strategy) {
+            AddParameter(command, "marker", (int)StorageCompression.Marker);
+            AddParameter(command, "raw", (int)StorageCompressionAlgorithm.Raw);
+            AddParameter(command, "rawMax", strategy.RawThreshold + StorageCompression.HeaderLength(StorageCompressionAlgorithm.Raw));
+            AddParameter(command, "algo", (int)strategy.Algorithm);
+            if(strategy.Algorithm == StorageCompressionAlgorithm.Zstd)
+                AddParameter(command, "dict", (int)strategy.DictionaryId);
         }
 
         private static async Task<List<(Guid Id, byte[] Stored)>> ReadBatchAsync(DbConnection connection, SweepTarget target, Guid lastId, CancellationToken token) {
             var rows = new List<(Guid, byte[])>();
             await using var command = connection.CreateCommand();
             command.CommandText = target.BatchSql;
-            AddParameter(command, "marker", (int)StorageCompression.Marker);
+            AddFormatParameters(command, target.Strategy);
             AddParameter(command, "lastId", lastId);
             AddParameter(command, "batch", target.BatchSize);
             await using var reader = await command.ExecuteReaderAsync(token);
