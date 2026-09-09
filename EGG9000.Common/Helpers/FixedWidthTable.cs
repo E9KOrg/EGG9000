@@ -9,9 +9,7 @@ namespace EGG9000.Common.Helpers {
             var rows = table.Split("\n");
             return [.. rows.Where(x => !string.IsNullOrWhiteSpace(x)).Select(x => $"`{x}`")];
         }
-        public static string GetTable(List<List<FixedWidthCell>> contents) {
-            var sb = new StringBuilder();
-
+        public static Dictionary<int, int> ComputeColumnWidths(List<List<FixedWidthCell>> contents) {
             var columnWidths = new Dictionary<int, int>();
             foreach((var row, var rowIndex) in contents.Select((item, i) => (item, i))) {
                 if(row == null)
@@ -25,6 +23,14 @@ namespace EGG9000.Common.Helpers {
                     }
                 }
             }
+            return columnWidths;
+        }
+
+        public static string GetTable(List<List<FixedWidthCell>> contents) =>
+            GetTable(contents, ComputeColumnWidths(contents));
+
+        public static string GetTable(List<List<FixedWidthCell>> contents, Dictionary<int, int> columnWidths) {
+            var sb = new StringBuilder();
 
             foreach((var row, var rowIndex) in contents.Select((item, i) => (item, i))) {
                 if(row == null)

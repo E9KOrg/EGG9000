@@ -182,7 +182,13 @@ namespace EGG9000.Bot.Automated.Coops {
                     await UpdateThreadName(ctx);
                     await BuildStatusEmbed(ctx);
                     ctx.Timings.Set(9);
-                    await UpdateChannel(ctx.Msgs, ctx.EmbedBuilder.Build(), ctx.CoopThread, ctx.Coop, ctx.StatusResponse.DiscordMessages);
+                    var embed = ctx.EmbedBuilder.Build();
+                    if(ctx.Coop.StatusMessagesUseComponentsV2) {
+                        var headerText = $"# {embed.Author?.Name}\n{embed.Description}\n-# {embed.Footer?.Text}";
+                        await UpdateChannelV2(ctx.Msgs, headerText, ctx.CoopThread, ctx.Coop, ctx.StatusResponse.DiscordMessages);
+                    } else {
+                        await UpdateChannel(ctx.Msgs, embed, ctx.CoopThread, ctx.Coop, ctx.StatusResponse.DiscordMessages);
+                    }
                 }
 
                 ctx.Coop.LastUpdateToChannel = DateTimeOffset.UtcNow;

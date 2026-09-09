@@ -30,6 +30,55 @@ namespace EGG9000.Test {
             Assert.IsTrue(text.Content.Length <= 2 * ComponentsV2Safe.TextDisplayMax + 3);
         }
 
+        [TestMethod]
+        public void WithTextDisplaySafe_Budget_SplitsAcrossCallsWithinAggregateLimit() {
+            var budget = new ComponentsV2Safe.MessageTextBudget();
+            var half = new string('a', ComponentsV2Safe.TextDisplayMax - 500);
+            var built = new ContainerBuilder()
+                .WithTextDisplaySafe(half, budget)
+                .WithTextDisplaySafe(half, budget)
+                .Build();
+
+            var texts = built.Components.Cast<TextDisplayComponent>().ToList();
+            var totalLength = texts.Sum(t => t.Content.Length);
+
+            Assert.AreEqual(2, texts.Count);
+            Assert.IsTrue(totalLength <= ComponentsV2Safe.TextDisplayMax);
+            Assert.AreEqual(half.Length, texts[0].Content.Length);
+            Assert.AreEqual(500, texts[1].Content.Length);
+        }
+
+        [TestMethod]
+        public void WithTextDisplaySafe_Budget_ExhaustedReturnsEmpty() {
+            var budget = new ComponentsV2Safe.MessageTextBudget();
+            var full = new string('a', ComponentsV2Safe.TextDisplayMax);
+            var built = new ContainerBuilder()
+                .WithTextDisplaySafe(full, budget)
+                .WithTextDisplaySafe("overflow", budget)
+                .Build();
+
+            var texts = built.Components.Cast<TextDisplayComponent>().ToList();
+
+            Assert.AreEqual(0, budget.Remaining);
+            Assert.AreEqual("", texts[1].Content);
+        }
+
+        [TestMethod]
+        public void WithHeaderSafe_Budget_SharesBudgetWithSubsequentTextDisplay() {
+            var budget = new ComponentsV2Safe.MessageTextBudget();
+            var header = new string('a', ComponentsV2Safe.TextDisplayMax - 100);
+            var tableChunk = new string('b', 500);
+            var built = new ContainerBuilder()
+                .WithHeaderSafe(header, budget)
+                .WithTextDisplaySafe(tableChunk, budget)
+                .Build();
+
+            var texts = built.Components.Cast<TextDisplayComponent>().ToList();
+
+            Assert.AreEqual($"# {header}".Length, texts[0].Content.Length);
+            Assert.AreEqual(100, texts[1].Content.Length);
+        }
+
         // ThrowIfModeMismatch(IMessage, bool) is a thin wrapper around this predicate; IMessage has no
         // in-repo test double (66 members, no mocking library referenced), so the predicate - the actual
         // decision logic - is covered directly instead.
