@@ -187,7 +187,7 @@ public static class BotHostFactory {
                     DefaultRunMode = RunMode.Sync,
                     UseCompiledLambda = true
                 }));
-            services.AddHostedService<InteractionRoutingService>();
+            AddGated<InteractionRoutingService>();
 
             services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
             AddGated<LeaderboardUpdater>();
@@ -217,7 +217,8 @@ public static class BotHostFactory {
             AddGated<UpdateBackups>();
             AddGated<CleanAutomationLogs>();
             AddGated<CleanApiKeyRequestLogs>();
-            AddGated<StorageDictionaryTrainer>();
+            if(release)
+                AddGated<StorageDictionaryTrainer>();
             AddGated<RankupMessageSeeder>();
 
             services.AddSingleton<CoopsBeingCreatedService>();

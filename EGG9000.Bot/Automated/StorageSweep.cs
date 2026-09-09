@@ -76,10 +76,11 @@ namespace EGG9000.Bot.Automated {
 
         public static string StalePredicate(string column, StorageCompressionStrategy strategy) {
             var firstByte = $"CASE WHEN octet_length({column}) > 0 THEN get_byte({column}, 0) END";
-            var algorithm = $"CASE WHEN octet_length({column}) > 1 THEN get_byte({column}, 1) END";
+            var algorithm = $"COALESCE(CASE WHEN octet_length({column}) > 1 THEN get_byte({column}, 1) END, -1)";
+            var dictionary = $"COALESCE(CASE WHEN octet_length({column}) > 2 THEN get_byte({column}, 2) END, -1)";
             var rawCurrent = $"({algorithm} = @raw AND octet_length({column}) <= @rawMax)";
             var encodedCurrent = strategy.Algorithm == StorageCompressionAlgorithm.Zstd
-                ? $"({algorithm} = @algo AND CASE WHEN octet_length({column}) > 2 THEN get_byte({column}, 2) END = @dict)"
+                ? $"({algorithm} = @algo AND {dictionary} = @dict)"
                 : $"({algorithm} = @algo)";
             return $"{column} IS NOT NULL AND octet_length({column}) > 0 AND NOT ({firstByte} = @marker AND ({rawCurrent} OR {encodedCurrent}))";
         }

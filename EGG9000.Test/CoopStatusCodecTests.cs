@@ -130,6 +130,7 @@ namespace EGG9000.Test {
         [TestMethod]
         public void Decode_Null_ReturnsNull() {
             Assert.IsNull(CoopStatusCodec.Decode(null));
+            Assert.IsNull(CoopStatusCodec.Decode([]));
         }
 
         [TestMethod]

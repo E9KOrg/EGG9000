@@ -45,6 +45,7 @@ namespace EGG9000.Common.Database {
         public async Task RefreshUserCache() {
             try {
                 var db = await _dbContextFactory.CreateDbContextAsync();
+                StorageDictionaryLoader.Refresh(db);
                 var currentCacheTime = _lastCacheUpdateUser;
                 _lastCacheUpdateUser = DateTimeOffset.UtcNow;
                 var updatedUsers = await db.DBUsers.AsNoTracking().Where(UpdatedSince(currentCacheTime)).ToListAsync();

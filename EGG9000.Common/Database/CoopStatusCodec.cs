@@ -35,7 +35,7 @@ namespace EGG9000.Common.Database {
         }
 
         public static Ei.ContractCoopStatusResponse Decode(byte[] stored) {
-            if(stored == null)
+            if(stored is null or { Length: 0 })
                 return null;
             if(stored is { Length: >= 2 } && stored[0] == 0x1F && stored[1] == 0x8B)
                 return DecodeLegacy(stored);

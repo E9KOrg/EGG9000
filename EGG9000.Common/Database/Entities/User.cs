@@ -214,7 +214,10 @@ namespace EGG9000.Common.Database.Entities {
                 } catch(MessagePackSerializationException e) {
                     MarkAccountsUnreadable(e);
                     return _accounts ?? [];
-                } catch(Exception) { throw; }
+                } catch(Google.Protobuf.InvalidProtocolBufferException e) {
+                    MarkAccountsUnreadable(e);
+                    return _accounts ?? [];
+                }
             }
             set {
                 if(value is null) return;
@@ -235,12 +238,8 @@ namespace EGG9000.Common.Database.Entities {
 
         public bool UpdateAccounts() {
             if(AccountsUnreadable) {
-                if(_accounts is null || _accounts.Count == 0) {
-                    _logger.Warn("Refused to overwrite unreadable accounts column for user {DiscordId} ({Id}) with an empty list.", DiscordId, Id);
-                    return false;
-                }
-                _logger.Error("Replacing unreadable accounts column for user {DiscordId} ({Id}) with {Count} account(s); previous contents are lost.", DiscordId, Id, _accounts.Count);
-                AccountsUnreadable = false;
+                _logger.Warn("Refused to overwrite unreadable accounts column for user {DiscordId} ({Id}) with {Count} account(s).", DiscordId, Id, _accounts?.Count ?? 0);
+                return false;
             }
             if(_eggIncIds is not null)
                 _eggIncIds = null;

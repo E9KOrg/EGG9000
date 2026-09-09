@@ -21,6 +21,7 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         private readonly JsonBlobAccessor<Ei.EggIncEvent> _details = new();
         [NotMapped]
+        [System.Text.Json.Serialization.JsonIgnore]
         public Ei.EggIncEvent Details => _details.Get(_response);
 
         public bool DetailsChanged(Ei.EggIncEvent e) {

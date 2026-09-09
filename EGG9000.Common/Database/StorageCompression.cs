@@ -19,8 +19,10 @@ namespace EGG9000.Common.Database {
         public static StorageCompressionStrategy AccountGraph => _accountGraph;
         public static StorageCompressionStrategy CoopStatus => _coopStatus;
 
-        public static void SetAccountGraph(StorageDictionary dictionary) => _accountGraph = new(StorageCompressionAlgorithm.Zstd, dictionary: dictionary);
-        public static void SetCoopStatus(StorageDictionary dictionary) => _coopStatus = new(StorageCompressionAlgorithm.Zstd, dictionary: dictionary);
+        public static void SetAccountGraph(StorageDictionary dictionary) => _accountGraph = _accountGraph.WithDictionary(dictionary);
+        public static void SetCoopStatus(StorageDictionary dictionary) => _coopStatus = _coopStatus.WithDictionary(dictionary);
+
+        public StorageCompressionStrategy WithDictionary(StorageDictionary dictionary) => new(StorageCompressionAlgorithm.Zstd, BrotliQuality, RawThreshold, ZstdLevel, dictionary);
 
         public StorageCompressionAlgorithm Algorithm { get; } = algorithm;
         public int BrotliQuality { get; } = brotliQuality;

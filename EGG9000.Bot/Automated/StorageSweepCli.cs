@@ -34,6 +34,10 @@ namespace EGG9000.Bot.Automated {
                 logger.LogError("storage sweep CLI needs {Switch} \"<npgsql connection string>\"", ConnectionSwitch);
                 return 1;
             }
+            if(!StorageCodec.CompressWriteEnabled || !CoopStatusCodec.ProtoWriteEnabled) {
+                logger.LogError("storage sweep CLI needs EGG9000_STORAGE_COMPRESS=1 and EGG9000_COOPSTATUS_PROTO=1 in the environment; with a flag off the sweep would rewrite rows in the legacy format");
+                return 1;
+            }
 
             var services = new ServiceCollection();
             services.AddSingleton(loggerFactory);

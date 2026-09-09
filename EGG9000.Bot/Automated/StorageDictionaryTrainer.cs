@@ -31,6 +31,7 @@ namespace EGG9000.Bot.Automated {
         public const int Holdout = 500;
         public const int DictionaryCapacity = 112640;
         public const double AdoptRatio = 0.95;
+        public const int SampleCommandTimeoutSeconds = 600;
         public static readonly TimeSpan RetrainAge = TimeSpan.FromDays(30);
 
         private static readonly MessagePackSerializerOptions PlainOptions = StorageMessagePack.Options.WithCompression(MessagePackCompression.None);
@@ -74,6 +75,7 @@ namespace EGG9000.Bot.Automated {
             }
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Database.SetCommandTimeout(SampleCommandTimeoutSeconds);
             var active = await db.StorageDictionaries.AsNoTracking().Where(r => r.Corpus == spec.Name && r.Active).OrderByDescending(r => r.Id).FirstOrDefaultAsync(token);
             var now = DateTimeOffset.UtcNow;
             if(!ShouldTrain(active?.Fingerprint, spec.Fingerprint, active?.EvaluatedAt, now)) {

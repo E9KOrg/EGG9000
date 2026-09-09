@@ -1,3 +1,4 @@
+using EGG9000.Common.Database;
 using EGG9000.ConvertProbe.Verbs;
 using Npgsql;
 using System;
@@ -21,6 +22,10 @@ namespace EGG9000.ConvertProbe {
                 return 1;
             }
             try {
+                if(options.Verb != "diff") {
+                    using var context = options.CreateContext();
+                    StorageDictionaryLoader.EnsureLoaded(context);
+                }
                 return options.Verb switch {
                     "formats" => await FormatsVerb.RunAsync(options),
                     "coverage" => await CoverageVerb.RunAsync(options),

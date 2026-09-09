@@ -120,7 +120,7 @@ namespace EGG9000.Test {
             StringAssert.Contains(predicate, "@algo");
             StringAssert.Contains(predicate, "@dict");
             StringAssert.Contains(predicate, "@raw AND octet_length(\"col\") <= @rawMax");
-            StringAssert.Contains(predicate, "get_byte(\"col\", 2)");
+            StringAssert.Contains(predicate, "COALESCE(CASE WHEN octet_length(\"col\") > 2 THEN get_byte(\"col\", 2) END, -1) = @dict");
         }
 
         [TestMethod]
@@ -129,7 +129,6 @@ namespace EGG9000.Test {
 
             StringAssert.Contains(predicate, "@algo");
             Assert.IsFalse(predicate.Contains("@dict"));
-            Assert.IsFalse(predicate.Contains("get_byte(\"col\", 2)"));
         }
 
         [TestMethod]

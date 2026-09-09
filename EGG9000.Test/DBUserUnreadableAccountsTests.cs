@@ -52,15 +52,14 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
-        public void AddingAccount_OverUnreadable_WritesAndClearsFlag() {
+        public void AddingAccount_OverUnreadable_Refused() {
             var user = Unreadable();
             user.EggIncAccounts.Add(new EggIncAccount { Id = "EI0000000000000002" });
             var changed = user.UpdateAccounts();
-            Assert.IsTrue(changed);
-            Assert.IsFalse(user.AccountsUnreadable);
-            var rehydrated = StorageCodec.Unpack<List<EggIncAccount>>(user._contractRegistrationByte);
-            Assert.AreEqual(1, rehydrated.Count);
-            Assert.AreEqual("EI0000000000000002", rehydrated[0].Id);
+            Assert.IsFalse(changed);
+            Assert.IsTrue(user.AccountsUnreadable);
+            CollectionAssert.AreEqual(Corrupt, user._contractRegistrationByte);
+            Assert.AreEqual("keep-me", user.Usernames);
         }
 
         [TestMethod]

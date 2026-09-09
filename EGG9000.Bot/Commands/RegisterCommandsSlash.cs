@@ -260,6 +260,11 @@ namespace EGG9000.Bot.Commands {
                 addedUser = true;
             } else {
                 addedUser = dbuser.EggIncAccounts.Count == 0;
+                if(dbuser.AccountsUnreadable) {
+                    await reply(m => { m.Content = ""; m.Embed = EmbedError("Your registered accounts could not be read, so nothing was changed. Reach out to staff for help."); });
+                    if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but their stored accounts are unreadable; nothing was written.");
+                    return;
+                }
                 dbuser.EggIncAccounts.Add(newAccount);
                 dbuser.UpdateAccounts();
             }
