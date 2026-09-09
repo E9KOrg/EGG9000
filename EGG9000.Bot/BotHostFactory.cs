@@ -48,6 +48,7 @@ public static class BotHostFactory {
                 }
             }
 
+            services.AddHostedService<StorageDictionaryStartup>();
             AddGated<StorageSweep>();
 
             services.AddSingleton<DiscordQueueService>();
@@ -150,6 +151,7 @@ public static class BotHostFactory {
                     // Per-instance temporary queue so a version update fans out to every running process
                     // instead of being load-balanced across a shared queue.
                     x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
+                    x.AddConsumer<StorageDictionaryAdoptedConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
                     //if(string.IsNullOrEmpty(rabbitmqConn)) {
                         logger.Log(NLog.LogLevel.Info, "Using RabbitMQ In Memory");
                         x.UsingInMemory((context, cfg) => {
@@ -215,6 +217,7 @@ public static class BotHostFactory {
             AddGated<UpdateBackups>();
             AddGated<CleanAutomationLogs>();
             AddGated<CleanApiKeyRequestLogs>();
+            AddGated<StorageDictionaryTrainer>();
             AddGated<RankupMessageSeeder>();
 
             services.AddSingleton<CoopsBeingCreatedService>();

@@ -20,6 +20,7 @@ namespace EGG9000.Common.Database {
             _dbContextFactory = dbContextFactory;
             _logger = logger;
             var db = dbContextFactory.CreateDbContext();
+            StorageDictionaryLoader.EnsureLoaded(db);
             _lastCacheUpdateUser = DateTimeOffset.UtcNow;
             _cachedUsers = [.. db.DBUsers.AsNoTracking()];
 

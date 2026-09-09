@@ -55,19 +55,19 @@ namespace EGG9000.Bot.Automated {
         private const string UsersColumn = "\"_contractRegistrationByte\"";
         private const string CoopsColumn = "\"_StatusCompressed\"";
 
-        public static readonly string UsersPredicate = StalePredicate(UsersColumn, StorageCompressionStrategy.AccountGraph);
-        public static readonly string CoopsPredicate = StalePredicate(CoopsColumn, StorageCompressionStrategy.CoopStatus);
+        public static string UsersPredicate => StalePredicate(UsersColumn, StorageCompressionStrategy.AccountGraph);
+        public static string CoopsPredicate => StalePredicate(CoopsColumn, StorageCompressionStrategy.CoopStatus);
 
-        public static readonly string UsersCountSql = "SELECT COUNT(*) FROM \"Users\" WHERE " + UsersPredicate;
-        public static readonly string UsersBatchSql = "SELECT \"Id\", " + UsersColumn + " FROM \"Users\" WHERE " + UsersPredicate + " AND \"Id\" > @lastId ORDER BY \"Id\" LIMIT @batch";
+        public static string UsersCountSql => "SELECT COUNT(*) FROM \"Users\" WHERE " + UsersPredicate;
+        public static string UsersBatchSql => "SELECT \"Id\", " + UsersColumn + " FROM \"Users\" WHERE " + UsersPredicate + " AND \"Id\" > @lastId ORDER BY \"Id\" LIMIT @batch";
         public const string UsersCasUpdateSql = "UPDATE \"Users\" SET \"_contractRegistrationByte\" = @new WHERE \"Id\" = @id AND \"_contractRegistrationByte\" = @old";
 
-        public static readonly string CoopsCountSql = "SELECT COUNT(*) FROM \"Coops\" WHERE " + CoopsPredicate;
-        public static readonly string CoopsBatchSql = "SELECT \"Id\", " + CoopsColumn + " FROM \"Coops\" WHERE " + CoopsPredicate + " AND \"Id\" > @lastId ORDER BY \"Id\" LIMIT @batch";
+        public static string CoopsCountSql => "SELECT COUNT(*) FROM \"Coops\" WHERE " + CoopsPredicate;
+        public static string CoopsBatchSql => "SELECT \"Id\", " + CoopsColumn + " FROM \"Coops\" WHERE " + CoopsPredicate + " AND \"Id\" > @lastId ORDER BY \"Id\" LIMIT @batch";
         public const string CoopsCasUpdateSql = "UPDATE \"Coops\" SET \"_StatusCompressed\" = @new WHERE \"Id\" = @id AND \"_StatusCompressed\" = @old";
 
-        private static readonly SweepTarget UsersTarget = new("Users", UsersCountSql, UsersBatchSql, UsersCasUpdateSql, UsersBatchSize, StorageCompressionStrategy.AccountGraph, StorageSweepCodec.Accounts);
-        private static readonly SweepTarget CoopsTarget = new("Coops", CoopsCountSql, CoopsBatchSql, CoopsCasUpdateSql, CoopsBatchSize, StorageCompressionStrategy.CoopStatus, StorageSweepCodec.CoopStatus);
+        private static SweepTarget UsersTarget => new("Users", UsersCountSql, UsersBatchSql, UsersCasUpdateSql, UsersBatchSize, StorageCompressionStrategy.AccountGraph, StorageSweepCodec.Accounts);
+        private static SweepTarget CoopsTarget => new("Coops", CoopsCountSql, CoopsBatchSql, CoopsCasUpdateSql, CoopsBatchSize, StorageCompressionStrategy.CoopStatus, StorageSweepCodec.CoopStatus);
 
         private readonly CancellationTokenSource _stopping = new();
         private Task _run = Task.CompletedTask;
@@ -111,8 +111,10 @@ namespace EGG9000.Bot.Automated {
             if(!options.Enabled)
                 return;
             var started = DateTimeOffset.UtcNow;
-            var users = new StorageSweepCounters(UsersTarget.Table);
-            var coops = new StorageSweepCounters(CoopsTarget.Table);
+            var usersTarget = UsersTarget;
+            var coopsTarget = CoopsTarget;
+            var users = new StorageSweepCounters(usersTarget.Table);
+            var coops = new StorageSweepCounters(coopsTarget.Table);
             var stopwatch = Stopwatch.StartNew();
             try {
                 using var scope = scopeFactory.CreateScope();
@@ -123,13 +125,13 @@ namespace EGG9000.Bot.Automated {
                 await db.Database.OpenConnectionAsync(token);
                 try {
                     logger.LogInformation("storage sweep: connected, target format accounts {AccountsAlgo} dict {AccountsDict}, coop status {CoopAlgo} dict {CoopDict}, counting users",
-                        UsersTarget.Strategy.Algorithm, UsersTarget.Strategy.DictionaryId, CoopsTarget.Strategy.Algorithm, CoopsTarget.Strategy.DictionaryId);
-                    var usersRemaining = await CountAsync(connection, UsersTarget, token);
+                        usersTarget.Strategy.Algorithm, usersTarget.Strategy.DictionaryId, coopsTarget.Strategy.Algorithm, coopsTarget.Strategy.DictionaryId);
+                    var usersRemaining = await CountAsync(connection, usersTarget, token);
                     logger.LogInformation("storage sweep: {Users} users remaining ({Elapsed}), counting coops (full scan of the status blobs, can take minutes)", usersRemaining, stopwatch.Elapsed);
-                    var coopsRemaining = await CountAsync(connection, CoopsTarget, token);
+                    var coopsRemaining = await CountAsync(connection, coopsTarget, token);
                     logger.LogInformation("storage sweep: {Coops} coops remaining ({Elapsed})", coopsRemaining, stopwatch.Elapsed);
-                    await SweepTableAsync(connection, UsersTarget, users, options, token);
-                    await SweepTableAsync(connection, CoopsTarget, coops, options, token);
+                    await SweepTableAsync(connection, usersTarget, users, options, token);
+                    await SweepTableAsync(connection, coopsTarget, coops, options, token);
                 } finally {
                     await db.Database.CloseConnectionAsync();
                 }

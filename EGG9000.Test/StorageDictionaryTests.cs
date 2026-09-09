@@ -21,7 +21,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Registry_EveryDictionaryLoadsAsZstdDictionary() {
-            foreach(var dictionary in StorageDictionary.Registry) {
+            foreach(var dictionary in new[] { StorageDictionary.Accounts1, StorageDictionary.CoopStatus1 }) {
                 var bytes = dictionary.Bytes;
                 Assert.IsTrue(bytes.Length > 1024, dictionary.ResourceName);
                 CollectionAssert.AreEqual(ZstdDictionaryMagic, bytes.Take(4).ToArray(), dictionary.ResourceName);

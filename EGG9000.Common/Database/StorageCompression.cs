@@ -13,8 +13,14 @@ namespace EGG9000.Common.Database {
     }
 
     public sealed class StorageCompressionStrategy(StorageCompressionAlgorithm algorithm, int brotliQuality = 6, int rawThreshold = 64, int zstdLevel = 9, StorageDictionary dictionary = null) {
-        public static readonly StorageCompressionStrategy AccountGraph = new(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.Accounts1);
-        public static readonly StorageCompressionStrategy CoopStatus = new(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.CoopStatus1);
+        private static volatile StorageCompressionStrategy _accountGraph = new(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.Accounts1);
+        private static volatile StorageCompressionStrategy _coopStatus = new(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.CoopStatus1);
+
+        public static StorageCompressionStrategy AccountGraph => _accountGraph;
+        public static StorageCompressionStrategy CoopStatus => _coopStatus;
+
+        public static void SetAccountGraph(StorageDictionary dictionary) => _accountGraph = new(StorageCompressionAlgorithm.Zstd, dictionary: dictionary);
+        public static void SetCoopStatus(StorageDictionary dictionary) => _coopStatus = new(StorageCompressionAlgorithm.Zstd, dictionary: dictionary);
 
         public StorageCompressionAlgorithm Algorithm { get; } = algorithm;
         public int BrotliQuality { get; } = brotliQuality;

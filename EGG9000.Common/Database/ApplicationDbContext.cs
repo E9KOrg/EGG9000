@@ -114,8 +114,6 @@ namespace EGG9000.Common.Database {
         public DbSet<Donation> Donations { get; set; }
         public DbSet<DBCustomEgg> CustomEggs { get; set; }
 
-        public DbSet<GlobalLeaderboardCoop> GlobalLeaderboardCoops { get; set; }
-        public DbSet<GlobalLeaderboardUser> GlobalLeaderboardUsers { get; set; }
         public DbSet<UserSnapShot> UserSnapShots { get; set; }
 
         public DbSet<TemporaryRole> TemporaryRoles { get; set; }
@@ -132,6 +130,7 @@ namespace EGG9000.Common.Database {
         public DbSet<ApiKey> ApiKeys { get; set; }
         public DbSet<ApiKeyRequestLog> ApiKeyRequestLogs { get; set; }
         public DbSet<ApiKeyDailyUsage> ApiKeyDailyUsages { get; set; }
+        public DbSet<StorageDictionaryRow> StorageDictionaries { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -314,9 +313,9 @@ namespace EGG9000.Common.Database {
             builder.Entity<ApiKeyRequestLog>().HasIndex(x => new { x.ApiKeyId, x.Timestamp });
             builder.Entity<ApiKeyDailyUsage>().HasKey(x => new { x.ApiKeyId, x.Date });
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
-            builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
             builder.Entity<Guild>().HasIndex(x => x.DiscordSeverId);
             builder.Entity<GuildContract>().HasIndex(x => x.DiscordChannelId);
+            builder.Entity<StorageDictionaryRow>().HasIndex(x => new { x.Corpus, x.Active });
 
             builder.Entity<Coop>().HasIndex(x => new { x.GuildId, x.ContractID, x.League })
                 .HasFilter("NOT \"Finished\" AND NOT \"ThreadArchived\"");

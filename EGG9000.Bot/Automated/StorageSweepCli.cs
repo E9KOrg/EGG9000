@@ -47,6 +47,9 @@ namespace EGG9000.Bot.Automated {
                 cts.Cancel();
             };
 
+            using(var scope = provider.CreateScope())
+                StorageDictionaryLoader.EnsureLoaded(scope.ServiceProvider.GetRequiredService<ApplicationDbContext>());
+
             var options = StorageSweepOptions.FromEnvironment() with { Enabled = true };
             var sweep = new StorageSweep(provider.GetRequiredService<IServiceScopeFactory>(), logger);
             await sweep.RunOnceAsync(options, cts.Token);

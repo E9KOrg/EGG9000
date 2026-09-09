@@ -3,6 +3,7 @@ using System;
 using EGG9000.Common.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EGG9000.Common.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260909044049_DropXrefIndexesAndGlobalLeaderboards")]
+    partial class DropXrefIndexesAndGlobalLeaderboards
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1095,51 +1098,6 @@ namespace EGG9000.Common.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("SeasonInfos");
-                });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.StorageDictionaryRow", b =>
-                {
-                    b.Property<int>("Id")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("Active")
-                        .HasColumnType("boolean");
-
-                    b.Property<byte[]>("Bytes")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<string>("Corpus")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("EvaluatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Fingerprint")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<long>("HoldoutBytesActive")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("HoldoutBytesCandidate")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("HoldoutBytesPlain")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("SampleCount")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("TrainedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Corpus", "Active");
-
-                    b.ToTable("StorageDictionaries");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.TemporaryRole", b =>

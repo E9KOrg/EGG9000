@@ -6,6 +6,7 @@ using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
+using EGG9000.Common.Services;
 using EGG9000.Site.Auth;
 using EGG9000.Site.Data;
 using EGG9000.Site.Services;
@@ -251,6 +252,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
     services.AddSingleton<ArtifactImageRenderer>();
+    services.AddHostedService<StorageDictionaryStartup>();
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
     services.AddHostedService<UserCacheRefreshService>();
@@ -315,6 +317,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
         services.AddMassTransit(x => {
             x.AddConsumer<ExpireCacheConsumer>();
+            x.AddConsumer<StorageDictionaryAdoptedConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
             // Per-instance temporary queue so a version update fans out to every running process
             // instead of being load-balanced across a shared queue.
             x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
