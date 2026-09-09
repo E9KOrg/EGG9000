@@ -201,7 +201,8 @@ namespace EGG9000.Site.Controllers {
         public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
             var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildid);
 
-            var guild = _discord.Guilds.First(g => g.Id == guildid);
+            var guild = _discord.Guilds.FirstOrDefault(g => g.Id == guildid);
+            if(guild is null) return [];
             // Membership is the DB GuildId, not the live Discord cache. The site runs its own bare
             // socket client whose member cache can read "complete" while actually partial, and gating
             // on it dropped real members from the board (the recurring CSLeaderboard "few users" bug).
@@ -234,6 +235,7 @@ namespace EGG9000.Site.Controllers {
             ViewBag.SortBy = sortby;
 
             var leaderboard = (await ResolveGuildLeaderboardAsync(guildid)).Board;
+            if(leaderboard is null) return View("Message", NoLinkedGuildMessage);
 
             if(oldest) {
                 return View(leaderboard.Where(x => x.Backup.PermitLevel == 0 && x.User.EggIncAccounts.Count == 1).OrderBy(x => x.User.Registered).ToList());
@@ -292,6 +294,7 @@ namespace EGG9000.Site.Controllers {
 
         public async Task<IActionResult> CraftingLevelLeaderboard([FromQuery] ulong guildid = 0) {
             var leaderboard = (await ResolveGuildLeaderboardAsync(guildid)).Board;
+            if(leaderboard is null) return View("Message", NoLinkedGuildMessage);
             leaderboard = [.. leaderboard.OrderByDescending(x => x.TotalCraftingXP).Where(x => x.TotalCraftingXP > 0)];
             return View(leaderboard);
         }
@@ -300,6 +303,7 @@ namespace EGG9000.Site.Controllers {
             ViewBag.CSType = cstype;
 
             var leaderboard = (await ResolveGuildLeaderboardAsync(guildid)).Board;
+            if(leaderboard is null) return View("Message", NoLinkedGuildMessage);
 
             switch(cstype) {
                 case "season":
@@ -523,18 +527,24 @@ namespace EGG9000.Site.Controllers {
             return Json(result);
         }
 
+        private const string NoLinkedGuildMessage = "Your account is not linked to a Discord server this site knows about.";
+
         private async Task<(DBUser User, ulong Guildid, List<LeaderboardUser> Board)> ResolveGuildLeaderboardAsync(ulong guildid) {
             var user = await GetCurrentDbUserAsync();
             if(guildid == 0 || !User.IsInRole("Admin")) {
                 guildid = user.GuildId;
             }
-            await _discord.Guilds.First(x => x.Id == guildid).DownloadUsersAsync();
+            var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildid);
+            if(guild is null) return (user, guildid, null);
+            await guild.DownloadUsersAsync();
             return (user, guildid, await _getLeaderboard(guildid));
         }
 
         private async Task<(List<T> All, List<T> Mine, List<string> MyNames)> BuildComparison<T>(Func<LeaderboardUser, T> project, Func<IEnumerable<LeaderboardUser>, IEnumerable<LeaderboardUser>> filter = null) {
             var user = await GetCurrentDbUserAsync();
-            await _discord.Guilds.First(x => x.Id == user.GuildId).DownloadUsersAsync();
+            var guild = _discord.Guilds.FirstOrDefault(x => x.Id == user.GuildId);
+            if(guild is null) return (null, null, null);
+            await guild.DownloadUsersAsync();
 
             IEnumerable<LeaderboardUser> leaderboard = await _getLeaderboard(user.GuildId);
             if(filter is not null) leaderboard = filter(leaderboard);
@@ -557,6 +567,7 @@ namespace EGG9000.Site.Controllers {
             var (all, mine, myNames) = await BuildComparison(u => new Tuple<double, string>(
                 u.Backup.EarningsBonus,
                 SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank));
+            if(all is null) return View("Message", NoLinkedGuildMessage);
 
             ViewBag.ListOfEb = all;
             ViewBag.MyEbs = mine;
@@ -571,6 +582,7 @@ namespace EGG9000.Site.Controllers {
             var (all, mine, myNames) = await BuildComparison(u => new Tuple<int, double>(
                 (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
                 u?.Backup?.TotalCS ?? 0));
+            if(all is null) return View("Message", NoLinkedGuildMessage);
 
             ViewBag.MyGradeData = mine;
             ViewBag.MyNames = myNames;
@@ -586,6 +598,7 @@ namespace EGG9000.Site.Controllers {
                 (int)u?.Account?.Backup.GetCraftingLevel(),
                 (double)(u?.Account?.Backup?.CraftingXP)),
                 leaderboard => leaderboard.Where(x => x.TotalCraftingXP > 0));
+            if(all is null) return View("Message", NoLinkedGuildMessage);
 
             ViewBag.MyCraftingData = mine;
             ViewBag.MyNames = myNames;
@@ -673,9 +686,15 @@ namespace EGG9000.Site.Controllers {
             }));
 
             if(model.Contract.Details == null) {
-                var firstContact = await EggIncApi.FirstContact(model.UserInfos.Where(x => x.Backup != null).First().Backup.EggIncId);
-                var contract = firstContact.Backup.Contracts.Archive.First(c => c.Contract.Identifier == ContractId);
-                model.Contract._response = JsonConvert.SerializeObject(contract.Contract);
+                var carrier = model.UserInfos.FirstOrDefault(x => x.Backup != null);
+                if(carrier is null) return View("Message", $"Unable to find contract definition for {ContractId}.");
+                var firstContact = await EggIncApi.FirstContact(carrier.Backup.EggIncId);
+                var myContracts = firstContact?.Backup?.Contracts;
+                var contract = myContracts is null
+                    ? null
+                    : myContracts.Archive.Concat(myContracts.Contracts).FirstOrDefault(c => c.Contract is not null && (c.Contract.Identifier == ContractId || c.ContractIdentifier == ContractId));
+                if(contract is null) return View("Message", $"Unable to find contract definition for {ContractId}.");
+                model.Contract.OverwriteDetails(contract.Contract);
                 await _db.SaveChangesAsync();
             }
 
