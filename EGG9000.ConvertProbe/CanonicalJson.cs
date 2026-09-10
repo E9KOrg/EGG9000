@@ -112,26 +112,24 @@ namespace EGG9000.ConvertProbe {
         }
 
         private static void WriteDictionary(Utf8JsonWriter writer, IDictionary dictionary, int depth) {
-            var entries = new List<KeyValuePair<string, object>>();
-            foreach(DictionaryEntry entry in dictionary)
-                entries.Add(new KeyValuePair<string, object>(KeyText(entry.Key), entry.Value));
+            var entries = dictionary.Cast<DictionaryEntry>()
+                .Select(x => (Key: KeyText(x.Key), x.Value))
+                .OrderBy(x => x.Key, StringComparer.Ordinal);
             writer.WriteStartObject();
-            foreach(var entry in entries.OrderBy(x => x.Key, StringComparer.Ordinal)) {
-                writer.WritePropertyName(entry.Key);
-                WriteValue(writer, entry.Value, depth + 1);
+            foreach(var (key, value) in entries) {
+                writer.WritePropertyName(key);
+                WriteValue(writer, value, depth + 1);
             }
             writer.WriteEndObject();
         }
 
-        private static string KeyText(object key) {
-            return key switch {
-                null => "null",
-                string s => s,
-                Enum e => e.ToString(),
-                IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
-                _ => key.ToString()
-            };
-        }
+        private static string KeyText(object key) => key switch {
+            null => "null",
+            string s => s,
+            Enum e => e.ToString(),
+            IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
+            _ => key.ToString()
+        };
 
         private static void WriteArray(Utf8JsonWriter writer, IEnumerable enumerable, int depth) {
             writer.WriteStartArray();

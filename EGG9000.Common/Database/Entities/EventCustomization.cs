@@ -19,8 +19,8 @@ namespace EGG9000.Common.Database.Entities {
         private readonly JsonBlobAccessor<EventCustomizationSettings> _settingsAccessor = new("{}");
         [NotMapped]
         public EventCustomizationSettings Settings {
-            get => _settingsAccessor.Get(_settings);
-            set => _settings = _settingsAccessor.Set(value, _settings);
+            get { return _settingsAccessor.Get(_settings); }
+            set { _settings = _settingsAccessor.Set(value, _settings); }
         }
     }
 
@@ -33,12 +33,8 @@ namespace EGG9000.Common.Database.Entities {
         public decimal MinValue { get; set; }
         public ulong RoleID { get; set; }
         public string RoleIdString {
-            get {
-                return RoleID.ToString();
-            }
-            set {
-                RoleID = ulong.Parse(value);
-            }
+            get { return RoleID.ToString(); }
+            set { RoleID = ulong.Parse(value); }
         }
     }
 }

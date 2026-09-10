@@ -123,15 +123,6 @@ namespace EGG9000.Bot.Automated {
                         continue;
                     }
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
-                    if(contract?.Details?.Leggacy == true)
-                        contractResponse.Leggacy = true;
-
-                    var json = JsonConvert.SerializeObject(contractResponse);
-                    if(!contractResponse.Leggacy && contract != null && contract._response != json) {
-                        _logger.LogWarning("Contract {contractid} changed without the leggacy flag, marking it leggacy via fallback detection", contractResponse.Identifier);
-                        contractResponse.Leggacy = true;
-                        json = JsonConvert.SerializeObject(contractResponse);
-                    }
 
                     if(contract == null) {
                         contract = new DBContract {
@@ -145,17 +136,29 @@ namespace EGG9000.Bot.Automated {
                         needsUpdate = true;
                         cachesChanged = true;
                         _logger.LogInformation("Contract {contractid} added", contract.ID);
-                    } else if(json != contract._response || contract.Created < DateTimeOffset.UtcNow.AddMonths(-3)) {
-                        cachesChanged = true;
-                        if(contract.Created < DateTimeOffset.UtcNow.AddMonths(-3)) {
-                            contract.Created = DateTimeOffset.UtcNow;
-                            var guildContracts = contract.GuildContracts.Where(x => x.ContractID == contract.ID);
-                            _db.RemoveRange(guildContracts);
+                    } else {
+                        if(contract.Details?.Leggacy == true)
+                            contractResponse.Leggacy = true;
+
+                        var json = JsonConvert.SerializeObject(contractResponse);
+                        if(!contractResponse.Leggacy && contract._response != json) {
+                            _logger.LogWarning("Contract {contractid} changed without the leggacy flag, marking it leggacy via fallback detection", contractResponse.Identifier);
+                            contractResponse.Leggacy = true;
+                            json = JsonConvert.SerializeObject(contractResponse);
                         }
-                        _logger.LogInformation("Contract {contractid} updated", contract.ID);
-                        contract.ApplyDetails(contractResponse);
-                        contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.GetCustomEggsAsync()).value;
-                        await _db.SaveChangesAsync(CancellationToken.None);
+
+                        var stale = contract.Created < DateTimeOffset.UtcNow.AddMonths(-3);
+                        if(json != contract._response || stale) {
+                            cachesChanged = true;
+                            if(stale) {
+                                contract.Created = DateTimeOffset.UtcNow;
+                                _db.RemoveRange(contract.GuildContracts.Where(x => x.ContractID == contract.ID));
+                            }
+                            _logger.LogInformation("Contract {contractid} updated", contract.ID);
+                            contract.ApplyDetails(contractResponse);
+                            contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.GetCustomEggsAsync()).value;
+                            await _db.SaveChangesAsync(CancellationToken.None);
+                        }
                     }
 
                     _db.ExpireCachedEiContracts();

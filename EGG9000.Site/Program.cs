@@ -317,10 +317,10 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
         services.AddMassTransit(x => {
             x.AddConsumer<ExpireCacheConsumer>();
-            x.AddConsumer<StorageDictionaryAdoptedConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
             // Per-instance temporary queue so a version update fans out to every running process
             // instead of being load-balanced across a shared queue.
             x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
+            x.AddConsumer<StorageDictionaryAdoptedConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
             // Same broadcast pattern: every site instance applies every bot metrics snapshot.
             x.AddConsumer<EGG9000.Site.Consumers.BotMetricsSnapshotConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
             var host = Configuration.GetConnectionString("RabbitMQServer");

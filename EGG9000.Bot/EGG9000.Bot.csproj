@@ -7,6 +7,8 @@
     </StartupObject>
     <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <ServerGarbageCollection>true</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
   <PropertyGroup>
     <!-- Forces the build to generate modern, cross-platform Portable PDBs -->

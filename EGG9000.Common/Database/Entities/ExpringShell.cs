@@ -19,7 +19,9 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         private readonly JsonBlobAccessor<Ei.ShellObjectSpec> _details = new();
         [NotMapped]
-        public Ei.ShellObjectSpec Details => _details.Get(Json);
+        public Ei.ShellObjectSpec Details {
+            get { return _details.Get(Json); }
+        }
 
         public void ApplyDetails(Ei.ShellObjectSpec e) {
             Json = _details.Set(e, Json);
@@ -30,8 +32,7 @@ namespace EGG9000.Common.Database.Entities {
             AssetType = e.AssetType;
         }
 
-        public ExpiringShell() {
-        }
+        public ExpiringShell() { }
 
         public ExpiringShell(Ei.ShellObjectSpec e) {
             ApplyDetails(e);

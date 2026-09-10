@@ -11,7 +11,9 @@ namespace EGG9000.Test {
     public class DBUserUnreadableAccountsTests {
         private static readonly byte[] Corrupt = [0xC1, 0xFF, 0x00];
 
-        private static DBUser Unreadable() => new() { DiscordId = 42, Usernames = "keep-me", EIDs = "EI0000000000000001", _contractRegistrationByte = [.. Corrupt] };
+        private static DBUser Unreadable() {
+            return new DBUser { DiscordId = 42, Usernames = "keep-me", EIDs = "EI0000000000000001", _contractRegistrationByte = [.. Corrupt] };
+        }
 
         [TestMethod]
         public void Getter_FlagsUnreadable_ReturnsEmpty_LeavesColumn() {

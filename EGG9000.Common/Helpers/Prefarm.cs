@@ -16,14 +16,11 @@ namespace EGG9000.Common.Helpers {
             public DBUser User { get; set; }
             public CustomBackup Backup { get; set; }
             public EggIncAccount Account { get; set; }
-
         }
         public partial class LeaderboardUser {
             public DBUser User { get; set; }
             public EggIncAccount Account {
-                get {
-                    return User.EggIncAccounts.First(x => x.Id == Backup.EggIncId);
-                }
+                get { return User.EggIncAccounts.First(x => x.Id == Backup.EggIncId); }
             }
             public CustomBackup Backup { get; set; }
             public DateTimeOffset? lastSeen { get; set; }
@@ -36,11 +33,19 @@ namespace EGG9000.Common.Helpers {
             public SocketGuildUser DiscordUser { get; set; }
             // The board is sourced from DB GuildId, not the live Discord cache, so a row can exist
             // without a cached SocketGuildUser. These give views a name/id without dereferencing it.
-            public ulong DisplayDiscordId => DiscordUser?.Id ?? User.DiscordId;
-            public string DisplayName => DiscordUser is not null
-                ? DiscordUser.GetCleanName()
-                : MyRegex().Replace(User.DiscordUsername ?? "", "").Trim();
-            public bool Elite { get { return Backup.EarningsBonus > 10000000000000; } }
+            public ulong DisplayDiscordId {
+                get { return DiscordUser?.Id ?? User.DiscordId; }
+            }
+            public string DisplayName {
+                get {
+                    return DiscordUser is not null
+                        ? DiscordUser.GetCleanName()
+                        : MyRegex().Replace(User.DiscordUsername ?? "", "").Trim();
+                }
+            }
+            public bool Elite {
+                get { return Backup.EarningsBonus > 10000000000000; }
+            }
             public DateTimeOffset Started { get; set; }
             public List<SimpleXref> RecentXrefs { get; set; }
             public double TotalCS { get; set; }
@@ -72,9 +77,7 @@ namespace EGG9000.Common.Helpers {
             public double Rate { get; set; }
             public double Projected { get; set; }
             public double ProjectedPercent {
-                get {
-                    return Projected / Goal * 100;
-                }
+                get { return Projected / Goal * 100; }
             }
             public double Goal { get; set; }
             public double OfflineEggs { get; set; }
@@ -88,7 +91,7 @@ namespace EGG9000.Common.Helpers {
 
             public DBUser User { get; set; }
             public uint League { get; set; }
-            public bool Completed { get; set; } = false;
+            public bool Completed { get; set; }
 
             public CustomBackup Backup { get; set; }
 
@@ -146,8 +149,10 @@ namespace EGG9000.Common.Helpers {
             public double Projected { get; private set; }
             public TimeSpan TimeRemaining { get; private set; }
 
-            private uint _maxSize = 0;
-            public bool HasSpots { get { return CoopParticipants.Count < _maxSize; } }
+            private uint _maxSize;
+            public bool HasSpots {
+                get { return CoopParticipants.Count < _maxSize; }
+            }
             public bool IsFire;
             public bool IsDoubleFire;
             public double TargetAmount { get; set; }
@@ -172,11 +177,9 @@ namespace EGG9000.Common.Helpers {
                     } else if(TimeRemaining < TimeSpan.FromHours(36)) {
                         IsFire = true;
                     }
-
                 }
                 _maxSize = (uint)contract.MaxUsers;
             }
-
 
             public double GetProjectedShare(UserFarmDetails ufd) {
                 var share = (ufd.EggsShipped + ufd.OfflineEggs + ufd.Rate * Math.Max(0, TimeRemaining.TotalSeconds)) / TargetAmount * 100;
@@ -279,9 +282,6 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            var targetAmount = guildContract.Contract.Details.GetGoals((int)league).Last().TargetAmount;
-
-
 
             var notInCoopAbove5Percent = notInCoop.Where(x => x.ProjectedPercent >= 5).ToList();
             var notInCoopBelow5Percent = notInCoop.Where(x => x.ProjectedPercent < 5).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
@@ -305,24 +305,18 @@ namespace EGG9000.Common.Helpers {
                 }
             }
 
-            coopsBreakdown.PotentialCoops = [];
-            for(var i = 1; i <= potentialCoops.Count; i++) {
-                var details = new CoopDetails(potentialCoops[i - 1], guildContract, league);
-                coopsBreakdown.PotentialCoops.Add(details);
-            }
-
-            coopsBreakdown.PotentialCoops = [.. coopsBreakdown.PotentialCoops.OrderByDescending(x => x.PercentProjected)];
+            coopsBreakdown.PotentialCoops = [.. potentialCoops.Select(x => new CoopDetails(x, guildContract, league)).OrderByDescending(x => x.PercentProjected)];
             return coopsBreakdown;
         }
 
         public static List<UserPreFarm> GetPrefarmsForCoop(Coop coop, List<UserPreFarm> allPrefarms, List<UserPreFarm> alienPrefarms) {
             var prefarms = new List<UserPreFarm>();
 
-            if(coop.LastStatusUpdate != null) {
+            if(coop.LastStatusUpdate is not null) {
                 foreach(var c in coop.LastStatusUpdate.Contributors) {
-                    var prefarm = allPrefarms.FirstOrDefault(x => x.EggIncId == c.UserId);
-                    prefarm ??= alienPrefarms.FirstOrDefault(x => x?.EggIncId == c.UserId);
-                    if(prefarm != null)
+                    var prefarm = allPrefarms.FirstOrDefault(x => x.EggIncId == c.UserId)
+                        ?? alienPrefarms.FirstOrDefault(x => x?.EggIncId == c.UserId);
+                    if(prefarm is not null)
                         prefarms.Add(prefarm);
                 }
             }
@@ -336,14 +330,12 @@ namespace EGG9000.Common.Helpers {
             foreach(var xref in coop.UserCoopsXrefs) {
                 if(!prefarms.Any(x => x.EggIncId == xref.EggIncId || x.EggIncId == xref.RefEggIncId)) {
                     var prefarm = allPrefarms.FirstOrDefault(x => x.EggIncId == xref.EggIncId || x.EggIncId == xref.RefEggIncId);
-                    if(prefarm == null) {
-                        if(xref.User?.GuildId == coop.GuildId) {
-                            prefarm = new UserPreFarm {
-                                Name = xref.User.DiscordUsername
-                            };
-                        } else {
+                    if(prefarm is null) {
+                        if(xref.User?.GuildId != coop.GuildId)
                             continue;
-                        }
+                        prefarm = new UserPreFarm {
+                            Name = xref.User.DiscordUsername
+                        };
                     }
                     prefarms.Add(prefarm);
                 }
@@ -351,14 +343,13 @@ namespace EGG9000.Common.Helpers {
 
 
             prefarms.ForEach(prefarm => {
-                if(!string.IsNullOrWhiteSpace(prefarm.Coop) && !prefarm.Coop.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase) && !prefarm.CancelledFarm && !prefarm.Coop.StartsWith("✔️") && !prefarm.Coop.StartsWith("❌") && !prefarm.Coop.Contains("Different")) {
-                } else {
+                if(string.IsNullOrWhiteSpace(prefarm.Coop) || prefarm.Coop.Equals(coop.Name, StringComparison.CurrentCultureIgnoreCase) || prefarm.CancelledFarm || prefarm.Coop.StartsWith("✔️") || prefarm.Coop.StartsWith("❌") || prefarm.Coop.Contains("Different")) {
                     ContributionInfo contribution = null;
                     if(coop.LastStatusUpdate is not null) {
                         var contributors = coop.LastStatusUpdate.Contributors;
                         contribution = contributors.FirstOrDefault(x => x.UserId == prefarm.EggIncId);
                         if(contribution is null && prefarm.Xref is not null) {
-                            contribution = contributors.FirstOrDefault(x => x.UserName == prefarm?.Xref.FixedUserName);
+                            contribution = contributors.FirstOrDefault(x => x.UserName == prefarm.Xref.FixedUserName);
                         }
                     }
 
@@ -367,20 +358,16 @@ namespace EGG9000.Common.Helpers {
                         prefarm.Projected = contribution.Projected;
                     }
 
-                    var joined = contribution is not null;
-
-
                     if(coop.Status == CoopStatus.Failed && string.IsNullOrEmpty(prefarm.CoopName)) {
                         prefarm.Coop = "";
                     } else {
-                        prefarm.Coop = joined ? "✔️" : $"❌{prefarm.TimeLeft?.Humanize(precision: 2).ShortenTime().Replace(" ", "").Replace(",", "")}";
+                        prefarm.Coop = contribution is not null ? "✔️" : $"❌{prefarm.TimeLeft?.Humanize(precision: 2).ShortenTime().Replace(" ", "").Replace(",", "")}";
                         if(prefarm.Name.StartsWith("*")) {
                             prefarm.Coop = "👽";
                             prefarm.Name = prefarm.Name[1..];
                         }
                     }
                 }
-
             });
 
             return prefarms;
@@ -388,13 +375,10 @@ namespace EGG9000.Common.Helpers {
 
         public static List<UserFarmDetails> GetCoopParticipants(Coop coop, DBContract contract, uint league, Ei.ContractCoopStatusResponse status, IEnumerable<UserWithBackup> backups, List<DBCustomEgg> customEggs, DiscordSocketClient discord) {
             var coopParticipants = new List<UserFarmDetails>();
-
-
             var userBackupsAssigned = backups.Where(x => coop.UserCoopsXrefs.Any(y => y.UserId == x.User.Id)).ToList();
 
             if(status is not null) {
                 foreach(var participant in status.Participants) {
-
                     // Empty UUID is treated as no-match to avoid false positives
                     var backup = !string.IsNullOrEmpty(participant.Uuid)
                         ? backups.Where(x => x.Backup is not null).FirstOrDefault(x => x.Backup.Farms.Any(farm => farm.ReportedUUIDs is not null && farm.ReportedUUIDs.Any(uuid => uuid == participant.Uuid)))
@@ -408,35 +392,33 @@ namespace EGG9000.Common.Helpers {
                         if(participant.UserName == "[departed]") continue;
                         UserCoopXref xref = null;
                         if(coop is not null) {
-
-                            xref = coop.UserCoopsXrefs.FirstOrDefault(xref => xref.EggIncId == participant.GetID());
+                            xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.EggIncId == participant.GetID());
                             var saveFixedUserName = false;
 
                             xref ??= coop.UserCoopsXrefs.FirstOrDefault(x => !string.IsNullOrEmpty(x.FixedUserName) && x.FixedUserName == participant.UserName);
 
-                            if(xref == null && !string.IsNullOrWhiteSpace(participant.UserName)) {
+                            if(xref is null && !string.IsNullOrWhiteSpace(participant.UserName)) {
                                 var matchbackup = userBackupsAssigned.FirstOrDefault(x => x.Backup.UserName == participant.UserName);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                             }
 
-                            if(xref == null) {
+                            if(xref is null) {
                                 var matchbackup = userBackupsAssigned.FirstOrDefault(x => Math.Log10(x.Backup.EarningsBonus / 100) == participant.SoulPower);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                                 if(xref is not null) saveFixedUserName = true;
                             }
 
-                            if(xref == null) {
+                            if(xref is null) {
                                 var matchbackup = userBackupsAssigned.FirstOrDefault(x => x.Backup.SoulEggs == participant.FarmInfo?.SoulEggs);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                                 if(xref is not null) saveFixedUserName = true;
                             }
 
-                            if(xref == null && !string.IsNullOrWhiteSpace(participant.UserName)) {
+                            if(xref is null && !string.IsNullOrWhiteSpace(participant.UserName)) {
                                 var matchbackup = backups.FirstOrDefault(x => x.Backup?.UserName == participant.UserName);
                                 xref = coop.UserCoopsXrefs.FirstOrDefault(x => x.UserId == matchbackup?.User.Id && x.EggIncId == matchbackup?.Backup.EggIncId);
                                 if(xref is not null) saveFixedUserName = true;
                             }
-
 
                             if(saveFixedUserName) {
                                 var isNameUnique = !backups.Any(b => b.Backup?.UserName == participant.UserName && b.Backup?.EggIncId != xref.EggIncId);
@@ -501,15 +483,12 @@ namespace EGG9000.Common.Helpers {
             }
 
 
-            if(coopParticipants.Any(x => x.Name.Equals("kendrome", StringComparison.CurrentCultureIgnoreCase) && !coop.FinishedOrFailedOrExpired())) {
-
-            }
             return coopParticipants;
         }
 
         public static UserPreFarm BackupToPreFarm(LeaderboardUser user, DBContract contract, List<DBCustomEgg> customEggs) {
             var farm = user.Backup.Farms?.FirstOrDefault(x => x.ContractId == contract.ID);
-            if(farm == null) {
+            if(farm is null) {
                 if(!user.Backup.EmptyBackup && (user.Backup.ArchivedFarms?.Any(f => f.ContractId == contract.ID) ?? false)) {
                     return new UserPreFarm {
                         EggIncId = user.Backup.EggIncId,
@@ -523,7 +502,7 @@ namespace EGG9000.Common.Helpers {
                 }
                 return null;
             }
-            var farmStats = farm?.WithStats(user.Backup, null, customEggs);
+            var farmStats = farm.WithStats(user.Backup, null, customEggs);
 
             var prefarm = new UserPreFarm {
                 EggIncId = user.Backup.EggIncId,

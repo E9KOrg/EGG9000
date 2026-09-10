@@ -21,7 +21,7 @@ namespace EGG9000.ConvertProbe.Inspect {
         Unsupported
     }
 
-    public sealed class SlotShape {
+    public sealed record SlotShape {
         public SlotKind Kind { get; init; }
         public Type Clr { get; init; }
         public bool AllowNil { get; init; }
@@ -34,7 +34,9 @@ namespace EGG9000.ConvertProbe.Inspect {
         public ObjectSchema Object { get; init; }
         public string Note { get; init; }
 
-        public string Declared => TypeName(Clr);
+        public string Declared {
+            get { return TypeName(Clr); }
+        }
 
         public static string TypeName(Type type) {
             if(type is null) return "?";
@@ -73,27 +75,26 @@ namespace EGG9000.ConvertProbe.Inspect {
         public Dictionary<int, SlotMember> Members { get; } = [];
         public int MaxKey { get; set; } = -1;
         public string Skipped { get; set; }
-        public string Name => Type.Name;
+        public string Name {
+            get { return Type.Name; }
+        }
     }
 
     public sealed class SlotSchemaBuilder {
         private readonly Dictionary<Type, SlotShape> _objects = [];
         private readonly List<string> _notes = [];
 
-        public IReadOnlyList<string> Notes => _notes;
-        public List<ObjectSchema> ObjectSchemas() => [.. _objects.Values.Select(v => v.Object)];
+        public IReadOnlyList<string> Notes {
+            get { return _notes; }
+        }
+        public List<ObjectSchema> ObjectSchemas() {
+            return [.. _objects.Values.Select(v => v.Object)];
+        }
 
         public SlotShape Build(Type type) {
-            var underlying = Nullable.GetUnderlyingType(type);
-            if(underlying is not null) {
-                var inner = Build(underlying);
-                return new SlotShape {
-                    Kind = inner.Kind, Clr = type, AllowNil = true, Min = inner.Min, Max = inner.Max,
-                    Element = inner.Element, Key = inner.Key, Value = inner.Value, Items = inner.Items, Object = inner.Object, Note = inner.Note
-                };
-            }
-            if(type.IsEnum)
-                return Integer(type, Enum.GetUnderlyingType(type));
+            if(Nullable.GetUnderlyingType(type) is { } underlying)
+                return Build(underlying) with { Clr = type, AllowNil = true };
+            if(type.IsEnum) return Integer(type, Enum.GetUnderlyingType(type));
             if(type == typeof(string)) return new SlotShape { Kind = SlotKind.String, Clr = type, AllowNil = true };
             if(type == typeof(byte[])) return new SlotShape { Kind = SlotKind.Binary, Clr = type, AllowNil = true };
             if(type == typeof(bool)) return new SlotShape { Kind = SlotKind.Bool, Clr = type };
@@ -153,7 +154,9 @@ namespace EGG9000.ConvertProbe.Inspect {
             return shape;
         }
 
-        private static bool IsInteger(Type type) => Type.GetTypeCode(type) is TypeCode.Byte or TypeCode.SByte or TypeCode.Int16 or TypeCode.UInt16 or TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int64 or TypeCode.UInt64;
+        private static bool IsInteger(Type type) {
+            return Type.GetTypeCode(type) is TypeCode.Byte or TypeCode.SByte or TypeCode.Int16 or TypeCode.UInt16 or TypeCode.Int32 or TypeCode.UInt32 or TypeCode.Int64 or TypeCode.UInt64;
+        }
 
         private static SlotShape Integer(Type declared, Type underlying) {
             (long min, ulong max) = Type.GetTypeCode(underlying) switch {

@@ -12,9 +12,13 @@ using System.Text;
 
 namespace EGG9000.Common.Database {
     public static class StorageFingerprint {
-        public static string Accounts() => Hash(AccountsDescription());
+        public static string Accounts() {
+            return Hash(AccountsDescription());
+        }
 
-        public static string CoopStatus() => Hash(CoopStatusDescription());
+        public static string CoopStatus() {
+            return Hash(CoopStatusDescription());
+        }
 
         public static string AccountsDescription() {
             var lines = new List<string>();
@@ -30,17 +34,20 @@ namespace EGG9000.Common.Database {
         }
 
         public static string CoopStatusDescription() {
-            return string.Join("\n", [
-                "descriptor " + Hash(Ei.ContractCoopStatusResponse.Descriptor.File.SerializedData.Span),
-                Strategy(StorageCompressionStrategy.CoopStatus)
-            ]);
+            return "descriptor " + Hash(Ei.ContractCoopStatusResponse.Descriptor.File.SerializedData.Span) + "\n" + Strategy(StorageCompressionStrategy.CoopStatus);
         }
 
-        private static string Strategy(StorageCompressionStrategy strategy) => $"strategy {strategy.Algorithm} zstd={strategy.ZstdLevel} raw={strategy.RawThreshold}";
+        private static string Strategy(StorageCompressionStrategy strategy) {
+            return $"strategy {strategy.Algorithm} zstd={strategy.ZstdLevel} raw={strategy.RawThreshold}";
+        }
 
-        private static string Hash(string description) => Hash(Encoding.UTF8.GetBytes(description));
+        private static string Hash(string description) {
+            return Hash(Encoding.UTF8.GetBytes(description));
+        }
 
-        private static string Hash(ReadOnlySpan<byte> bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
+        private static string Hash(ReadOnlySpan<byte> bytes) {
+            return Convert.ToHexStringLower(SHA256.HashData(bytes));
+        }
 
         private static void Walk(Type type, HashSet<Type> visited, List<string> lines) {
             if(type.IsArray) {

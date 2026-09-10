@@ -17,37 +17,37 @@ namespace EGG9000.Common.Database {
         [Key(0)]
         [DerivedSlot(nameof(SimulationBytes))]
         public Ei.FarmType FarmType {
-            get => Simulation is { } s ? s.FarmType : field;
+            get { return Simulation is { } s ? s.FarmType : field; }
             set;
         }
         [Key(1)]
         [DerivedSlot(nameof(SimulationBytes))]
         public string ContractId {
-            get => Simulation is { } s ? s.ContractId : field;
+            get { return Simulation is { } s ? s.ContractId : field; }
             set;
         }
         [Key(2)]
         [DerivedSlot(nameof(SimulationBytes))]
         public double EggsPaidFor {
-            get => Simulation is { } s ? s.EggsPaidFor : field;
+            get { return Simulation is { } s ? s.EggsPaidFor : field; }
             set;
         }
         [Key(3)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public uint? League {
-            get => LocalContract is { } l ? l.League : field;
+            get { return LocalContract is { } l ? l.League : field; }
             set;
         }
         [Key(4)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public string CoopId {
-            get => LocalContract is { } l ? l.CoopIdentifier : field;
+            get { return LocalContract is { } l ? l.CoopIdentifier : field; }
             set;
         }
         [Key(5)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public bool Cancelled {
-            get => LocalContract is { } l ? l.Cancelled : field;
+            get { return LocalContract is { } l ? l.Cancelled : field; }
             set;
         }
         [Key(6)]
@@ -55,7 +55,7 @@ namespace EGG9000.Common.Database {
         [Key(7)]
         [DerivedSlot(nameof(SimulationBytes))]
         public List<CustomResearch> CommonResearch {
-            get => Simulation is { } s ? _commonResearch ??= [.. s.CommonResearch.Select(x => new CustomResearch(x))] : field;
+            get { return Simulation is { } s ? _commonResearch ??= [.. s.CommonResearch.Select(x => new CustomResearch(x))] : field; }
             set {
                 field = value;
                 _commonResearch = null;
@@ -65,19 +65,19 @@ namespace EGG9000.Common.Database {
         [Key(8)]
         [DerivedSlot(nameof(SimulationBytes))]
         public ulong NumChickens {
-            get => Simulation is { } s ? s.NumChickens : field;
+            get { return Simulation is { } s ? s.NumChickens : field; }
             set;
         }
         [Key(10)]
         [DerivedSlot(nameof(SimulationBytes))]
         public Ei.Egg EggType {
-            get => Simulation is { } s ? s.EggType : field;
+            get { return Simulation is { } s ? s.EggType : field; }
             set;
         }
         [Key(11)]
         [DerivedSlot(nameof(SimulationBytes))]
         public List<uint> TrainLength {
-            get => Simulation is { } s ? _trainLength ??= [.. s.TrainLength] : field;
+            get { return Simulation is { } s ? _trainLength ??= [.. s.TrainLength] : field; }
             set {
                 field = value;
                 _trainLength = null;
@@ -91,13 +91,13 @@ namespace EGG9000.Common.Database {
         [Key(14)]
         [DerivedSlot(nameof(SimulationBytes))]
         public uint SilosOwned {
-            get => Simulation is { } s ? s.SilosOwned : field;
+            get { return Simulation is { } s ? s.SilosOwned : field; }
             set;
         }
         [Key(15)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public long TimeAccepted {
-            get => LocalContract is { } l ? (long)l.TimeAccepted : field;
+            get { return LocalContract is { } l ? (long)l.TimeAccepted : field; }
             set;
         }
         [Key(16)]
@@ -105,55 +105,55 @@ namespace EGG9000.Common.Database {
         [Key(17)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public long CoopSharedEndTime {
-            get => LocalContract is { } l ? (long)l.CoopSharedEndTime : field;
+            get { return LocalContract is { } l ? (long)l.CoopSharedEndTime : field; }
             set;
         }
         [Key(18)]
         [DerivedSlot(nameof(SimulationBytes))]
         public ushort BoostTokensReceived {
-            get => Simulation is { } s ? (ushort)s.BoostTokensReceived : field;
+            get { return Simulation is { } s ? (ushort)s.BoostTokensReceived : field; }
             set;
         }
         [Key(19)]
         [DerivedSlot(nameof(SimulationBytes))]
         public ushort BoostTokensGiven {
-            get => Simulation is { } s ? (ushort)s.BoostTokensGiven : field;
+            get { return Simulation is { } s ? (ushort)s.BoostTokensGiven : field; }
             set;
         }
         [Key(20)]
         [DerivedSlot(nameof(SimulationBytes))]
         public ushort BoostTokensSpent {
-            get => Simulation is { } s ? (ushort)s.BoostTokensSpent : field;
+            get { return Simulation is { } s ? (ushort)s.BoostTokensSpent : field; }
             set;
         }
         [Key(21)]
         [DerivedSlot(nameof(SimulationBytes))]
         public double CashEarned {
-            get => Simulation is { } s ? s.CashEarned : field;
+            get { return Simulation is { } s ? s.CashEarned : field; }
             set;
         }
         [Key(22)]
         [DerivedSlot(nameof(SimulationBytes))]
         public double CashSpent {
-            get => Simulation is { } s ? s.CashSpent : field;
+            get { return Simulation is { } s ? s.CashSpent : field; }
             set;
         }
         [Key(23)]
         [DerivedSlot(nameof(SimulationBytes))]
         public long TimeCheatDebt {
-            get => Simulation is { } s ? (long)s.TimeCheatDebtDEP : field;
+            get { return Simulation is { } s ? (long)s.TimeCheatDebtDEP : field; }
             set;
         }
         [Key(24)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public ushort BoostsUsed {
-            get => LocalContract is { } l ? (ushort)l.BoostsUsed : field;
+            get { return LocalContract is { } l ? (ushort)l.BoostsUsed : field; }
             set;
         }
         [Key(25)]
         [DerivedSlot(nameof(SimulationBytes))]
         public ushort TimeCheatsDetected {
-            get => Simulation is { } s ? (ushort)s.TimeCheatsDetected : field;
+            get { return Simulation is { } s ? (ushort)s.TimeCheatsDetected : field; }
             set;
         }
         //[Key(26)]
@@ -171,7 +171,7 @@ namespace EGG9000.Common.Database {
         [Key(32)]
         [DerivedSlot(nameof(SimulationBytes))]
         public List<ushort> Habs {
-            get => Simulation is { } s ? _habs ??= [.. s.Habs.Select(x => (ushort)x)] : field;
+            get { return Simulation is { } s ? _habs ??= [.. s.Habs.Select(x => (ushort)x)] : field; }
             set {
                 field = value;
                 _habs = null;
@@ -181,7 +181,7 @@ namespace EGG9000.Common.Database {
         [Key(33)]
         [DerivedSlot(nameof(SimulationBytes))]
         public float LastStepTime {
-            get => Simulation is { } s ? (float)s.LastStepTime : field;
+            get { return Simulation is { } s ? (float)s.LastStepTime : field; }
             set;
         }
         [Key(34)]
@@ -189,7 +189,7 @@ namespace EGG9000.Common.Database {
         [Key(35)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public PlayerGrade Grade {
-            get => LocalContract is { } l ? l.Grade : field;
+            get { return LocalContract is { } l ? l.Grade : field; }
             set;
         }
         [Key(36)]
@@ -205,19 +205,19 @@ namespace EGG9000.Common.Database {
         [Key(37)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public bool ContributionFinalized {
-            get => LocalContract is { } l ? l.CoopContributionFinalized : field;
+            get { return LocalContract is { } l ? l.CoopContributionFinalized : field; }
             set;
         }
         [Key(38)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public double CoopSimulationEndTime {
-            get => LocalContract is { } l ? l.CoopSimulationEndTime : field;
+            get { return LocalContract is { } l ? l.CoopSimulationEndTime : field; }
             set;
         }
         [Key(39)]
         [DerivedSlot(nameof(LocalContractBytes))]
         public byte NumGoalsAchieved {
-            get => LocalContract is { } l ? (byte)l.NumGoalsAchieved : field;
+            get { return LocalContract is { } l ? (byte)l.NumGoalsAchieved : field; }
             set;
         }
         [Key(40)]
@@ -260,9 +260,9 @@ namespace EGG9000.Common.Database {
             }
         }
 
-        protected override byte[] LocalContractBytesStorage => LocalContractBytes;
+        protected override byte[] LocalContractBytesStorage { get { return LocalContractBytes; } }
 
-        protected override long TimeAcceptedUnix => TimeAccepted;
+        protected override long TimeAcceptedUnix { get { return TimeAccepted; } }
 
         public class Colleggtible {
             public GameDimension Dimension { get; set; }
@@ -289,15 +289,12 @@ namespace EGG9000.Common.Database {
             var modifiers = (coop.Contract ?? contract).Details.GradeSpecs[(int)coop.League - 1].Modifiers;
             var eggLayRateMod = modifiers.FirstOrDefault(x => x.Dimension == GameDimension.EggLayingRate);
             var shipCapMod = modifiers.FirstOrDefault(x => x.Dimension == GameDimension.ShippingCapacity);
-            return (
-                eggLayRateMod is not null ? (double)eggLayRateMod.Value : 1.0,
-                shipCapMod is not null ? (double)shipCapMod.Value : 1.0
-            );
+            return (eggLayRateMod?.Value ?? 1.0, shipCapMod?.Value ?? 1.0);
         }
 
-        private CustomFarmStats _stats = null;
+        private CustomFarmStats _stats;
         public CustomFarmStats WithStats(CustomBackup backup, Coop coop, List<DBCustomEgg> customEggs, double? ignoreBuff = null, DBContract contract = null) {
-            if(_stats == null) {
+            if(_stats is null) {
                 var eggLayingBuff = GetEggLayingBuff(coop, ignoreBuff);
                 var (eggLayRatePerc, shipCapPerc) = GetLeagueModifierPercentages(coop, contract);
 
@@ -317,7 +314,7 @@ namespace EGG9000.Common.Database {
                 _stats.HabSpace = Research.GetHabSpace(this, backup.EpicResearch) * Math.Round(EggIncArtifacts.GetHabSpaceMultiple(this), 5) * dimensionColleggtibleEffect[GameDimension.HabCapacity];
                 _stats.InternalHatchery = (int)(Research.InternalHatchery(this, backup.EpicResearch) * EggIncArtifacts.GetMultiple(EggIncBoostTypeEnum.InternalHatchery, this) * dimensionColleggtibleEffect[GameDimension.InternalHatcheryRate]);
                 if(isVirtueEgg) {
-                    _stats.InternalHatchery = (int)((double)_stats.InternalHatchery * Math.Pow(1.1, backup.EggsOfTruth));
+                    _stats.InternalHatchery = (int)(_stats.InternalHatchery * Math.Pow(1.1, backup.EggsOfTruth));
                 }
             }
             return _stats;

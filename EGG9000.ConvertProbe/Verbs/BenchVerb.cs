@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.ConvertProbe.Verbs {
-    public sealed class BenchVerb {
+    public static class BenchVerb {
         private const int DefaultLimit = 200;
         private const int Repeats = 5;
         private const int WarmupIterations = 20;
@@ -257,8 +257,12 @@ namespace EGG9000.ConvertProbe.Verbs {
             return sorted[Math.Clamp(index, 0, sorted.Count - 1)];
         }
 
-        private static string Avg(long total, int count) => count == 0 ? "0" : Markdown.Bytes(total / count);
+        private static string Avg(long total, int count) {
+            return count == 0 ? "0" : Markdown.Bytes(total / count);
+        }
 
-        private static string Reduction(long candidate, long baseline) => baseline == 0 ? "n/a" : Markdown.Percent(baseline - candidate, baseline) + " smaller";
+        private static string Reduction(long candidate, long baseline) {
+            return baseline == 0 ? "n/a" : Markdown.Percent(baseline - candidate, baseline) + " smaller";
+        }
     }
 }

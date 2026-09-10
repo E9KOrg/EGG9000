@@ -6,7 +6,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using Newtonsoft.Json;
 
-using System;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
@@ -34,11 +33,11 @@ namespace EGG9000.Test {
             return status;
         }
 
-        private static T WithFlag<T>(bool enabled, Func<T> action) {
+        private static byte[] Encode(bool proto, Ei.ContractCoopStatusResponse status) {
             var previous = CoopStatusCodec.ProtoWriteEnabled;
-            CoopStatusCodec.ProtoWriteEnabled = enabled;
+            CoopStatusCodec.ProtoWriteEnabled = proto;
             try {
-                return action();
+                return CoopStatusCodec.Encode(status);
             } finally {
                 CoopStatusCodec.ProtoWriteEnabled = previous;
             }
@@ -46,7 +45,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void ProtoRoundTrip_PreservesFields() {
-            var encoded = WithFlag(true, () => CoopStatusCodec.Encode(SampleStatus()));
+            var encoded = Encode(true, SampleStatus());
             var decoded = CoopStatusCodec.Decode(encoded);
 
             Assert.AreEqual("test-contract", decoded.ContractIdentifier);
@@ -59,7 +58,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void LegacyRoundTrip_PreservesFields() {
-            var encoded = WithFlag(false, () => CoopStatusCodec.Encode(SampleStatus()));
+            var encoded = Encode(false, SampleStatus());
             var decoded = CoopStatusCodec.Decode(encoded);
 
             Assert.AreEqual("test-contract", decoded.ContractIdentifier);
@@ -73,7 +72,7 @@ namespace EGG9000.Test {
         [TestMethod]
         public void LegacyEncode_IsByteIdenticalToOldSetterAlgorithm() {
             var status = SampleStatus();
-            var encoded = WithFlag(false, () => CoopStatusCodec.Encode(status));
+            var encoded = Encode(false, status);
 
             var bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(status, new JsonSerializerSettings { ContractResolver = new CustomContractResolver() }));
             byte[] expected;
@@ -94,8 +93,8 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Encode_FirstBytes_DiscriminateFormats() {
-            var legacy = WithFlag(false, () => CoopStatusCodec.Encode(SampleStatus()));
-            var proto = WithFlag(true, () => CoopStatusCodec.Encode(SampleStatus()));
+            var legacy = Encode(false, SampleStatus());
+            var proto = Encode(true, SampleStatus());
 
             Assert.AreEqual(0x1F, legacy[0]);
             Assert.AreEqual(0x8B, legacy[1]);
@@ -121,7 +120,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void ProtoDecode_RecomputesTimeLeftSeconds() {
-            var encoded = WithFlag(true, () => CoopStatusCodec.Encode(SampleStatus()));
+            var encoded = Encode(true, SampleStatus());
             var decoded = CoopStatusCodec.Decode(encoded);
 
             Assert.AreEqual(3600d, decoded.Contributors[0].TimeLeftSeconds);
@@ -140,35 +139,42 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Encode_IsDeterministic() {
-            var protoFirst = WithFlag(true, () => CoopStatusCodec.Encode(SampleStatus()));
-            var protoSecond = WithFlag(true, () => CoopStatusCodec.Encode(SampleStatus()));
+            var protoFirst = Encode(true, SampleStatus());
+            var protoSecond = Encode(true, SampleStatus());
             CollectionAssert.AreEqual(protoFirst, protoSecond);
 
-            var legacyFirst = WithFlag(false, () => CoopStatusCodec.Encode(SampleStatus()));
-            var legacySecond = WithFlag(false, () => CoopStatusCodec.Encode(SampleStatus()));
+            var legacyFirst = Encode(false, SampleStatus());
+            var legacySecond = Encode(false, SampleStatus());
             CollectionAssert.AreEqual(legacyFirst, legacySecond);
         }
 
         [TestMethod]
         public void CoopProperty_RoundTripsThroughCodec() {
-            var stored = WithFlag(true, () => {
+            var previous = CoopStatusCodec.ProtoWriteEnabled;
+            CoopStatusCodec.ProtoWriteEnabled = true;
+            try {
                 var coop = new Coop { LastStatusUpdate = SampleStatus() };
-                return coop._StatusCompressed;
-            });
-            var reloaded = new Coop { _StatusCompressed = stored };
+                var reloaded = new Coop { _StatusCompressed = coop._StatusCompressed };
 
-            Assert.AreEqual("test-coop", reloaded.LastStatusUpdate.CoopIdentifier);
+                Assert.AreEqual("test-coop", reloaded.LastStatusUpdate.CoopIdentifier);
+            } finally {
+                CoopStatusCodec.ProtoWriteEnabled = previous;
+            }
         }
 
         [TestMethod]
         public void CoopProperty_SuppressesUnchangedWrites() {
-            WithFlag(true, () => {
+            var previous = CoopStatusCodec.ProtoWriteEnabled;
+            CoopStatusCodec.ProtoWriteEnabled = true;
+            try {
                 var coop = new Coop { LastStatusUpdate = SampleStatus() };
                 var blob = coop._StatusCompressed;
                 coop.LastStatusUpdate = SampleStatus();
+
                 Assert.AreSame(blob, coop._StatusCompressed);
-                return true;
-            });
+            } finally {
+                CoopStatusCodec.ProtoWriteEnabled = previous;
+            }
         }
     }
 }

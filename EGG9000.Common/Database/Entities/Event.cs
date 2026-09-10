@@ -22,7 +22,9 @@ namespace EGG9000.Common.Database.Entities {
         private readonly JsonBlobAccessor<Ei.EggIncEvent> _details = new();
         [NotMapped]
         [System.Text.Json.Serialization.JsonIgnore]
-        public Ei.EggIncEvent Details => _details.Get(_response);
+        public Ei.EggIncEvent Details {
+            get { return _details.Get(_response); }
+        }
 
         public bool DetailsChanged(Ei.EggIncEvent e) {
             if(Details is not { } stored)
@@ -41,8 +43,7 @@ namespace EGG9000.Common.Database.Entities {
             CcOnly = e.CcOnly;
         }
 
-        public DBEvent() {
-        }
+        public DBEvent() { }
 
         public DBEvent(Ei.EggIncEvent e) {
             ApplyDetails(e);
@@ -50,7 +51,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool SignficantlyDifferent(Ei.EggIncEvent e) {
-            if(e is null || this is null) return true;
+            if(e is null) return true;
             return Type != e.Type || Multiplier != e.Multiplier;
         }
     }

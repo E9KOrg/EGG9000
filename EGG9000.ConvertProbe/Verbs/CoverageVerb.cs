@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.ConvertProbe.Verbs {
-    public sealed class CoverageVerb {
+    public static class CoverageVerb {
         private const string CsvHeader = "user_id,discord_id,format,algo,decode_ok,error_type,account_count,account_index,egg_inc_id,backup_present,ei_backup_present,farms,farms_with_simulation,farms_with_local_contract,archived_farms";
 
         public static async Task<int> RunAsync(ProbeOptions options) {

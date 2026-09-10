@@ -12,7 +12,7 @@ namespace EGG9000.Common.Database {
 
         static StorageCodec() {
             var raw = Environment.GetEnvironmentVariable("EGG9000_STORAGE_COMPRESS");
-            CompressWriteEnabled = string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase) || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            CompressWriteEnabled = raw is "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
         }
 
         public static byte[] Pack<T>(T value) {
@@ -26,20 +26,16 @@ namespace EGG9000.Common.Database {
             if(StorageCompression.IsEnveloped(stored)) {
                 try {
                     return MessagePackSerializer.Deserialize<T>(StorageCompression.Decompress(stored), PlainOptions);
-                } catch(MessagePackSerializationException) {
-                    throw;
-                } catch(Exception e) {
+                } catch(Exception e) when(e is not MessagePackSerializationException) {
                     throw new MessagePackSerializationException("Failed to read enveloped storage payload.", e);
                 }
             }
-            if(stored is { Length: >= 2 } && stored[0] == 0x1F && stored[1] == 0x8B) {
+            if(stored is [0x1F, 0x8B, ..]) {
                 try {
                     using var input = new MemoryStream(stored, writable: false);
                     using var gzip = new GZipStream(input, CompressionMode.Decompress);
                     return MessagePackSerializer.Deserialize<T>(gzip, PlainOptions);
-                } catch(MessagePackSerializationException) {
-                    throw;
-                } catch(Exception e) {
+                } catch(Exception e) when(e is not MessagePackSerializationException) {
                     throw new MessagePackSerializationException("Failed to read gzip storage payload.", e);
                 }
             }

@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace EGG9000.ConvertProbe.Verbs {
-    public sealed class DiffVerb {
+    public static class DiffVerb {
         private const string FarmsPath = "/Farms";
         private const string ArchivedFarmsPath = "/ArchivedFarms";
         private const int TopUnexplained = 20;
@@ -142,7 +142,9 @@ namespace EGG9000.ConvertProbe.Verbs {
             return patterns.Any(p => p.IsMatch(path));
         }
 
-        private static bool Under(string path, string container) => path == container || path.StartsWith(container + "/", StringComparison.Ordinal);
+        private static bool Under(string path, string container) {
+            return path == container || path.StartsWith(container + "/", StringComparison.Ordinal);
+        }
 
         private static Dictionary<string, string> Flatten(string json) {
             var leaves = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -199,6 +201,8 @@ namespace EGG9000.ConvertProbe.Verbs {
             return string.Join("/", segments);
         }
 
-        private static string Escape(string segment) => segment.Replace("~", "~0").Replace("/", "~1");
+        private static string Escape(string segment) {
+            return segment.Replace("~", "~0").Replace("/", "~1");
+        }
     }
 }

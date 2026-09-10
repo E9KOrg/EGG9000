@@ -21,7 +21,7 @@ namespace EGG9000.Common.Helpers {
                 var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
                 if(artifact == null)
                     return null;
-                artifact.Stones = [.. x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null)];
+                artifact.Stones = [.. x.Artifact.Stones.Select(EggIncArtifacts.GetArtifact).Where(y => y != null)];
                 return artifact;
             }).Where(x => x != null)];
         }
@@ -37,7 +37,7 @@ namespace EGG9000.Common.Helpers {
                     Amount = f.Amount,
                     Egg = f.Egg
                 })],
-                Targeting = (int)m.Ship >= 4 ? m?.TargetArtifact ?? Name.Unknown : Name.Unknown,
+                Targeting = (int)m.Ship >= 4 ? m.TargetArtifact : Name.Unknown,
                 Capacity = m.Capacity,
                 Stars = m.Level
             };
@@ -71,7 +71,7 @@ namespace EGG9000.Common.Helpers {
             List<ArtifactCount> artifactHall = [.. artifactsDb.InventoryItems.Select(x => {
                 var artifact = EggIncArtifacts.GetArtifact(x.Artifact.Spec);
                 if(artifact is not null) {
-                    artifact.Stones = [.. x.Artifact.Stones.Select(y => EggIncArtifacts.GetArtifact(y)).Where(y => y != null)];
+                    artifact.Stones = [.. x.Artifact.Stones.Select(EggIncArtifacts.GetArtifact).Where(y => y != null)];
                 }
                 var artifactStatus = artifactsDb.ArtifactStatus.FirstOrDefault(a =>
                     a.Spec.Name == x.Artifact.Spec.Name &&

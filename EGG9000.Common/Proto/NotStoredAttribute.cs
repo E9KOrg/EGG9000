@@ -13,10 +13,7 @@ namespace EGG9000.Common.Proto {
     }
 
     public static class StorageTrimmer {
-        private sealed class TrimPlan {
-            public FieldDescriptor[] Cleared { get; init; }
-            public FieldDescriptor[] Children { get; init; }
-        }
+        private sealed record TrimPlan(FieldDescriptor[] Cleared, FieldDescriptor[] Children);
 
         private static readonly ConcurrentDictionary<Type, TrimPlan> Plans = new();
 
@@ -63,9 +60,9 @@ namespace EGG9000.Common.Proto {
             foreach(var field in fields)
                 GuardRepeatedElement(descriptor, field, clearedSet);
 
-            FieldDescriptor[] children = [.. fields.Where(x => x.FieldType == FieldType.Message && !x.IsRepeated && !x.IsMap && !clearedSet.Contains(x))];
-
-            return new TrimPlan { Cleared = [.. cleared], Children = children };
+            return new TrimPlan(
+                [.. cleared],
+                [.. fields.Where(x => x.FieldType == FieldType.Message && !x.IsRepeated && !x.IsMap && !clearedSet.Contains(x))]);
         }
 
         private static void GuardRepeatedElement(MessageDescriptor descriptor, FieldDescriptor field, HashSet<FieldDescriptor> clearedSet) {

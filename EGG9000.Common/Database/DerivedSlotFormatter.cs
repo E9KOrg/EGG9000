@@ -16,18 +16,13 @@ namespace EGG9000.Common.Database {
     }
 
     public sealed class DerivedSlotFormatter<T>(int initialBufferSize = 4096) : IMessagePackFormatter<T> where T : class {
-        private readonly int _initialBufferSize = initialBufferSize;
-
         private enum SlotDefault {
             Nil,
             Zero,
             False
         }
 
-        private sealed class DerivedSlot {
-            public int GateIndex { get; init; }
-            public SlotDefault Default { get; init; }
-        }
+        private sealed record DerivedSlot(int GateIndex, SlotDefault Default);
 
         private static readonly IMessagePackFormatter<T> Inner = StandardResolver.Instance.GetFormatterWithVerify<T>();
         private static readonly Func<T, byte[]>[] Gates;
@@ -55,7 +50,7 @@ namespace EGG9000.Common.Database {
                 return;
             }
 
-            var buffer = new ArrayBufferWriter<byte>(_initialBufferSize);
+            var buffer = new ArrayBufferWriter<byte>(initialBufferSize);
             var inner = writer.Clone(buffer);
             Inner.Serialize(ref inner, value, options);
             inner.Flush();
@@ -75,10 +70,7 @@ namespace EGG9000.Common.Database {
                     continue;
                 }
                 var raw = reader.ReadRaw();
-                if(raw.IsSingleSegment)
-                    WriteContiguous(ref writer, raw.FirstSpan);
-                else
-                    WriteContiguous(ref writer, raw.ToArray());
+                WriteContiguous(ref writer, raw.IsSingleSegment ? raw.FirstSpan : raw.ToArray());
             }
         }
 
@@ -119,7 +111,7 @@ namespace EGG9000.Common.Database {
                     gates.Add(derived.Gate);
                     gateIndex = gates.Count - 1;
                 }
-                found.Add((index, new DerivedSlot { GateIndex = gateIndex, Default = Classify(property) }));
+                found.Add((index, new DerivedSlot(gateIndex, Classify(property))));
             }
 
             if(found.Count == 0)

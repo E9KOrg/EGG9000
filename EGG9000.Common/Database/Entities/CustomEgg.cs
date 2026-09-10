@@ -30,7 +30,9 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         private readonly JsonBlobAccessor<CustomEgg> _details = new();
         [NotMapped]
-        public CustomEgg Details => _details.Get(_response);
+        public CustomEgg Details {
+            get { return _details.Get(_response); }
+        }
 
         public void ApplyDetails(CustomEgg egg) {
             _response = _details.Set(egg, _response);
@@ -47,24 +49,22 @@ namespace EGG9000.Common.Database.Entities {
         private readonly MessagePackBlobAccessor<DBCustomEggIcon> _icon = new();
         [NotMapped]
         public DBCustomEggIcon Icon {
-            get => _icon.Get(_iconBytes);
-            set => _iconBytes = _icon.Set(value, _iconBytes);
+            get { return _icon.Get(_iconBytes); }
+            set { _iconBytes = _icon.Set(value, _iconBytes); }
         }
         public byte[] _modifiersBytes { get; set; }
         [NotMapped]
         private readonly MessagePackBlobAccessor<List<DBCustomEggModifier>> _modifiers = new();
         [NotMapped]
         public List<DBCustomEggModifier> Modifiers {
-            get => _modifiers.Get(_modifiersBytes);
-            set => _modifiersBytes = _modifiers.Set(value, _modifiersBytes);
+            get { return _modifiers.Get(_modifiersBytes); }
+            set { _modifiersBytes = _modifiers.Set(value, _modifiersBytes); }
         }
         public string EmojiName { get; set; }
         public ulong EmojiId { get; set; }
         [NotMapped]
         public string Emoji {
-            get {
-                return $"<:{EmojiName}:{EmojiId}>";
-            }
+            get { return $"<:{EmojiName}:{EmojiId}>"; }
         }
         [NotMapped]
         public Emote GuildEmote {
@@ -102,11 +102,11 @@ namespace EGG9000.Common.Database.Entities {
 
         public DBCustomEggIcon(DLCItem dlcItem) {
             Name = dlcItem.Name;
-            Directory = dlcItem?.Directory ?? "";
-            Extension = dlcItem?.Ext ?? "";
-            Compressed = dlcItem?.Compressed ?? false;
-            URL = dlcItem?.Url ?? "";
-            Checksum = dlcItem?.Checksum ?? "";
+            Directory = dlcItem.Directory ?? "";
+            Extension = dlcItem.Ext ?? "";
+            Compressed = dlcItem.Compressed;
+            URL = dlcItem.Url ?? "";
+            Checksum = dlcItem.Checksum ?? "";
         }
 
         [Key(0)]
@@ -140,8 +140,8 @@ namespace EGG9000.Common.Database.Entities {
 
         public DBCustomEggModifier(GameModifier modifier) {
             Dimension = (int)modifier.Dimension;
-            Value = modifier?.Value ?? 1;
-            Description = modifier?.Description ?? "";
+            Value = modifier.Value;
+            Description = modifier.Description ?? "";
         }
 
         [Key(0)]
@@ -163,10 +163,15 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         // Title-cased human dimension, e.g. "Egg Value". Shared by the contract-settings embed and the web view.
-        public string DimensionName() => GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
+        public string DimensionName() {
+            return GetReadbleGameDimnension().Replace("_", " ").ToLowerInvariant().Titleize();
+        }
 
         // "+" for a buff (value >= 1), "-" for a debuff.
-        public string Sign() => Value < 1 ? "-" : "+";
+        public string Sign() {
+            if(Value < 1) return "-";
+            return "+";
+        }
 
         // Signed percent away from 1.0, e.g. "+15%" / "-5%".
         public string PercentString() {

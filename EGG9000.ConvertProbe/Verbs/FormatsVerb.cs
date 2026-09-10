@@ -8,13 +8,18 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.ConvertProbe.Verbs {
-    public sealed class FormatsVerb {
+    public static class FormatsVerb {
         private sealed record Bucket(string Table, string Column, string Split, string Format, string Algo, long Rows, long TotalBytes, double AvgBytes, double P50, double P95);
 
         private static readonly string[] BucketHeaders = ["split", "format", "algo", "rows", "total bytes", "avg bytes", "p50 bytes", "p95 bytes"];
         private static readonly string[] ProgressHeaders = ["table", "column", "split", "rows", "envelope rows", "envelope row share", "bytes", "envelope bytes", "envelope byte share"];
         private static readonly string[] ResponseHeaders = ["table", "null", "non-null", "total bytes"];
         private static readonly string[] SizeHeaders = ["table", "pg_total_relation_size", "pg_relation_size", "blob column", "sum(pg_column_size)"];
+
+        private static readonly Dictionary<string, string> BlobColumns = new() {
+            [Sql.UsersTable] = Sql.UsersAccountsBlob,
+            [Sql.CoopsTable] = Sql.CoopsStatusBlob
+        };
 
         public static async Task<int> RunAsync(ProbeOptions options) {
             await using var connection = await options.OpenConnectionAsync();
@@ -104,10 +109,6 @@ namespace EGG9000.ConvertProbe.Verbs {
         }
 
         private static async Task<string> SizeTableAsync(NpgsqlConnection connection) {
-            var blobColumns = new Dictionary<string, string> {
-                [Sql.UsersTable] = Sql.UsersAccountsBlob,
-                [Sql.CoopsTable] = Sql.CoopsStatusBlob
-            };
             var rows = new List<IReadOnlyList<string>>();
             foreach(var table in Sql.SizedTables) {
                 long total, heap;
@@ -117,7 +118,7 @@ namespace EGG9000.ConvertProbe.Verbs {
                     total = reader.GetInt64(0);
                     heap = reader.GetInt64(1);
                 }
-                var column = blobColumns.GetValueOrDefault(table, "");
+                var column = BlobColumns.GetValueOrDefault(table, "");
                 var columnSize = "";
                 if(column.Length > 0) {
                     await using var command = new NpgsqlCommand(Sql.ColumnSize(table, column), connection);

@@ -1,12 +1,13 @@
 using EGG9000.Common.Database.Entities;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.ConvertProbe.Verbs {
-    public sealed class QueryDemoVerb {
+    public static class QueryDemoVerb {
         public const string FieldPath = "Backup.EiBackup.Game.LifetimeCashEarned";
 
         public static async Task<int> RunAsync(ProbeOptions options) {
@@ -78,11 +79,12 @@ namespace EGG9000.ConvertProbe.Verbs {
             }
         }
 
-        private static string Sci(double value) => value.ToString("0.###E+0", System.Globalization.CultureInfo.InvariantCulture);
+        private static string Sci(double value) {
+            return value.ToString("0.###E+0", CultureInfo.InvariantCulture);
+        }
 
         private static string Mask(string id) {
-            if(id.Length <= 7) return id;
-            return id[..4] + "..." + id[^3..];
+            return id.Length <= 7 ? id : id[..4] + "..." + id[^3..];
         }
     }
 }

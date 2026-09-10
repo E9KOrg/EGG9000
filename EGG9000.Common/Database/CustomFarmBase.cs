@@ -28,6 +28,10 @@ namespace EGG9000.Common.Database {
         protected abstract long TimeAcceptedUnix { get; }
 
         [IgnoreMember]
-        public DateTimeOffset Started => DateTimeOffset.FromUnixTimeSeconds(TimeAcceptedUnix);
+        public DateTimeOffset Started {
+            get {
+                return DateTimeOffset.FromUnixTimeSeconds(TimeAcceptedUnix);
+            }
+        }
     }
 }

@@ -66,7 +66,7 @@ namespace EGG9000.Common.Database.Entities {
 
         [NotMapped]
         public Ei.ContractCoopStatusResponse LastStatusUpdate {
-            get => _status.Get(_StatusCompressed);
+            get { return _status.Get(_StatusCompressed); }
             set {
                 // Only reassign the mapped LOB column when the payload actually changed, so EF Core
                 // does not rewrite _StatusCompressed every status cycle. That blob write is the

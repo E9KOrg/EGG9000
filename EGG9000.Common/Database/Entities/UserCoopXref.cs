@@ -7,7 +7,6 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Reflection;
 
 namespace EGG9000.Common.Database.Entities {
     [Index(nameof(UserId), nameof(JoinedCoop))]
@@ -48,7 +47,7 @@ namespace EGG9000.Common.Database.Entities {
                 }
                 return _lastStatus.Get(_lastStatusByte);
             }
-            set => _lastStatusByte = _lastStatus.Set(value, _lastStatusByte);
+            set { _lastStatusByte = _lastStatus.Set(value, _lastStatusByte); }
         }
 
         public ulong SleepingDiscordMessageID { get; set; }
@@ -63,7 +62,9 @@ namespace EGG9000.Common.Database.Entities {
         public float? Score { get; set; }
         public float? RunningScore { get; set; }
         public double? SoulPower { get; set; }
-        public Guid GetID() { return UserId; }
+        public Guid GetID() {
+            return UserId;
+        }
 
         public bool OutsideCoop { get; set; }
         public bool HasTachyonDeflector { get; set; }
@@ -82,8 +83,8 @@ namespace EGG9000.Common.Database.Entities {
         private readonly MessagePackBlobAccessor<List<SleepTracking>> _sleepTracking = new(lz4Options, () => []);
         [NotMapped]
         public List<SleepTracking> SleepTracking {
-            get => _sleepTracking.Get(_sleepTrackingByte);
-            set => _sleepTrackingByte = _sleepTracking.Set(value, _sleepTrackingByte);
+            get { return _sleepTracking.Get(_sleepTrackingByte); }
+            set { _sleepTrackingByte = _sleepTracking.Set(value, _sleepTrackingByte); }
         }
 
         public byte[] _coopSettingByte { get; set; }
@@ -91,8 +92,8 @@ namespace EGG9000.Common.Database.Entities {
         private readonly MessagePackBlobAccessor<CoopSetting> _coopSetting = new(lz4Options);
         [NotMapped]
         public CoopSetting CoopSetting {
-            get => _coopSetting.Get(_coopSettingByte);
-            set => _coopSettingByte = _coopSetting.Set(value, _coopSettingByte);
+            get { return _coopSetting.Get(_coopSettingByte); }
+            set { _coopSettingByte = _coopSetting.Set(value, _coopSettingByte); }
         }
 
         public void UpdateCoopSetting() {
@@ -110,9 +111,8 @@ namespace EGG9000.Common.Database.Entities {
         [Key(3)]
         public string UserName { get; set; }
 
-        public ContributionInfoCompact() {
+        public ContributionInfoCompact() { }
 
-        }
         public ContributionInfoCompact(Ei.ContractCoopStatusResponse.Types.ContributionInfo info) {
             SoulPower = info.SoulPower;
             ContributionAmount = info.ContributionAmount;
@@ -169,21 +169,11 @@ namespace EGG9000.Common.Database.Entities {
 
         [IgnoreMember]
         public bool this[string propertyName] {
-            get {
-                Type myType = typeof(CoopSetting);
-                PropertyInfo myPropInfo = myType.GetProperty(propertyName);
-                return (bool)myPropInfo.GetValue(this);
-            }
-            set {
-                Type myType = typeof(CoopSetting);
-                PropertyInfo myPropInfo = myType.GetProperty(propertyName);
-                myPropInfo.SetValue(this, value);
-            }
+            get => (bool)typeof(CoopSetting).GetProperty(propertyName).GetValue(this);
+            set => typeof(CoopSetting).GetProperty(propertyName).SetValue(this, value);
         }
 
-        public CoopSetting() {
-
-        }
+        public CoopSetting() { }
 
         public CoopSetting(UserCoopXref xref, DBUser user, Guild userGuild) {
             user.CoopSetting ??= new CoopSetting();

@@ -82,6 +82,43 @@ namespace EGG9000.Test {
             };
         }
 
+        private static IEnumerable<Type> LoadableTypes(Assembly assembly) {
+            try {
+                return assembly.GetTypes();
+            } catch(ReflectionTypeLoadException e) {
+                return e.Types.Where(t => t is not null).Select(t => t!);
+            }
+        }
+
+        private static void AssertMixedListShape(List<CustomBackup> list) {
+            Assert.AreEqual(2, list.Count);
+
+            var legacy = list[0];
+            Assert.IsNull(legacy.EiBackupBytes);
+            Assert.AreEqual("EI-legacy-0001", legacy.EggIncId);
+            Assert.AreEqual("LegacyName", legacy.UserName);
+            Assert.AreEqual(1_650_000_000L, legacy.LastBackupTime);
+            Assert.AreEqual("soul_eggs", legacy.EpicResearch.Single().Id);
+            Assert.AreEqual((ushort)2, legacy.PermitLevel);
+            Assert.AreEqual(999.5, legacy.SoulEggs);
+            Assert.AreEqual(3UL, legacy.NumPrestiges);
+            Assert.IsTrue(legacy.HyperloopPurchased);
+            Assert.AreEqual(Ei.Egg.Tachyon, legacy.MaxEggReached);
+            Assert.AreEqual(8u, legacy.Resets);
+
+            var derived = list[1];
+            Assert.IsNotNull(derived.EiBackupBytes);
+            Assert.AreEqual("EI0000000000012345", derived.EggIncId);
+            Assert.AreEqual("ProtoName", derived.UserName);
+            Assert.AreEqual(1_700_000_500L, derived.LastBackupTime);
+            Assert.AreEqual("soul_eggs", derived.EpicResearch.Single().Id);
+            Assert.AreEqual((ushort)3, derived.PermitLevel);
+            Assert.AreEqual(5432.25, derived.SoulEggs);
+            Assert.AreEqual(6UL, derived.NumPrestiges);
+            Assert.IsTrue(derived.HyperloopPurchased);
+            Assert.AreEqual(Ei.Egg.Medical, derived.MaxEggReached);
+        }
+
         [TestMethod]
         public void DBUser_BlobBackedAccount_SurvivesProductionStoragePath() {
             var (proto, contracts) = BuildBackup();
@@ -211,35 +248,6 @@ namespace EGG9000.Test {
             AssertMixedListShape(second);
         }
 
-        private static void AssertMixedListShape(List<CustomBackup> list) {
-            Assert.AreEqual(2, list.Count);
-
-            var legacy = list[0];
-            Assert.IsNull(legacy.EiBackupBytes);
-            Assert.AreEqual("EI-legacy-0001", legacy.EggIncId);
-            Assert.AreEqual("LegacyName", legacy.UserName);
-            Assert.AreEqual(1_650_000_000L, legacy.LastBackupTime);
-            Assert.AreEqual("soul_eggs", legacy.EpicResearch.Single().Id);
-            Assert.AreEqual((ushort)2, legacy.PermitLevel);
-            Assert.AreEqual(999.5, legacy.SoulEggs);
-            Assert.AreEqual(3UL, legacy.NumPrestiges);
-            Assert.IsTrue(legacy.HyperloopPurchased);
-            Assert.AreEqual(Ei.Egg.Tachyon, legacy.MaxEggReached);
-            Assert.AreEqual(8u, legacy.Resets);
-
-            var derived = list[1];
-            Assert.IsNotNull(derived.EiBackupBytes);
-            Assert.AreEqual("EI0000000000012345", derived.EggIncId);
-            Assert.AreEqual("ProtoName", derived.UserName);
-            Assert.AreEqual(1_700_000_500L, derived.LastBackupTime);
-            Assert.AreEqual("soul_eggs", derived.EpicResearch.Single().Id);
-            Assert.AreEqual((ushort)3, derived.PermitLevel);
-            Assert.AreEqual(5432.25, derived.SoulEggs);
-            Assert.AreEqual(6UL, derived.NumPrestiges);
-            Assert.IsTrue(derived.HyperloopPurchased);
-            Assert.AreEqual(Ei.Egg.Medical, derived.MaxEggReached);
-        }
-
         [TestMethod]
         public void EveryDerivedSlotType_ResolvesToDerivedSlotFormatter_InStorageOptions() {
             var derivedSlotTypes = LoadableTypes(typeof(CustomBackup).Assembly)
@@ -262,14 +270,6 @@ namespace EGG9000.Test {
                 Assert.IsTrue(formatterType.IsGenericType && formatterType.GetGenericTypeDefinition() == typeof(DerivedSlotFormatter<>),
                     $"{type.FullName} resolved {formatterType.FullName} instead of DerivedSlotFormatter");
                 Assert.AreEqual(type, formatterType.GetGenericArguments()[0], type.FullName);
-            }
-        }
-
-        private static IEnumerable<Type> LoadableTypes(Assembly assembly) {
-            try {
-                return assembly.GetTypes();
-            } catch(ReflectionTypeLoadException e) {
-                return e.Types.Where(t => t is not null).Select(t => t!);
             }
         }
     }

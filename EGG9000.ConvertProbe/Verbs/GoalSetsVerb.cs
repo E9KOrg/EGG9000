@@ -10,17 +10,15 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.ConvertProbe.Verbs {
-    public sealed class GoalSetsVerb {
+    public static class GoalSetsVerb {
         private const string CsvHeader = "discord_id,egg_inc_id,farm_kind,contract_id,league,num_goals_achieved,stored_completed,new_completed";
 
         private sealed record GoalSet(int Goals, int Pe);
 
-        private sealed class ContractGoals {
-            public string Id { get; init; }
-            public int GradeSpecs { get; init; }
-            public int Goals { get; init; }
-            public List<GoalSet> Sets { get; init; }
-            public bool SetsDiffer => Sets.Skip(1).Any(s => s.Goals != Sets[0].Goals);
+        private sealed record ContractGoals(string Id, int GradeSpecs, int Goals, List<GoalSet> Sets) {
+            public bool SetsDiffer {
+            get { return Sets.Skip(1).Any(s => s.Goals != Sets[0].Goals); }
+        }
         }
 
         private sealed record ContractLoad(Dictionary<string, ContractGoals> Contracts, long Rows, long NullResponse, long ParseFailed);
@@ -114,7 +112,9 @@ namespace EGG9000.ConvertProbe.Verbs {
             return 0;
         }
 
-        private static IReadOnlyList<string> Row(string metric, long archived, long active) => [metric, Markdown.Num(archived), Markdown.Num(active)];
+        private static IReadOnlyList<string> Row(string metric, long archived, long active) {
+            return [metric, Markdown.Num(archived), Markdown.Num(active)];
+        }
 
         private static async Task<ContractLoad> LoadContractsAsync(ProbeOptions options) {
             var contracts = new Dictionary<string, ContractGoals>(StringComparer.Ordinal);
@@ -140,28 +140,23 @@ namespace EGG9000.ConvertProbe.Verbs {
                     nullResponse++;
                     continue;
                 }
-                contracts[id] = new ContractGoals {
-                    Id = id,
-                    GradeSpecs = contract.GradeSpecs.Count,
-                    Goals = contract.Goals.Count,
-                    Sets = [.. contract.GoalSets.Select(s => new GoalSet(s.Goals.Count, PeSum(s.Goals)))]
-                };
+                contracts[id] = new ContractGoals(id, contract.GradeSpecs.Count, contract.Goals.Count,
+                    [.. contract.GoalSets.Select(s => new GoalSet(s.Goals.Count, PeSum(s.Goals)))]);
             }
             return new ContractLoad(contracts, rows, nullResponse, parseFailed);
         }
 
-        private static int PeSum(IEnumerable<Ei.Contract.Types.Goal> goals) =>
-            (int)goals.Where(g => g.RewardType == Ei.RewardType.EggsOfProphecy).Sum(g => g.RewardAmount);
+        private static int PeSum(IEnumerable<Ei.Contract.Types.Goal> goals) {
+            return (int)goals.Where(g => g.RewardType == Ei.RewardType.EggsOfProphecy).Sum(g => g.RewardAmount);
+        }
 
         private static void ScanAccount(EggIncAccount account, AccountDecoder.UserBlob user, Dictionary<string, ContractGoals> contracts, FarmTotals archived, FarmTotals active, HashSet<ulong> affectedUsers, StreamWriter csv) {
             var backup = account?.Backup;
             if(backup is null) return;
-            foreach(var farm in backup.ArchivedFarms ?? [])
-                if(farm is not null)
-                    Evaluate(archived, contracts, affectedUsers, csv, user, account.Id, farm.ContractId, farm.Grade, farm.League, farm.NumGoalsAchieved, farm.Completed);
-            foreach(var farm in backup.Farms ?? [])
-                if(farm is not null)
-                    Evaluate(active, contracts, affectedUsers, csv, user, account.Id, farm.ContractId, farm.Grade, farm.League, farm.NumGoalsAchieved, farm.Completed);
+            foreach(var farm in (backup.ArchivedFarms ?? []).Where(f => f is not null))
+                Evaluate(archived, contracts, affectedUsers, csv, user, account.Id, farm.ContractId, farm.Grade, farm.League, farm.NumGoalsAchieved, farm.Completed);
+            foreach(var farm in (backup.Farms ?? []).Where(f => f is not null))
+                Evaluate(active, contracts, affectedUsers, csv, user, account.Id, farm.ContractId, farm.Grade, farm.League, farm.NumGoalsAchieved, farm.Completed);
         }
 
         private static void Evaluate(FarmTotals totals, Dictionary<string, ContractGoals> contracts, HashSet<ulong> affectedUsers, StreamWriter csv, AccountDecoder.UserBlob user, string eggIncId, string contractId, Ei.Contract.Types.PlayerGrade grade, uint? league, byte numGoalsAchieved, bool storedCompleted) {
@@ -189,8 +184,7 @@ namespace EGG9000.ConvertProbe.Verbs {
         }
 
         private static string MaskEggInc(string id) {
-            id ??= "";
-            return id.Length <= 7 ? id : id[..4] + "..." + id[^3..];
+            return id is { Length: > 7 } ? id[..4] + "..." + id[^3..] : id ?? "";
         }
     }
 }

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace EGG9000.ConvertProbe.Verbs {
-    public sealed class DumpVerb {
+    public static class DumpVerb {
         public static async Task<int> RunAsync(ProbeOptions options) {
             var dumpDir = Path.Combine(options.EnsureOutDir(), "dump");
             Directory.CreateDirectory(dumpDir);
@@ -56,11 +56,7 @@ namespace EGG9000.ConvertProbe.Verbs {
         }
 
         private static string SafeName(string value) {
-            var invalid = Path.GetInvalidFileNameChars();
-            var builder = new StringBuilder(value.Length);
-            foreach(var c in value)
-                builder.Append(Array.IndexOf(invalid, c) >= 0 ? '_' : c);
-            return builder.ToString();
+            return string.Join("_", value.Split(Path.GetInvalidFileNameChars()));
         }
     }
 }

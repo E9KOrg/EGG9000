@@ -6,7 +6,6 @@ using MessagePack;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -37,26 +36,6 @@ namespace EGG9000.Test {
             return status;
         }
 
-        private static T WithCompressWrite<T>(bool enabled, Func<T> action) {
-            var prior = StorageCodec.CompressWriteEnabled;
-            StorageCodec.CompressWriteEnabled = enabled;
-            try {
-                return action();
-            } finally {
-                StorageCodec.CompressWriteEnabled = prior;
-            }
-        }
-
-        private static T WithProtoWrite<T>(bool enabled, Func<T> action) {
-            var prior = CoopStatusCodec.ProtoWriteEnabled;
-            CoopStatusCodec.ProtoWriteEnabled = enabled;
-            try {
-                return action();
-            } finally {
-                CoopStatusCodec.ProtoWriteEnabled = prior;
-            }
-        }
-
         [TestMethod]
         [DataRow("1", true)]
         [DataRow("true", true)]
@@ -80,15 +59,21 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Accounts_LegacyLz4_CompressOn_Converts_AndRoundTrips() {
-            var stored = LegacyAccountBytes();
-            var outcome = WithCompressWrite(true, () => StorageSweepCodec.Accounts(stored));
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = true;
+            try {
+                var stored = LegacyAccountBytes();
+                var outcome = StorageSweepCodec.Accounts(stored);
 
-            Assert.AreEqual(SweepOutcomeKind.Converted, outcome.Kind);
-            Assert.IsNull(outcome.Error);
-            Assert.IsNotNull(outcome.Bytes);
-            Assert.AreEqual(StorageCompression.Marker, outcome.Bytes[0]);
-            var accounts = StorageCodec.Unpack<List<EggIncAccount>>(outcome.Bytes);
-            Assert.AreEqual("EI0000000000012345", accounts.Single().Id);
+                Assert.AreEqual(SweepOutcomeKind.Converted, outcome.Kind);
+                Assert.IsNull(outcome.Error);
+                Assert.IsNotNull(outcome.Bytes);
+                Assert.AreEqual(StorageCompression.Marker, outcome.Bytes[0]);
+                var accounts = StorageCodec.Unpack<List<EggIncAccount>>(outcome.Bytes);
+                Assert.AreEqual("EI0000000000012345", accounts.Single().Id);
+            } finally {
+                StorageCodec.CompressWriteEnabled = prior;
+            }
         }
 
         [TestMethod]
@@ -97,19 +82,31 @@ namespace EGG9000.Test {
             var brotli = StorageCompression.Compress(plain, new StorageCompressionStrategy(StorageCompressionAlgorithm.Brotli, rawThreshold: 0));
             Assert.AreEqual((byte)StorageCompressionAlgorithm.Brotli, brotli[1]);
 
-            var outcome = WithCompressWrite(true, () => StorageSweepCodec.Accounts(brotli));
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = true;
+            try {
+                var outcome = StorageSweepCodec.Accounts(brotli);
 
-            Assert.AreEqual(SweepOutcomeKind.Converted, outcome.Kind);
-            Assert.AreEqual((byte)StorageCompressionStrategy.AccountGraph.Algorithm, outcome.Bytes[1]);
-            Assert.AreEqual("EI0000000000012345", StorageCodec.Unpack<List<EggIncAccount>>(outcome.Bytes).Single().Id);
+                Assert.AreEqual(SweepOutcomeKind.Converted, outcome.Kind);
+                Assert.AreEqual((byte)StorageCompressionStrategy.AccountGraph.Algorithm, outcome.Bytes[1]);
+                Assert.AreEqual("EI0000000000012345", StorageCodec.Unpack<List<EggIncAccount>>(outcome.Bytes).Single().Id);
+            } finally {
+                StorageCodec.CompressWriteEnabled = prior;
+            }
         }
 
         [TestMethod]
         public void Accounts_CurrentStrategyEnvelope_CompressOn_IsCurrent() {
-            var stored = WithCompressWrite(true, () => StorageCodec.Pack(BuildAccounts()));
-            var outcome = WithCompressWrite(true, () => StorageSweepCodec.Accounts(stored));
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = true;
+            try {
+                var stored = StorageCodec.Pack(BuildAccounts());
+                var outcome = StorageSweepCodec.Accounts(stored);
 
-            Assert.AreEqual(SweepOutcomeKind.Current, outcome.Kind);
+                Assert.AreEqual(SweepOutcomeKind.Current, outcome.Kind);
+            } finally {
+                StorageCodec.CompressWriteEnabled = prior;
+            }
         }
 
         [TestMethod]
@@ -141,52 +138,83 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Accounts_LegacyLz4_CompressOff_IsCurrent() {
-            var stored = LegacyAccountBytes();
-            var outcome = WithCompressWrite(false, () => StorageSweepCodec.Accounts(stored));
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = false;
+            try {
+                var stored = LegacyAccountBytes();
+                var outcome = StorageSweepCodec.Accounts(stored);
 
-            Assert.AreEqual(SweepOutcomeKind.Current, outcome.Kind);
-            Assert.IsNull(outcome.Bytes);
-            Assert.IsNull(outcome.Error);
+                Assert.AreEqual(SweepOutcomeKind.Current, outcome.Kind);
+                Assert.IsNull(outcome.Bytes);
+                Assert.IsNull(outcome.Error);
+            } finally {
+                StorageCodec.CompressWriteEnabled = prior;
+            }
         }
 
         [TestMethod]
         public void Accounts_CorruptBytes_Fails_WithoutBytes() {
-            var outcome = WithCompressWrite(true, () => StorageSweepCodec.Accounts(CorruptAccounts));
+            var prior = StorageCodec.CompressWriteEnabled;
+            StorageCodec.CompressWriteEnabled = true;
+            try {
+                var outcome = StorageSweepCodec.Accounts(CorruptAccounts);
 
-            Assert.AreEqual(SweepOutcomeKind.Failed, outcome.Kind);
-            Assert.IsNotNull(outcome.Error);
-            Assert.IsNull(outcome.Bytes);
+                Assert.AreEqual(SweepOutcomeKind.Failed, outcome.Kind);
+                Assert.IsNotNull(outcome.Error);
+                Assert.IsNull(outcome.Bytes);
+            } finally {
+                StorageCodec.CompressWriteEnabled = prior;
+            }
         }
 
         [TestMethod]
         public void CoopStatus_LegacyGzipJson_ProtoOn_Converts_AndRoundTrips() {
-            var stored = WithProtoWrite(false, () => CoopStatusCodec.Encode(SampleStatus()));
-            var outcome = WithProtoWrite(true, () => StorageSweepCodec.CoopStatus(stored));
+            var prior = CoopStatusCodec.ProtoWriteEnabled;
+            CoopStatusCodec.ProtoWriteEnabled = false;
+            try {
+                var stored = CoopStatusCodec.Encode(SampleStatus());
+                CoopStatusCodec.ProtoWriteEnabled = true;
+                var outcome = StorageSweepCodec.CoopStatus(stored);
 
-            Assert.AreEqual(SweepOutcomeKind.Converted, outcome.Kind);
-            Assert.IsNotNull(outcome.Bytes);
-            Assert.AreEqual(StorageCompression.Marker, outcome.Bytes[0]);
-            var decoded = CoopStatusCodec.Decode(outcome.Bytes);
-            Assert.AreEqual(2, decoded.Contributors.Count);
-            Assert.AreEqual(7200d, decoded.SecondsRemaining);
+                Assert.AreEqual(SweepOutcomeKind.Converted, outcome.Kind);
+                Assert.IsNotNull(outcome.Bytes);
+                Assert.AreEqual(StorageCompression.Marker, outcome.Bytes[0]);
+                var decoded = CoopStatusCodec.Decode(outcome.Bytes);
+                Assert.AreEqual(2, decoded.Contributors.Count);
+                Assert.AreEqual(7200d, decoded.SecondsRemaining);
+            } finally {
+                CoopStatusCodec.ProtoWriteEnabled = prior;
+            }
         }
 
         [TestMethod]
         public void CoopStatus_LegacyGzipJson_ProtoOff_IsCurrent() {
-            var stored = WithProtoWrite(false, () => CoopStatusCodec.Encode(SampleStatus()));
-            var outcome = WithProtoWrite(false, () => StorageSweepCodec.CoopStatus(stored));
+            var prior = CoopStatusCodec.ProtoWriteEnabled;
+            CoopStatusCodec.ProtoWriteEnabled = false;
+            try {
+                var stored = CoopStatusCodec.Encode(SampleStatus());
+                var outcome = StorageSweepCodec.CoopStatus(stored);
 
-            Assert.AreEqual(SweepOutcomeKind.Current, outcome.Kind);
-            Assert.IsNull(outcome.Bytes);
+                Assert.AreEqual(SweepOutcomeKind.Current, outcome.Kind);
+                Assert.IsNull(outcome.Bytes);
+            } finally {
+                CoopStatusCodec.ProtoWriteEnabled = prior;
+            }
         }
 
         [TestMethod]
         public void CoopStatus_CorruptBytes_Fails_WithoutBytes() {
-            var outcome = WithProtoWrite(true, () => StorageSweepCodec.CoopStatus(CorruptCoopStatus));
+            var prior = CoopStatusCodec.ProtoWriteEnabled;
+            CoopStatusCodec.ProtoWriteEnabled = true;
+            try {
+                var outcome = StorageSweepCodec.CoopStatus(CorruptCoopStatus);
 
-            Assert.AreEqual(SweepOutcomeKind.Failed, outcome.Kind);
-            Assert.IsNotNull(outcome.Error);
-            Assert.IsNull(outcome.Bytes);
+                Assert.AreEqual(SweepOutcomeKind.Failed, outcome.Kind);
+                Assert.IsNotNull(outcome.Error);
+                Assert.IsNull(outcome.Bytes);
+            } finally {
+                CoopStatusCodec.ProtoWriteEnabled = prior;
+            }
         }
     }
 }

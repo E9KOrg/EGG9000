@@ -9,12 +9,14 @@ namespace EGG9000.Common.Database {
     public sealed class StorageDictionary {
         public const byte None = 0;
 
-        public static readonly StorageDictionary Accounts1 = new(1, "accounts-1.zdict", () => Load("accounts-1.zdict"));
-        public static readonly StorageDictionary CoopStatus1 = new(2, "coopstatus-1.zdict", () => Load("coopstatus-1.zdict"));
+        public static readonly StorageDictionary Accounts1 = new(1, "accounts-1.zdict");
+        public static readonly StorageDictionary CoopStatus1 = new(2, "coopstatus-1.zdict");
 
         private static readonly ConcurrentDictionary<byte, StorageDictionary> All = new(new[] { Accounts1, CoopStatus1 }.ToDictionary(d => d.Id));
 
         private readonly Lazy<byte[]> _bytes;
+
+        private StorageDictionary(byte id, string resourceName) : this(id, resourceName, () => Load(resourceName)) { }
 
         private StorageDictionary(byte id, string resourceName, Func<byte[]> load) {
             Id = id;
@@ -24,15 +26,25 @@ namespace EGG9000.Common.Database {
 
         public byte Id { get; }
         public string ResourceName { get; }
-        public byte[] Bytes => _bytes.Value;
+        public byte[] Bytes {
+            get {
+                return _bytes.Value;
+            }
+        }
 
-        public static IReadOnlyList<StorageDictionary> Registry => [.. All.Values.OrderBy(d => d.Id)];
+        public static IReadOnlyList<StorageDictionary> Registry {
+            get {
+                return [.. All.Values.OrderBy(d => d.Id)];
+            }
+        }
 
         public static StorageDictionary Get(byte id) {
             return TryGet(id, out var dictionary) ? dictionary : throw new InvalidDataException($"Unknown storage dictionary id {id}.");
         }
 
-        public static bool TryGet(byte id, out StorageDictionary dictionary) => All.TryGetValue(id, out dictionary);
+        public static bool TryGet(byte id, out StorageDictionary dictionary) {
+            return All.TryGetValue(id, out dictionary);
+        }
 
         public static StorageDictionary Register(byte id, string name, byte[] bytes) {
             ArgumentNullException.ThrowIfNull(bytes);

@@ -98,8 +98,75 @@ namespace EGG9000.Test {
             return (backup, new List<Ei.Contract> { contract }.ToFrozenSet());
         }
 
+        private static CustomBackup BuildLegacyBackup() {
+            return new CustomBackup {
+                EggIncId = "EI-legacy-0001",
+                UserName = "LegacyName",
+                LastBackupTime = 1_650_000_000,
+                EpicResearch = [new CustomResearch { Id = "soul_eggs", Level = 4 }],
+                PermitLevel = 2,
+                EggsOfProphecy = 6,
+                SoulEggs = 999.5,
+                CurrentMultiplier = 1.2,
+                NumPrestiges = 3,
+                NumDailyGiftsCollected = 7,
+                EggMedalLevel = [9u, 8u],
+                GoldenEggsEarned = 44,
+                GoldenEggsSpent = 11,
+                PiggyBank = 5,
+                DroneTakedowns = 2,
+                DroneTakedownsElite = 1,
+                NumPiggyBreaks = 3,
+                HyperloopPurchased = true,
+                ClientVersion = 12,
+                MaxEggReached = Ei.Egg.Tachyon,
+                MaxFarmSizeReached = new Dictionary<Ei.Egg, ulong> { [Ei.Egg.Tachyon] = 55 },
+                HasDeviceId = true,
+                DeviceId = "legacy-device",
+                CraftingXP = 21.5,
+                VirtueEggsDelivered = [3.3, 4.4],
+                Resets = 8,
+                ShiftCount = 2,
+                EovEarned = [1u, 2u],
+                NoAliasInLatestBackup = true
+            };
+        }
+
         private static CustomBackup RoundTrip(CustomBackup source, MessagePackSerializerOptions write, MessagePackSerializerOptions read) {
             return MessagePackSerializer.Deserialize<CustomBackup>(MessagePackSerializer.Serialize(source, write), read);
+        }
+
+        private static void AssertLegacyValues(CustomBackup back) {
+            Assert.IsNull(back.EiBackupBytes);
+            Assert.AreEqual("EI-legacy-0001", back.EggIncId);
+            Assert.AreEqual("LegacyName", back.UserName);
+            Assert.AreEqual(1_650_000_000L, back.LastBackupTime);
+            Assert.AreEqual("soul_eggs", back.EpicResearch.Single().Id);
+            Assert.AreEqual((ushort)2, back.PermitLevel);
+            Assert.AreEqual((ushort)6, back.EggsOfProphecy);
+            Assert.AreEqual(999.5, back.SoulEggs);
+            Assert.AreEqual(1.2, back.CurrentMultiplier);
+            Assert.AreEqual(3UL, back.NumPrestiges);
+            Assert.AreEqual(7u, back.NumDailyGiftsCollected);
+            CollectionAssert.AreEqual(new List<uint> { 9u, 8u }, back.EggMedalLevel);
+            Assert.AreEqual(44UL, back.GoldenEggsEarned);
+            Assert.AreEqual(11UL, back.GoldenEggsSpent);
+            Assert.AreEqual(5UL, back.PiggyBank);
+            Assert.AreEqual(2UL, back.DroneTakedowns);
+            Assert.AreEqual(1UL, back.DroneTakedownsElite);
+            Assert.AreEqual(3UL, back.NumPiggyBreaks);
+            Assert.IsTrue(back.HyperloopPurchased);
+            Assert.AreEqual((byte)12, back.ClientVersion);
+            Assert.AreEqual(Ei.Egg.Tachyon, back.MaxEggReached);
+            Assert.AreEqual(55UL, back.MaxFarmSizeReached[Ei.Egg.Tachyon]);
+            Assert.IsTrue(back.HasDeviceId);
+            Assert.AreEqual("legacy-device", back.DeviceId);
+            Assert.AreEqual(21.5, back.CraftingXP);
+            CollectionAssert.AreEqual(new double[] { 3.3, 4.4 }, back.VirtueEggsDelivered);
+            Assert.AreEqual(8u, back.Resets);
+            Assert.AreEqual(2u, back.ShiftCount);
+            CollectionAssert.AreEqual(new uint[] { 1u, 2u }, back.EovEarned);
+            Assert.IsTrue(back.NoAliasInLatestBackup);
         }
 
         [TestMethod]
@@ -152,73 +219,6 @@ namespace EGG9000.Test {
             Assert.IsFalse(back.EmptyBackup);
             Assert.AreEqual("coop-derived-slot", back.ArchivedFarms.Single().CoopId);
             Assert.IsNotNull(back.CustomEggMaxFarmSizeReached);
-        }
-
-        private static CustomBackup BuildLegacyBackup() {
-            return new CustomBackup {
-                EggIncId = "EI-legacy-0001",
-                UserName = "LegacyName",
-                LastBackupTime = 1_650_000_000,
-                EpicResearch = [new CustomResearch { Id = "soul_eggs", Level = 4 }],
-                PermitLevel = 2,
-                EggsOfProphecy = 6,
-                SoulEggs = 999.5,
-                CurrentMultiplier = 1.2,
-                NumPrestiges = 3,
-                NumDailyGiftsCollected = 7,
-                EggMedalLevel = [9u, 8u],
-                GoldenEggsEarned = 44,
-                GoldenEggsSpent = 11,
-                PiggyBank = 5,
-                DroneTakedowns = 2,
-                DroneTakedownsElite = 1,
-                NumPiggyBreaks = 3,
-                HyperloopPurchased = true,
-                ClientVersion = 12,
-                MaxEggReached = Ei.Egg.Tachyon,
-                MaxFarmSizeReached = new Dictionary<Ei.Egg, ulong> { [Ei.Egg.Tachyon] = 55 },
-                HasDeviceId = true,
-                DeviceId = "legacy-device",
-                CraftingXP = 21.5,
-                VirtueEggsDelivered = [3.3, 4.4],
-                Resets = 8,
-                ShiftCount = 2,
-                EovEarned = [1u, 2u],
-                NoAliasInLatestBackup = true
-            };
-        }
-
-        private static void AssertLegacyValues(CustomBackup back) {
-            Assert.IsNull(back.EiBackupBytes);
-            Assert.AreEqual("EI-legacy-0001", back.EggIncId);
-            Assert.AreEqual("LegacyName", back.UserName);
-            Assert.AreEqual(1_650_000_000L, back.LastBackupTime);
-            Assert.AreEqual("soul_eggs", back.EpicResearch.Single().Id);
-            Assert.AreEqual((ushort)2, back.PermitLevel);
-            Assert.AreEqual((ushort)6, back.EggsOfProphecy);
-            Assert.AreEqual(999.5, back.SoulEggs);
-            Assert.AreEqual(1.2, back.CurrentMultiplier);
-            Assert.AreEqual(3UL, back.NumPrestiges);
-            Assert.AreEqual(7u, back.NumDailyGiftsCollected);
-            CollectionAssert.AreEqual(new List<uint> { 9u, 8u }, back.EggMedalLevel);
-            Assert.AreEqual(44UL, back.GoldenEggsEarned);
-            Assert.AreEqual(11UL, back.GoldenEggsSpent);
-            Assert.AreEqual(5UL, back.PiggyBank);
-            Assert.AreEqual(2UL, back.DroneTakedowns);
-            Assert.AreEqual(1UL, back.DroneTakedownsElite);
-            Assert.AreEqual(3UL, back.NumPiggyBreaks);
-            Assert.IsTrue(back.HyperloopPurchased);
-            Assert.AreEqual((byte)12, back.ClientVersion);
-            Assert.AreEqual(Ei.Egg.Tachyon, back.MaxEggReached);
-            Assert.AreEqual(55UL, back.MaxFarmSizeReached[Ei.Egg.Tachyon]);
-            Assert.IsTrue(back.HasDeviceId);
-            Assert.AreEqual("legacy-device", back.DeviceId);
-            Assert.AreEqual(21.5, back.CraftingXP);
-            CollectionAssert.AreEqual(new double[] { 3.3, 4.4 }, back.VirtueEggsDelivered);
-            Assert.AreEqual(8u, back.Resets);
-            Assert.AreEqual(2u, back.ShiftCount);
-            CollectionAssert.AreEqual(new uint[] { 1u, 2u }, back.EovEarned);
-            Assert.IsTrue(back.NoAliasInLatestBackup);
         }
 
         [TestMethod]

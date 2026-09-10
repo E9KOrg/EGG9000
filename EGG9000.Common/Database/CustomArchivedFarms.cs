@@ -31,9 +31,17 @@ namespace EGG9000.Common.Database {
         [Key(11)]
         public List<string> ReportedUUIDs { get; set; }
 
-        protected override byte[] LocalContractBytesStorage => null;
+        protected override byte[] LocalContractBytesStorage {
+            get {
+                return null;
+            }
+        }
 
-        protected override long TimeAcceptedUnix => (long)TimeAccepted;
+        protected override long TimeAcceptedUnix {
+            get {
+                return (long)TimeAccepted;
+            }
+        }
 
         public CustomArchivedFarms() { }
         public CustomArchivedFarms(Ei.LocalContract localContract) {
@@ -46,8 +54,8 @@ namespace EGG9000.Common.Database {
             EvaluationCxp = localContract.Evaluation is { } e ? (float)e.Cxp : 0f;
             NumGoalsAchieved = (byte)localContract.NumGoalsAchieved;
             ReportedUUIDs = [.. localContract.ReportedUuids];
-            var goals = localContract.Contract is not null ? localContract.Contract.GetGoals(localContract) : null;
-            Completed = localContract.Contract is not null && localContract.NumGoalsAchieved == goals.Count;
+            var goals = localContract.Contract?.GetGoals(localContract);
+            Completed = goals is not null && localContract.NumGoalsAchieved == goals.Count;
             if(goals is not null) {
                 PEPossible = (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy).Sum(x => x.RewardAmount);
                 PEGained = (uint)goals.Where(x => x.RewardType == Ei.RewardType.EggsOfProphecy && goals.IndexOf(x) < localContract.NumGoalsAchieved).Sum(x => x.RewardAmount);

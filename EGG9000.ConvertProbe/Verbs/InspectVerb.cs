@@ -10,11 +10,16 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace EGG9000.ConvertProbe.Verbs {
-    public sealed partial class InspectVerb {
+    public static partial class InspectVerb {
         private const string CsvHeader = "user_id,discord_id,format,framing,decode_ok,decode_root_cause,account_index,path,member,kind,declared,msgpack_type,raw_value";
         private const int DetailRowCap = 500;
 
         private sealed record UserRow(Guid Id, string Framing, string RootCause, int Problems, int Total, string WalkNote);
+
+        private sealed class PatternCounts {
+            public long Occurrences;
+            public HashSet<Guid> Users { get; } = [];
+        }
 
         public static async Task<int> RunAsync(ProbeOptions options) {
             var outDir = options.EnsureOutDir();
@@ -26,10 +31,9 @@ namespace EGG9000.ConvertProbe.Verbs {
             var builder = new SlotSchemaBuilder();
             var walker = new SchemaWalker(builder.Build(typeof(EggIncAccount)));
 
-            long users = 0, decodeFailed = 0, inspected = 0, usersWithProblems = 0;
-            var failingWithoutProblem = new List<Guid>();
+            long users = 0, decodeFailed = 0, inspected = 0, usersWithProblems = 0, failingWithoutProblem = 0;
             var userRows = new List<UserRow>();
-            var byPattern = new Dictionary<(string Pattern, string Kind, string Declared), (long Count, HashSet<Guid> Users)>();
+            var byPattern = new Dictionary<(string Pattern, string Kind, string Declared), PatternCounts>();
             var detail = new List<IReadOnlyList<string>>();
             long detailOmitted = 0;
             var stopwatch = Stopwatch.StartNew();
@@ -65,7 +69,7 @@ namespace EGG9000.ConvertProbe.Verbs {
 
                 var problems = findings.Count(f => f.IsProblem);
                 if(problems > 0) usersWithProblems++;
-                if(!result.Ok && problems == 0) failingWithoutProblem.Add(user.Id);
+                if(!result.Ok && problems == 0) failingWithoutProblem++;
                 userRows.Add(new UserRow(user.Id, framing, rootCause, problems, findings.Count, walkNote));
 
                 if(findings.Count == 0)
@@ -74,9 +78,9 @@ namespace EGG9000.ConvertProbe.Verbs {
                     csv.WriteLine(Csv.Line(user.Id.ToString(), user.DiscordId.ToString(), format, framing, result.Ok ? "true" : "false", rootCause,
                         finding.AccountIndex.ToString(), finding.Path, finding.Member, finding.Kind, finding.Declared, finding.MsgpackType, finding.RawValue));
                     var patternKey = (Pattern(finding.Path), finding.Kind, finding.Declared);
-                    if(!byPattern.TryGetValue(patternKey, out var bucket)) bucket = (0, []);
+                    if(!byPattern.TryGetValue(patternKey, out var bucket)) byPattern[patternKey] = bucket = new PatternCounts();
+                    bucket.Occurrences++;
                     bucket.Users.Add(user.Id);
-                    byPattern[patternKey] = (bucket.Count + 1, bucket.Users);
                     if(!finding.IsProblem) continue;
                     if(detail.Count >= DetailRowCap) {
                         detailOmitted++;
@@ -104,7 +108,7 @@ namespace EGG9000.ConvertProbe.Verbs {
                 ["decode failed", Markdown.Num(decodeFailed)],
                 ["inspected", Markdown.Num(inspected)],
                 ["inspected with problems", Markdown.Num(usersWithProblems)],
-                ["decode failed without a finding", Markdown.Num(failingWithoutProblem.Count)],
+                ["decode failed without a finding", Markdown.Num(failingWithoutProblem)],
                 ["elapsed", stopwatch.Elapsed.ToString(@"mm\:ss")]
             ]));
             if(userRows.Count > 0) {
@@ -119,8 +123,8 @@ namespace EGG9000.ConvertProbe.Verbs {
             if(byPattern.Count > 0) {
                 output.Append(Markdown.Heading(2, "Findings by path"));
                 output.AppendLine(Markdown.Table(["path", "kind", "declared", "occurrences", "users"],
-                    byPattern.OrderByDescending(kv => kv.Value.Count).ThenBy(kv => kv.Key.Pattern, StringComparer.Ordinal)
-                        .Select(kv => (IReadOnlyList<string>)[kv.Key.Pattern, kv.Key.Kind, kv.Key.Declared, Markdown.Num(kv.Value.Count), Markdown.Num(kv.Value.Users.Count)])));
+                    byPattern.OrderByDescending(kv => kv.Value.Occurrences).ThenBy(kv => kv.Key.Pattern, StringComparer.Ordinal)
+                        .Select(kv => (IReadOnlyList<string>)[kv.Key.Pattern, kv.Key.Kind, kv.Key.Declared, Markdown.Num(kv.Value.Occurrences), Markdown.Num(kv.Value.Users.Count)])));
             }
             if(detail.Count > 0) {
                 output.Append(Markdown.Heading(2, "Problem findings"));
@@ -133,7 +137,9 @@ namespace EGG9000.ConvertProbe.Verbs {
             return decodeFailed > 0 ? 2 : 0;
         }
 
-        private static string Pattern(string path) => MapIndex().Replace(ListIndex().Replace(path, "[]"), "[#]");
+        private static string Pattern(string path) {
+            return MapIndex().Replace(ListIndex().Replace(path, "[]"), "[#]");
+        }
 
         private static string Trim(string message) {
             var single = (message ?? "").Replace("\r", " ").Replace("\n", " ").Replace("|", "/");

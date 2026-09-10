@@ -7,6 +7,8 @@ namespace EGG9000.ConvertProbe {
             return value.IndexOfAny([',', '"', '\r', '\n']) >= 0 ? "\"" + value.Replace("\"", "\"\"") + "\"" : value;
         }
 
-        public static string Line(params string[] fields) => string.Join(",", fields.Select(Field));
+        public static string Line(params string[] fields) {
+            return string.Join(",", fields.Select(Field));
+        }
     }
 }

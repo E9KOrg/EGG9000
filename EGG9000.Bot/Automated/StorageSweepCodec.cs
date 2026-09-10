@@ -15,9 +15,13 @@ namespace EGG9000.Bot.Automated {
     public readonly record struct SweepOutcome(SweepOutcomeKind Kind, byte[] Bytes, Exception Error) {
         public static readonly SweepOutcome Current = new(SweepOutcomeKind.Current, null, null);
 
-        public static SweepOutcome Converted(byte[] bytes) => new(SweepOutcomeKind.Converted, bytes, null);
+        public static SweepOutcome Converted(byte[] bytes) {
+            return new(SweepOutcomeKind.Converted, bytes, null);
+        }
 
-        public static SweepOutcome Failed(Exception error) => new(SweepOutcomeKind.Failed, null, error);
+        public static SweepOutcome Failed(Exception error) {
+            return new(SweepOutcomeKind.Failed, null, error);
+        }
     }
 
     public static class StorageSweepCodec {

@@ -5,7 +5,9 @@ using System.Globalization;
 
 namespace EGG9000.ConvertProbe.Inspect {
     public sealed record Finding(int AccountIndex, string Path, string Member, string Kind, string Declared, string MsgpackType, string RawValue) {
-        public bool IsProblem => Kind is not (FindingKind.ExtraSlot or FindingKind.RetiredSlot);
+        public bool IsProblem {
+            get { return Kind is not (FindingKind.ExtraSlot or FindingKind.RetiredSlot); }
+        }
     }
 
     public static class FindingKind {
@@ -132,11 +134,10 @@ namespace EGG9000.ConvertProbe.Inspect {
             var count = reader.ReadArrayHeader();
             if(count != 2)
                 _findings.Add(new Finding(_account, path, member, FindingKind.BadLength, shape.Declared, "array", $"array[{count}], expected [DateTime, short]"));
-            for(var i = 0; i < count; i++) {
-                if(i == 0) Expect(ref reader, shape, path + ".DateTime", member, IsTimestamp(reader));
-                else if(i == 1) WalkInteger(ref reader, ShortShape, path + ".OffsetMinutes", member);
-                else reader.Skip();
-            }
+            if(count > 0) Expect(ref reader, shape, path + ".DateTime", member, IsTimestamp(reader));
+            if(count > 1) WalkInteger(ref reader, ShortShape, path + ".OffsetMinutes", member);
+            for(var i = 2; i < count; i++)
+                reader.Skip();
         }
 
         private void WalkArray(ref MessagePackReader reader, SlotShape shape, string path, string member) {

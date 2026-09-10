@@ -15,7 +15,9 @@ namespace EGG9000.Bot.Services {
             _entries = entries;
         }
 
-        public static ServiceAllowlist Default => _default.Value;
+        public static ServiceAllowlist Default {
+            get { return _default.Value; }
+        }
 
         public static ServiceAllowlist Parse(string raw) {
             var entries = (raw ?? string.Empty)
@@ -24,12 +26,20 @@ namespace EGG9000.Bot.Services {
             return new ServiceAllowlist(entries);
         }
 
-        public bool Active => _entries.Count > 0;
+        public bool Active {
+            get { return _entries.Count > 0; }
+        }
 
-        public IReadOnlyCollection<string> Entries => _entries;
+        public IReadOnlyCollection<string> Entries {
+            get { return _entries; }
+        }
 
-        public bool IsEnabled(string typeName) => !Active || _entries.Contains(typeName);
+        public bool IsEnabled(string typeName) {
+            return !Active || _entries.Contains(typeName);
+        }
 
-        public bool IsEnabled(Type t) => IsEnabled(t.Name);
+        public bool IsEnabled(Type type) {
+            return IsEnabled(type.Name);
+        }
     }
 }

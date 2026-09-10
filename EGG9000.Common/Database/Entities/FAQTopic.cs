@@ -18,8 +18,8 @@ namespace EGG9000.Common.Database.Entities {
         private readonly JsonBlobAccessor<List<string>> _keywordsAccessor = new();
         [NotMapped]
         public List<string> Keywords {
-            get => _keywordsAccessor.Get(_keywords);
-            set => _keywords = _keywordsAccessor.Set(value, _keywords);
+            get { return _keywordsAccessor.Get(_keywords); }
+            set { _keywords = _keywordsAccessor.Set(value, _keywords); }
         }
         public int Weight { get; set; } = 0;
         public string Explanation { get; set; } = "";
@@ -29,16 +29,11 @@ namespace EGG9000.Common.Database.Entities {
         public string CreatedByIdString { get; set; } = "";
         public ulong CreatedById {
             get {
-                if(!ulong.TryParse(CreatedByIdString, out var id)) {
-                    id = ulong.MaxValue;
-                }
-                return id;
+                if(ulong.TryParse(CreatedByIdString, out var id)) return id;
+                return ulong.MaxValue;
             }
-            set {
-                CreatedByIdString = value.ToString();
-            }
+            set { CreatedByIdString = value.ToString(); }
         }
-
 
         public string CreatedBy { get; set; } = "";
 
@@ -51,11 +46,9 @@ namespace EGG9000.Common.Database.Entities {
         public List<ulong> SubscribedGuildIds {
             get {
                 if(string.IsNullOrEmpty(_subscribedGuildIds)) return [];
-                return [.. _subscribedGuildIds.Split(",").ToList().Select(ulong.Parse)];
+                return [.. _subscribedGuildIds.Split(",").Select(ulong.Parse)];
             }
-            set {
-                _subscribedGuildIds = string.Join(",", value);
-            }
+            set { _subscribedGuildIds = string.Join(",", value); }
         }
 
         public string EmbedColorHex { get; set; } = "";
@@ -64,7 +57,7 @@ namespace EGG9000.Common.Database.Entities {
         public Color EmbedColor {
             get {
                 if(string.IsNullOrEmpty(EmbedColorHex) || !MyRegex().IsMatch(EmbedColorHex)) return Color.DarkerGrey;
-                else return new Color(uint.Parse(EmbedColorHex.Replace("#", ""), NumberStyles.HexNumber));
+                return new Color(uint.Parse(EmbedColorHex.Replace("#", ""), NumberStyles.HexNumber));
             }
         }
 

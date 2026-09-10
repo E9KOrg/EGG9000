@@ -6,6 +6,7 @@ using Npgsql;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -122,7 +123,7 @@ namespace EGG9000.ConvertProbe.Verbs {
             ];
         }
 
-        private static string Delta(long candidate, long baseline) => baseline == 0 ? "n/a" : (100.0 * (candidate - baseline) / baseline).ToString("+0.00;-0.00", System.Globalization.CultureInfo.InvariantCulture) + "%";
+        private static string Delta(long candidate, long baseline) => baseline == 0 ? "n/a" : (100.0 * (candidate - baseline) / baseline).ToString("+0.00;-0.00", CultureInfo.InvariantCulture) + "%";
 
         private static byte[] AccountPlain(byte[] stored) {
             try {

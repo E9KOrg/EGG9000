@@ -15,7 +15,9 @@ namespace EGG9000.ConvertProbe {
             return builder.ToString();
         }
 
-        public static string Heading(int level, string text) => new string('#', level) + " " + text + Environment.NewLine + Environment.NewLine;
+        public static string Heading(int level, string text) {
+            return new string('#', level) + " " + text + Environment.NewLine + Environment.NewLine;
+        }
 
         public static string Bytes(long bytes) {
             string[] units = ["B", "KB", "MB", "GB", "TB"];
@@ -28,17 +30,25 @@ namespace EGG9000.ConvertProbe {
             return unit == 0 ? $"{bytes} B" : $"{value.ToString("0.##", CultureInfo.InvariantCulture)} {units[unit]}";
         }
 
-        public static string Num(double value, int decimals = 2) => value.ToString("F" + decimals, CultureInfo.InvariantCulture);
+        public static string Num(double value, int decimals = 2) {
+            return value.ToString("F" + decimals, CultureInfo.InvariantCulture);
+        }
 
-        public static string Num(long value) => value.ToString(CultureInfo.InvariantCulture);
+        public static string Num(long value) {
+            return value.ToString(CultureInfo.InvariantCulture);
+        }
 
-        public static string Percent(double part, double whole) => whole == 0 ? "n/a" : (100.0 * part / whole).ToString("0.00", CultureInfo.InvariantCulture) + "%";
+        public static string Percent(double part, double whole) {
+            return whole == 0 ? "n/a" : (100.0 * part / whole).ToString("0.00", CultureInfo.InvariantCulture) + "%";
+        }
 
         public static string Clip(string value, int max = 60) {
             value ??= "";
             return value.Length <= max ? value : value[..max] + "...";
         }
 
-        private static string Escape(string cell) => (cell ?? "").Replace("|", "\\|").Replace("\r", " ").Replace("\n", " ");
+        private static string Escape(string cell) {
+            return (cell ?? "").Replace("|", "\\|").Replace("\r", " ").Replace("\n", " ");
+        }
     }
 }

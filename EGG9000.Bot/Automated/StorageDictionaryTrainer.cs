@@ -48,7 +48,9 @@ namespace EGG9000.Bot.Automated {
             return activeBytes > 0 && candidateBytes <= (long)Math.Floor(activeBytes * AdoptRatio);
         }
 
-        public static int NextId(IEnumerable<int> usedIds) => usedIds.DefaultIfEmpty(0).Max() + 1;
+        public static int NextId(IEnumerable<int> usedIds) {
+            return usedIds.DefaultIfEmpty(0).Max() + 1;
+        }
 
         protected override async Task DoWorkAsync(CancellationToken token) {
             var started = DateTimeOffset.UtcNow;

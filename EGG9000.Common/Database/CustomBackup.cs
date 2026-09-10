@@ -21,12 +21,12 @@ namespace EGG9000.Common.Database {
         [Key(1)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public string EggIncId {
-            get => EiBackup is { } p ? p.GetID() : field ?? string.Empty;
+            get { return EiBackup is { } p ? p.GetID() : field ?? string.Empty; }
             set;
         }
         [Key(2)]
         public string UserName {
-            get => EiBackup is { } p && !string.IsNullOrEmpty(p.UserName) ? p.UserName : field;
+            get { return EiBackup is { } p && !string.IsNullOrEmpty(p.UserName) ? p.UserName : field; }
             set;
         }
         //[Key(3)]
@@ -34,12 +34,10 @@ namespace EGG9000.Common.Database {
         [Key(4)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public long LastBackupTime {
-            get => EiBackup?.Settings is { } s ? (long)s.LastBackupTime : field;
+            get { return EiBackup?.Settings is { } s ? (long)s.LastBackupTime : field; }
             set;
         }
-        public DateTimeOffset GetLastBackupDateTime() {
-            return DateTimeOffset.FromUnixTimeSeconds(LastBackupTime);
-        }
+        public DateTimeOffset GetLastBackupDateTime() { return DateTimeOffset.FromUnixTimeSeconds(LastBackupTime); }
 
         // Grade of the most recently accepted contract, with when it was accepted. last_cpi is no
         // longer in backups, so this is how we read a player's current grade. The accept time lets
@@ -58,7 +56,7 @@ namespace EGG9000.Common.Database {
         [Key(5)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public List<CustomResearch> EpicResearch {
-            get => EiBackup?.Game is { } g ? _epicResearch ??= [.. g.EpicResearch.Select(x => new CustomResearch(x))] : field;
+            get { return EiBackup?.Game is { } g ? _epicResearch ??= [.. g.EpicResearch.Select(x => new CustomResearch(x))] : field; }
             set {
                 field = value;
                 _epicResearch = null;
@@ -68,7 +66,7 @@ namespace EGG9000.Common.Database {
         [Key(6)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ushort PermitLevel {
-            get => EiBackup?.Game is { } g ? (ushort)g.PermitLevel : field;
+            get { return EiBackup?.Game is { } g ? (ushort)g.PermitLevel : field; }
             set;
         }
         [Key(7)]
@@ -76,19 +74,19 @@ namespace EGG9000.Common.Database {
         [Key(8)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ushort EggsOfProphecy {
-            get => EiBackup?.Game is { } g ? (ushort)g.EggsOfProphecy : field;
+            get { return EiBackup?.Game is { } g ? (ushort)g.EggsOfProphecy : field; }
             set;
         }
         [Key(9)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public double SoulEggs {
-            get => EiBackup?.Game is { } g ? g.SoulEggsTotal : field;
+            get { return EiBackup?.Game is { } g ? g.SoulEggsTotal : field; }
             set;
         }
         [Key(10)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public double CurrentMultiplier {
-            get => EiBackup?.Game is { } g ? g.CurrentMultiplier : field;
+            get { return EiBackup?.Game is { } g ? g.CurrentMultiplier : field; }
             set;
         }
         //[Key(11)]
@@ -100,7 +98,7 @@ namespace EGG9000.Common.Database {
         [Key(14)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ulong NumPrestiges {
-            get => EiBackup?.Stats is { } s ? s.NumPrestiges : field;
+            get { return EiBackup?.Stats is { } s ? s.NumPrestiges : field; }
             set;
         }
         [Key(15)]
@@ -109,17 +107,17 @@ namespace EGG9000.Common.Database {
         [Key(16)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public uint NumDailyGiftsCollected {
-            get => EiBackup?.Game is { } g ? g.NumDailyGiftsCollected : field;
+            get { return EiBackup?.Game is { } g ? g.NumDailyGiftsCollected : field; }
             set;
         }
 
         [IgnoreMember]
-        public uint PEFromDailyGifts => Math.Min(24, NumDailyGiftsCollected / 28);
+        public uint PEFromDailyGifts { get { return Math.Min(24, NumDailyGiftsCollected / 28); } }
 
         [Key(17)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public List<uint> EggMedalLevel {
-            get => EiBackup?.Game is { } g ? _eggMedalLevel ??= [.. g.EggMedalLevel] : field;
+            get { return EiBackup?.Game is { } g ? _eggMedalLevel ??= [.. g.EggMedalLevel] : field; }
             set {
                 field = value;
                 _eggMedalLevel = null;
@@ -130,37 +128,37 @@ namespace EGG9000.Common.Database {
         [Key(18)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ulong GoldenEggsEarned {
-            get => EiBackup?.Game is { } g ? g.GoldenEggsEarned : field;
+            get { return EiBackup?.Game is { } g ? g.GoldenEggsEarned : field; }
             set;
         }
         [Key(19)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ulong GoldenEggsSpent {
-            get => EiBackup?.Game is { } g ? g.GoldenEggsSpent : field;
+            get { return EiBackup?.Game is { } g ? g.GoldenEggsSpent : field; }
             set;
         }
         [Key(20)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ulong PiggyBank {
-            get => EiBackup?.Game is { } g ? g.PiggyBank : field;
+            get { return EiBackup?.Game is { } g ? g.PiggyBank : field; }
             set;
         }
         [Key(21)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ulong DroneTakedowns {
-            get => EiBackup?.Stats is { } s ? s.DroneTakedowns : field;
+            get { return EiBackup?.Stats is { } s ? s.DroneTakedowns : field; }
             set;
         }
         [Key(22)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ulong DroneTakedownsElite {
-            get => EiBackup?.Stats is { } s ? s.DroneTakedownsElite : field;
+            get { return EiBackup?.Stats is { } s ? s.DroneTakedownsElite : field; }
             set;
         }
         [Key(23)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public ulong NumPiggyBreaks {
-            get => EiBackup?.Stats is { } s ? s.NumPiggyBreaks : field;
+            get { return EiBackup?.Stats is { } s ? s.NumPiggyBreaks : field; }
             set;
         }
         [Key(24)]
@@ -168,7 +166,7 @@ namespace EGG9000.Common.Database {
         [Key(25)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public bool HyperloopPurchased {
-            get => EiBackup?.Game is { } g ? g.HyperloopStation : field;
+            get { return EiBackup?.Game is { } g ? g.HyperloopStation : field; }
             set;
         }
         [Key(26)]
@@ -179,7 +177,7 @@ namespace EGG9000.Common.Database {
         [Key(28)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public byte ClientVersion {
-            get => EiBackup is { } p ? (byte)p.Version : field;
+            get { return EiBackup is { } p ? (byte)p.Version : field; }
             set;
         }
         [Key(29)]
@@ -190,13 +188,13 @@ namespace EGG9000.Common.Database {
         [Key(31)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public Ei.Egg MaxEggReached {
-            get => EiBackup?.Game is { } g ? g.MaxEggReached : field;
+            get { return EiBackup?.Game is { } g ? g.MaxEggReached : field; }
             set;
         }
         [Key(32)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public Dictionary<Ei.Egg, ulong> MaxFarmSizeReached {
-            get => EiBackup?.Game is { } g ? _maxFarmSizeReached ??= BackupProjections.BuildMaxFarmSizeReached(g) : field;
+            get { return EiBackup?.Game is { } g ? _maxFarmSizeReached ??= BackupProjections.BuildMaxFarmSizeReached(g) : field; }
             set {
                 field = value;
                 _maxFarmSizeReached = null;
@@ -207,13 +205,13 @@ namespace EGG9000.Common.Database {
         [Key(33)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public bool HasDeviceId {
-            get => EiBackup is { } p ? p.HasDeviceId : field;
+            get { return EiBackup is { } p ? p.HasDeviceId : field; }
             set;
         } = false;
         [Key(34)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public string DeviceId {
-            get => EiBackup is { HasDeviceId: true } p ? p.DeviceId : field ?? string.Empty;
+            get { return EiBackup is { HasDeviceId: true } p ? p.DeviceId : field ?? string.Empty; }
             set;
         } = string.Empty;
         [Key(36)]
@@ -227,7 +225,7 @@ namespace EGG9000.Common.Database {
         [Key(40)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public double CraftingXP {
-            get => EiBackup?.Artifacts is { } a ? a.CraftingXp : field;
+            get { return EiBackup?.Artifacts is { } a ? a.CraftingXp : field; }
             set;
         } = 0;
         [Key(41)]
@@ -241,7 +239,7 @@ namespace EGG9000.Common.Database {
         [Key(44)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public double[] VirtueEggsDelivered {
-            get => EiBackup?.Virtue is { } v ? _virtueEggsDelivered ??= [.. v.EggsDelivered] : field ?? [];
+            get { return EiBackup?.Virtue is { } v ? _virtueEggsDelivered ??= [.. v.EggsDelivered] : field ?? []; }
             set {
                 field = value;
                 _virtueEggsDelivered = null;
@@ -251,19 +249,19 @@ namespace EGG9000.Common.Database {
         [Key(45)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public uint Resets {
-            get => EiBackup?.Virtue is { } v ? v.Resets : field;
+            get { return EiBackup?.Virtue is { } v ? v.Resets : field; }
             set;
         }
         [Key(46)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public uint ShiftCount {
-            get => EiBackup?.Virtue is { } v ? v.ShiftCount : field;
+            get { return EiBackup?.Virtue is { } v ? v.ShiftCount : field; }
             set;
         }
         [Key(47)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public uint[] EovEarned {
-            get => EiBackup?.Virtue is { } v ? _eovEarned ??= [.. v.EovEarned] : field ?? [];
+            get { return EiBackup?.Virtue is { } v ? _eovEarned ??= [.. v.EovEarned] : field ?? []; }
             set {
                 field = value;
                 _eovEarned = null;
@@ -277,7 +275,7 @@ namespace EGG9000.Common.Database {
         [Key(50)]
         [DerivedSlot(nameof(EiBackupBytes))]
         public bool NoAliasInLatestBackup {
-            get => EiBackup is { } p ? string.IsNullOrEmpty(p.UserName) : field;
+            get { return EiBackup is { } p ? string.IsNullOrEmpty(p.UserName) : field; }
             set;
         }
         [Key(51)]
@@ -332,37 +330,37 @@ namespace EGG9000.Common.Database {
         private Ei.Backup _eiBackup;
 
         [IgnoreMember]
-        public double GradeProgress => LastContractPlayerInfo?.GradeProgress ?? 0;
+        public double GradeProgress { get { return LastContractPlayerInfo?.GradeProgress ?? 0; } }
         [IgnoreMember]
-        public double GradeScore => LastContractPlayerInfo?.GradeScore ?? 0;
+        public double GradeScore { get { return LastContractPlayerInfo?.GradeScore ?? 0; } }
         [IgnoreMember]
-        public double TargetGradeScore => LastContractPlayerInfo?.TargetGradeScore ?? 0;
+        public double TargetGradeScore { get { return LastContractPlayerInfo?.TargetGradeScore ?? 0; } }
         [IgnoreMember]
-        public double SoulPower => LastContractPlayerInfo?.SoulPower ?? 0;
+        public double SoulPower { get { return LastContractPlayerInfo?.SoulPower ?? 0; } }
         [IgnoreMember]
-        public double TargetSoulPower => LastContractPlayerInfo?.TargetSoulPower ?? 0;
+        public double TargetSoulPower { get { return LastContractPlayerInfo?.TargetSoulPower ?? 0; } }
         [IgnoreMember]
-        public double IssueScore => LastContractPlayerInfo?.IssueScore ?? 0;
+        public double IssueScore { get { return LastContractPlayerInfo?.IssueScore ?? 0; } }
         [IgnoreMember]
-        public IReadOnlyList<Ei.ContractEvaluation.Types.PoorBehavior> Issues => LastContractPlayerInfo?.Issues ?? [];
+        public IReadOnlyList<Ei.ContractEvaluation.Types.PoorBehavior> Issues { get { return LastContractPlayerInfo?.Issues ?? []; } }
         [IgnoreMember]
-        public double LastEvaluationTime => LastContractPlayerInfo?.LastEvaluationTime ?? 0;
+        public double LastEvaluationTime { get { return LastContractPlayerInfo?.LastEvaluationTime ?? 0; } }
         [IgnoreMember]
-        public string LastEvaluationVersion => LastContractPlayerInfo?.LastEvaluationVersion ?? "";
+        public string LastEvaluationVersion { get { return LastContractPlayerInfo?.LastEvaluationVersion ?? ""; } }
         [IgnoreMember]
-        public string AggregationNotes => LastContractPlayerInfo?.AggregationNotes ?? "";
+        public string AggregationNotes { get { return LastContractPlayerInfo?.AggregationNotes ?? ""; } }
 
         [IgnoreMember]
-        public uint EggsOfTruth { get { return (uint?)EovEarned?.Sum(x => x) ?? (uint)0; } }
+        public uint EggsOfTruth { get { return (uint)EovEarned.Sum(x => x); } }
 
         [IgnoreMember]
-        public int EggsOfTruthTotal { get { return VirtueEggsDelivered?.Select(x => VirtueHelper.CurrentLevel(x)).Sum() ?? 0; } }
+        public int EggsOfTruthTotal { get { return VirtueEggsDelivered.Sum(VirtueHelper.CurrentLevel); } }
 
         [IgnoreMember]
-        public ulong TotalGEInPiggyBank => AccountFormulas.TotalGeInPiggyBank(PiggyBank, NumPiggyBreaks);
+        public ulong TotalGEInPiggyBank { get { return AccountFormulas.TotalGeInPiggyBank(PiggyBank, NumPiggyBreaks); } }
 
         [IgnoreMember]
-        public int PEFromTrophies => AccountFormulas.PeFromTrophies(EggMedalLevel);
+        public int PEFromTrophies { get { return AccountFormulas.PeFromTrophies(EggMedalLevel); } }
 
         public List<ArtifactCount> GetAvailableArtifacts() {
             if(ArtifactHall is null || ArtifactHall.Count == 0) {
@@ -370,11 +368,9 @@ namespace EGG9000.Common.Database {
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
-            Farms?.Where(x => !x.isVirtueEgg).ToList().ForEach(f => f.Artifacts?.ForEach(a => {
-                var artifact = artifacts.FirstOrDefault(x => x.Artifact.Equals(a));
-                if(artifact is not null) artifact.Count--;
-            }));
-            return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
+            foreach(var farm in Farms?.Where(x => !x.isVirtueEgg) ?? [])
+                DecrementEquipped(artifacts, farm);
+            return [.. artifacts.Where(x => x.Count > 0)];
         }
 
         public List<ArtifactCount> GetAvailableArtifacts(CustomFarm farm) {
@@ -383,14 +379,22 @@ namespace EGG9000.Common.Database {
             }
 
             var artifacts = ArtifactHall.Select(x => new ArtifactCount { Count = x.Count, Artifact = x.Artifact, NumberCrafted = x.NumberCrafted }).ToList();
-            Farms.Where(x => x != farm && x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0).ToList()?.ForEach(f => f.Artifacts?.ForEach(a => { var artifact = artifacts.FirstOrDefault(x => x.Artifact.Equals(a)); if(artifact is not null) artifact.Count--; }));
-            return artifacts?.Where(x => x.Count > 0).ToList() ?? [];
+            foreach(var other in Farms.Where(x => x != farm && x.FarmType != Ei.FarmType.Empty && x.CoopSimulationEndTime == 0))
+                DecrementEquipped(artifacts, other);
+            return [.. artifacts.Where(x => x.Count > 0)];
+        }
+
+        private static void DecrementEquipped(List<ArtifactCount> artifacts, CustomFarm farm) {
+            foreach(var equipped in farm.Artifacts ?? []) {
+                var artifact = artifacts.FirstOrDefault(x => x.Artifact.Equals(equipped));
+                if(artifact is not null) artifact.Count--;
+            }
         }
 
         // CS is sourced out-of-band (get_contract_player_info), so the protobuf rebuild has no fresh
         // value. Keep the prior value unless a positive fresh one is supplied. -1 is the legacy
         // "unknown" sentinel and counts as no value.
-        public static double CarryForwardCs(double fresh, double last) => fresh > 0 ? fresh : last;
+        public static double CarryForwardCs(double fresh, double last) { return fresh > 0 ? fresh : last; }
 
         public CustomBackup() { }
 
@@ -424,10 +428,8 @@ namespace EGG9000.Common.Database {
 
             SpaceMissions = backup.ArtifactsDb?.MissionInfos?.Select(BackupProjections.ToSpaceMission).ToList();
 
-            var fm = backup.ArtifactsDb?.FuelingMission ?? null;
-            if(fm != null) {
-                FuelingMission = BackupProjections.ToSpaceMission(fm);
-            }
+            if(backup.ArtifactsDb?.FuelingMission is { } fuelingMission)
+                FuelingMission = BackupProjections.ToSpaceMission(fuelingMission);
 
             FuelAmounts = BackupProjections.BuildFuelAmounts(activeTankArtifacts);
 
@@ -462,27 +464,25 @@ namespace EGG9000.Common.Database {
 
         private void AddFarm(Ei.Backup.Types.Simulation farm, Ei.Backup backup) {
             var contract = backup.Contracts.Contracts.FirstOrDefault(x => x.ContractIdentifier == farm.ContractId)
-                ?? backup.Contracts.Archive.Where(x => x != null).FirstOrDefault(x => x.ContractIdentifier == farm.ContractId);
+                ?? backup.Contracts.Archive.FirstOrDefault(x => x is not null && x.ContractIdentifier == farm.ContractId);
 
             var customFarm = new CustomFarm {
                 SimulationBytes = StorageTrimmer.TrimmedBytes(farm),
                 LocalContractBytes = contract is null ? null : StorageTrimmer.TrimmedBytes(contract),
-                Completed = contract?.Contract != null && contract.NumGoalsAchieved == contract.Contract.GetGoals(contract).Count,
+                Completed = contract?.Contract is not null && contract.NumGoalsAchieved == contract.Contract.GetGoals(contract).Count,
                 Vehicles = [.. farm.Vehicles],
                 CoopAllowed = contract?.Contract?.CoopAllowed ?? false,
             };
 
             var currentCoopStatus = backup.Contracts.CurrentCoopStatuses.FirstOrDefault(x => x.ContractIdentifier == farm.ContractId);
-            if(currentCoopStatus != null)
+            if(currentCoopStatus is not null)
                 customFarm.Creator = currentCoopStatus.CreatorId == backup.GetID();
 
-            var uuids = backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.EiUserId).Select(y => y.Uuid)).ToList();
-
-            customFarm.ReportedUUIDs = uuids;
+            customFarm.ReportedUUIDs = [.. backup.Contracts.CurrentCoopStatuses.Where(x => x.CoopIdentifier == contract?.CoopIdentifier).SelectMany(x => x.Contributors.Where(y => y.UserId == backup.EiUserId).Select(y => y.Uuid))];
 
             customFarm.Artifacts = [];
             var farmIndex = backup.Farms.IndexOf(farm);
-            if(backup.ArtifactsDb != null) {
+            if(backup.ArtifactsDb is not null) {
                 if(farmIndex == 0 && (int)farm.EggType >= 50 && (int)farm.EggType <= 54) {
                     var activeArtifactSlots = backup.ArtifactsDb.VirtueAfxDb.ActiveArtifacts.Slots;
                     var activeArtifacts = activeArtifactSlots.Select(x => backup.ArtifactsDb.VirtueAfxDb.InventoryItems.FirstOrDefault(y => y.ItemId == x.ItemId));
@@ -508,13 +508,15 @@ namespace EGG9000.Common.Database {
             return (LevelForFarmSize(farmSize), farmSize);
         }
 
-        private static uint LevelForFarmSize(ulong farmSize) => farmSize switch {
-            > 10000000000UL => 4,
-            > 1000000000UL => 3,
-            > 100000000UL => 2,
-            > 10000000UL => 1,
-            _ => 0
-        };
+        private static uint LevelForFarmSize(ulong farmSize) {
+            return farmSize switch {
+                > 10000000000UL => 4,
+                > 1000000000UL => 3,
+                > 100000000UL => 2,
+                > 10000000UL => 1,
+                _ => 0
+            };
+        }
 
         private void AddContracts(RepeatedField<Ei.LocalContract> contracts, FrozenSet<Ei.Contract> allContracts) {
             foreach(var localContract in contracts) {
@@ -534,13 +536,13 @@ namespace EGG9000.Common.Database {
         }
 
         [IgnoreMember]
-        public double SoulEggBonus { get { return EpicResearch is null ? 0 : (double)(EpicResearch.FirstOrDefault(x => x.Id == "soul_eggs")?.Level ?? 0d) + 10; } }
+        public double SoulEggBonus { get { return EpicResearch is null ? 0 : (EpicResearch.FirstOrDefault(x => x.Id == "soul_eggs")?.Level ?? 0d) + 10; } }
         [IgnoreMember]
-        public double ProphecyEggBonus { get { return EpicResearch is null ? 0 : ((double)(EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
+        public double ProphecyEggBonus { get { return EpicResearch is null ? 0 : ((EpicResearch.FirstOrDefault(x => x.Id == "prophecy_bonus")?.Level ?? 0d) + 5) / 100 + 1; } }
         [IgnoreMember]
-        public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy) * (Math.Pow(1.01, EggsOfTruth)); } }
+        public double EarningsBonus { get { return SoulEggs * SoulEggBonus * Math.Pow(ProphecyEggBonus, EggsOfProphecy) * Math.Pow(1.01, EggsOfTruth); } }
 
         [IgnoreMember]
-        public double MER => Math.Round(AccountFormulas.MerValue(SoulEggs, EggsOfProphecy), 2);
+        public double MER { get { return Math.Round(AccountFormulas.MerValue(SoulEggs, EggsOfProphecy), 2); } }
     }
 }

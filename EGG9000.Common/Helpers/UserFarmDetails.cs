@@ -4,7 +4,6 @@ using EGG9000.Common.Database.Entities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Common.Helpers {
@@ -19,14 +18,12 @@ namespace EGG9000.Common.Helpers {
         public SocketGuildUser DiscordUser { get; set; }
         public CustomArchivedFarms ArchivedFarm { get; set; }
         public DBUser DBUser { get; set; }
-        public UInt32 League { get; set; }
+        public uint League { get; set; }
         public EggIncAccount Account { get; set; }
 
-        public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
-            if(coopStatus is null)
-                throw new ArgumentNullException(null, "coopStatus");
-            if(contract is null)
-                throw new ArgumentNullException(null, "contract");
+        public UserFarmDetails(Coop coop, UserCoopXref xref, Ei.ContractCoopStatusResponse.Types.ContributionInfo coopStatus, DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, uint league) {
+            ArgumentNullException.ThrowIfNull(coopStatus);
+            ArgumentNullException.ThrowIfNull(contract);
             Xref = xref;
             CoopStatus = coopStatus;
             Contract = contract;
@@ -45,106 +42,79 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public UserFarmDetails(Coop coop, UserCoopXref xref, DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
-            if(xref is null)
-                throw new ArgumentNullException(null, "xref");
-            if(userWithbackup is null)
-                throw new ArgumentNullException(null, "userWithBackup");
-            if(userWithbackup.Backup is null)
-                throw new ArgumentNullException(null, "userWithBackup.Backup");
-            if(contract is null)
-                throw new ArgumentNullException(null, "contract");
+        public UserFarmDetails(Coop coop, UserCoopXref xref, DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, uint league) {
+            ArgumentNullException.ThrowIfNull(xref);
+            ArgumentNullException.ThrowIfNull(userWithbackup);
+            ArgumentNullException.ThrowIfNull(userWithbackup.Backup);
+            ArgumentNullException.ThrowIfNull(contract);
             Xref = xref;
             Contract = contract;
             League = league;
             Joined = false;
-            if(userWithbackup is not null) {
-                Backup = userWithbackup.Backup;
-                Account = userWithbackup.Account ?? userWithbackup.User?.EggIncAccounts.FirstOrDefault(x => x.Id == Backup.EggIncId); ;
-                Farm = Backup.Farms?.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup, coop, customEggs, contract: contract);
-                if(Farm is null)
-                    ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
-                DBUser = userWithbackup.User;
-                DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId)?.GetUser(DBUser.DiscordId) : null;
-            }
+            Backup = userWithbackup.Backup;
+            Account = userWithbackup.Account ?? userWithbackup.User?.EggIncAccounts.FirstOrDefault(x => x.Id == Backup.EggIncId);
+            Farm = Backup.Farms?.FirstOrDefault(f => f.ContractId == contract.ID);
+            FarmStats = Farm?.WithStats(Backup, coop, customEggs, contract: contract);
+            if(Farm is null)
+                ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
+            DBUser = userWithbackup.User;
+            DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId)?.GetUser(DBUser.DiscordId) : null;
         }
 
-        public UserFarmDetails(DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, UInt32 league) {
-            if(userWithbackup is null)
-                throw new ArgumentNullException(null, "userWithBackup");
-            if(userWithbackup.Backup is null)
-                throw new ArgumentNullException(null, "userWithBackup.Backup");
-            if(contract is null)
-                throw new ArgumentNullException(null, "contract");
+        public UserFarmDetails(DBContract contract, UserWithBackup userWithbackup, List<DBCustomEgg> customEggs, DiscordSocketClient discord, uint league) {
+            ArgumentNullException.ThrowIfNull(userWithbackup);
+            ArgumentNullException.ThrowIfNull(userWithbackup.Backup);
+            ArgumentNullException.ThrowIfNull(contract);
             Contract = contract;
             League = league;
             Joined = false;
-            if(userWithbackup is not null) {
-                Backup = userWithbackup.Backup;
-                Account = userWithbackup.Account ?? userWithbackup.User?.EggIncAccounts.FirstOrDefault(x => x.Id == Backup.EggIncId); ;
-                Farm = Backup.Farms?.FirstOrDefault(f => f.ContractId == contract.ID);
-                FarmStats = Farm?.WithStats(Backup, null, customEggs, contract: contract);
-                if(Farm is null)
-                    ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
-                DBUser = userWithbackup.User;
-                DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId) : null;
-            }
+            Backup = userWithbackup.Backup;
+            Account = userWithbackup.Account ?? userWithbackup.User?.EggIncAccounts.FirstOrDefault(x => x.Id == Backup.EggIncId);
+            Farm = Backup.Farms?.FirstOrDefault(f => f.ContractId == contract.ID);
+            FarmStats = Farm?.WithStats(Backup, null, customEggs, contract: contract);
+            if(Farm is null)
+                ArchivedFarm = Backup.ArchivedFarms.FirstOrDefault(f => f.ContractId == contract.ID);
+            DBUser = userWithbackup.User;
+            DiscordUser = DBUser.GuildId > 0 ? discord.Guilds.FirstOrDefault(x => x.Id == DBUser.GuildId).GetUser(DBUser.DiscordId) : null;
         }
 
         public void AddXref(UserCoopXref xref) {
-            if(this.Xref is not null)
+            if(Xref is not null)
                 throw new Exception("UserCoopXref already exists, unable to change it");
-            this.Xref = xref;
+            Xref = xref;
         }
 
         public TimeSpan FarmExpires {
-            get {
-                return DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(Farm?.TimeAccepted ?? (long?)ArchivedFarm?.TimeAccepted ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-            }
+            get { return DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeSeconds(Farm?.TimeAccepted ?? (long?)ArchivedFarm?.TimeAccepted ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds()); }
         }
 
         public bool Elite {
-            get {
-                return League == 0;
-            }
+            get { return League == 0; }
         }
 
         public double Rate {
             get {
-                if(CoopStatus is not null && CoopStatus.ContributionRate == 0)
-                    return CoopStatus.ContributionAmount / Contract.ContractTime.TotalSeconds;
-                if(CoopStatus is not null)
-                    return CoopStatus.ContributionRate;
-                return 0;
+                if(CoopStatus is null)
+                    return 0;
+                return CoopStatus.ContributionRate == 0 ? CoopStatus.ContributionAmount / Contract.ContractTime.TotalSeconds : CoopStatus.ContributionRate;
             }
         }
 
         public double EggsShipped {
-            get {
-                if(CoopStatus is not null)
-                    return CoopStatus.ContributionAmount;
-                return 0;
-            }
+            get { return CoopStatus?.ContributionAmount ?? 0; }
         }
 
         public DateTimeOffset? Started {
-            get {
-                if(Farm is not null)
-                    return DateTimeOffset.FromUnixTimeSeconds(Farm.TimeAccepted);
-                return null;
-            }
+            get { return Farm is not null ? DateTimeOffset.FromUnixTimeSeconds(Farm.TimeAccepted) : null; }
         }
 
         public double SiloTimeMinutes {
             get {
-                if(CoopStatus?.FarmInfo is not null) {
+                if(CoopStatus?.FarmInfo is not null)
                     return Research.GetFarmSiloTime(CoopStatus.FarmInfo);
-                } else if(Farm is not null) {
+                if(Farm is not null)
                     return Research.GetTotalSiloCapacity(Backup) * Farm.SilosOwned;
-                } else {
-                    return 6 * 60;
-                }
+                return 6 * 60;
             }
         }
 
@@ -165,7 +135,7 @@ namespace EGG9000.Common.Helpers {
                     offlineTime -= FarmingEnds - DateTimeOffset.UtcNow;
                 }
 
-                if(CoopStatus is not null && CoopStatus.Finalized) {
+                if(CoopStatus?.Finalized == true) {
                     offlineTime = TimeSpan.Zero;
                 }
 
@@ -174,14 +144,10 @@ namespace EGG9000.Common.Helpers {
         }
         public TimeSpan OfflineWithSiloTime {
             get {
-                if(CoopStatus?.FarmInfo is not null) {
-                    var siloTimeMinutes = Research.GetFarmSiloTime(CoopStatus.FarmInfo);
-                    if(OfflineTime.TotalMinutes > siloTimeMinutes) {
-                        return TimeSpan.FromMinutes(siloTimeMinutes);
-                    }
-                    return OfflineTime;
-                }
-                return TimeSpan.Zero;
+                if(CoopStatus?.FarmInfo is null)
+                    return TimeSpan.Zero;
+                var siloTimeMinutes = Research.GetFarmSiloTime(CoopStatus.FarmInfo);
+                return OfflineTime.TotalMinutes > siloTimeMinutes ? TimeSpan.FromMinutes(siloTimeMinutes) : OfflineTime;
             }
         }
 
@@ -218,7 +184,6 @@ namespace EGG9000.Common.Helpers {
                         var sleepTime = Math.Max(OfflineWithSiloTime.TotalSeconds - (FarmingEnds - DateTimeOffset.UtcNow).TotalSeconds, 0);
                         _projected = EggsShipped + Rate * sleepTime;
                     }
-
                 }
                 return _projected.Value;
             }
@@ -232,26 +197,16 @@ namespace EGG9000.Common.Helpers {
         }
 
         public double NumChickens {
-            get {
-                return CoopStatus?.ProductionParams is not null ?
-                    CoopStatus.ProductionParams.FarmPopulation :
-                    Farm?.NumChickens ?? 0;
-            }
+            get { return CoopStatus?.ProductionParams?.FarmPopulation ?? Farm?.NumChickens ?? 0; }
         }
 
         public string EggIncId {
-            get {
-                return Backup is not null ?
-                    Backup.EggIncId : CoopStatus?.GetID() ?? Xref.EggIncId;
-            }
+            get { return Backup is not null ? Backup.EggIncId : CoopStatus?.GetID() ?? Xref.EggIncId; }
         }
 
         public string Name {
-            get {
-                return DiscordUser?.GetCleanName() ?? (string.IsNullOrWhiteSpace(CoopStatus?.UserName) ? null : CoopStatus.UserName) ?? DBUser?.DiscordUsername ?? "[error getting name]";
-            }
+            get { return DiscordUser?.GetCleanName() ?? (string.IsNullOrWhiteSpace(CoopStatus?.UserName) ? null : CoopStatus.UserName) ?? DBUser?.DiscordUsername ?? "[error getting name]"; }
         }
-
 
         public TimeSpan TimeLeft {
             get {
@@ -312,12 +267,20 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public double OfflineEggs { get { return Rate * OfflineWithSiloTime.TotalSeconds; } }
+        public double OfflineEggs {
+            get { return Rate * OfflineWithSiloTime.TotalSeconds; }
+        }
 
-        public bool Completed { get { return Farm?.Completed ?? ArchivedFarm?.Completed ?? false; } }
+        public bool Completed {
+            get { return Farm?.Completed ?? ArchivedFarm?.Completed ?? false; }
+        }
 
-        public bool CancelledFarm { get { return Farm?.Cancelled ?? false; } }
+        public bool CancelledFarm {
+            get { return Farm?.Cancelled ?? false; }
+        }
 
-        public bool InCoop { get { return CoopStatus is not null || !string.IsNullOrEmpty(Farm?.CoopId); } }
+        public bool InCoop {
+            get { return CoopStatus is not null || !string.IsNullOrEmpty(Farm?.CoopId); }
+        }
     }
 }

@@ -1,6 +1,9 @@
 using EGG9000.Common.Database.Entities;
+
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+
 using Newtonsoft.Json;
+
 using System;
 
 namespace EGG9000.Test {

@@ -7,6 +7,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 
 namespace EGG9000.Test {
@@ -119,8 +121,8 @@ namespace EGG9000.Test {
 
         private static byte[] GzipStoredFixture(List<EggIncAccount> accounts) {
             var plain = MessagePackSerializer.Serialize(accounts, Plain);
-            using var output = new System.IO.MemoryStream();
-            using(var gzip = new System.IO.Compression.GZipStream(output, System.IO.Compression.CompressionLevel.Optimal))
+            using var output = new MemoryStream();
+            using(var gzip = new GZipStream(output, CompressionLevel.Optimal))
                 gzip.Write(plain, 0, plain.Length);
             return output.ToArray();
         }

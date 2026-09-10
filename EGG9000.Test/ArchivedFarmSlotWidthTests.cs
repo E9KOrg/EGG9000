@@ -48,23 +48,29 @@ namespace EGG9000.Test {
             [Key(11)] public List<string>? ReportedUUIDs { get; set; }
         }
 
-        private static CustomArchivedFarms Current(uint pe) => new() {
-            CoopId = "coop-width", ContractId = "contract-width", TimeAccepted = 1_650_000_000f, Completed = true,
-            League = 1, PEPossible = pe, PEGained = pe, ContributionAmount = 12.5f, Grade = PlayerGrade.GradeAa,
-            EvaluationCxp = 3.25f, NumGoalsAchieved = 3, ReportedUUIDs = ["a", "b"]
-        };
+        private static CustomArchivedFarms Current(uint pe) {
+            return new CustomArchivedFarms {
+                CoopId = "coop-width", ContractId = "contract-width", TimeAccepted = 1_650_000_000f, Completed = true,
+                League = 1, PEPossible = pe, PEGained = pe, ContributionAmount = 12.5f, Grade = PlayerGrade.GradeAa,
+                EvaluationCxp = 3.25f, NumGoalsAchieved = 3, ReportedUUIDs = ["a", "b"]
+            };
+        }
 
-        private static ByteShape Narrow(byte pe) => new() {
-            CoopId = "coop-width", ContractId = "contract-width", TimeAccepted = 1_650_000_000f, Completed = true,
-            League = 1, PEPossible = pe, PEGained = pe, ContributionAmount = 12.5f, Grade = PlayerGrade.GradeAa,
-            EvaluationCxp = 3.25f, NumGoalsAchieved = 3, ReportedUUIDs = ["a", "b"]
-        };
+        private static ByteShape Narrow(byte pe) {
+            return new ByteShape {
+                CoopId = "coop-width", ContractId = "contract-width", TimeAccepted = 1_650_000_000f, Completed = true,
+                League = 1, PEPossible = pe, PEGained = pe, ContributionAmount = 12.5f, Grade = PlayerGrade.GradeAa,
+                EvaluationCxp = 3.25f, NumGoalsAchieved = 3, ReportedUUIDs = ["a", "b"]
+            };
+        }
 
-        private static PreNarrowingShape Legacy(uint pe) => new() {
-            CoopId = "coop-width", ContractId = "contract-width", TimeAccepted = 1_650_000_000f, Completed = true,
-            League = 1, PEPossible = pe, PEGained = pe, ContributionAmount = 12.5f, Grade = PlayerGrade.GradeAa,
-            EvaluationCxp = 3.25f, NumGoalsAchieved = 3, ReportedUUIDs = ["a", "b"]
-        };
+        private static PreNarrowingShape Legacy(uint pe) {
+            return new PreNarrowingShape {
+                CoopId = "coop-width", ContractId = "contract-width", TimeAccepted = 1_650_000_000f, Completed = true,
+                League = 1, PEPossible = pe, PEGained = pe, ContributionAmount = 12.5f, Grade = PlayerGrade.GradeAa,
+                EvaluationCxp = 3.25f, NumGoalsAchieved = 3, ReportedUUIDs = ["a", "b"]
+            };
+        }
 
         [TestMethod]
         [DataRow(0)]

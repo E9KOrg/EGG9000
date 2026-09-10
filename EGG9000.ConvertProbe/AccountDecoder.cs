@@ -11,10 +11,10 @@ namespace EGG9000.ConvertProbe {
 
         public sealed record UserBlob(Guid Id, ulong DiscordId, byte[] Blob);
 
-        public sealed class DecodeResult {
-            public List<EggIncAccount> Accounts { get; init; }
-            public Exception Error { get; init; }
-            public bool Ok => Error is null;
+        public sealed record DecodeResult(List<EggIncAccount> Accounts, Exception Error) {
+            public bool Ok {
+                get { return Error is null; }
+            }
         }
 
         public static string FormatOf(byte[] blob) {
@@ -41,9 +41,9 @@ namespace EGG9000.ConvertProbe {
 
         public static DecodeResult Decode(byte[] blob) {
             try {
-                return new DecodeResult { Accounts = StorageCodec.Unpack<List<EggIncAccount>>(blob) ?? [] };
+                return new DecodeResult(StorageCodec.Unpack<List<EggIncAccount>>(blob) ?? [], null);
             } catch(Exception e) {
-                return new DecodeResult { Error = e };
+                return new DecodeResult(null, e);
             }
         }
 

@@ -17,11 +17,11 @@ namespace EGG9000.Common.Database {
 
         static CoopStatusCodec() {
             var raw = Environment.GetEnvironmentVariable("EGG9000_COOPSTATUS_PROTO");
-            ProtoWriteEnabled = string.Equals(raw, "1", StringComparison.OrdinalIgnoreCase) || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
+            ProtoWriteEnabled = raw is "1" || string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase);
         }
 
         public static byte[] Encode(Ei.ContractCoopStatusResponse status) {
-            if(!ProtoWriteEnabled || status == null)
+            if(!ProtoWriteEnabled || status is null)
                 return EncodeLegacy(status);
             return StorageCompression.Compress(status.ToByteArray(), StorageCompressionStrategy.CoopStatus);
         }
@@ -37,9 +37,9 @@ namespace EGG9000.Common.Database {
         public static Ei.ContractCoopStatusResponse Decode(byte[] stored) {
             if(stored is null or { Length: 0 })
                 return null;
-            if(stored is { Length: >= 2 } && stored[0] == 0x1F && stored[1] == 0x8B)
+            if(stored is [0x1F, 0x8B, ..])
                 return DecodeLegacy(stored);
-            if(stored is { Length: >= 2 } && stored[0] == ProtoMarker)
+            if(stored is [ProtoMarker, _, ..])
                 return DecodeProto(stored);
             if(StorageCompression.IsEnveloped(stored))
                 return WithRecomputedTimeLeft(Ei.ContractCoopStatusResponse.Parser.ParseFrom(StorageCompression.Decompress(stored)));

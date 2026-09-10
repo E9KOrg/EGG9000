@@ -16,40 +16,69 @@ namespace EGG9000.Common.Database {
         private static volatile StorageCompressionStrategy _accountGraph = new(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.Accounts1);
         private static volatile StorageCompressionStrategy _coopStatus = new(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.CoopStatus1);
 
-        public static StorageCompressionStrategy AccountGraph => _accountGraph;
-        public static StorageCompressionStrategy CoopStatus => _coopStatus;
+        public static StorageCompressionStrategy AccountGraph {
+            get {
+                return _accountGraph;
+            }
+        }
 
-        public static void SetAccountGraph(StorageDictionary dictionary) => _accountGraph = _accountGraph.WithDictionary(dictionary);
-        public static void SetCoopStatus(StorageDictionary dictionary) => _coopStatus = _coopStatus.WithDictionary(dictionary);
+        public static StorageCompressionStrategy CoopStatus {
+            get {
+                return _coopStatus;
+            }
+        }
 
-        public StorageCompressionStrategy WithDictionary(StorageDictionary dictionary) => new(StorageCompressionAlgorithm.Zstd, BrotliQuality, RawThreshold, ZstdLevel, dictionary);
+        public static void SetAccountGraph(StorageDictionary dictionary) {
+            _accountGraph = _accountGraph.WithDictionary(dictionary);
+        }
+
+        public static void SetCoopStatus(StorageDictionary dictionary) {
+            _coopStatus = _coopStatus.WithDictionary(dictionary);
+        }
+
+        public StorageCompressionStrategy WithDictionary(StorageDictionary dictionary) {
+            return new(StorageCompressionAlgorithm.Zstd, BrotliQuality, RawThreshold, ZstdLevel, dictionary);
+        }
 
         public StorageCompressionAlgorithm Algorithm { get; } = algorithm;
         public int BrotliQuality { get; } = brotliQuality;
         public int RawThreshold { get; } = rawThreshold;
         public int ZstdLevel { get; } = zstdLevel;
         public StorageDictionary Dictionary { get; } = dictionary;
-        public byte DictionaryId => Dictionary?.Id ?? StorageDictionary.None;
-        public int HeaderLength => StorageCompression.HeaderLength(Algorithm);
+        public byte DictionaryId {
+            get {
+                return Dictionary?.Id ?? StorageDictionary.None;
+            }
+        }
+
+        public int HeaderLength {
+            get {
+                return StorageCompression.HeaderLength(Algorithm);
+            }
+        }
     }
 
     public static class StorageCompression {
         public const byte Marker = 0xEB;
 
-        public static int HeaderLength(StorageCompressionAlgorithm algorithm) => algorithm == StorageCompressionAlgorithm.Zstd ? 3 : 2;
+        public static int HeaderLength(StorageCompressionAlgorithm algorithm) {
+            return algorithm == StorageCompressionAlgorithm.Zstd ? 3 : 2;
+        }
 
         public static byte[] Compress(byte[] plain, StorageCompressionStrategy strategy) {
             ArgumentNullException.ThrowIfNull(plain);
             ArgumentNullException.ThrowIfNull(strategy);
-            if(strategy.Algorithm == StorageCompressionAlgorithm.Raw || plain.Length <= strategy.RawThreshold)
-                return Envelope(StorageCompressionAlgorithm.Raw, plain);
-            var compressed = Encode(plain, strategy);
-            return compressed.Length + strategy.HeaderLength < plain.Length + HeaderLength(StorageCompressionAlgorithm.Raw)
-                ? Envelope(strategy.Algorithm, compressed, strategy.DictionaryId)
-                : Envelope(StorageCompressionAlgorithm.Raw, plain);
+            if(strategy.Algorithm != StorageCompressionAlgorithm.Raw && plain.Length > strategy.RawThreshold) {
+                var compressed = Encode(plain, strategy);
+                if(compressed.Length + strategy.HeaderLength < plain.Length + HeaderLength(StorageCompressionAlgorithm.Raw))
+                    return Envelope(strategy.Algorithm, compressed, strategy.DictionaryId);
+            }
+            return Envelope(StorageCompressionAlgorithm.Raw, plain);
         }
 
-        public static bool IsEnveloped(byte[] stored) => stored is { Length: >= 2 } && stored[0] == Marker;
+        public static bool IsEnveloped(byte[] stored) {
+            return stored is [Marker, _, ..];
+        }
 
         public static byte[] Decompress(byte[] stored) {
             if(!IsEnveloped(stored))

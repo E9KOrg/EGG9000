@@ -16,6 +16,8 @@ namespace EGG9000.Test.Integration;
 [TestClass]
 [TestCategory("Integration")]
 public class StorageSweepTests {
+    public TestContext? TestContext { get; set; }
+
     private const string ContractId = "storage-sweep-contract";
     private static readonly byte[] CorruptAccounts = [0xC1, 0xFF, 0x00];
     private static readonly byte[] CorruptCoopStatus = [0x00, 0x01];
@@ -52,13 +54,13 @@ public class StorageSweepTests {
         return status;
     }
 
-    private static async Task WithWriteFlagsAsync(bool enabled, Func<Task> action) {
+    private static byte[] LegacyCoopStatusBytes(string coopId) {
         var priorCompress = StorageCodec.CompressWriteEnabled;
         var priorProto = CoopStatusCodec.ProtoWriteEnabled;
-        StorageCodec.CompressWriteEnabled = enabled;
-        CoopStatusCodec.ProtoWriteEnabled = enabled;
+        StorageCodec.CompressWriteEnabled = false;
+        CoopStatusCodec.ProtoWriteEnabled = false;
         try {
-            await action();
+            return CoopStatusCodec.Encode(SampleStatus(coopId));
         } finally {
             StorageCodec.CompressWriteEnabled = priorCompress;
             CoopStatusCodec.ProtoWriteEnabled = priorProto;
@@ -68,15 +70,19 @@ public class StorageSweepTests {
     private static async Task RunSweepAsync(CancellationToken token) {
         var priorEnabled = Environment.GetEnvironmentVariable(StorageSweepOptions.EnabledVariable);
         var priorDelay = Environment.GetEnvironmentVariable(StorageSweepOptions.BatchDelayVariable);
+        var priorCompress = StorageCodec.CompressWriteEnabled;
+        var priorProto = CoopStatusCodec.ProtoWriteEnabled;
         Environment.SetEnvironmentVariable(StorageSweepOptions.EnabledVariable, "1");
         Environment.SetEnvironmentVariable(StorageSweepOptions.BatchDelayVariable, "0");
+        StorageCodec.CompressWriteEnabled = true;
+        CoopStatusCodec.ProtoWriteEnabled = true;
         try {
-            await WithWriteFlagsAsync(true, async () => {
-                await using var provider = BuildProvider();
-                var sweep = new StorageSweep(provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<StorageSweep>.Instance);
-                await sweep.RunOnceAsync(token);
-            });
+            await using var provider = BuildProvider();
+            var sweep = new StorageSweep(provider.GetRequiredService<IServiceScopeFactory>(), NullLogger<StorageSweep>.Instance);
+            await sweep.RunOnceAsync(token);
         } finally {
+            StorageCodec.CompressWriteEnabled = priorCompress;
+            CoopStatusCodec.ProtoWriteEnabled = priorProto;
             Environment.SetEnvironmentVariable(StorageSweepOptions.EnabledVariable, priorEnabled);
             Environment.SetEnvironmentVariable(StorageSweepOptions.BatchDelayVariable, priorDelay);
         }
@@ -128,8 +134,8 @@ public class StorageSweepTests {
         var token = TestContext!.CancellationToken;
         var legacyOne = LegacyAccountBytes("EI0000000000000001");
         var legacyTwo = LegacyAccountBytes("EI0000000000000002");
-        var coopOne = await WithFlagsOffAsync(() => CoopStatusCodec.Encode(SampleStatus("sweep-one")));
-        var coopTwo = await WithFlagsOffAsync(() => CoopStatusCodec.Encode(SampleStatus("sweep-two")));
+        var coopOne = LegacyCoopStatusBytes("sweep-one");
+        var coopTwo = LegacyCoopStatusBytes("sweep-two");
 
         var userOne = NewUser(998_111_001, legacyOne);
         var userTwo = NewUser(998_111_002, legacyTwo);
@@ -211,11 +217,14 @@ public class StorageSweepTests {
             await ctx.SaveChangesAsync(token);
         }
 
-        SweepOutcome outcome = default;
-        await WithWriteFlagsAsync(true, () => {
+        var priorCompress = StorageCodec.CompressWriteEnabled;
+        StorageCodec.CompressWriteEnabled = true;
+        SweepOutcome outcome;
+        try {
             outcome = StorageSweepCodec.Accounts(stored);
-            return Task.CompletedTask;
-        });
+        } finally {
+            StorageCodec.CompressWriteEnabled = priorCompress;
+        }
         Assert.AreEqual(SweepOutcomeKind.Converted, outcome.Kind);
 
         var other = LegacyAccountBytes("EI0000000000000021", "EI0000000000000022");
@@ -231,15 +240,4 @@ public class StorageSweepTests {
         Assert.AreEqual(0, affected);
         CollectionAssert.AreEqual(other, await UserBlobAsync(user.Id, token));
     }
-
-    private static async Task<byte[]> WithFlagsOffAsync(Func<byte[]> encode) {
-        byte[] result = [];
-        await WithWriteFlagsAsync(false, () => {
-            result = encode();
-            return Task.CompletedTask;
-        });
-        return result;
-    }
-
-    public TestContext? TestContext { get; set; }
 }

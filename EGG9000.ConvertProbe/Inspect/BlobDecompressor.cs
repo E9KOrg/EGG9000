@@ -78,14 +78,7 @@ namespace EGG9000.ConvertProbe.Inspect {
                 var d = 0;
                 while(s < src.Length) {
                     var token = src[s++];
-                    var literal = token >> 4;
-                    if(literal == 15) {
-                        byte more;
-                        do {
-                            more = src[s++];
-                            literal += more;
-                        } while(more == 255);
-                    }
+                    var literal = ExtendLength(src, ref s, token >> 4);
                     src.Slice(s, literal).CopyTo(dst.Slice(d));
                     s += literal;
                     d += literal;
@@ -94,20 +87,22 @@ namespace EGG9000.ConvertProbe.Inspect {
                     s += 2;
                     if(offset == 0 || offset > d)
                         throw new InvalidDataException($"LZ4 match offset {offset} out of range at output {d}.");
-                    var match = token & 15;
-                    if(match == 15) {
-                        byte more;
-                        do {
-                            more = src[s++];
-                            match += more;
-                        } while(more == 255);
-                    }
-                    match += 4;
+                    var match = ExtendLength(src, ref s, token & 15) + 4;
                     var from = d - offset;
                     for(var i = 0; i < match; i++)
                         dst[d++] = dst[from++];
                 }
                 return d;
+            }
+
+            private static int ExtendLength(ReadOnlySpan<byte> src, ref int s, int length) {
+                if(length != 15) return length;
+                byte more;
+                do {
+                    more = src[s++];
+                    length += more;
+                } while(more == 255);
+                return length;
             }
         }
     }

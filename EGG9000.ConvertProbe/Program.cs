@@ -17,12 +17,13 @@ namespace EGG9000.ConvertProbe {
                 PrintHelp();
                 return options.Help ? 0 : 1;
             }
-            if(options.Verb != "diff" && string.IsNullOrWhiteSpace(options.Conn)) {
+            var needsDatabase = options.Verb != "diff";
+            if(needsDatabase && string.IsNullOrWhiteSpace(options.Conn)) {
                 Console.Error.WriteLine("--conn is required.");
                 return 1;
             }
             try {
-                if(options.Verb != "diff") {
+                if(needsDatabase) {
                     using var context = options.CreateContext();
                     StorageDictionaryLoader.EnsureLoaded(context);
                 }

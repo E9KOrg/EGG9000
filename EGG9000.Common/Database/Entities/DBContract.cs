@@ -30,7 +30,9 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         private readonly JsonBlobAccessor<Ei.Contract> _details = new();
         [NotMapped]
-        public Ei.Contract Details => _details.Get(_response);
+        public Ei.Contract Details {
+            get { return _details.Get(_response); }
+        }
         public void OverwriteDetails(Ei.Contract details) {
             _response = _details.Set(details, _response);
         }
@@ -64,22 +66,25 @@ namespace EGG9000.Common.Database.Entities {
         public TimeSpan ContractTime {
             get {
                 var fromDetails = Details?.LengthSeconds ?? 0;
-                if(fromDetails > 0) {
-                    return TimeSpan.FromSeconds(fromDetails);
-                }
-                if(length_seconds > 0) {
-                    return TimeSpan.FromSeconds(length_seconds);
-                }
+                if(fromDetails > 0) return TimeSpan.FromSeconds(fromDetails);
+                if(length_seconds > 0) return TimeSpan.FromSeconds(length_seconds);
                 return TimeSpan.FromSeconds(P7);
             }
         }
 
         [NotMapped]
-        public List<Ei.Contract.Types.Goal> GoalsDetail => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(goals);
+        public List<Ei.Contract.Types.Goal> GoalsDetail {
+            get { return JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(goals); }
+        }
 
         // Derived from the proto rather than a DB column so legacy re-runs of old seasonal contracts keep the original season ID
         [NotMapped]
-        public string SeasonId => string.IsNullOrEmpty(Details?.SeasonId) ? null : Details.SeasonId;
+        public string SeasonId {
+            get {
+                if(string.IsNullOrEmpty(Details?.SeasonId)) return null;
+                return Details.SeasonId;
+            }
+        }
 
         public List<GuildContract> GuildContracts { get; set; }
 

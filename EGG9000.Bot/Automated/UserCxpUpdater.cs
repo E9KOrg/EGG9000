@@ -33,9 +33,9 @@ namespace EGG9000.Bot.Automated {
                 existingScores = await lookupDb.UserCsHistoryEntries.AsNoTracking().ToListAsync(CancellationToken.None);
                 _logger.LogInformation("Finished Getting scores");
             }
-            var scoreIndex = new Dictionary<(string ContractIdentifier, string CoopIdentifier, string EggIncId), UserCsHistoryEntry>(existingScores.Count);
-            foreach(var score in existingScores)
-                scoreIndex.TryAdd((score.ContractIdentifier, score.CoopIdentifier, score.EggIncId), score);
+            var scoreIndex = existingScores
+                .DistinctBy(x => (x.ContractIdentifier, x.CoopIdentifier, x.EggIncId))
+                .ToDictionary(x => (x.ContractIdentifier, x.CoopIdentifier, x.EggIncId));
 
             var chunkSize = 25;
             var count = 0;

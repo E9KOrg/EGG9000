@@ -3,7 +3,6 @@ using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
@@ -16,11 +15,8 @@ public partial class NasaApod {
     [Key]
     public Guid ID {
         get {
-            if(_idCache == Guid.Empty) {
-                var inputBytes = Encoding.UTF8.GetBytes($"{Url}|{Title}");
-                var hashBytes = SHA256.HashData(inputBytes);
-                _idCache = new Guid([.. hashBytes.Take(16)]);
-            }
+            if(_idCache == Guid.Empty)
+                _idCache = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes($"{Url}|{Title}")).AsSpan(0, 16));
             return _idCache;
         }
         private set { _idCache = value; }
@@ -70,21 +66,17 @@ public partial class NasaApod {
     [NotMapped]
     public string BestUrl {
         get {
-            if(_bestUrlCache == string.Empty) {
-                _bestUrlCache = string.IsNullOrEmpty(HdUrl) ? Url : HdUrl;
-            }
-            return _bestUrlCache;
+            if(string.IsNullOrEmpty(HdUrl)) return Url;
+            return HdUrl;
         }
     }
-    private string _bestUrlCache = string.Empty;
 
     [JsonIgnore]
     [NotMapped]
     public DateTimeOffset Date {
         get {
-            if(_dateCache == DateTimeOffset.MinValue) {
+            if(_dateCache == DateTimeOffset.MinValue)
                 _dateCache = DateTimeOffset.ParseExact(DateString, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            }
             return _dateCache;
         }
     }

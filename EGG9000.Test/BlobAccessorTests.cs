@@ -14,6 +14,12 @@ namespace EGG9000.Test {
 
         private static readonly MessagePackSerializerOptions Lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
 
+        private static CodecBlobAccessor<ContributionInfoCompact> NewCodecAccessor() {
+            return new CodecBlobAccessor<ContributionInfoCompact>(
+                stored => MessagePackSerializer.Deserialize<ContributionInfoCompact>(stored, Lz4Options),
+                value => MessagePackSerializer.Serialize(value, Lz4Options));
+        }
+
         [TestMethod]
         public void MessagePack_RoundTrip() {
             var writer = new MessagePackBlobAccessor<ContributionInfoCompact>(Lz4Options);
@@ -115,10 +121,6 @@ namespace EGG9000.Test {
 
             Assert.AreSame(stored, accessor.Set(value, stored));
         }
-
-        private static CodecBlobAccessor<ContributionInfoCompact> NewCodecAccessor()
-            => new(stored => MessagePackSerializer.Deserialize<ContributionInfoCompact>(stored, Lz4Options),
-                value => MessagePackSerializer.Serialize(value, Lz4Options));
 
         [TestMethod]
         public void Json_RoundTrip() {

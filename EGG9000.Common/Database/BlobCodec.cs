@@ -11,22 +11,32 @@ namespace EGG9000.Common.Database {
     }
 
     public sealed class MessagePackBlobCodec<T>(MessagePackSerializerOptions options = null) : IBlobCodec<T, byte[]> {
-        private readonly MessagePackSerializerOptions _options = options;
+        public T Decode(byte[] stored) {
+            return MessagePackSerializer.Deserialize<T>(stored, options);
+        }
 
-        public T Decode(byte[] stored) => MessagePackSerializer.Deserialize<T>(stored, _options);
-        public byte[] Encode(T value) => MessagePackSerializer.Serialize(value, _options);
+        public byte[] Encode(T value) {
+            return MessagePackSerializer.Serialize(value, options);
+        }
     }
 
     public sealed class JsonBlobCodec<T> : IBlobCodec<T, string> {
-        public T Decode(string stored) => JsonConvert.DeserializeObject<T>(stored);
-        public string Encode(T value) => JsonConvert.SerializeObject(value);
+        public T Decode(string stored) {
+            return JsonConvert.DeserializeObject<T>(stored);
+        }
+
+        public string Encode(T value) {
+            return JsonConvert.SerializeObject(value);
+        }
     }
 
     public sealed class DelegateBlobCodec<T>(Func<byte[], T> decode, Func<T, byte[]> encode) : IBlobCodec<T, byte[]> {
-        private readonly Func<byte[], T> _decode = decode;
-        private readonly Func<T, byte[]> _encode = encode;
+        public T Decode(byte[] stored) {
+            return decode(stored);
+        }
 
-        public T Decode(byte[] stored) => _decode(stored);
-        public byte[] Encode(T value) => _encode(value);
+        public byte[] Encode(T value) {
+            return encode(value);
+        }
     }
 }
