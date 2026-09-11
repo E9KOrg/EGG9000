@@ -1,16 +1,9 @@
-﻿using EGG9000.Common.Helpers;
-
-using Microsoft.EntityFrameworkCore;
-
-using Newtonsoft.Json;
+﻿using Microsoft.EntityFrameworkCore;
 
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
     [Index(nameof(Status))]
@@ -69,52 +62,16 @@ namespace EGG9000.Common.Database.Entities {
         public byte[] _StatusCompressed { get; set; }
 
         [NotMapped]
-        private Ei.ContractCoopStatusResponse _status { get; set; }
+        private readonly CodecBlobAccessor<Ei.ContractCoopStatusResponse> _status = new(CoopStatusCodec.Decode, CoopStatusCodec.Encode);
 
         [NotMapped]
         public Ei.ContractCoopStatusResponse LastStatusUpdate {
-            get {
-                if(_status != null) return _status;
-                if(_StatusCompressed == null) return null;
-
-                using var msi = new MemoryStream(_StatusCompressed);
-                using var mso = new MemoryStream();
-                using(var gs = new GZipStream(msi, CompressionMode.Decompress)) {
-                    CopyTo(gs, mso);
-                }
-
-                _status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse>(Encoding.UTF8.GetString(mso.ToArray()));
-                return _status;
-            }
+            get { return _status.Get(_StatusCompressed); }
             set {
-                _status = value;
-                var bytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(value, new JsonSerializerSettings { ContractResolver = new CustomContractResolver() }));
-
-                byte[] compressed;
-                using(var msi = new MemoryStream(bytes))
-                using(var mso = new MemoryStream()) {
-                    using(var gs = new GZipStream(mso, CompressionMode.Compress)) {
-                        CopyTo(msi, gs);
-                    }
-
-                    compressed = mso.ToArray();
-                }
-
                 // Only reassign the mapped LOB column when the payload actually changed, so EF Core
                 // does not rewrite _StatusCompressed every status cycle. That blob write is the
                 // heaviest and most lock-contended write on Coops during contract launches.
-                if(_StatusCompressed is null || !_StatusCompressed.AsSpan().SequenceEqual(compressed))
-                    _StatusCompressed = compressed;
-            }
-        }
-
-        public static void CopyTo(Stream src, Stream dst) {
-            var bytes = new byte[4096];
-
-            int cnt;
-
-            while((cnt = src.Read(bytes, 0, bytes.Length)) != 0) {
-                dst.Write(bytes, 0, cnt);
+                _StatusCompressed = _status.Set(value, _StatusCompressed);
             }
         }
 

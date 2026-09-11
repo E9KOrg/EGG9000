@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class DemeritModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
+    public class DemeritModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
         [SlashCommand("demerits", "List your demerits")]
         [CommandContextType(Discord.InteractionContextType.Guild, Discord.InteractionContextType.BotDm)]
         public async Task Demerits() {

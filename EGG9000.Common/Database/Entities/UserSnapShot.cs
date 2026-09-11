@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -21,14 +20,11 @@ namespace EGG9000.Common.Database.Entities {
         public string VirtueStatsJson { get; set; } = "{}";
 
         [NotMapped]
-        private VirtueSnapshotStats _virtueStats;
+        private readonly JsonBlobAccessor<VirtueSnapshotStats> _virtueStats = new("{}", () => new VirtueSnapshotStats());
         [NotMapped]
         public VirtueSnapshotStats VirtueStats {
-            get => _virtueStats ??= JsonConvert.DeserializeObject<VirtueSnapshotStats>(VirtueStatsJson ?? "{}") ?? new VirtueSnapshotStats();
-            set {
-                _virtueStats = value;
-                VirtueStatsJson = JsonConvert.SerializeObject(value);
-            }
+            get { return _virtueStats.Get(VirtueStatsJson); }
+            set { VirtueStatsJson = _virtueStats.Set(value, VirtueStatsJson); }
         }
     }
 
@@ -41,17 +37,20 @@ namespace EGG9000.Common.Database.Entities {
         public uint ShiftCount { get; set; }
         public uint Resets { get; set; }
 
-        public bool Equals(VirtueSnapshotStats other) =>
-            other is not null
-            && CurrentEgg == other.CurrentEgg
-            && TeTotal == other.TeTotal
-            && TeEarned == other.TeEarned
-            && TePending == other.TePending
-            && ShiftCount == other.ShiftCount
-            && Resets == other.Resets
-            && Delivered.OrderBy(kv => kv.Key).SequenceEqual(other.Delivered.OrderBy(kv => kv.Key));
+        public bool Equals(VirtueSnapshotStats other) {
+            return other is not null
+                && CurrentEgg == other.CurrentEgg
+                && TeTotal == other.TeTotal
+                && TeEarned == other.TeEarned
+                && TePending == other.TePending
+                && ShiftCount == other.ShiftCount
+                && Resets == other.Resets
+                && Delivered.OrderBy(kv => kv.Key).SequenceEqual(other.Delivered.OrderBy(kv => kv.Key));
+        }
 
-        public override bool Equals(object obj) => Equals(obj as VirtueSnapshotStats);
+        public override bool Equals(object obj) {
+            return Equals(obj as VirtueSnapshotStats);
+        }
 
         public override int GetHashCode() {
             var hash = new HashCode();

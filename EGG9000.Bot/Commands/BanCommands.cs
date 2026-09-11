@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers.Discord;
@@ -35,8 +36,8 @@ namespace EGG9000.Bot.Commands {
 
     [Group("b", "Ban management commands")]
     [DefaultMemberPermissions(GuildPermission.Administrator)]
-    [Interactions.StaffOnly(Interactions.StaffTier.Admin)]
-    public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : Interactions.E9KModuleBase(dbFactory) {
+    [StaffOnly(StaffTier.Admin)]
+    public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
         private async Task<List<DBUser>> FetchBannedUsers(ulong guildId) {
@@ -122,7 +123,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("ban", "Kick user(s) with DM and ban their EID(s) from the server")]
         public async Task Ban(
             [Summary("reason", "reason")] string reason,
-            [ComplexParameter] Interactions.UserSlots userSlots) {
+            [ComplexParameter] UserSlots userSlots) {
             await Context.Interaction.DeferAsync();
             var users = userSlots.Users;
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));
@@ -191,15 +192,15 @@ namespace EGG9000.Bot.Commands {
     // Flat (non-grouped) command. Was a top-level /kick before the Discord.NET migration and was
     // incorrectly nested under /admin in that migration - kept flat here to preserve the
     // pre-migration command name.
-    public class KickModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : Interactions.E9KModuleBase(dbFactory) {
+    public class KickModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
         [SlashCommand("kick", "Kick user(s) with DM")]
         [DefaultMemberPermissions(GuildPermission.ManageChannels)]
-        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
+        [StaffOnly(StaffTier.CluckingCoordinator)]
         public async Task Kick(
             [Summary("reason", "reason")] string reason,
-            [ComplexParameter] Interactions.UserSlots userSlots) {
+            [ComplexParameter] UserSlots userSlots) {
             await Context.Interaction.DeferAsync();
             var users = userSlots.Users;
             var guild = _client.Guilds.FirstOrDefault(x => x.TextChannels.Any(y => y.Id == Context.Channel.Id));

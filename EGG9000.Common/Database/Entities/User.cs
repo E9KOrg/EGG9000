@@ -8,6 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 using Newtonsoft.Json;
 
+using NLog;
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -20,7 +22,7 @@ namespace EGG9000.Common.Database.Entities {
     [Index(nameof(LastBackupCheck))]
     public class DBUser : ILastModified {
         [NotMapped]
-        public static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
+        public static readonly MessagePackSerializerOptions lz4Options = StorageMessagePack.Options;
 
         public Guid Id { get; set; }
         public DateTimeOffset LastModified { get; set; } = DateTimeOffset.UtcNow;
@@ -86,21 +88,11 @@ namespace EGG9000.Common.Database.Entities {
         public bool StaleBackup { get; set; } = false;
 
         [NotMapped]
-        private CoopSetting _coopSetting { get; set; }
+        private readonly MessagePackBlobAccessor<CoopSetting> _coopSetting = new(lz4Options);
         [NotMapped]
         public CoopSetting CoopSetting {
-            get {
-                if(_coopSetting != null)
-                    return _coopSetting;
-                if(_coopSettingByte == null)
-                    return null;
-                _coopSetting = MessagePackSerializer.Deserialize<CoopSetting>(_coopSettingByte, lz4Options);
-                return _coopSetting;
-            }
-            set {
-                _coopSetting = value;
-                _coopSettingByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            get { return _coopSetting.Get(_coopSettingByte); }
+            set { _coopSettingByte = _coopSetting.Set(value, _coopSettingByte); }
         }
 
         public bool Banned { get; set; } = false;
@@ -109,30 +101,18 @@ namespace EGG9000.Common.Database.Entities {
         public string EIDs { get; set; } = ""; //Comma delimited list of EID(s) associated with EggIncAccounts
         [NotMapped]
         public List<string> EIDsList {
-            get {
-                return [.. EIDs.Split(',')];
-            }
+            get { return [.. EIDs.Split(',')]; }
         }
 
         public DateTimeOffset? LastFAQPosted { get; set; }
 
         [NotMapped]
-        private List<ShipDM> _shipDMs { get; set; }
+        private readonly MessagePackBlobAccessor<List<ShipDM>> _shipDMs = new(lz4Options);
 
         [NotMapped]
         public List<ShipDM> ShipDMs {
-            get {
-                if(_shipDMs != null)
-                    return _shipDMs;
-                if(_shipDMsByte == null)
-                    return null;
-                _shipDMs = MessagePackSerializer.Deserialize<List<ShipDM>>(_shipDMsByte, lz4Options);
-                return _shipDMs;
-            }
-            set {
-                _shipDMs = value;
-                _shipDMsByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            get { return _shipDMs.Get(_shipDMsByte); }
+            set { _shipDMsByte = _shipDMs.Set(value, _shipDMsByte); }
         }
 
         public byte[] _contractRegistrationByte { get; set; }
@@ -142,11 +122,17 @@ namespace EGG9000.Common.Database.Entities {
         // these columns instead of loading every user's full row (ship-DM / coop-setting / backup
         // blobs). _CustomBackups only hydrates account.Backup, which id checks never touch, so the
         // id set is identical to the full entity. Covered by DBUserProjectionTests.
-        public static DBUser FromAccountColumns(string eggIncIds, byte[] contractRegistrationByte)
-            => new() { _eggIncIds = eggIncIds, _contractRegistrationByte = contractRegistrationByte };
+        public static DBUser FromAccountColumns(string eggIncIds, byte[] contractRegistrationByte) {
+            return new() { _eggIncIds = eggIncIds, _contractRegistrationByte = contractRegistrationByte };
+        }
+
+        [NotMapped]
+        private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
 
         [NotMapped]
         private List<EggIncAccount> _accounts = null;
+        [NotMapped]
+        public bool AccountsUnreadable { get; private set; }
         [NotMapped]
         public List<EggIncAccount> EggIncAccounts {
             get {
@@ -157,8 +143,9 @@ namespace EGG9000.Common.Database.Entities {
                         return _accounts;
                     } else {
                         try {
-                            _accounts = MessagePackSerializer.Deserialize<List<EggIncAccount>>(_contractRegistrationByte, lz4Options);
-                        } catch(MessagePackSerializationException) {
+                            _accounts = StorageCodec.Unpack<List<EggIncAccount>>(_contractRegistrationByte);
+                        } catch(MessagePackSerializationException e) {
+                            MarkAccountsUnreadable(e);
                             _accounts = [];
                             return _accounts;
                         }
@@ -223,9 +210,13 @@ namespace EGG9000.Common.Database.Entities {
                         }
                     }
                     return _accounts;
-                } catch(MessagePackSerializationException) {
-                    return [];
-                } catch(Exception) { throw; }
+                } catch(MessagePackSerializationException e) {
+                    MarkAccountsUnreadable(e);
+                    return _accounts ?? [];
+                } catch(Google.Protobuf.InvalidProtocolBufferException e) {
+                    MarkAccountsUnreadable(e);
+                    return _accounts ?? [];
+                }
             }
             set {
                 if(value is null) return;
@@ -235,12 +226,25 @@ namespace EGG9000.Common.Database.Entities {
 
         }
 
+        private void MarkAccountsUnreadable(Exception e) {
+            if(AccountsUnreadable)
+                return;
+            AccountsUnreadable = true;
+            var length = _contractRegistrationByte?.Length ?? 0;
+            var head = length > 0 ? Convert.ToHexString(_contractRegistrationByte.AsSpan(0, Math.Min(12, length))) : "";
+            _logger.Error(e, "Accounts column unreadable for user {DiscordId} ({Id}): {Length} bytes, head {Head}. Column left untouched.", DiscordId, Id, length, head);
+        }
+
         public bool UpdateAccounts() {
-            if(_eggIncIds is not null)
-                _eggIncIds = null;
-            var compressedAccounts = MessagePackSerializer.Serialize(_accounts, lz4Options);
-            var changed = compressedAccounts != _contractRegistrationByte;
-            _contractRegistrationByte = compressedAccounts;
+            if(AccountsUnreadable) {
+                _logger.Warn("Refused to overwrite unreadable accounts column for user {DiscordId} ({Id}) with {Count} account(s).", DiscordId, Id, _accounts?.Count ?? 0);
+                return false;
+            }
+            _eggIncIds = null;
+            var compressedAccounts = StorageCodec.Pack(_accounts);
+            var changed = _contractRegistrationByte is null || !compressedAccounts.AsSpan().SequenceEqual(_contractRegistrationByte);
+            if(changed)
+                _contractRegistrationByte = compressedAccounts;
             Usernames = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.UserName) ?? []);
             EIDs = string.Join(",", _accounts?.Where(a => a.Backup != null).Select(a => a.Backup.EggIncId) ?? []);
             return changed;
@@ -261,15 +265,9 @@ namespace EGG9000.Common.Database.Entities {
 
 
         public void UpdateNameAndId(ContractCoopStatusResponse.Types.ContributionInfo proto) {
-            var eggIncIds = EggIncAccounts;
-            var nameId = eggIncIds.First(x => x.Id == proto.UserId);
-
-            var update = false;
+            var nameId = EggIncAccounts.First(x => x.Id == proto.UserId);
             if(string.IsNullOrEmpty(nameId.Id)) {
                 nameId.Id = proto.UserId;
-                update = true;
-            }
-            if(update) {
                 UpdateAccounts();//Force JSON Update
             }
         }
@@ -287,14 +285,12 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public void AddName(string Name, CustomBackup backup, string Id = null) {
-            var eggIncIds = EggIncAccounts;
-            eggIncIds.Add(new EggIncAccount { Id = Id, Backup = backup });
+            EggIncAccounts.Add(new EggIncAccount { Id = Id, Backup = backup });
             UpdateAccounts();//Force JSON Update
         }
 
         public void RemoveID(string id) {
-            var eggIncIds = EggIncAccounts;
-            eggIncIds.RemoveAll(x => x.Id.Equals(id, StringComparison.CurrentCultureIgnoreCase));
+            EggIncAccounts.RemoveAll(x => x.Id.Equals(id, StringComparison.CurrentCultureIgnoreCase));
             UpdateAccounts();//Force JSON Update
         }
 
@@ -334,13 +330,7 @@ namespace EGG9000.Common.Database.Entities {
 
         public void UpdateUserBreak() {
             var accountsWithExpire = EggIncAccounts.Where(x => x.OnBreakUntil != default && !x.SentBreakWarning && x.OnBreakUntil > DateTimeOffset.UtcNow).ToList();
-
-            if(accountsWithExpire.Count == 0) {
-                NextBreakExpire = null;
-            } else if(EggIncAccounts.Count > 0) {
-                NextBreakExpire = accountsWithExpire.Min(x => x.OnBreakUntil);
-            }
-
+            NextBreakExpire = accountsWithExpire.Count == 0 ? null : accountsWithExpire.Min(x => x.OnBreakUntil);
         }
     }
 
@@ -486,9 +476,7 @@ namespace EGG9000.Common.Database.Entities {
         public async Task UpdateSubscriptionFromCustomBackup(Discord.WebSocket.DiscordSocketClient gateway, Discord.WebSocket.SocketGuild guild, Guild dbGuild, DBUser user) {
             if(Backup is null) return;
 
-            if(Backup.SubscriptionEnds != SubscriptionEnds) {
-                SubscriptionEnds = Backup.SubscriptionEnds;
-            }
+            SubscriptionEnds = Backup.SubscriptionEnds;
             if(Backup.SubscriptionLevel != SubscriptionLevel) {
                 await SubscriptionHelper.SubscriptionLevelChanged(gateway, guild, dbGuild, user, this);
                 SubscriptionLevel = Backup.SubscriptionLevel;
@@ -496,11 +484,7 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool HasActiveSubscription() {
-            if(SubscriptionLevel.HasValue && SubscriptionEnds > DateTimeOffset.UtcNow.ToUnixTimeSeconds()) {
-                return true;
-            }
-
-            return false;
+            return SubscriptionLevel.HasValue && SubscriptionEnds > DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         }
     }
 }

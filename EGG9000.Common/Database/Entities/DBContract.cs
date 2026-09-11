@@ -20,34 +20,41 @@ namespace EGG9000.Common.Database.Entities {
         public bool debug { get; set; }
         public double length_seconds { get; set; }
         public bool cc_only { get; set; } //Subscription needed
+        public double egg_value { get; set; }
+        public string Rewards { get; set; }
 
         public string _response { get; set; }
 
         public bool HadTwoRewards { get; set; }
 
-        public double egg_value { get; set; }
-
         [NotMapped]
-        private Ei.Contract _details { get; set; }
+        private readonly JsonBlobAccessor<Ei.Contract> _details = new();
         [NotMapped]
         public Ei.Contract Details {
-            get {
-                if(_response == null) {
-                    return null;
-                }
-                if(_details == null) {
-                    _details = JsonConvert.DeserializeObject<Ei.Contract>(_response);
-                }
-                return _details;
-            }
+            get { return _details.Get(_response); }
         }
         public void OverwriteDetails(Ei.Contract details) {
-            _details = details;
-            _response = JsonConvert.SerializeObject(details);
+            _response = _details.Set(details, _response);
+        }
+
+        public void ApplyDetails(Ei.Contract details) {
+            OverwriteDetails(details);
+            Name = details.Name;
+            Description = details.Description;
+            goals = JsonConvert.SerializeObject(details.Goals);
+            GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)details.ExpirationTime);
+            MaxUsers = (int)details.MaxCoopSize;
+            coop_allowed = details.CoopAllowed;
+            max_boosts = (int)details.MaxBoosts;
+            max_soul_eggs = details.MaxSoulEggs;
+            min_client_version = (int)details.MinClientVersion;
+            debug = details.Debug;
+            length_seconds = details.LengthSeconds;
+            egg = details.Egg.ToString();
+            cc_only = details.CcOnly;
         }
 
 
-        public string Rewards { get; set; }
         public int P2 { get; set; }
         public int P4 { get; set; }
         public double P6 { get; set; }
@@ -58,19 +65,26 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public TimeSpan ContractTime {
             get {
-                if(length_seconds == 0) {
-                    return TimeSpan.FromSeconds(P7);
-                }
-                return TimeSpan.FromSeconds(length_seconds);
+                var fromDetails = Details?.LengthSeconds ?? 0;
+                if(fromDetails > 0) return TimeSpan.FromSeconds(fromDetails);
+                if(length_seconds > 0) return TimeSpan.FromSeconds(length_seconds);
+                return TimeSpan.FromSeconds(P7);
             }
         }
 
         [NotMapped]
-        public List<Ei.Contract.Types.Goal> GoalsDetail => JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(goals);
+        public List<Ei.Contract.Types.Goal> GoalsDetail {
+            get { return JsonConvert.DeserializeObject<List<Ei.Contract.Types.Goal>>(goals); }
+        }
 
         // Derived from the proto rather than a DB column so legacy re-runs of old seasonal contracts keep the original season ID
         [NotMapped]
-        public string SeasonId => string.IsNullOrEmpty(Details?.SeasonId) ? null : Details.SeasonId;
+        public string SeasonId {
+            get {
+                if(string.IsNullOrEmpty(Details?.SeasonId)) return null;
+                return Details.SeasonId;
+            }
+        }
 
         public List<GuildContract> GuildContracts { get; set; }
 

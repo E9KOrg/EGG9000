@@ -102,9 +102,8 @@ namespace EGG9000.Bot.Automated {
                         significantChangeCount++;
                     }
 
-                    currentEvent.Type = evt.Type;
-                    currentEvent.Subtitle = evt.Subtitle;
-                    currentEvent.Multiplier = evt.Multiplier;
+                    if(currentEvent.DetailsChanged(evt))
+                        currentEvent.ApplyDetails(evt);
                     currentEvent.Ended = false;
 
                     if(!string.IsNullOrEmpty(currentEvent.MessageIds)) {
@@ -450,11 +449,7 @@ namespace EGG9000.Bot.Automated {
                             "nameChanged={nameChanged}, timeChanged={timeChanged}, priceChanged={priceChanged}, assetTypeChanged={assetTypeChanged}, expired={expired}",
                             shell.Identifier, nameChanged, timeChanged, priceChanged, assetTypeChanged, expired);
 
-                        expiringShell.Name = shell.Name;
-                        expiringShell.Expires = DateTimeOffset.UtcNow.AddSeconds(shell.SecondsRemaining);
-                        expiringShell.Price = shell.Price;
-                        expiringShell.AssetType = shell.AssetType;
-                        expiringShell.Json = JsonConvert.SerializeObject(shell);
+                        expiringShell.ApplyDetails(shell);
 
                         if(shell.SecondsRemaining < 0) {
                             expiringShell.Archived = true;
@@ -470,7 +465,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public static Embed GetShellEmbed(ExpiringShell expiringShell) {
-            var shell = JsonConvert.DeserializeObject<ShellObjectSpec>(expiringShell.Json);
+            var shell = expiringShell.Details;
             var embed = new EmbedBuilder()
                 .WithColor(shell.SecondsRemaining > 0 ? Color.Blue : Color.DarkGrey)
                 .WithAuthor("Egg, Inc Limited Time Shell", "https://vignette.wikia.nocookie.net/egg-inc/images/2/23/Egg-inc-icon.jpg/revision/latest/scale-to-width-down/180?cb=20160721002751")

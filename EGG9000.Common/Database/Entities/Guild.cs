@@ -24,9 +24,7 @@ namespace EGG9000.Common.Database.Entities {
         public string OverflowServersJson { get; set; }
         [NotMapped]
         public ReadOnlyCollection<ulong> OverflowServers {
-            get {
-                return JsonConvert.DeserializeObject<ReadOnlyCollection<ulong>>(OverflowServersJson ?? "[]");
-            }
+            get { return JsonConvert.DeserializeObject<ReadOnlyCollection<ulong>>(OverflowServersJson ?? "[]"); }
         }
 
         [GuildConfig("Co-op Name Prefix", "Text", GuildConfigKind.String, Description = "Prefix for auto-generated co-op names")]
@@ -47,33 +45,23 @@ namespace EGG9000.Common.Database.Entities {
 
         public string _coopSettingsJson { get; set; }
         [NotMapped]
-        private List<ServerCoopSetting> _coopSettings { get; set; }
+        private readonly JsonBlobAccessor<List<ServerCoopSetting>> _coopSettings = new("[]");
         [NotMapped]
         public List<ServerCoopSetting> CoopSettings {
-            get {
-                _coopSettings ??= JsonConvert.DeserializeObject<List<ServerCoopSetting>>(_coopSettingsJson ?? "[]");
-                return _coopSettings;
-            }
+            get { return _coopSettings.Get(_coopSettingsJson); }
             set {
                 value.RemoveAll(x => !x.Enabled && !x.Locked);
-                _coopSettings = value;
-                _coopSettingsJson = JsonConvert.SerializeObject(value);
+                _coopSettingsJson = _coopSettings.Set(value, _coopSettingsJson);
             }
         }
 
         public string _eventCustomizationsJson { get; set; }
         [NotMapped]
-        private List<EventCustomization> _eventCustomizations { get; set; }
+        private readonly JsonBlobAccessor<List<EventCustomization>> _eventCustomizations = new("[]");
         [NotMapped]
         public List<EventCustomization> EventCustomizations {
-            get {
-                _eventCustomizations ??= JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
-                return _eventCustomizations;
-            }
-            set {
-                _eventCustomizations = value;
-                _eventCustomizationsJson = JsonConvert.SerializeObject(value);
-            }
+            get { return _eventCustomizations.Get(_eventCustomizationsJson); }
+            set { _eventCustomizationsJson = _eventCustomizations.Set(value, _eventCustomizationsJson); }
         }
 
         public string _faqTopicsJson { get; set; }
@@ -99,24 +87,18 @@ namespace EGG9000.Common.Database.Entities {
                 if(string.IsNullOrEmpty(_rankupDisabledGroupsCsv)) return [];
                 return [.. _rankupDisabledGroupsCsv.Split(",", System.StringSplitOptions.RemoveEmptyEntries).Select(int.Parse)];
             }
-            set {
-                _rankupDisabledGroupsCsv = string.Join(",", value);
-            }
+            set { _rankupDisabledGroupsCsv = string.Join(",", value); }
         }
 
         public string _channelDetailsJson { get; set; }
         [NotMapped]
-        private List<ChannelDetail> _channelDetails { get; set; }
+        private readonly JsonBlobAccessor<List<ChannelDetail>> _channelDetails = new("[]");
         [NotMapped]
         public List<ChannelDetail> ChannelDetails {
-            get {
-                _channelDetails ??= JsonConvert.DeserializeObject<List<ChannelDetail>>(_channelDetailsJson ?? "[]");
-                return _channelDetails;
-            }
+            get { return _channelDetails.Get(_channelDetailsJson); }
             set {
                 value.RemoveAll(x => x.Id == 0);
-                _channelDetails = value;
-                _channelDetailsJson = JsonConvert.SerializeObject(value);
+                _channelDetailsJson = _channelDetails.Set(value, _channelDetailsJson);
             }
         }
         public bool HasChannel(GuildChannelType channelType) {
@@ -129,12 +111,10 @@ namespace EGG9000.Common.Database.Entities {
             return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) ?? new ServerCoopSetting { CoopSetting = coopSetting };
         }
         public bool IsLockedAndEnabled(GuildCoopSetting coopSetting) {
-            var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
-            return setting != null && setting.Enabled && setting.Locked;
+            return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) is { Enabled: true, Locked: true };
         }
         public bool IsLockedAndDisabled(GuildCoopSetting coopSetting) {
-            var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
-            return setting != null && !setting.Enabled && setting.Locked;
+            return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) is { Enabled: false, Locked: true };
         }
         [GuildConfig("Roles to Sync", "Lists", GuildConfigKind.CsvRoles, Description = "Roles synced to overflow servers")]
         public string RolesToSync { get; set; }

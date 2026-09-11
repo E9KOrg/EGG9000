@@ -1,3 +1,4 @@
+using EGG9000.Bot.Automated;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,11 @@ try {
     GlobalDiagnosticsContext.Set("CustomMachineName", machineName);
     GlobalDiagnosticsContext.Set("CustomAppName", "EGG9000.Bot");
     logger.Log(NLog.LogLevel.Info, "Main Start");
+
+    if(StorageSweepCli.Requested(args)) {
+        logger.Log(NLog.LogLevel.Info, "Storage sweep CLI mode: no Discord, no caches, explicit connection only");
+        return await StorageSweepCli.RunAsync(StorageSweepCli.ConnectionArgument(args));
+    }
 
     using var sentry = SentrySdk.Init(o =>
     {
@@ -83,6 +89,7 @@ try {
     }
 
     await host.RunAsync();
+    return 0;
 } catch(Exception ex) {
     SentrySdk.CaptureException(ex);
     logger.Error(ex, "Fatal error during startup");

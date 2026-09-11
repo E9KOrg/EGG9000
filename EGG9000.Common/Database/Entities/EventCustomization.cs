@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -17,13 +16,11 @@ namespace EGG9000.Common.Database.Entities {
 
         public string _settings { get; set; }
         [NotMapped]
+        private readonly JsonBlobAccessor<EventCustomizationSettings> _settingsAccessor = new("{}");
+        [NotMapped]
         public EventCustomizationSettings Settings {
-            get {
-                return JsonConvert.DeserializeObject<EventCustomizationSettings>(_settings ?? "{}");
-            }
-            set {
-                _settings = JsonConvert.SerializeObject(value);
-            }
+            get { return _settingsAccessor.Get(_settings); }
+            set { _settings = _settingsAccessor.Set(value, _settings); }
         }
     }
 
@@ -36,12 +33,8 @@ namespace EGG9000.Common.Database.Entities {
         public decimal MinValue { get; set; }
         public ulong RoleID { get; set; }
         public string RoleIdString {
-            get {
-                return RoleID.ToString();
-            }
-            set {
-                RoleID = ulong.Parse(value);
-            }
+            get { return RoleID.ToString(); }
+            set { RoleID = ulong.Parse(value); }
         }
     }
 }

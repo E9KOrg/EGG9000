@@ -82,8 +82,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
 
-                // If any eggs had their modifiers or icons changed
-                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && !e.Equals(ce)));
+                var updatedCustomEggs = customEggs.Where(ce => dbCustomEggs.Any(e => e.Identifier.Equals(ce.Identifier) && e._response != JsonConvert.SerializeObject(ce)));
                 if(updatedCustomEggs.Any()) {
                     foreach(var updatedEgg in updatedCustomEggs) {
                         var existingEgg = _db.CustomEggs.FirstOrDefault(dbe => dbe.Identifier == updatedEgg.Identifier);
@@ -93,8 +92,7 @@ namespace EGG9000.Bot.Automated {
                             emote = await _client.CreateCustomEggEmoji(updatedEgg, emote);
                             if(emote != null) existingEgg.GuildEmote = emote;
                         }
-                        existingEgg.Modifiers = [.. updatedEgg.Buffs.Select(b => new DBCustomEggModifier(b))];
-                        existingEgg.Icon = new(updatedEgg.Icon);
+                        existingEgg.ApplyDetails(updatedEgg);
                         dbNeedsUpdate = true;
                     }
                 }
@@ -118,77 +116,51 @@ namespace EGG9000.Bot.Automated {
 
                 CheckUpdateInterval(existingContracts);
 
+                var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
+
                 foreach(var contractResponse in contracts) {
                     if(contractResponse.GradeSpecs.Any(x => x.Goals.All(y => y.TargetAmount == 0))) {
                         continue;
                     }
                     var contract = existingContracts.FirstOrDefault(x => x.ID == contractResponse.Identifier);
-                    var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
-
-
-                    var json = JsonConvert.SerializeObject(contractResponse);
 
                     if(contract == null) {
-                        // The API sometimes omits the leggacy flag on an actual Kevin update; fall back
-                        // to detecting it by response diff instead of trusting the flag alone.
-                        if(!contractResponse.Leggacy) {
-                            _logger.LogWarning("Contract {contractid} is not marked as leggacy, checking if it is actually new or if it's just a Kevin update without the flag", contractResponse.Identifier);
-                            contractResponse.Leggacy = existingContracts.Any(c => c.ID == contractResponse.Identifier && c._response != JsonConvert.SerializeObject(contractResponse));
-                        }
-
                         contract = new DBContract {
                             ID = contractResponse.Identifier,
-                            Created = DateTime.Now,
-                            Description = contractResponse.Description,
-                            Name = contractResponse.Name,
-                            goals = JsonConvert.SerializeObject(contractResponse.Goals),
-                            GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)contractResponse.ExpirationTime),
-                            MaxUsers = (int)contractResponse.MaxCoopSize,
-                            coop_allowed = contractResponse.CoopAllowed,
-                            max_boosts = (int)contractResponse.MaxBoosts,
-                            max_soul_eggs = contractResponse.MaxSoulEggs,
-                            min_client_version = (int)contractResponse.MinClientVersion,
-                            debug = contractResponse.Debug,
-                            length_seconds = contractResponse.LengthSeconds,
-                            egg = contractResponse.Egg.ToString(),
-                            cc_only = contractResponse.CcOnly,
-                            _response = json
+                            Created = DateTimeOffset.UtcNow
                         };
+                        contract.ApplyDetails(contractResponse);
                         _db.Contracts.Add(contract);
                         await _db.SaveChangesAsync(CancellationToken.None);
 
                         needsUpdate = true;
                         cachesChanged = true;
                         _logger.LogInformation("Contract {contractid} added", contract.ID);
-                    } else if(json != contract._response || contract.Created < DateTime.Now.AddMonths(-3)) {
-                        cachesChanged = true;
-                        if(contract.Created < DateTime.Now.AddMonths(-3)) {
-                            contract.Created = DateTimeOffset.UtcNow;
-                            var guildContracts = contract.GuildContracts.Where(x => x.ContractID == contract.ID);
-                            _db.RemoveRange(guildContracts);
+                    } else {
+                        if(contract.Details?.Leggacy == true)
+                            contractResponse.Leggacy = true;
+
+                        var json = JsonConvert.SerializeObject(contractResponse);
+                        if(!contractResponse.Leggacy && contract._response != json) {
+                            _logger.LogWarning("Contract {contractid} changed without the leggacy flag, marking it leggacy via fallback detection", contractResponse.Identifier);
+                            contractResponse.Leggacy = true;
+                            json = JsonConvert.SerializeObject(contractResponse);
                         }
-                        _logger.LogInformation("Contract {contractid} updated", contract.ID);
-                        contract._response = json;
-                        contract.Description = contractResponse.Description;
-                        contract.Name = contractResponse.Name;
-                        contract.goals = JsonConvert.SerializeObject(contractResponse.Goals);
-                        contract.GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)contractResponse.ExpirationTime);
-                        contract.MaxUsers = (int)contractResponse.MaxCoopSize;
-                        contract.coop_allowed = contractResponse.CoopAllowed;
-                        contract.max_boosts = (int)contractResponse.MaxBoosts;
-                        contract.max_soul_eggs = contractResponse.MaxSoulEggs;
-                        contract.min_client_version = (int)contractResponse.MinClientVersion;
-                        contract.debug = contractResponse.Debug;
-                        contract.length_seconds = contractResponse.LengthSeconds;
-                        contract.egg = contractResponse.Egg.ToString();
-                        contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.GetCustomEggsAsync()).value;
-                        contract.cc_only = contractResponse.CcOnly;
-                        await _db.SaveChangesAsync(CancellationToken.None);
-                        _logger.LogInformation("Contract {contractid} updated", contract.ID);
+
+                        var stale = contract.Created < DateTimeOffset.UtcNow.AddMonths(-3);
+                        if(json != contract._response || stale) {
+                            cachesChanged = true;
+                            if(stale) {
+                                contract.Created = DateTimeOffset.UtcNow;
+                                _db.RemoveRange(contract.GuildContracts.Where(x => x.ContractID == contract.ID));
+                            }
+                            _logger.LogInformation("Contract {contractid} updated", contract.ID);
+                            contract.ApplyDetails(contractResponse);
+                            contract.egg_value = EggIncStatics.GetEggById(contractResponse.Egg, contract, await _db.GetCustomEggsAsync()).value;
+                            await _db.SaveChangesAsync(CancellationToken.None);
+                        }
                     }
 
-                    contract._response = JsonConvert.SerializeObject(contractResponse);
-                    await _db.SaveChangesAsync(CancellationToken.None);
                     _db.ExpireCachedEiContracts();
 
                     await AddContractChanelsIfNeeded(dbguilds, contract, contractResponse, _db);
@@ -200,16 +172,13 @@ namespace EGG9000.Bot.Automated {
                     _logger.LogWarning("Failed to fetch season infos: {error}", seasonInfosError);
                 } else {
                     foreach(var proto in seasonInfos.Infos.Where(SeasonInfo.HasPeRewards)) {
-                        var newInfo = SeasonInfo.FromProto(proto);
                         var existingSeason = await _db.SeasonInfos.FindAsync(proto.Id);
                         if(existingSeason == null) {
-                            _db.SeasonInfos.Add(newInfo);
+                            _db.SeasonInfos.Add(SeasonInfo.FromProto(proto));
                             cachesChanged = true;
                             _logger.LogInformation("New season {seasonId} added to DB", proto.Id);
-                        } else if(existingSeason.Name != newInfo.Name || existingSeason.StartTime != newInfo.StartTime || existingSeason.GoalsJson != newInfo.GoalsJson) {
-                            existingSeason.Name = newInfo.Name;
-                            existingSeason.StartTime = newInfo.StartTime;
-                            existingSeason.GoalsJson = newInfo.GoalsJson;
+                        } else if(existingSeason._response != JsonConvert.SerializeObject(proto)) {
+                            existingSeason.ApplyDetails(proto);
                             cachesChanged = true;
                         }
                     }
@@ -305,7 +274,7 @@ namespace EGG9000.Bot.Automated {
                         && !a.Backup.ArchivedFarms.Any(f => f.ContractId == contract.ID && f.Completed)
                     ))];
 
-                    var validFor = DateTimeOffset.FromUnixTimeSeconds((long)contract.Details.ExpirationTime) - DateTime.Now;
+                    var validFor = DateTimeOffset.FromUnixTimeSeconds((long)contract.Details.ExpirationTime) - DateTimeOffset.UtcNow;
                     var ultraMessageOut = $"The contract <#{contractChannel.Id}> has been released to <:ultra:1131045418319495369> Ultra Subscriber Players, and you have not completed this contract yet. The contract expires {DiscordHelpers.TimeStamper(validFor)}.";
 
                     foreach(var pingableUser in pingableUsers) {

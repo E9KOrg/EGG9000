@@ -1,5 +1,6 @@
 using Discord;
 using Discord.Interactions;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
@@ -21,7 +22,7 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Bot.Commands.Informational {
     [Group("formulae", "Game formula calculators (MER, LLC, EB)")]
     [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
-    public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : Interactions.E9KModuleBase(dbFactory) {
+    public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : E9KModuleBase(dbFactory) {
         private readonly IMemoryCache _cache = cache;
         private readonly ILogger<FormulaeModule> _logger = logger;
 

@@ -1,4 +1,5 @@
 using Bugsnag.AspNet.Core;
+using Discord.Interactions;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Services;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 
 namespace EGG9000.Bot;
@@ -31,6 +33,23 @@ public static class BotHostFactory {
             });
 
             services.AddMemoryCache();
+
+            var allowlist = ServiceAllowlist.Default;
+            var skipped = new List<string>();
+            void AddGated<T>(Func<IServiceProvider, T> factory = null) where T : class, IHostedService {
+                if(!allowlist.IsEnabled(typeof(T))) {
+                    skipped.Add(typeof(T).Name);
+                    return;
+                }
+                if(factory is null) {
+                    services.AddHostedService<T>();
+                } else {
+                    services.AddHostedService(factory);
+                }
+            }
+
+            services.AddHostedService<StorageDictionaryStartup>();
+            AddGated<StorageSweep>();
 
             services.AddSingleton<DiscordQueueService>();
             services.AddSingleton<IDiscordQueue>(provider => provider.GetRequiredService<DiscordQueueService>());
@@ -132,6 +151,7 @@ public static class BotHostFactory {
                     // Per-instance temporary queue so a version update fans out to every running process
                     // instead of being load-balanced across a shared queue.
                     x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
+                    x.AddConsumer<StorageDictionaryAdoptedConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
                     //if(string.IsNullOrEmpty(rabbitmqConn)) {
                         logger.Log(NLog.LogLevel.Info, "Using RabbitMQ In Memory");
                         x.UsingInMemory((context, cfg) => {
@@ -161,55 +181,62 @@ public static class BotHostFactory {
 
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
-            services.AddSingleton(provider => new Discord.Interactions.InteractionService(
+            services.AddSingleton(provider => new InteractionService(
                 provider.GetRequiredService<DiscordHostedService>().Gateway,
-                new Discord.Interactions.InteractionServiceConfig {
-                    DefaultRunMode = Discord.Interactions.RunMode.Sync,
+                new InteractionServiceConfig {
+                    DefaultRunMode = RunMode.Sync,
                     UseCompiledLambda = true
                 }));
-            services.AddHostedService<InteractionRoutingService>();
+            AddGated<InteractionRoutingService>();
 
             services.Configure<UpdaterOptions<LeaderboardUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(15));
-            services.AddHostedService<LeaderboardUpdater>();
+            AddGated<LeaderboardUpdater>();
 
-            services.AddHostedService<ArtifactCheaters>();
-            services.AddHostedService<StaffCoopsMessage>();
-            services.AddHostedService<CoopStatsRefreshService>();
-            services.AddHostedService<EventUpdater>();
+            AddGated<ArtifactCheaters>();
+            AddGated<StaffCoopsMessage>();
+            AddGated<CoopStatsRefreshService>();
+            AddGated<EventUpdater>();
 
             services.Configure<UpdaterOptions<ThreadsCoopStatusUpdater>>(x => x.DelayStart = TimeSpan.FromMinutes(5));
             services.AddSingleton<ThreadsCoopStatusUpdater>();
-            services.AddHostedService(provider => provider.GetService<ThreadsCoopStatusUpdater>());
+            AddGated(provider => provider.GetService<ThreadsCoopStatusUpdater>());
 
             services.AddSingleton<ContractUpdater>();
-            services.AddHostedService(provider => provider.GetService<ContractUpdater>());
+            AddGated(provider => provider.GetService<ContractUpdater>());
 
-            services.AddHostedService<UserCXPUpdater>();
-            services.AddHostedService<NewContracts>();
-            services.AddHostedService<CreateCoopViaAPI>();
-            services.AddHostedService<CreateCoopThreads>();
-            services.AddHostedService<ShipReturnDM>();
-            services.AddHostedService<UserSnapShots>();
-            services.AddHostedService<ManageOverflow>();
-            services.AddHostedService<RemoveTempRoles>();
-            services.AddHostedService<HandleGradeChanges>();
-            services.AddHostedService<RefreshNasaApod>();
-            services.AddHostedService<UpdateBackups>();
-            services.AddHostedService<CleanAutomationLogs>();
-            services.AddHostedService<CleanApiKeyRequestLogs>();
-            services.AddHostedService<RankupMessageSeeder>();
+            AddGated<UserCXPUpdater>();
+            AddGated<NewContracts>();
+            AddGated<CreateCoopViaAPI>();
+            AddGated<CreateCoopThreads>();
+            AddGated<ShipReturnDM>();
+            AddGated<UserSnapShots>();
+            AddGated<ManageOverflow>();
+            AddGated<RemoveTempRoles>();
+            AddGated<HandleGradeChanges>();
+            AddGated<RefreshNasaApod>();
+            AddGated<UpdateBackups>();
+            AddGated<CleanAutomationLogs>();
+            AddGated<CleanApiKeyRequestLogs>();
+            if(release)
+                AddGated<StorageDictionaryTrainer>();
+            AddGated<RankupMessageSeeder>();
 
             services.AddSingleton<CoopsBeingCreatedService>();
             services.AddSingleton<JobService>();
             services.AddHostedService(provider => provider.GetService<JobService>());
 
-            services.AddHostedService<MessageHandlerService>();
-            services.AddHostedService<DiscordUserService>();
-            services.AddHostedService<UserGrades>();
+            AddGated<MessageHandlerService>();
+            AddGated<DiscordUserService>();
+            AddGated<UserGrades>();
 
             // Publishes a runtime snapshot over the bus every 15s; the site re-exposes it as bot_*
             // gauges on its /metrics for cross-scope reporting.
             services.AddHostedService<BotMetricsPublisher>();
+
+            if(allowlist.Active) {
+                logger.Info("Service allowlist active ({entries}); skipped hosted services: {skipped}",
+                    string.Join(", ", allowlist.Entries), string.Join(", ", skipped));
+            }
         } catch(Exception e) {
             logger.Error(e, "Stopped program because of exception");
             throw;

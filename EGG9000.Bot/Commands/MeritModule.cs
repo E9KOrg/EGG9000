@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers.Discord;
@@ -25,16 +26,16 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway) : Interactions.E9KModuleBase(dbFactory) {
+    public class MeritModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway) : E9KModuleBase(dbFactory) {
         private static List<string> BuildMeritLines(List<Merit> merits) =>
             [.. merits.Select((m, i) => $"{i + 1}: {m.Reason}")];
 
         [SlashCommand("addmerit", "Add merit to user(s)")]
         [DefaultMemberPermissions(GuildPermission.ModerateMembers)]
-        [Interactions.StaffOnly(Interactions.StaffTier.ChickenTender)]
+        [StaffOnly(StaffTier.ChickenTender)]
         public async Task AddMerit(
             [Summary("reason", "Merit Reason")] string reason,
-            [ComplexParameter] Interactions.UserSlots userSlots) {
+            [ComplexParameter] UserSlots userSlots) {
             await Context.Interaction.RespondAsyncGettingMessage("Adding Merits");
             var users = userSlots.Users;
             var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
@@ -52,7 +53,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("removemerit", "Remove merit from user")]
         [DefaultMemberPermissions(GuildPermission.ModerateMembers)]
-        [Interactions.StaffOnly(Interactions.StaffTier.ChickenTender)]
+        [StaffOnly(StaffTier.ChickenTender)]
         public async Task RemoveMerit([Summary("user", "user")] SocketGuildUser user) {
             try {
                 var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
@@ -77,7 +78,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("meritsforuser", "List merits for user")]
         [DefaultMemberPermissions(GuildPermission.ModerateMembers)]
-        [Interactions.StaffOnly(Interactions.StaffTier.ChickenTender)]
+        [StaffOnly(StaffTier.ChickenTender)]
         public async Task MeritsForUser([Summary("targetuser", "targetUser")] SocketGuildUser targetUser) {
             try {
                 var user = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetUser.Id);

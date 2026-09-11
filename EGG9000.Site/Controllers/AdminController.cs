@@ -230,9 +230,9 @@ namespace EGG9000.Site.Controllers {
 
             var eventCustomizationToSave = guild.EventCustomizations.FirstOrDefault(ec => ec.Type == eventCustomization.Type);
 
-            var tempNotifs = JsonConvert.DeserializeObject<EventCustomizationSettings>(eventCustomization._settings);
-            tempNotifs.Notifications.ForEach(n => n.GuildID = guild.DiscordSeverId);
-            eventCustomization._settings = JsonConvert.SerializeObject(tempNotifs);
+            var settings = eventCustomization.Settings;
+            settings.Notifications.ForEach(n => n.GuildID = guild.DiscordSeverId);
+            eventCustomization.Settings = settings;
 
             if(eventCustomizationToSave is null) {
                 guild.EventCustomizations = [

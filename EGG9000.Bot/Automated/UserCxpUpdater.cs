@@ -33,6 +33,9 @@ namespace EGG9000.Bot.Automated {
                 existingScores = await lookupDb.UserCsHistoryEntries.AsNoTracking().ToListAsync(CancellationToken.None);
                 _logger.LogInformation("Finished Getting scores");
             }
+            var scoreIndex = existingScores
+                .DistinctBy(x => (x.ContractIdentifier, x.CoopIdentifier, x.EggIncId))
+                .ToDictionary(x => (x.ContractIdentifier, x.CoopIdentifier, x.EggIncId));
 
             var chunkSize = 25;
             var count = 0;
@@ -71,7 +74,7 @@ namespace EGG9000.Bot.Automated {
                                 }
                                 // Coop names can run long enough to exceed the column's storage limit.
                                 var coopIdentifier = score.CoopIdentifier.Length > 100 ? score.CoopIdentifier[..100] : score.CoopIdentifier;
-                                var existingScore = existingScores.FirstOrDefault(x => x.ContractIdentifier == contractIdentifier && x.CoopIdentifier == coopIdentifier && x.EggIncId == account.Id);
+                                scoreIndex.TryGetValue((contractIdentifier, coopIdentifier, account.Id), out var existingScore);
 
                                 if(existingScore is null) {
                                     scoresToAdd.Add(new UserCsHistoryEntry(contractIdentifier, coopIdentifier, score.Evaluation.Cxp, account.Id));
