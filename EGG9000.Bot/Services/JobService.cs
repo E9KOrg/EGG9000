@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Services {
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Starting JobService");
-            _jobs = [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
+            var discovered = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                       .Select(x =>
@@ -32,7 +32,15 @@ namespace EGG9000.Bot.Services {
                             Parameters = x.GetParameters(),
                             DeclaringType = x.DeclaringType,
                             NextRun = GetNextRun(x.GetCustomAttribute<JobAttribute>().Cron)
-                        })];
+                        }).ToList();
+
+            var allowlist = ServiceAllowlist.Default;
+            _jobs = [.. discovered.Where(x => allowlist.IsEnabled(x.DeclaringType) || allowlist.IsEnabled(x.Name))];
+            if(allowlist.Active) {
+                foreach(var job in discovered.Except(_jobs)) {
+                    _logger.LogInformation("Service allowlist skipped job {jobDeclareType}.{jobName}", job.DeclaringType.Name, job.Name);
+                }
+            }
 
             _ = Main(cancellationToken);
             return Task.CompletedTask;

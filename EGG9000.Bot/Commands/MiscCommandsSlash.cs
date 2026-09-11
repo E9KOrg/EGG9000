@@ -24,8 +24,8 @@ namespace EGG9000.Bot.Commands {
     // to continue down this path. See HandleTestOCR in MessageHandlerService for the DM-reply handler
     // this command's prompt matches against. Own module so BuildConfigOnly can gate just this command
     // (the attribute is class-level; MiscModule's other commands are prod-eligible).
-    [Interactions.BuildConfigOnly(BuildConfiguration.Debug, BuildConfiguration.Dev9001, BuildConfiguration.Dev9002)]
-    public class TestOCRModule(IDbContextFactory<ApplicationDbContext> dbFactory) : Interactions.E9KModuleBase(dbFactory) {
+    [BuildConfigOnly(BuildConfiguration.Debug, BuildConfiguration.Dev9001, BuildConfiguration.Dev9002)]
+    public class TestOCRModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
         [SlashCommand("starttestprocess", "Start EID screenshot recognition process.")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task StartTestProcess() {
@@ -44,7 +44,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class MiscModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater, ILogger<MiscModule> logger) : Interactions.E9KModuleBase(dbFactory) {
+    public class MiscModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater, ILogger<MiscModule> logger) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
         private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads = coopStatusUpdaterThreads;
         private readonly ContractUpdater _contractUpdater = contractUpdater;
@@ -254,7 +254,7 @@ namespace EGG9000.Bot.Commands {
 
     public partial class AdminModule {
         [SlashCommand("tempcustomcoopname", "Adds a temporary name to be used for co-op naming")]
-        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
+        [StaffOnly(StaffTier.CluckingCoordinator)]
         public async Task TempCustomCoopName([Summary("customname")] string customName, [Summary("timespan")] string timespan, [Summary("user")] SocketGuildUser user) {
             DateTimeOffset expireTime;
             try {
@@ -277,7 +277,7 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("renamecoop", "Rename a co-op channel to mistype")]
         [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-        [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
+        [StaffOnly(StaffTier.FarmHand)]
         [ChannelContext(Coop = true)]
         public async Task RenameCoop([Summary("correctcoopname")] string correctcoopname) {
             await Context.Interaction.DeferAsync();
@@ -289,12 +289,12 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("temprole", "Adds a temporary role for users that last a specific amount of time")]
         [DefaultMemberPermissions(GuildPermission.ManageChannels)]
-        [Interactions.StaffOnly(Interactions.StaffTier.CluckingCoordinator)]
+        [StaffOnly(StaffTier.CluckingCoordinator)]
         public async Task TempRole(
             [Summary("role")] SocketRole role,
             [Summary("timespan")] string timespan,
             [Summary("reason")] string reason,
-            [ComplexParameter] Interactions.GuildUserSlots userSlots) {
+            [ComplexParameter] GuildUserSlots userSlots) {
             var users = userSlots.Users;
             DateTimeOffset expireTime;
             try {
@@ -336,8 +336,8 @@ namespace EGG9000.Bot.Commands {
     // and was incorrectly nested under /a in that migration - kept flat here to preserve the
     // pre-migration command name.
     [DefaultMemberPermissions(GuildPermission.CreatePrivateThreads)]
-    [Interactions.StaffOnly(Interactions.StaffTier.FarmHand)]
-    public class UpdateChannelModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater) : Interactions.E9KModuleBase(dbFactory) {
+    [StaffOnly(StaffTier.FarmHand)]
+    public class UpdateChannelModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater) : E9KModuleBase(dbFactory) {
         [SlashCommand("updatechannel", "Trigger an update for a co-op or contract channel")]
         [ChannelContext(Coop = true, ContractWithContract = true)]
         public async Task UpdateChannel() {

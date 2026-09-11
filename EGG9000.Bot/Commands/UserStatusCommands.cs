@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -219,7 +220,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class UserStatusModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<UserStatusModule> logger) : Interactions.E9KModuleBase(dbFactory) {
+    public class UserStatusModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<UserStatusModule> logger) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly ILogger<UserStatusModule> _logger = logger;
 

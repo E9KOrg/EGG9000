@@ -71,6 +71,11 @@
     <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="[2.1.7]" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.11" />
     <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.11" />
+    <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="Database\Dictionaries\*.zdict" />
+    <EmbeddedResource Include="Database\Dictionaries\*.zdict" />
   </ItemGroup>
   <ItemGroup>
     <None Update="Proto\common.proto">

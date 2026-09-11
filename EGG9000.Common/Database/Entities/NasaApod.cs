@@ -1,26 +1,22 @@
-﻿
-using MessagePack;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using System;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Globalization;
-using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
 namespace EGG9000.Common.Database.Entities;
 
 [Table("NasaApods")]
-public class NasaApod {
+public partial class NasaApod {
     // There's no ID for APOD (thanks NASA!), so we hash the url and the title to ID it
-    [System.ComponentModel.DataAnnotations.Key]
+    [Key]
     public Guid ID {
         get {
-            if(_idCache == Guid.Empty) {
-                var inputBytes = Encoding.UTF8.GetBytes($"{Url}|{Title}");
-                var hashBytes = System.Security.Cryptography.SHA256.HashData(inputBytes);
-                _idCache = new Guid([.. hashBytes.Take(16)]);
-            }
+            if(_idCache == Guid.Empty)
+                _idCache = new Guid(SHA256.HashData(Encoding.UTF8.GetBytes($"{Url}|{Title}")).AsSpan(0, 16));
             return _idCache;
         }
         private set { _idCache = value; }
@@ -51,70 +47,36 @@ public class NasaApod {
     [JsonIgnore]
     public byte[] _postedToBytes { get; set; }
     [NotMapped]
-    private PostedToEntry[] _postedToEntries;
+    private readonly MessagePackBlobAccessor<PostedToEntry[]> _postedTo = new(whenNull: () => []);
     [NotMapped]
     private readonly Lock _postedToLock = new();
     [NotMapped]
     public PostedToEntry[] PostedToEntries {
         get {
-            if(_postedToEntries != null) return _postedToEntries;
-            lock(_postedToLock) {
-                if(_postedToBytes == null || _postedToBytes.Length == 0)
-                    _postedToEntries = [];
-                else
-                    _postedToEntries = MessagePackSerializer.Deserialize<PostedToEntry[]>(_postedToBytes) ?? [];
-
-                return _postedToEntries;
-            }
+            lock(_postedToLock)
+                return _postedTo.Get(_postedToBytes);
         }
         set {
-            lock(_postedToLock) {
-                _postedToEntries = value ?? [];
-                _postedToBytes = MessagePackSerializer.Serialize(_postedToEntries);
-            }
+            lock(_postedToLock)
+                _postedToBytes = _postedTo.Set(value ?? [], _postedToBytes);
         }
     }
-
-    [MessagePackObject]
-    public class PostedToEntry {
-        public PostedToEntry() { }
-
-        public PostedToEntry(Guild dbGuild, ulong channelId = 0) {
-            GuildID = dbGuild.Id;
-            ChannelID = dbGuild.GetChannelId(GuildChannelType.NasaApod) ?? channelId;
-        }
-
-        public PostedToEntry(ulong guildId, ulong channelId) {
-            GuildID = guildId;
-            ChannelID = channelId;
-        }
-
-        [Key(0)]
-        public ulong GuildID { get; set; }
-        [Key(1)]
-        public ulong ChannelID { get; set; }
-    }
-
 
     [JsonIgnore]
     [NotMapped]
     public string BestUrl {
         get {
-            if(_bestUrlCache == string.Empty) {
-                _bestUrlCache = string.IsNullOrEmpty(HdUrl) ? Url : HdUrl;
-            }
-            return _bestUrlCache;
+            if(string.IsNullOrEmpty(HdUrl)) return Url;
+            return HdUrl;
         }
     }
-    private string _bestUrlCache = string.Empty;
 
     [JsonIgnore]
     [NotMapped]
     public DateTimeOffset Date {
         get {
-            if(_dateCache == DateTimeOffset.MinValue) {
+            if(_dateCache == DateTimeOffset.MinValue)
                 _dateCache = DateTimeOffset.ParseExact(DateString, "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            }
             return _dateCache;
         }
     }

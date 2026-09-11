@@ -17,7 +17,7 @@ namespace EGG9000.Common.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.9")
+                .HasAnnotation("ProductVersion", "10.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -418,6 +418,9 @@ namespace EGG9000.Common.Migrations
                     b.Property<byte[]>("_modifiersBytes")
                         .HasColumnType("bytea");
 
+                    b.Property<string>("_response")
+                        .HasColumnType("text");
+
                     b.HasKey("Identifier");
 
                     b.ToTable("CustomEggs");
@@ -451,6 +454,9 @@ namespace EGG9000.Common.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Type")
+                        .HasColumnType("text");
+
+                    b.Property<string>("_response")
                         .HasColumnType("text");
 
                     b.HasKey("id");
@@ -774,79 +780,6 @@ namespace EGG9000.Common.Migrations
                     b.ToTable("FAQTopics");
                 });
 
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardCoop", b =>
-                {
-                    b.Property<Guid>("id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("CheckFailed")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("Checked")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("ContractID")
-                        .HasColumnType("text");
-
-                    b.Property<int>("DegreeOfSeperation")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("text");
-
-                    b.HasKey("id");
-
-                    b.ToTable("GlobalLeaderboardCoops");
-                });
-
-            modelBuilder.Entity("EGG9000.Common.Database.Entities.GlobalLeaderboardUser", b =>
-                {
-                    b.Property<Guid>("id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("DegreeOfSeperation")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("EggIncId")
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("LastBackup")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTimeOffset?>("LastUpdate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("NeedsUpdate")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("UpdateFailed")
-                        .HasColumnType("boolean");
-
-                    b.Property<double>("earnings_bonus")
-                        .HasColumnType("double precision");
-
-                    b.Property<decimal>("eggs_of_prophecy")
-                        .HasColumnType("numeric(20,0)");
-
-                    b.Property<double>("lifetime_cash_earned")
-                        .HasColumnType("double precision");
-
-                    b.Property<double>("soul_eggs")
-                        .HasColumnType("double precision");
-
-                    b.Property<string>("user_id")
-                        .HasColumnType("text");
-
-                    b.Property<string>("user_name")
-                        .HasColumnType("text");
-
-                    b.HasKey("id");
-
-                    b.ToTable("GlobalLeaderboardUsers");
-                });
-
             modelBuilder.Entity("EGG9000.Common.Database.Entities.Guild", b =>
                 {
                     b.Property<decimal>("Id")
@@ -1156,9 +1089,57 @@ namespace EGG9000.Common.Migrations
                     b.Property<DateTimeOffset>("StartTime")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("_response")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.ToTable("SeasonInfos");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.StorageDictionaryRow", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean");
+
+                    b.Property<byte[]>("Bytes")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Corpus")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("EvaluatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long>("HoldoutBytesActive")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("HoldoutBytesCandidate")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("HoldoutBytesPlain")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("SampleCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("TrainedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Corpus", "Active");
+
+                    b.ToTable("StorageDictionaries");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.TemporaryRole", b =>
@@ -1384,10 +1365,6 @@ namespace EGG9000.Common.Migrations
                     b.HasKey("UserId", "CoopId", "EggIncId");
 
                     b.HasIndex("CoopId");
-
-                    b.HasIndex("JoinedCoop");
-
-                    b.HasIndex("CreatedOn", "JoinedCoop");
 
                     b.HasIndex("JoinedCoop", "CreatedOn");
 

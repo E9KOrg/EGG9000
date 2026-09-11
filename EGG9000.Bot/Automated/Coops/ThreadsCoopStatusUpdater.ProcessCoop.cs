@@ -364,7 +364,6 @@ namespace EGG9000.Bot.Automated.Coops {
 
         private void UpdateCurrentUserCount(CoopProcessingContext ctx) {
             if(ctx.Coop.CurrentUsers != ctx.Status.Contributors.Count) {
-                var hadDuplicate = ctx.Coop.CurrentUsers > ctx.Coop.MaxUsers;
                 ctx.Coop.CurrentUsers = ctx.Status.Contributors.Count;
                 ctx.Coop.MaxUsers = ctx.Coop.Contract.MaxUsers;
             }
