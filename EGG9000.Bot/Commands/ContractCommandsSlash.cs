@@ -596,6 +596,17 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
             _lookup.Remove(xref.UserId, targetCoop.ContractID);
 
+            if(!await Db.UserCoopXrefs.AnyAsync(x => x.CoopId == targetCoop.Id && !x.Removed)) {
+                Db.Remove(targetCoop);
+                await Db.SaveChangesAsync();
+                await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Removed <@{xref.User.DiscordId}> ({username}) from co-op. No users left, co-op deleted from DB.");
+                await ((SocketThreadChannel)Context.Channel).ModifyAsync(c => {
+                    c.Archived = true;
+                    c.Locked = true;
+                });
+                return;
+            }
+
             await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = $"Removed <@{xref.User.DiscordId}> ({username}) from co-op");
 
         }

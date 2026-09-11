@@ -1,4 +1,4 @@
-using Bugsnag;
+﻿using Bugsnag;
 using Discord;
 using Discord.Interactions;
 using Discord.Net;
@@ -317,7 +317,11 @@ namespace EGG9000.Bot.Commands {
             if(dbuser.EggIncAccounts.Count == 1) {
                 var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
                 if(overflowRole != null) {
-                    await socketGuildUser.AddRoleAsync(overflowRole);
+                    if(await OverflowSyncing.IsMissingFromAnyOverflowAsync(guildObj, _client, user.Id)) {
+                        await socketGuildUser.AddRoleAsync(overflowRole);
+                    } else if(socketGuildUser.RoleIds.Any(x => x == overflowRole.Id)) {
+                        await socketGuildUser.RemoveRoleAsync(overflowRole);
+                    }
                 }
             }
 
@@ -427,7 +431,11 @@ namespace EGG9000.Bot.Commands {
                 if(dbguild != null && dbguild.OverflowServers.Count > 0) {
                     var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
                     if(overflowRole != null) {
-                        await guildUser.AddRoleAsync(overflowRole);
+                        if(await OverflowSyncing.IsMissingFromAnyOverflowAsync(dbguild, _client, guildUser.Id)) {
+                            await guildUser.AddRoleAsync(overflowRole);
+                        } else if(guildUser.Roles.Any(x => x.Id == overflowRole.Id)) {
+                            await guildUser.RemoveRoleAsync(overflowRole);
+                        }
                     }
                 }
 
