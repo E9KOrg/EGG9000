@@ -24,8 +24,10 @@ namespace EGG9000.Bot.Interactions {
         [Summary("user5")] SocketUser user5 = null,
         [Summary("user6")] SocketUser user6 = null,
         [Summary("user7")] SocketUser user7 = null,
-        [Summary("user8")] SocketUser user8 = null) {
-        public SocketUser[] Users { get; } = new[] { user1, user2, user3, user4, user5, user6, user7, user8 }.Where(u => u is not null).ToArray();
+        [Summary("user8")] SocketUser user8 = null,
+        [Summary("user9")] SocketUser user9 = null,
+        [Summary("user10")] SocketUser user10 = null) {
+        public SocketUser[] Users { get; } = [.. new[] { user1, user2, user3, user4, user5, user6, user7, user8, user9, user10 }.Where(u => u is not null)];
     }
 
     [method: ComplexParameterCtor]
@@ -37,7 +39,9 @@ namespace EGG9000.Bot.Interactions {
         [Summary("user5")] SocketGuildUser user5 = null,
         [Summary("user6")] SocketGuildUser user6 = null,
         [Summary("user7")] SocketGuildUser user7 = null,
-        [Summary("user8")] SocketGuildUser user8 = null) {
-        public SocketGuildUser[] Users { get; } = new[] { user1, user2, user3, user4, user5, user6, user7, user8 }.Where(u => u is not null).ToArray();
+        [Summary("user8")] SocketGuildUser user8 = null,
+        [Summary("user9")] SocketGuildUser user9 = null,
+        [Summary("user10")] SocketGuildUser user10 = null) {
+        public SocketGuildUser[] Users { get; } = [.. new[] { user1, user2, user3, user4, user5, user6, user7, user8, user9, user10 }.Where(u => u is not null)];
     }
 }
