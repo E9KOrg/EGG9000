@@ -8,7 +8,6 @@ using Humanizer;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly;
-using static EGG9000.Common.Helpers.Prefarm;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -17,6 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.DiscordHelpersExt;
 using static EGG9000.Common.Helpers.FixedWidthTable;
+using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Bot.Automated.Coops {
     public partial class ThreadsCoopStatusUpdater {
@@ -75,19 +75,19 @@ namespace EGG9000.Bot.Automated.Coops {
                ]);
             Task<ContractCoopStatusResponse> statusTask;
 
-            if(!coop.UserCoopsXrefs.Any(x => x.JoinedCoop)) {
+            if(!coop.UserCoopsXrefs.Any(x => x.JoinedCoop && !x.Removed)) {
                 statusTask = policy.Execute(async () => await EggIncApi.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
             } else if(coop.LastUpdateToChannel is null || coop.LastUpdateToChannel < DateTimeOffset.UtcNow.AddHours(-4)) {
                 statusTask = policy.Execute(async () => await EggIncApi.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
             } else {
-                var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop).ToList();
+                var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop && !x.Removed).ToList();
                 statusTask = policy.Execute(async () => await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, _logger: _logger, cancellationToken: cancellationToken));
             }
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
             await Task.WhenAll(statusTask, messageTask);
             if(statusTask.Result is null) {
-                _logger.LogWarning("Status task for {coop} is null, first time {first}", coop.Name, !coop.UserCoopsXrefs.Any(x => x.JoinedCoop));
+                _logger.LogWarning("Status task for {coop} is null, first time {first}", coop.Name, !coop.UserCoopsXrefs.Any(x => x.JoinedCoop && !x.Removed));
             }
 
             return new StatusResponse {

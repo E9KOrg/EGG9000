@@ -129,7 +129,7 @@ namespace EGG9000.Bot.Services {
                     }
 
                     try {
-                        var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel).ToListAsync();
+                        var xrefs = await db.UserCoopXrefs.Include(x => x.Coop).Where(x => x.User.DiscordId == user.Id && x.Coop.OverflowGuildId == user.Guild.Id && !x.Coop.ThreadArchived && !x.AddedToChannel && !x.Removed).ToListAsync();
                         foreach(var xref in xrefs) {
                             var coopChannel = (SocketThreadChannel)_discord.GetChannel(xref.Coop.ThreadID);
                             if(coopChannel is null) continue;

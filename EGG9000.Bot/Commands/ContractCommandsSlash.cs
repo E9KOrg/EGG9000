@@ -1,4 +1,4 @@
-using Discord;
+﻿using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated.Coops;
@@ -123,14 +123,14 @@ namespace EGG9000.Bot.Commands {
 
         internal static async Task<List<UserCoopXref>> GetActiveUserCoopXrefsAsync(ApplicationDbContext db, DBUser user) {
             return await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract)
-                .Where(x => x.User == user && !CoopStatusSets.FinishedOrFailed.Contains(x.Coop.Status) && x.Coop.CoopEnds > DateTimeOffset.UtcNow)
+                .Where(x => !x.Removed && x.User == user && !CoopStatusSets.FinishedOrFailed.Contains(x.Coop.Status) && x.Coop.CoopEnds > DateTimeOffset.UtcNow)
                 .ToListAsync();
         }
 
         public static async Task<PotentialCoopResponse> FindPotentialCoopForUser(EggIncAccount account, DBContract contract, Guild guild, DiscordSocketClient _client, ApplicationDbContext db, FindCoopPrioritization priority = FindCoopPrioritization.FinishTimeLow) {
 
             var userXrefs = await db.UserCoopXrefs.Include(x => x.Coop).ThenInclude(x => x.Contract).Include(x => x.Coop).Where(x => x.EggIncId == account.Id).ToListAsync();
-            var existingCoop = userXrefs.FirstOrDefault(r => r.Coop.Contract == contract && r.Coop.IsOpenForAssignment() && r.Coop.CoopEnds > DateTimeOffset.UtcNow);
+            var existingCoop = userXrefs.FirstOrDefault(r => !r.Removed && r.Coop.Contract == contract && r.Coop.IsOpenForAssignment() && r.Coop.CoopEnds > DateTimeOffset.UtcNow);
 
             if(contract.cc_only && !account.HasActiveSubscription()) {
                 return new() { Response = PotentialCoopCode.NonUltra };
@@ -155,10 +155,10 @@ namespace EGG9000.Bot.Commands {
             coops = priority switch {
                 FindCoopPrioritization.FinishTimeLow => [.. coops.OrderBy(c => c.ProjectedFinish)],
                 FindCoopPrioritization.FinishTimeHigh => [.. coops.OrderByDescending(c => c.ProjectedFinish)],
-                FindCoopPrioritization.LowPlayerCount => [.. coops.OrderBy(c => c.UserCoopsXrefs.Count)],
-                FindCoopPrioritization.HighPlayerCount => [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Count)],
-                FindCoopPrioritization.NeedsHighEB => [.. coops.OrderBy(c => c.UserCoopsXrefs.Max(x => x.SoulPower))],
-                FindCoopPrioritization.HasHighEB => [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Max(x => x.SoulPower))],
+                FindCoopPrioritization.LowPlayerCount => [.. coops.OrderBy(c => c.UserCoopsXrefs.Count(x => !x.Removed))],
+                FindCoopPrioritization.HighPlayerCount => [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Count(x => !x.Removed))],
+                FindCoopPrioritization.NeedsHighEB => [.. coops.OrderBy(c => c.UserCoopsXrefs.Where(x => !x.Removed).Max(x => x.SoulPower))],
+                FindCoopPrioritization.HasHighEB => [.. coops.OrderByDescending(c => c.UserCoopsXrefs.Where(x => !x.Removed).Max(x => x.SoulPower))],
                 _ => [.. coops.OrderBy(c => c.ProjectedFinish)],
             };
 
@@ -331,7 +331,7 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to add permission for {discordUser.Mention}{(newCoop.GuildId != newCoop.OverflowGuildId ? ", possibly not in overflow server" : "")}"); });
                 return;
             }
-            Db.Add(newxref);
+            await CreateCoopsV2.AddOrReviveXrefAsync(Db, newxref);
             Db.Remove(xref);
 
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Removed {discordUser.Mention} ({account.Backup?.UserName}) from {((ITextChannel)Context.Channel).Mention}, and moved to {((ITextChannel)coopChannel).Mention}"); });
@@ -381,7 +381,7 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to add permission for {discordUser.Mention}{(newCoop.GuildId != newCoop.OverflowGuildId ? ", possibly not in overflow server.\n**User was not moved to a coop.**" : "")}"));
                 return;
             }
-            Db.Add(newxref);
+            await CreateCoopsV2.AddOrReviveXrefAsync(Db, newxref);
 
             await Context.Interaction.RespondAsyncGettingMessage($"Sucessfully moved {discordUser.Mention} ({account.Backup?.UserName ?? "(No Name)"}) to {((ITextChannel)coopChannel).Mention}");
             await Db.SaveChangesAsync();
@@ -471,7 +471,7 @@ namespace EGG9000.Bot.Commands {
                     await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"**User was not re-added to coop**:\n\nUnable to add permission for {discordUser.Mention}{(coop.GuildId != coop.OverflowGuildId ? ", possibly not in overflow server" : "")}"); });
                     return;
                 }
-                Db.Add(newxref);
+                await CreateCoopsV2.AddOrReviveXrefAsync(Db, newxref);
                 await Db.SaveChangesAsync();
             }
 
@@ -481,6 +481,12 @@ namespace EGG9000.Bot.Commands {
             if(xref == null) {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Even after a `MoveToCoop`, an Xref could not be found for this user. Try again?"); });
                 return;
+            }
+
+            // Fixing a reference is an explicit re-add, so undo a previous not-joined kick.
+            if(xref.Removed) {
+                xref.Removed = false;
+                xref.RemovedOn = null;
             }
 
             var foundEIName = account.Backup?.UserName ?? account.Name;
@@ -553,7 +559,7 @@ namespace EGG9000.Bot.Commands {
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Unable to add permission for {discordUser.Mention}{(coop.GuildId != coop.OverflowGuildId ? ", possibly not in overflow server" : "")}"); });
                 return;
             }
-            Db.Add(newxref);
+            await CreateCoopsV2.AddOrReviveXrefAsync(Db, newxref);
 
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Moved {discordUser.Mention} ({account.Backup?.UserName ?? "(No Name)"}) to {((ITextChannel)coopChannel).Mention}"); });
             await Db.SaveChangesAsync();
@@ -684,6 +690,7 @@ namespace EGG9000.Bot.Commands {
                 ?? [.. (await Db.UserCoopXrefs
                     .Where(x => x.UserId == dbUser.Id
                              && !x.JoinedCoop
+                             && !x.Removed
                              && x.Coop.ContractID == guildContract.ContractID
                              && CoopStatusSets.OpenForAssignment.Contains(x.Coop.Status)
                              && x.Coop.CoopEnds > DateTimeOffset.UtcNow && !x.Coop.PseudoExpired)
@@ -994,7 +1001,7 @@ namespace EGG9000.Bot.Commands {
                 await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedError($"Unable to add permission for {discordUser.Mention}{(coop.GuildId != coop.OverflowGuildId ? ", possibly not in overflow server" : "")}"); });
                 return;
             }
-            Db.Add(newxref);
+            await CreateCoopsV2.AddOrReviveXrefAsync(Db, newxref);
 
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedSuccess($"Moved {discordUser.Mention} ({account.Backup?.UserName ?? "(No Name)"}) to {((ITextChannel)coopChannel).Mention}"); });
             await Db.SaveChangesAsync();

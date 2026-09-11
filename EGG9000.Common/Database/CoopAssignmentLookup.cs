@@ -53,6 +53,7 @@ namespace EGG9000.Common.Database {
                 var rows = await db.UserCoopXrefs
                     .IgnoreQueryFilters()
                     .Where(x => !x.JoinedCoop
+                             && !x.Removed
                              && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
                              && x.Coop.CoopEnds > now && !x.Coop.PseudoExpired)
                     .Select(x => new CoopAssignmentRow(x.UserId, x.Coop.Id, x.Coop.ContractID, x.Coop.ThreadID, x.Coop.Name))

@@ -159,7 +159,7 @@ namespace EGG9000.Bot.Commands {
         public async Task PingEveryoneInCoop([Summary("message")] string message) {
             await Context.Interaction.RespondAsyncGettingMessage($"Pinging now", ephemeral: true);
 
-            var pings = string.Join(" ", CoopChannel.UserCoopsXrefs.Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
+            var pings = string.Join(" ", CoopChannel.UserCoopsXrefs.Where(x => !x.Removed).Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
 
             await Context.Channel.SendMessageAsync($"{pings} {message}");
         }

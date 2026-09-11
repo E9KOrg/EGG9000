@@ -135,6 +135,13 @@ namespace EGG9000.Common.Helpers {
             return baseValue;
         }
 
+        // A standard permit caps the player at 2 silos, a pro permit at 10.
+        public const int MaxSilosStandardPermit = 2;
+        public const int MaxSilosProPermit = 10;
+
+        public static int GetMaxSilos(int permitLevel) =>
+            permitLevel > 0 ? MaxSilosProPermit : MaxSilosStandardPermit;
+
         public static double GetTotalSiloCapacity(CustomBackup backup) {
             var baseAwayTime = 60;
             var epicSilo = backup.EpicResearch.FirstOrDefault(x => x.Id == "silo_capacity");

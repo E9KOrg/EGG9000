@@ -303,6 +303,10 @@
 			}
 			<button class="btn btn-primary" onclick="InsertGroupRole(this)">Add Role</button>
 		</div>
+		<div id="OfflineDemeritSettings" style="@(Model.DisableBG ? "display: none;" : "")">
+			<label>Offline Hours Per Demerit <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.OfflineDemeritHours" id="OfflineDemeritHours" /></label>
+			<label>Offline Warning Hours <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.OfflineWarningHours" id="OfflineWarningHours" /></label>
+		</div>
 	</div>
 </div>
 <div class="card">
@@ -348,10 +352,28 @@
 		</div>
 		<label>Running Score Threshold <input style="margin-left: 3px;" class="custom-input" type="number" step="0.01" value="@Model.MinimumRunningScore" id="MinimumRunningScore" /></label>
 		<label>Co-op Prefix <input style="margin-left: 3px;" class="custom-input" value="@Model.CoopNamePrefix" id="CoopNamePrefix" /></label>
+		<br />
+		<label>Hours To Join (normal) <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.JoinTimeHours" id="JoinTimeHours" /></label>
+		<label>Hours To Join (ultra) <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.JoinTimeUltraHours" id="JoinTimeUltraHours" /></label>
+		<br />
+		<div>
+			<label>
+				<input class="custom-input" type="checkbox" value="true" id="SiloRemindersEnabled" onclick="ToggleSiloReminders(this)" checked="@Model.SiloRemindersEnabled" /> Silo Reminders
+			</label>
+		</div>
+		<div id="SiloReminderHours" style="@(Model.SiloRemindersEnabled ? "" : "opacity: 0.5;")">
+			<div>
+				<label>Silo Reminder Hours (first) <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.SiloReminderFirstHours" id="SiloReminderFirstHours" disabled="@(!Model.SiloRemindersEnabled)" /></label>
+			</div>
+			<div>
+				<label>Silo Reminder Hours (second) <input style="margin-left: 3px;" class="custom-input" type="number" min="1" value="@Model.SiloReminderSecondHours" id="SiloReminderSecondHours" disabled="@(!Model.SiloRemindersEnabled)" /></label>
+			</div>
+		</div>
 	</div>
 </div>
 
 <button style="margin-top: 15px;" class="btn btn-success" onclick="SaveChannels(this)">Save Settings</button>
+<div id="SaveChannelsError" role="alert" style="margin-top: 8px; color: #dc3545; font-weight: 600; display: none;"></div>
 <hr />
 
 
@@ -374,7 +396,54 @@
 
 @section Scripts {
 	<script>
+		function ShowSaveChannelsError(message) {
+			$("#SaveChannelsError").text(message).show();
+		}
+		function ClearSaveChannelsError() {
+			$("#SaveChannelsError").text("").hide();
+		}
+		function EnableSaveChannels(button) {
+			$(button).addClass("btn-success");
+			$(button).removeAttr("disabled");
+		}
 		function SaveChannels(button) {
+			ClearSaveChannelsError();
+
+			// Validate before disabling the button, so a rejected save leaves it usable.
+			// Timing settings are hours and must be 1 or more. An empty number input posts as
+			// "" and cannot be deserialized into an int, so it never reaches the server.
+			var timingFields = [
+				{ id: "OfflineWarningHours", label: "Offline Warning Hours" },
+				{ id: "OfflineDemeritHours", label: "Offline Hours Per Demerit" },
+				{ id: "JoinTimeHours", label: "Hours To Join (normal)" },
+				{ id: "JoinTimeUltraHours", label: "Hours To Join (ultra)" },
+				{ id: "SiloReminderFirstHours", label: "Silo Reminder Hours (first)" },
+				{ id: "SiloReminderSecondHours", label: "Silo Reminder Hours (second)" }
+			];
+			for (var t = 0; t < timingFields.length; t++) {
+				var timingField = $("#" + timingFields[t].id);
+				// A disabled setting cannot be edited, so its value must not block the save.
+				// Without this a guild that leaves silo reminders switched off could never
+				// save this page at all, including every unrelated setting on it.
+				if (timingField.is(":disabled")) continue;
+				if (!(+timingField.val() >= 1)) {
+					ShowSaveChannelsError(timingFields[t].label + " must be 1 or more.");
+					return;
+				}
+			}
+
+			if (!$("#DisableBG").is(":checked")
+				&& +$("#OfflineWarningHours").val() >= +$("#OfflineDemeritHours").val()) {
+				ShowSaveChannelsError("Offline Warning Hours must be below Offline Hours Per Demerit.");
+				return;
+			}
+
+			if ($("#SiloRemindersEnabled").is(":checked")
+				&& +$("#SiloReminderFirstHours").val() >= +$("#SiloReminderSecondHours").val()) {
+				ShowSaveChannelsError("Silo Reminder Hours (first) must be below Silo Reminder Hours (second).");
+				return;
+			}
+
 			$(button).removeClass("btn-success");
 			$(button).attr("disabled", "disabled");
 
@@ -424,10 +493,24 @@
 						MinimumRunningScore: $("#MinimumRunningScore").val(),
 						AddOutsideCoops: $("#AddOutsideCoops").is(":checked"),
 						FaqTopicsEnabled: $("#FaqTopicsEnabled").is(":checked"),
-						FaqTopicCooldownMinutes: $("#FaqTopicCooldownMinutes").val()
+						FaqTopicCooldownMinutes: $("#FaqTopicCooldownMinutes").val(),
+						OfflineDemeritHours: $("#OfflineDemeritHours").val(),
+						OfflineWarningHours: $("#OfflineWarningHours").val(),
+						JoinTimeHours: $("#JoinTimeHours").val(),
+						JoinTimeUltraHours: $("#JoinTimeUltraHours").val(),
+						SiloRemindersEnabled: $("#SiloRemindersEnabled").is(":checked"),
+						// Coerced to a number so a cleared box posts 0 rather than "", which
+						// JsonConvert cannot deserialize into an int. Only reachable while the
+						// feature is off, since the min check above blocks it while it is on.
+						// The server turns a 0 back into the default.
+						SiloReminderFirstHours: +$("#SiloReminderFirstHours").val() || 0,
+						SiloReminderSecondHours: +$("#SiloReminderSecondHours").val() || 0
 					})
 			}, function () {
 				document.location = document.location;
+			}).fail(function (xhr) {
+				EnableSaveChannels(button);
+				ShowSaveChannelsError(xhr.responseText || ("Save failed with status " + xhr.status + "."));
 			});
 		}
 		function SaveRoles(button) {
@@ -451,11 +534,20 @@
 		function InsertGroupRole(button) {
 			$('<div><input class=\"GroupRole\" /></div>').insertBefore($(button));
 		}
+		function ToggleSiloReminders(input) {
+			var enabled = $(input).is(":checked");
+			// The hour values still post while disabled, because this page builds its payload
+			// by hand from .val() rather than by a native form submit. Only editing is blocked.
+			$("#SiloReminderFirstHours, #SiloReminderSecondHours").prop("disabled", !enabled);
+			$("#SiloReminderHours").css("opacity", enabled ? "" : "0.5");
+		}
 		function ShowGroupRoles(input) {
 			if ($(input).is(":checked")) {
 				$("#GroupRoles").show();
+				$("#OfflineDemeritSettings").hide();
 			} else {
 				$("#GroupRoles").hide();
+				$("#OfflineDemeritSettings").show();
 			}
 		}
 		function GetCategoryJoins(selector) {

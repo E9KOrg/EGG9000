@@ -17,5 +17,12 @@ namespace EGG9000.Site.Models.Admin {
         public bool FAQTopicsEnabled { get; set; }
         public int FAQTopicCooldownMinutes { get; set; }
         public float MinimumRunningScore { get; set; }
+        public int OfflineDemeritHours { get; set; }
+        public int OfflineWarningHours { get; set; }
+        public int JoinTimeHours { get; set; }
+        public int JoinTimeUltraHours { get; set; }
+        public bool SiloRemindersEnabled { get; set; }
+        public int SiloReminderFirstHours { get; set; }
+        public int SiloReminderSecondHours { get; set; }
     }
 }
