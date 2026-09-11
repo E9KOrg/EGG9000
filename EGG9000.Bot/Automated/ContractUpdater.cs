@@ -103,7 +103,7 @@ namespace EGG9000.Bot.Automated {
                     _logger.LogInformation("Adding co-op {coopname} from backups", coopname);
                     var coop = new Coop {
                         ContractID = contractid, Created = DateTimeOffset.UtcNow, GuildId = guildid, Name = coopname,
-                        MaxUsers = contract.MaxUsers, Status = CoopStatusEnum.WaitingOnThread, League = grade,
+                        MaxUsers = contract.MaxUsers, Status = CoopStatus.WaitingOnThread, League = grade,
                         CoopEnds = DateTimeOffset.FromUnixTimeSeconds(endtime),
                         AddedFromBackup = true,
                     };
@@ -150,7 +150,7 @@ namespace EGG9000.Bot.Automated {
 
         public async Task UpdateContractChannel(ApplicationDbContext _db, GuildContract guildContract, SocketGuild guild, Guild dbGuild, SocketInteraction slashCommand = null) {
             try {
-                _logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
+                //_logger.LogInformation("Working on GuildContract for {guild} - {contract}", guild.Name, guildContract.Contract.Name);
 
                 var channel = guild.TextChannels.FirstOrDefault(x => x.Id == guildContract.DiscordChannelId);
 

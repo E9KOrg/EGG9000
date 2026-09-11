@@ -369,7 +369,7 @@ namespace EGG9000.Common.Helpers {
                     var joined = contribution is not null;
 
 
-                    if(coop.Status == CoopStatusEnum.Failed && string.IsNullOrEmpty(prefarm.CoopName)) {
+                    if(coop.Status == CoopStatus.Failed && string.IsNullOrEmpty(prefarm.CoopName)) {
                         prefarm.Coop = "";
                     } else {
                         prefarm.Coop = joined ? "✔️" : $"❌{prefarm.TimeLeft?.Humanize(precision: 2).ShortenTime().Replace(" ", "").Replace(",", "")}";

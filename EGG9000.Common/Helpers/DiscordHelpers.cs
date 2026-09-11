@@ -46,43 +46,44 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public enum DMResult {
-            Success = 0,
-            CannotSendToUser = 1,
-            DiscordError = 2,
+        public class DMResult {
+            public bool Success { get; set; }
+            public bool CannotSendToUser { get; set; } = false;
+            public Exception Exception { get; set; }
         };
 
         public static async Task<DMResult> BoolSendDm(IUser dmUser, string message, ApplicationDbContext db) {
-            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
+            if(dmUser is null || dmUser?.Id is null) return new DMResult { Success = false };
             DBUser dbUser = null;
-            var result = DMResult.Success;
+            var result = new DMResult();
+            result.Success = true;
             try {
                 dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
                 var dmChannel = await dmUser.CreateDMChannelAsync();
-                if(dmChannel is null) return DMResult.DiscordError;
+                if(dmChannel is null) return new DMResult { Success = false };
                 await dmChannel.SendMessageAsync(message);
             } catch(HttpException ex) {
-                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
-            } catch(Exception) {
-                return DMResult.DiscordError;
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? new DMResult { CannotSendToUser = true, Success = false } : new DMResult { Success = false, Exception = ex };
+            } catch(Exception ex) {
+                result = new DMResult { Success = false, Exception = ex };
             }
             if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
             return result;
         }
 
         public static async Task<DMResult> BoolSendDm(IUser dmUser, Embed embed, MessageComponent components, ApplicationDbContext db) {
-            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
+            if(dmUser is null || dmUser?.Id is null) return new DMResult { Success = false };
             DBUser dbUser = null;
-            var result = DMResult.Success;
+            var result = new DMResult { Success = true };
             try {
                 dbUser = await db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == dmUser.Id);
                 var dmChannel = await dmUser.CreateDMChannelAsync();
-                if(dmChannel is null) return DMResult.DiscordError;
+                if(dmChannel is null) return new DMResult { Success = false };
                 await dmChannel.SendMessageAsync(embed: embed, components: components);
             } catch(HttpException ex) {
-                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
-            } catch(Exception) {
-                return DMResult.DiscordError;
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? new DMResult { CannotSendToUser = true, Success = false } : new DMResult { Success = false, Exception = ex };
+            } catch(Exception ex) {
+                result = new DMResult { Success = false, Exception = ex };
             }
             if(dbUser is not null && dbUser.UpdateDMStatus(result)) await db.SaveChangesAsync();
             return result;
@@ -91,43 +92,30 @@ namespace EGG9000.Common.Helpers {
         // Sends without touching the DbContext. Applies blocked status to the passed dbUser in memory.
         // Should be safe to run many of these concurrently against one shared context.
         public static async Task<DMResult> BoolSendDmDeferred(IUser dmUser, Embed embed, MessageComponent components, DBUser dbUser) {
-            if(dmUser is null || dmUser?.Id is null) return DMResult.DiscordError;
-            var result = DMResult.Success;
+            if(dmUser is null || dmUser?.Id is null) return new DMResult { Success = false };
+            var result = new DMResult { Success = true };
             try {
                 var dmChannel = await dmUser.CreateDMChannelAsync();
-                if(dmChannel is null) return DMResult.DiscordError;
+                if(dmChannel is null) return new DMResult { Success = false };
                 await dmChannel.SendMessageAsync(embed: embed, components: components);
             } catch(HttpException ex) {
-                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? DMResult.CannotSendToUser : DMResult.DiscordError;
-            } catch(Exception) {
-                return DMResult.DiscordError;
+                result = ex.DiscordCode == DiscordErrorCode.CannotSendMessageToUser ? new DMResult { CannotSendToUser = true, Success = false } : new DMResult { Success = false, Exception = ex };
+            } catch(Exception ex) {
+                result = new DMResult { Success = false, Exception = ex };
             }
             dbUser?.UpdateDMStatus(result);
             return result;
         }
 
-        public static Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
-            var tokenSource2 = new CancellationTokenSource();
-            var token2 = tokenSource2.Token;
+        public static async Task ModifyWithTimeoutAsync(this IUserMessage message, Action<MessageProperties> msgProperties, RequestOptions options = null) {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(9));
             options ??= new RequestOptions();
-            options.CancelToken = token2;
-
-            var thread = message.ModifyAsync(msgProperties, options);
-            tokenSource2.CancelAfter(9000);
-            var tokenSource = new CancellationTokenSource();
-            var token = tokenSource.Token;
-            var timer = Task.Delay(10000, token);
-            Task.WaitAny(thread, timer);
-            if(timer.IsCompleted) {
-                GetLogger<IUserMessage>().LogWarning($"Timer Expired");
-            } else {
-                tokenSource.Cancel();
-                if(thread.IsCanceled) {
-                    GetLogger<IUserMessage>().LogWarning($"Modify Task CANCELLED!");
-                }
+            options.CancelToken = cts.Token;
+            try {
+                await message.ModifyAsync(msgProperties, options);
+            } catch(OperationCanceledException) when(cts.IsCancellationRequested) {
+                GetLogger<IUserMessage>().LogWarning("Modify timed out after 9s for message {MessageId}", message.Id);
             }
-
-            return Task.CompletedTask;
         }
 
         public static FileAttachment GetFileAttachment(this SixLabors.ImageSharp.Image image, string imageName = "Image.png", string imageDescription = "An image") {

@@ -1,9 +1,7 @@
-﻿using Cronos;
+using Cronos;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
-using Ei;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -28,18 +26,16 @@ namespace EGG9000.Bot.Automated {
             foreach(var userchunk in chunkedUsers) {
                 StillAlive();
                 var mutatedUsers = new ConcurrentBag<DBUser>();
-                // Network calls only below - no DB scope held while awaiting EggIncApi.
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, token) => {
                     try {
                         var userMutated = false;
                         foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
-                            var r = await EggIncApi.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
-                            if(r is null) {
+                            var info = await AccountRefresh.FetchExtrasAsync(user, account, _logger);
+                            if(info is null) {
                                 _logger.LogWarning("Null response for {user} ({account})", user.DiscordUsername, account.Id);
                                 continue;
                             }
-                            if(r.Status == ContractPlayerInfo.Types.Status.Complete)
-                                userMutated |= GradeSync.ApplyGradeChange(user, account, r.Grade, setPromotionTime: true, guardUnset: true, _logger);
+                            userMutated |= AccountRefresh.ApplyExtras(user, account, info, _logger);
                         }
                         if(userMutated) mutatedUsers.Add(user);
                     } catch(Exception e) {

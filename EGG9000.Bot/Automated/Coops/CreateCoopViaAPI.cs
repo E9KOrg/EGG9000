@@ -34,7 +34,7 @@ namespace EGG9000.Bot.Automated.Coops {
             Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats = [];
 
             while(
-                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnCreation).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
+                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatus.WaitingOnCreation).OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
                 .Count > 0) {
                 if(cancellationToken.IsCancellationRequested) return;
 
@@ -85,7 +85,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
 
 
-                            coop.Status = CoopStatusEnum.WaitingOnThread;
+                            coop.Status = CoopStatus.WaitingOnThread;
                             using var writeScope = _provider.CreateScope();
                             var writeDb = writeScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                             await writeDb.Coops.Where(c => c.Id == coop.Id).ExecuteUpdateAsync(s => s

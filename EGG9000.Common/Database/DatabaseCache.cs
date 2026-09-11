@@ -47,7 +47,7 @@ namespace EGG9000.Common.Database {
                 var currentCacheTime = _lastCacheUpdateUser;
                 _lastCacheUpdateUser = DateTimeOffset.UtcNow;
                 var updatedUsers = await db.DBUsers.AsNoTracking().Where(UpdatedSince(currentCacheTime)).ToListAsync();
-                _logger.LogInformation("Refreshing DBUser cache, found {Count} updated users. (Last cache update {LastCacheUpdate})", updatedUsers.Count, (_lastCacheUpdateUser - currentCacheTime).Humanize());
+                //_logger.LogInformation("Refreshing DBUser cache, found {Count} updated users. (Last cache update {LastCacheUpdate})", updatedUsers.Count, (_lastCacheUpdateUser - currentCacheTime).Humanize());
                 var newList = new List<DBUser>(_cachedUsers);
                 newList.RemoveAll(u => updatedUsers.Any(uu => uu.Id == u.Id));
                 newList.AddRange(updatedUsers);
@@ -64,7 +64,7 @@ namespace EGG9000.Common.Database {
         public async Task RefreshActiveCoopsCache() {
             try {
                 var db = await _dbContextFactory.CreateDbContextAsync();
-                _logger.LogInformation("Refreshing active coops cache");
+                //_logger.LogInformation("Refreshing active coops cache");
                 var coops = await db.Coops.AsNoTracking().Include(x => x.Contract).Where(c => !c.Finished && !c.ThreadArchived).ToListAsync();
                 _cachedActiveCoops = coops;
             } catch(Exception e) {

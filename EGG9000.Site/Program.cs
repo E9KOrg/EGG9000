@@ -211,6 +211,16 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents {
             OnTicketReceived = context => {
                 return Task.FromResult(0);
+            },
+            OnRemoteFailure = context => {
+                var target = "/Identity/Account/Login";
+                var returnUrl = context.Properties?.RedirectUri;
+                if(!string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//")) {
+                    target += "?returnUrl=" + Uri.EscapeDataString(returnUrl);
+                }
+                context.Response.Redirect(target);
+                context.HandleResponse();
+                return Task.CompletedTask;
             }
         };
         options.SaveTokens = true;

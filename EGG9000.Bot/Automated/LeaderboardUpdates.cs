@@ -34,7 +34,7 @@ namespace EGG9000.Bot.Automated {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var recentContracts = await _db.Contracts.AsQueryable().Where(x => x.MaxUsers > 1).OrderByDescending(x => x.Created).Take(5).ToListAsync(CancellationToken.None);
             timings.Set("recentContracts");
-            _logger.LogInformation("Getting Xrefs for Leaderboard");
+            //_logger.LogInformation("Getting Xrefs for Leaderboard");
             try {
                 var threeWeeksAgo = DateTimeOffset.UtcNow.AddDays(-21);
 
@@ -48,7 +48,7 @@ namespace EGG9000.Bot.Automated {
                 if(cancellationToken.IsCancellationRequested)
                     return;
 
-                _logger.LogInformation("Getting Users for Leaderboard");
+                //_logger.LogInformation("Getting Users for Leaderboard");
 
                 var dbguilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
                 timings.Set("dbguilds");
@@ -64,7 +64,7 @@ namespace EGG9000.Bot.Automated {
 
 
 
-                _logger.LogInformation("Getting User Backups for Leaderboard");
+                //_logger.LogInformation("Getting User Backups for Leaderboard");
 
                 var lUsers = dbusers.SelectMany(x => x.EggIncAccounts.Select(y => new LeaderboardUser {
                     User = x,
@@ -120,7 +120,7 @@ namespace EGG9000.Bot.Automated {
 
                     var breakCoopsChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.BreakCoopLog);
                     if(breakCoopsChannel is not null) {
-                        _logger.LogInformation("Handling on-break coop warnings for {guild}", guild.Name);
+                        //_logger.LogInformation("Handling on-break coop warnings for {guild}", guild.Name);
                         var joinedCoopOnBreak = users.Where(ua =>
                             !ua.Account.BreakCoopWarningSent
                             && ua.Backup.Farms != null
@@ -164,7 +164,7 @@ namespace EGG9000.Bot.Automated {
                     const int adjustedMerThreshold = 12; //Pre-determined to be a good threshold.
                     var cheaterChannel = ChannelHelper.DetermineChannelType(dbguild, guild, GuildChannelType.CheaterThread);
                     if(cheaterChannel is not null) {
-                        _logger.LogInformation("Handling MER cheaters for {guild}", guild.Name);
+                        //_logger.LogInformation("Handling MER cheaters for {guild}", guild.Name);
                         var merCheaters = users.Where(ua =>
                         ua.Account != null && !ua.Account.MERWarningSent && !ua.Account.MERMarkedClean &&
                         ua.Backup != null && ua.Backup.MER / Math.Log10((int)ua.Backup.NumPrestiges) > adjustedMerThreshold
@@ -186,7 +186,7 @@ namespace EGG9000.Bot.Automated {
                         await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
                     }
 
-                    _logger.LogInformation("Handling promotions for {guild}", guild.Name);
+                    //_logger.LogInformation("Handling promotions for {guild}", guild.Name);
 
                     foreach(var userAccounts in users.GroupBy(x => x.User.Id)) {
                         await WaitOnCoopsBeingCreated(cancellationToken);
@@ -215,7 +215,7 @@ namespace EGG9000.Bot.Automated {
                     }
 
                     await PostOverallLeaderboard(guild, users, recentContracts, _db);
-                    _logger.LogInformation("Finished updating Leaderboard");
+                    //_logger.LogInformation("Finished updating Leaderboard");
                 }
             } catch(Exception e) {
                 _bugSnag.Notify(e);

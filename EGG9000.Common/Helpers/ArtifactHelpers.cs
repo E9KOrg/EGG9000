@@ -162,6 +162,12 @@ namespace EGG9000.Common.Helpers {
 
         public record LegendaryLuckResult(double ExpectedLeggies, int LegCount, uint PossibleCraftCount, double LLC, int LLCPercent);
 
+        public const int LLCPercentHardCutoff = 50;
+        public const int LLCPercentSoftCutoff = 15;
+        public const double AFSZScoreCutoff = 1.0;
+        public const double AFSZScoreAloneCutoff = 3.0;
+        public const int NoBaselineLLCPercent = 999;
+
         // Legendary Luck Coefficient: how many legendaries an account "should" have given its actual
         // ship launches (by ship/duration/level, weighted against Menno's crowd-sourced drop rates) and
         // its crafting history (simulated per-craft odds from crafting XP/level at the time of each
@@ -219,9 +225,18 @@ namespace EGG9000.Common.Helpers {
 
             var newExpectedLeggies = newLLCSum + sumOfRatios;
             var newLLC = Math.Round(legCount - newExpectedLeggies, 2);
-            var newLLCPercent = newExpectedLeggies != 0 ? (int)Math.Round((legCount * 100 / newExpectedLeggies) - 100) : 0;
+            var newLLCPercent = newExpectedLeggies != 0
+                ? (int)Math.Round((legCount * 100 / newExpectedLeggies) - 100)
+                : (legCount > 0 ? NoBaselineLLCPercent : 0);
 
             return new LegendaryLuckResult(newExpectedLeggies, legCount, craftCount, newLLC, newLLCPercent);
+        }
+
+        public static bool IsCheatFlagged(bool hasLlc, int llcPercent, bool hasAfs, double afsZ) {
+            if(hasLlc && llcPercent >= LLCPercentHardCutoff) return true;
+            if(hasLlc && hasAfs && llcPercent >= LLCPercentSoftCutoff && afsZ > AFSZScoreCutoff) return true;
+            if(hasAfs && afsZ >= AFSZScoreAloneCutoff) return true;
+            return false;
         }
 
         public static double GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {

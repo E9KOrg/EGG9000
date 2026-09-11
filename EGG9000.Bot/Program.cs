@@ -11,6 +11,8 @@ using System;
 using Sentry;
 using System.Threading.Tasks;
 
+AppContext.SetSwitch("System.Net.Http.SocketsHttpHandler.Http2UnencryptedSupport", true);
+
 var logger = LogManager.Setup().GetCurrentClassLogger();
 
 try {

@@ -109,7 +109,7 @@ public class SoftRemovedXrefQueryTests {
             Id = Guid.NewGuid(),
             ContractID = ContractId,
             GuildId = 999_000_010,
-            Status = CoopStatusEnum.WaitingOnAssigned,
+            Status = CoopStatus.WaitingOnAssigned,
             CoopEnds = DateTimeOffset.UtcNow.AddDays(1),
             Created = DateTimeOffset.UtcNow,
             CreatorID = "real"

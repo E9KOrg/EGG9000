@@ -45,7 +45,7 @@ namespace EGG9000.Bot.Automated.Coops {
             Dictionary<(ulong guildid, string contractid, ulong bggroup), (int successes, int failures, bool changed)> guildStats = [];
 
             while(
-                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatusEnum.WaitingOnThread && x.ContractID != "first-contract").OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
+                (allCoops = await _db.Coops.Include(c => c.Contract).AsQueryable().Where(x => x.Status == CoopStatus.WaitingOnThread && x.ContractID != "first-contract").OrderByDescending(x => x.MaxUsers).ToListAsync(CancellationToken.None))
                 .Count > 0) {
                 if(cancellationToken.IsCancellationRequested) return;
 
@@ -136,7 +136,7 @@ namespace EGG9000.Bot.Automated.Coops {
                             var coopThread = await _queue.EnqueueLowAsync(() => CreateThreadChannelAsync(coop.Name, headerChannel));
                             if(coopThread != null) {
                                 timings.Set("Thread created");
-                                coop.Status = CoopStatusEnum.WaitingOnAssigned;
+                                coop.Status = CoopStatus.WaitingOnAssigned;
                                 coop.ThreadID = coopThread.Id;
                                 coop.ThreadParentChannel = headerChannel.Id;
                                 coop.OverflowGuildId = headerChannel.Guild.Id;

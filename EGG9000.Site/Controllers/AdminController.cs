@@ -195,7 +195,7 @@ namespace EGG9000.Site.Controllers {
                 })],
                 Guild = guild,
                 ContractsToScore = contractsToScore,
-                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatusEnum.WaitingOnThread || x.Status == CoopStatusEnum.WaitingOnCreation) && x.CoopEnds > DateTimeOffset.UtcNow)
+                CoopsWithoutThreads = await _db.Coops.CountAsync(x => x.ThreadID == 0 && (x.Status == CoopStatus.WaitingOnThread || x.Status == CoopStatus.WaitingOnCreation) && x.CoopEnds > DateTimeOffset.UtcNow)
             });
         }
 

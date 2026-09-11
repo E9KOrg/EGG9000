@@ -48,8 +48,8 @@ namespace EGG9000.Bot.Automated.Coops {
                             : $" [Silos have been empty for {timeEmpty} hours {coopChannel.Mention}]";
                     var warningText = messages[index].Replace("@name", user.DiscordUser.Mention + detail);
                     var dmResult = await BoolSendDm(user.DiscordUser, warningText, _db);
-                    if(dmResult != DMResult.Success) {
-                        var fallbackText = $"{warningText} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}";
+                    if(!dmResult.Success) {
+                        var fallbackText = $"{warningText} {(dmResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}";
                         _queue.EnqueueLow(() => coopChannel.SendMessageAsync(fallbackText));
                     }
                 }
@@ -149,8 +149,8 @@ namespace EGG9000.Bot.Automated.Coops {
                 return;
 
             var dmResult = await BoolSendDm(discordUser, $"{Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync()).emoji} {coop.Contract.Name} - {coopChannel.Mention}", db);
-            if(dmResult != DMResult.Success) {
-                var fallbackMessage = $"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync()).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult == DMResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}";
+            if(!dmResult.Success) {
+                var fallbackMessage = $"{discordUser.Mention} {Message}: {coop.Name} for {EggIncStatics.GetEggByContract(coop.Contract, await db.GetCustomEggsAsync()).emoji} {coop.Contract.Name} - {coopChannel.Mention} {(dmResult.CannotSendToUser ? "(DMs are blocked)" : "(Discord is not responding)")}";
                 _queue.EnqueueLow(() => coopChannel.SendMessageAsync(fallbackMessage));
             }
         }

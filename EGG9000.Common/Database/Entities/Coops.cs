@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
 
 namespace EGG9000.Common.Database.Entities {
@@ -59,7 +60,7 @@ namespace EGG9000.Common.Database.Entities {
         public bool RolesAddedToThread { get; set; } = false;
 
 
-        public CoopStatusEnum Status { get; set; }
+        public CoopStatus Status { get; set; }
         public bool PseudoExpired { get; set; } = false;
 
         public DBContract Contract { get; set; }
@@ -73,19 +74,17 @@ namespace EGG9000.Common.Database.Entities {
         [NotMapped]
         public Ei.ContractCoopStatusResponse LastStatusUpdate {
             get {
-                if(_status != null)
-                    return _status;
-                if(_StatusCompressed == null)
-                    return null;
-                using(var msi = new MemoryStream(_StatusCompressed))
-                using(var mso = new MemoryStream()) {
-                    using(var gs = new GZipStream(msi, CompressionMode.Decompress)) {
-                        CopyTo(gs, mso);
-                    }
+                if(_status != null) return _status;
+                if(_StatusCompressed == null) return null;
 
-                    _status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse>(Encoding.UTF8.GetString(mso.ToArray()));
-                    return _status;
+                using var msi = new MemoryStream(_StatusCompressed);
+                using var mso = new MemoryStream();
+                using(var gs = new GZipStream(msi, CompressionMode.Decompress)) {
+                    CopyTo(gs, mso);
                 }
+
+                _status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse>(Encoding.UTF8.GetString(mso.ToArray()));
+                return _status;
             }
             set {
                 _status = value;
@@ -120,19 +119,23 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool FinishedOrFailed() {
-            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || Status == CoopStatusEnum.CompletedAllCheckIn;
+            return CoopStatusSets.FinishedOrFailed.Contains(Status);
         }
 
         public bool FinalizedFinishedOrFailed() {
-            return Status == CoopStatusEnum.CompletedAllCheckIn || Status == CoopStatusEnum.Failed;
+            return CoopStatusSets.FinalizedFinishedOrFailed.Contains(Status);
         }
 
         public bool FinishedOrFailedOrExpired() {
-            return Status == CoopStatusEnum.Completed || Status == CoopStatusEnum.Failed || CoopEnds < DateTimeOffset.UtcNow || Status == CoopStatusEnum.CompletedAllCheckIn;
+            return FinishedOrFailed() || CoopEnds < DateTimeOffset.UtcNow;
+        }
+
+        public bool IsOpenForAssignment() {
+            return CoopStatusSets.OpenForAssignment.Contains(Status);
         }
     }
 
-    public enum CoopStatusEnum {
+    public enum CoopStatus {
         ManualWaitingOnCreation = 1,
         WaitingOnCreation = 2,
         WaitingOnThread = 3,
@@ -143,5 +146,11 @@ namespace EGG9000.Common.Database.Entities {
         Completed = 14,
         CompletedAllCheckIn = 15,
         Failed = -1
+    }
+
+    public static class CoopStatusSets {
+        public static readonly CoopStatus[] FinishedOrFailed = [CoopStatus.Completed, CoopStatus.Failed, CoopStatus.CompletedAllCheckIn];
+        public static readonly CoopStatus[] FinalizedFinishedOrFailed = [CoopStatus.CompletedAllCheckIn, CoopStatus.Failed];
+        public static readonly CoopStatus[] OpenForAssignment = [CoopStatus.WaitingOnThread, CoopStatus.WaitingOnStarter, CoopStatus.WaitingOnAssigned, CoopStatus.AllAssignedJoined];
     }
 }

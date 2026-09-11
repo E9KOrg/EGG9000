@@ -57,6 +57,7 @@ namespace EGG9000.Site.Controllers {
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
         public async Task<IActionResult> ViewUser(ulong discordId) {
             var model = await BuildViewUserModel(discordId);
+            if(model is null) return NotFound();
             return View("Index", model);
         }
 
@@ -70,6 +71,7 @@ namespace EGG9000.Site.Controllers {
             if(discordId != loginUserId && !isStaff) return Forbid();
 
             var model = await BuildViewUserModel(discordId);
+            if(model is null) return NotFound();
             return PartialView("Index", model);
         }
 
@@ -81,6 +83,7 @@ namespace EGG9000.Site.Controllers {
             var loginUserId = await GetLoginDiscordIdAsync();
             var isSelf = loginUserId == discordId;
             var user = await _db.DBUsers.Include(x => x.UserCoopXrefs).ThenInclude(x => x.Coop).FirstOrDefaultAsync(x => x.DiscordId == discordId);
+            if(user is null) return null;
             Sentry.SentrySdk.AddBreadcrumb($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordId: {discordId}");
             _bugsnag.Breadcrumbs.Leave($"DiscordUsername: {user.DiscordUsername}");
@@ -263,10 +266,8 @@ namespace EGG9000.Site.Controllers {
                     foreach(var account in user.EggIncAccounts) {
                         var refreshed = refreshedBackups.FirstOrDefault(x => x.Id == account.Id);
                         if(refreshed.Backup is not null) account.Backup = refreshed.Backup;
-                    }
-                    // Extras stage DB writes, so run them sequentially against the single context.
-                    foreach(var account in user.EggIncAccounts)
                         await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger);
+                    }
                     user.UpdateAccounts();
                     await db.SaveChangesAsync();
                 } catch(Exception e) {
@@ -440,7 +441,7 @@ namespace EGG9000.Site.Controllers {
         public Dictionary<string, List<DBContract>> GetUncompletedPEContracts(DBUser user, List<DBContract> contracts) {
             var contractsById = new Dictionary<string, DBContract>(StringComparer.CurrentCultureIgnoreCase);
             foreach(var c in contracts) contractsById[c.ID] = c;
-            var pePossibleContracts = contracts.Where(c => c.Details.GetPossiblePE() > 0).ToList();
+            var pePossibleContracts = contracts.Where(c => c.Details?.GetPossiblePE() > 0).ToList();
 
             return user.EggIncAccounts.ToDictionary(
                 account => account.Id,

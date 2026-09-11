@@ -60,16 +60,25 @@ namespace EGG9000.Bot.Automated {
                             // Scanning only Contracts silently drops the score for anything that's already
                             // archived by run time, leaving redo-Leggacy threshold checks with no score.
                             foreach(var score in scores.Contracts.Concat(scores.Archive ?? [])) {
+                                var contractIdentifier = string.IsNullOrEmpty(score.Contract?.Identifier) ? score.ContractIdentifier : score.Contract.Identifier;
+                                if(string.IsNullOrEmpty(contractIdentifier)) {
+                                    _logger.LogWarning("Score entry with no contract identifier for {user} {account} coop {coop}", user.DiscordUsername, account.Id, score.CoopIdentifier);
+                                    continue;
+                                }
+                                if(score.Evaluation is null) {
+                                    _logger.LogWarning("Score entry with no evaluation for {user} {account} {contract}/{coop}", user.DiscordUsername, account.Id, contractIdentifier, score.CoopIdentifier);
+                                    continue;
+                                }
                                 // Coop names can run long enough to exceed the column's storage limit.
                                 var coopIdentifier = score.CoopIdentifier.Length > 100 ? score.CoopIdentifier[..100] : score.CoopIdentifier;
-                                var existingScore = existingScores.FirstOrDefault(x => x.ContractIdentifier == score.Contract.Identifier && x.CoopIdentifier == coopIdentifier && x.EggIncId == account.Id);
+                                var existingScore = existingScores.FirstOrDefault(x => x.ContractIdentifier == contractIdentifier && x.CoopIdentifier == coopIdentifier && x.EggIncId == account.Id);
 
                                 if(existingScore is null) {
-                                    scoresToAdd.Add(new UserCsHistoryEntry(score.Contract.Identifier, coopIdentifier, score.Evaluation.Cxp, account.Id));
+                                    scoresToAdd.Add(new UserCsHistoryEntry(contractIdentifier, coopIdentifier, score.Evaluation.Cxp, account.Id));
                                 } else if(existingScore.Cxp != score.Evaluation.Cxp) {
                                     // Bump Created so a changed score (e.g. a later replay observed under
                                     // the same coop identifier) still sorts as the most recent play.
-                                    scoresToUpdate.Add((score.Contract.Identifier, coopIdentifier, account.Id, score.Evaluation.Cxp));
+                                    scoresToUpdate.Add((contractIdentifier, coopIdentifier, account.Id, score.Evaluation.Cxp));
                                 }
                             }
                         } catch(Exception ex) {

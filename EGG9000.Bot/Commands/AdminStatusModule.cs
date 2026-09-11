@@ -16,7 +16,9 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.FixedWidthTable;
@@ -230,7 +232,7 @@ namespace EGG9000.Bot.Commands {
             var refreshing = refreshseconds > 0;
             var interval = Math.Clamp(refreshseconds, 1, 30);
 
-            var interactionStart = (SocketInteraction)Context.Interaction;
+            var interactionStart = Context.Interaction;
             var message = await interactionStart.RespondAsyncGettingMessage(content: SysLoadContent(snap), embed: SysLoadSection("overview", snap),
                 ephemeral: !showinchannel, components: SysLoadComponents("overview", refreshing, !showinchannel));
             if(!refreshing || message is null)
@@ -264,6 +266,19 @@ namespace EGG9000.Bot.Commands {
             }, cts.Token);
         }
 
+        [SlashCommand("dumpperms", "Dump this server's command permission overrides to a file")]
+        [StaffOnly(StaffTier.Admin)]
+        public async Task DumpPerms() {
+            await Context.Interaction.DeferAsync(ephemeral: true);
+
+            var report = await CommandPermissionDump.BuildReportAsync(gateway, Context.Guild.Id);
+            var bytes = Encoding.UTF8.GetBytes(report);
+
+            await Context.Interaction.FollowupWithFileAsync(
+                new FileAttachment(new MemoryStream(bytes), $"command-perms-{Context.Guild.Id}.txt"),
+                text: "Command permission overrides attached.", ephemeral: true);
+        }
+
         [ComponentInteraction("SysLoadNav", ignoreGroupNames: true)]
         public async Task SysLoadNav(string[] values) {
             await Context.Interaction.DeferAsync();
@@ -291,14 +306,14 @@ namespace EGG9000.Bot.Commands {
             await Context.Interaction.DeferAsync();
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
-                session.Cts.Cancel();
+                await session.Cts.CancelAsync();
         }
 
         [ComponentInteraction("SysLoadDismiss", ignoreGroupNames: true)]
         public async Task SysLoadDismiss() {
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
-                session.Cts.Cancel();
+                await session.Cts.CancelAsync();
             try {
                 await component.Message.DeleteAsync();
             } catch {

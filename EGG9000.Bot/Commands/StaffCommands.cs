@@ -9,6 +9,7 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
+using EGG9000.Common.Helpers.Discord.ComponentsV2;
 using EGG9000.Common.Services;
 using Humanizer;
 using Microsoft.EntityFrameworkCore;
@@ -154,29 +155,19 @@ namespace EGG9000.Bot.Commands {
         }
 
         [SlashCommand("pingeveryoneincoop", "Ping everyone in a co-op with a message")]
+        [ChannelContext(CoopWithUsers = true)]
         public async Task PingEveryoneInCoop([Summary("message")] string message) {
-            var coop = await Db.Coops.Include(x => x.UserCoopsXrefs).ThenInclude(x => x.User).FirstOrDefaultAsync(x => x.ThreadID == Context.Interaction.ChannelId);
-            if(coop == null) {
-                await Context.Interaction.RespondAsyncGettingMessage($"Error finding co-op for this thread", ephemeral: true);
-                return;
-            }
-
             await Context.Interaction.RespondAsyncGettingMessage($"Pinging now", ephemeral: true);
 
-            var pings = String.Join(" ", coop.UserCoopsXrefs.Where(x => !x.Removed).Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
+            var pings = string.Join(" ", CoopChannel.UserCoopsXrefs.Where(x => !x.Removed).Select(x => x.User.DiscordId).GroupBy(x => x).Select(x => $"<@{x.First()}>"));
 
             await Context.Channel.SendMessageAsync($"{pings} {message}");
         }
 
         [SlashCommand("fixjoinissue", "Fix where the server doesn't show them as joined")]
+        [ChannelContext(Coop = true)]
         public async Task FixJoinIssue([Autocomplete(typeof(UserAccountChannelSpecificAutoComplete))][Summary("useraccount")] string useraccount) {
             await Context.Interaction.DeferAsync(ephemeral: true);
-
-            var coop = await Db.Coops.AsQueryable().FirstOrDefaultAsync(x => x.ThreadID == Context.Channel.Id);
-            if(coop == null) {
-                await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Command can only be used in a co-op channel"); });
-                return;
-            }
 
             var userid = useraccount.Split("|")[0];
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == Guid.Parse(userid));
@@ -193,16 +184,16 @@ namespace EGG9000.Bot.Commands {
 
             var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
 
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                ContractIdentifier = CoopChannel.ContractID,
+                CoopIdentifier = CoopChannel.Name.ToLower(),
                 UserId = account.Id,
-                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)coop.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
+                ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Ei.Contract.Types.PlayerGrade)CoopChannel.League, Platform = Ei.Platform.Droid, SecondsRemaining = 999, PointsReplay = false, UserName = "."
             }, account.Id);
 
 
             var updateResponse = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
-                ContractIdentifier = coop.ContractID,
-                CoopIdentifier = coop.Name.ToLower(),
+                ContractIdentifier = CoopChannel.ContractID,
+                CoopIdentifier = CoopChannel.Name.ToLower(),
                 Eop = 1, SoulPower = 24, UserId = account.Id, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = account.Backup.DeviceId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,
                 ProductionParams = new Ei.FarmProductionParams {
                     FarmPopulation = 0, Delivered = 0, Elr = 0, FarmCapacity = 0, Ihr = 0, Sr = 0
@@ -381,7 +372,7 @@ namespace EGG9000.Bot.Commands {
         public async Task CoopStats() {
             var command = Context.Interaction;
             await command.DeferAsync();
-            var coops = await Db.Coops.Where(x => !x.Finished && x.Status != CoopStatusEnum.Failed && x.GuildId == command.GuildId && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
+            var coops = await Db.Coops.Where(x => !x.Finished && x.Status != CoopStatus.Failed && x.GuildId == command.GuildId && x.CoopEnds > DateTimeOffset.UtcNow).ToListAsync();
             var stats = new StringBuilder();
             stats.AppendLine($"**Coop Threads Last Updated**");
             var coopGroups = coops.Where(x => x.LastUpdateToChannel is not null).GroupBy(x => Math.Ceiling((DateTimeOffset.UtcNow - x.LastUpdateToChannel.Value).TotalHours));
@@ -405,6 +396,72 @@ namespace EGG9000.Bot.Commands {
             for(var i = 1; i < messages.Count; i++) {
                 await command.Channel.SendMessageAsync(messages[i]);
             }
+        }
+
+        [SlashCommand("identify", "Identify what a Discord ID refers to (user, channel, guild, role, emoji)")]
+        public async Task Identify([Summary("id", "The Discord ID (snowflake) to identify")] string id) {
+            var command = Context.Interaction;
+            await command.DeferAsync(ephemeral: true);
+
+            var digits = new string(id.Where(char.IsDigit).ToArray());
+            if(!ulong.TryParse(digits, out var snowflake)) {
+                await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ComponentsV2EmbedHelpers.Error($"`{id}` is not a valid Discord ID."); });
+                return;
+            }
+
+            var createdAt = SnowflakeUtils.FromSnowflake(snowflake);
+            var createdLine = $"Created: {DiscordHelpers.TimeStamper(createdAt, DiscordHelpers.DiscordTimestampFormat.LongDateWShortTime)} ({DiscordHelpers.TimeStamper(createdAt, DiscordHelpers.DiscordTimestampFormat.Relative)})";
+
+            IDiscordClient client = gateway;
+            var guild = await client.GetGuildAsync(snowflake);
+            var channel = await client.GetChannelAsync(snowflake);
+            var role = gateway.Guilds.SelectMany(g => g.Roles).FirstOrDefault(r => r.Id == snowflake);
+            var emoteMatch = gateway.Guilds.SelectMany(g => g.Emotes.Select(e => (Guild: g, Emote: e))).FirstOrDefault(x => x.Emote.Id == snowflake);
+            var user = await client.GetUserAsync(snowflake);
+
+            string title, body;
+            if(guild is not null) {
+                title = "Guild";
+                body = $"**{guild.Name}**\nOwner: <@{guild.OwnerId}>\nID: `{guild.Id}`";
+            } else if(channel is not null) {
+                var kind = channel switch {
+                    IThreadChannel => "Thread",
+                    IForumChannel => "Forum Channel",
+                    IStageChannel => "Stage Channel",
+                    IVoiceChannel => "Voice Channel",
+                    ICategoryChannel => "Category",
+                    ITextChannel => "Text Channel",
+                    IDMChannel => "DM Channel",
+                    _ => channel.GetType().Name
+                };
+                title = kind;
+                var guildLine = channel is IGuildChannel gc ? $"\nGuild: {gc.Guild.Name} (`{gc.Guild.Id}`)" : "";
+                body = $"**{channel.Name}**{guildLine}\nMention: <#{channel.Id}>\nID: `{channel.Id}`";
+            } else if(role is not null) {
+                title = "Role";
+                body = $"**{role.Name}**\nGuild: {role.Guild.Name} (`{role.Guild.Id}`)\nPosition: {role.Position}\nMention: <@&{role.Id}>\nID: `{role.Id}`";
+            } else if(emoteMatch.Emote is not null) {
+                title = "Emoji";
+                body = $"**{emoteMatch.Emote.Name}**{(emoteMatch.Emote.Animated ? " (animated)" : "")}\nGuild: {emoteMatch.Guild.Name} (`{emoteMatch.Guild.Id}`)\nID: `{emoteMatch.Emote.Id}`";
+            } else if(user is not null) {
+                title = "User";
+                body = $"**{user.Username}**{(user.IsBot ? " (bot)" : "")}\nMention: <@{user.Id}>\nID: `{user.Id}`";
+            } else {
+                title = "Unknown";
+                body = $"Not found as a guild, channel, role, emoji, or user visible to the bot.\nID: `{snowflake}`\n\n_Could be a message, attachment, or interaction ID - those can't be looked up without channel context._";
+            }
+
+            await command.ModifyOriginalResponseAsync(x => {
+                x.Content = "";
+                x.Embed = null;
+                x.Flags = MessageFlags.ComponentsV2;
+                x.Components = new ComponentBuilderV2()
+                    .AddComponent(new ContainerBuilder()
+                        .WithAccentColor(title == "Unknown" ? Color.LightGrey : Color.Blue)
+                        .WithHeader($"Identify: {title}")
+                        .WithTextDisplay($"{body}\n\n{createdLine}"))
+                    .Build();
+            });
         }
     }
 }

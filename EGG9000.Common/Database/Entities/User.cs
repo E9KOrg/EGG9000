@@ -275,16 +275,14 @@ namespace EGG9000.Common.Database.Entities {
         }
 
         public bool UpdateDMStatus(DiscordHelpersExt.DMResult dmResult) {
-            switch(dmResult) {
-                case DiscordHelpersExt.DMResult.Success:
-                    if(DMSBlocked) { DMSBlocked = false; return true; }
-                    return false;
-                case DiscordHelpersExt.DMResult.CannotSendToUser:
-                    if(!DMSBlocked) { DMSBlocked = true; return true; }
-                    return false;
-                default:
-                    break;
+            if(dmResult.Success) {
+                if(DMSBlocked) { DMSBlocked = false; return true; }
+                return false;
+            } else if(dmResult.CannotSendToUser) {
+                if(!DMSBlocked) { DMSBlocked = true; return true; }
+                return false;
             }
+
             return false;
         }
 
@@ -440,6 +438,10 @@ namespace EGG9000.Common.Database.Entities {
         // (which are retained as a recovery copy). See AssignmentSettingsMigration.
         [Key(44)]
         public Contracts.Assignment.AssignmentSettings Assignment { get; set; }
+        [Key(45)]
+        public Contract.Types.PlayerGrade? PendingGrade { get; set; }
+        [Key(46)]
+        public DateTimeOffset PendingGradeSince { get; set; }
         public byte GetGroup(bool Ultra) {
             if(Ultra && UltraGroup > 0)
                 return UltraGroup;
