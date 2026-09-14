@@ -36,6 +36,7 @@ namespace EGG9000.Test.Assignment {
         private bool _missingColleggtible;
         private bool _missingSeasonalPe;
         private double _seasonalPeCsGoal;
+        private double _seasonCs;
         private double? _previousScore;
 
         public AccountFactsTestBuilder AccountId(string id) { _accountId = id; return this; }
@@ -55,6 +56,7 @@ namespace EGG9000.Test.Assignment {
         public AccountFactsTestBuilder MissingColleggtible(bool v) { _missingColleggtible = v; return this; }
         public AccountFactsTestBuilder MissingSeasonalPe(bool v) { _missingSeasonalPe = v; return this; }
         public AccountFactsTestBuilder SeasonalPeCsGoal(double v) { _seasonalPeCsGoal = v; return this; }
+        public AccountFactsTestBuilder SeasonCs(double v) { _seasonCs = v; return this; }
         public AccountFactsTestBuilder PreviousScore(double? v) { _previousScore = v; return this; }
 
         public AccountFacts Build() {
@@ -76,6 +78,7 @@ namespace EGG9000.Test.Assignment {
                 MissingColleggtible = _missingColleggtible,
                 MissingSeasonalPe = _missingSeasonalPe,
                 SeasonalPeCsGoal = _seasonalPeCsGoal,
+                SeasonCs = _seasonCs,
                 PreviousScoreOnThisContract = _previousScore
             };
         }

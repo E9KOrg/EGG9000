@@ -40,5 +40,11 @@ namespace EGG9000.Common.Contracts.Assignment {
             var seasonGrade = progress != null ? (Ei.Contract.Types.PlayerGrade)progress.StartingGrade : liveGrade;
             return season.GetMaxPeCxp(seasonGrade);
         }
+
+        public static double CsSoFar(string accountId, SeasonInfo season, IEnumerable<UserSeasonProgress> progresses) {
+            if(season is null) return 0;
+            return (progresses ?? [])
+                .FirstOrDefault(p => p.EggIncId == accountId && p.SeasonId == season.Id)?.TotalCxp ?? 0;
+        }
     }
 }
