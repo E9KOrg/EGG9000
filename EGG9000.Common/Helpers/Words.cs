@@ -8,14 +8,8 @@ using System.Linq;
 
 namespace EGG9000.Common.Helpers {
     public class Words {
-        private readonly Random _rnd;
-
-        public Words() {
-            _rnd = new Random();
-        }
-
         public string GetRandomWord() {
-            return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);
+            return FirstCharToUpper(WordList[Random.Shared.Next(WordList.Count)]);
         }
 
         // Pick a second word that does not start with the first word's last character (avoids
@@ -27,19 +21,19 @@ namespace EGG9000.Common.Helpers {
             var last = char.ToLowerInvariant(firstWord.Last());
             var excludeLiPair = last == 'l' || last == 'i';
             for(var attempt = 0; attempt < 16; attempt++) {
-                var candidate = WordList[_rnd.Next(WordList.Count)];
+                var candidate = WordList[Random.Shared.Next(WordList.Count)];
                 if(candidate.Length == 0) return FirstCharToUpper(candidate);
                 var first = char.ToLowerInvariant(candidate[0]);
                 var blocked = excludeLiPair ? (first == 'l' || first == 'i') : first == last;
                 if(!blocked)
                     return FirstCharToUpper(candidate);
             }
-            return FirstCharToUpper(WordList[_rnd.Next(WordList.Count)]);
+            return FirstCharToUpper(WordList[Random.Shared.Next(WordList.Count)]);
         }
 
         public string GetRandomNumber() {
             int number;
-            do { number = _rnd.Next(99); } while(number == 69);
+            do { number = Random.Shared.Next(99); } while(number == 69);
             return number.ToString();
         }
 

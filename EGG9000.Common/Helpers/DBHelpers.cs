@@ -1,5 +1,6 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -26,6 +27,7 @@ namespace EGG9000.Common.Helpers {
                         db.Database.SetCommandTimeout(TimeSpan.FromMinutes(1));
                         return (true, await db.SaveChangesAsync(cancellationToken));
                     } catch(Exception e) {
+                        RuntimeMetrics.AddDbRetries();
                         if(currentRetry++ > retryCount) {
                             logger?.LogError(e, "SaveChangesAsyncRetry Max Retries Reached");
                             return (false, -1);

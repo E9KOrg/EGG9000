@@ -1,8 +1,10 @@
-using EGG9000.Common.JsonData;
+﻿using EGG9000.Common.JsonData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace EGG9000.Test {
     [TestClass]
@@ -66,6 +68,18 @@ namespace EGG9000.Test {
                     second == 'l' || second == 'i',
                     $"'{first}' ends in l/i but next word starts with '{second}'");
             }
+        }
+
+        [TestMethod]
+        public void Concurrent_generation_does_not_tear_the_shared_rng() {
+            var words = new Common.Helpers.Words();
+            var names = new ConcurrentBag<string>();
+            Parallel.For(0, 1000, new ParallelOptions { MaxDegreeOfParallelism = 10 }, _ => {
+                var first = words.GetRandomWord();
+                names.Add(first + words.GetRandomSecondWord(first) + words.GetRandomNumber());
+            });
+            var dupes = names.GroupBy(x => x).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+            Assert.IsEmpty(dupes, $"concurrent generation produced identical names, shared Random is torn: {string.Join(", ", dupes.Take(10))}");
         }
 
         [GeneratedRegex("^[a-z]{3,5}$")]
