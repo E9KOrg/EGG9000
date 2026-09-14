@@ -24,8 +24,21 @@ namespace EGG9000.Bot.Interactions {
         [Summary("user5")] SocketUser user5 = null,
         [Summary("user6")] SocketUser user6 = null,
         [Summary("user7")] SocketUser user7 = null,
-        [Summary("user8")] SocketUser user8 = null) {
-        public SocketUser[] Users { get; } = new[] { user1, user2, user3, user4, user5, user6, user7, user8 }.Where(u => u is not null).ToArray();
+        [Summary("user8")] SocketUser user8 = null,
+        [Summary("user9")] SocketUser user9 = null,
+        [Summary("user10")] SocketUser user10 = null,
+        [Summary("user11")] SocketUser user11 = null,
+        [Summary("user12")] SocketUser user12 = null,
+        [Summary("user13")] SocketUser user13 = null,
+        [Summary("user14")] SocketUser user14 = null,
+        [Summary("user15")] SocketUser user15 = null,
+        [Summary("user16")] SocketUser user16 = null,
+        [Summary("user17")] SocketUser user17 = null,
+        [Summary("user18")] SocketUser user18 = null,
+        [Summary("user19")] SocketUser user19 = null,
+        [Summary("user20")] SocketUser user20 = null) {
+        public SocketUser[] Users { get; } = new[] { user1, user2, user3, user4, user5, user6, user7, user8, user9, user10, user11, user12, user13, user14, user15, user16, user17, user18, user19, user20
+                                                    }.Where(u => u is not null).ToArray();
     }
 
     [method: ComplexParameterCtor]
@@ -37,7 +50,20 @@ namespace EGG9000.Bot.Interactions {
         [Summary("user5")] SocketGuildUser user5 = null,
         [Summary("user6")] SocketGuildUser user6 = null,
         [Summary("user7")] SocketGuildUser user7 = null,
-        [Summary("user8")] SocketGuildUser user8 = null) {
-        public SocketGuildUser[] Users { get; } = new[] { user1, user2, user3, user4, user5, user6, user7, user8 }.Where(u => u is not null).ToArray();
+        [Summary("user8")] SocketGuildUser user8 = null,
+        [Summary("user9")] SocketGuildUser user9 = null,
+        [Summary("user10")] SocketGuildUser user10 = null,
+        [Summary("user11")] SocketGuildUser user11 = null,
+        [Summary("user12")] SocketGuildUser user12 = null,
+        [Summary("user13")] SocketGuildUser user13 = null,
+        [Summary("user14")] SocketGuildUser user14 = null,
+        [Summary("user15")] SocketGuildUser user15 = null,
+        [Summary("user16")] SocketGuildUser user16 = null,
+        [Summary("user17")] SocketGuildUser user17 = null,
+        [Summary("user18")] SocketGuildUser user18 = null,
+        [Summary("user19")] SocketGuildUser user19 = null,
+        [Summary("user20")] SocketGuildUser user20 = null) {
+        public SocketGuildUser[] Users { get; } = new[] { user1, user2, user3, user4, user5, user6, user7, user8, user9, user10, user11, user12, user13, user14, user15, user16, user17, user18, user19, user20
+                                                         }.Where(u => u is not null).ToArray();
     }
 }
