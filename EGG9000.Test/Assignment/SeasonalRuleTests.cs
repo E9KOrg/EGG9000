@@ -56,7 +56,7 @@ namespace EGG9000.Test.Assignment {
         [TestCategory("Unit")]
         public void UntilCsGoal_PreviouslyCompleted_FallsThroughEvenIfBelowGoal() {
             var c = TestFactsBuilder.Contract().Seasonal(true).Build();
-            var f = TestFactsBuilder.Account().PreviouslyCompleted(true).PreviousScore(0).Build();
+            var f = TestFactsBuilder.Account().PreviouslyCompleted(true).SeasonCs(0).Build();
             Assert.AreEqual(RuleOutcome.NotApplicable,
                 new SeasonalContractsRule().Evaluate(f, c, With(SeasonalMode.UntilCsGoal, goal: 5000)));
         }
@@ -84,25 +84,35 @@ namespace EGG9000.Test.Assignment {
             var c = TestFactsBuilder.Contract().Seasonal(true).Build();
 
             Assert.AreEqual(RuleOutcome.ForceInclude,
-                rule.Evaluate(TestFactsBuilder.Account().PreviousScore(4000).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000)));
+                rule.Evaluate(TestFactsBuilder.Account().SeasonCs(4000).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000)));
             // at goal + after=false -> stop (Exclude); 5000 is not < 5000.
             Assert.AreEqual(RuleOutcome.Exclude,
-                rule.Evaluate(TestFactsBuilder.Account().PreviousScore(5000).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000, after: false)));
+                rule.Evaluate(TestFactsBuilder.Account().SeasonCs(5000).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000, after: false)));
             // above goal + after=false -> stop (Exclude)
             Assert.AreEqual(RuleOutcome.Exclude,
-                rule.Evaluate(TestFactsBuilder.Account().PreviousScore(6000).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000, after: false)));
+                rule.Evaluate(TestFactsBuilder.Account().SeasonCs(6000).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000, after: false)));
             // above goal + after=true -> fall through (NotApplicable)
             Assert.AreEqual(RuleOutcome.NotApplicable,
-                rule.Evaluate(TestFactsBuilder.Account().PreviousScore(6000).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000, after: true)));
+                rule.Evaluate(TestFactsBuilder.Account().SeasonCs(6000).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000, after: true)));
         }
 
         [TestMethod]
         [TestCategory("Unit")]
-        public void UntilCsGoal_NullScoreTreatedAsZero_Forces() {
+        public void UntilCsGoal_ZeroSeasonCsForces() {
             var rule = new SeasonalContractsRule();
             var c = TestFactsBuilder.Contract().Seasonal(true).Build();
             Assert.AreEqual(RuleOutcome.ForceInclude,
-                rule.Evaluate(TestFactsBuilder.Account().PreviousScore(null).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000)));
+                rule.Evaluate(TestFactsBuilder.Account().SeasonCs(0).Build(), c, With(SeasonalMode.UntilCsGoal, goal: 5000)));
+        }
+
+        [TestMethod]
+        [TestCategory("Unit")]
+        public void UntilCsGoal_IgnoresPerContractScore() {
+            var rule = new SeasonalContractsRule();
+            var c = TestFactsBuilder.Contract().Seasonal(true).Build();
+            var f = TestFactsBuilder.Account().SeasonCs(824_000).PreviousScore(null).Build();
+            Assert.AreEqual(RuleOutcome.Exclude,
+                rule.Evaluate(f, c, With(SeasonalMode.UntilCsGoal, goal: 800_000, after: false)));
         }
 
         [TestMethod]
@@ -111,11 +121,11 @@ namespace EGG9000.Test.Assignment {
             var rule = new SeasonalContractsRule();
             var c = TestFactsBuilder.Contract().Seasonal(true).Build();
             // AAA floor is 200k. A goal of 0 (the dodge) still forces while score < 200k.
-            var aaa = TestFactsBuilder.Account().Grade(Ei.Contract.Types.PlayerGrade.GradeAaa).PreviousScore(150_000).Build();
+            var aaa = TestFactsBuilder.Account().Grade(Ei.Contract.Types.PlayerGrade.GradeAaa).SeasonCs(150_000).Build();
             Assert.AreEqual(RuleOutcome.ForceInclude,
                 rule.Evaluate(aaa, c, With(SeasonalMode.UntilCsGoal, goal: 0)));
             // Above the floor -> stops.
-            var aaaDone = TestFactsBuilder.Account().Grade(Ei.Contract.Types.PlayerGrade.GradeAaa).PreviousScore(200_000).Build();
+            var aaaDone = TestFactsBuilder.Account().Grade(Ei.Contract.Types.PlayerGrade.GradeAaa).SeasonCs(200_000).Build();
             Assert.AreEqual(RuleOutcome.Exclude,
                 rule.Evaluate(aaaDone, c, With(SeasonalMode.UntilCsGoal, goal: 0, after: false)));
         }
@@ -126,11 +136,11 @@ namespace EGG9000.Test.Assignment {
             var rule = new SeasonalContractsRule();
             var c = TestFactsBuilder.Contract().Seasonal(true).Build();
             // User goal 201k but the season PE goal is 500k -> must keep assigning until 500k.
-            var below = TestFactsBuilder.Account().Grade(Ei.Contract.Types.PlayerGrade.GradeAaa).SeasonalPeCsGoal(500_000).PreviousScore(300_000).Build();
+            var below = TestFactsBuilder.Account().Grade(Ei.Contract.Types.PlayerGrade.GradeAaa).SeasonalPeCsGoal(500_000).SeasonCs(300_000).Build();
             Assert.AreEqual(RuleOutcome.ForceInclude,
                 rule.Evaluate(below, c, With(SeasonalMode.UntilCsGoal, goal: 201_000)));
             // At the PE goal -> stops.
-            var atPe = TestFactsBuilder.Account().Grade(Ei.Contract.Types.PlayerGrade.GradeAaa).SeasonalPeCsGoal(500_000).PreviousScore(500_000).Build();
+            var atPe = TestFactsBuilder.Account().Grade(Ei.Contract.Types.PlayerGrade.GradeAaa).SeasonalPeCsGoal(500_000).SeasonCs(500_000).Build();
             Assert.AreEqual(RuleOutcome.Exclude,
                 rule.Evaluate(atPe, c, With(SeasonalMode.UntilCsGoal, goal: 201_000, after: false)));
         }

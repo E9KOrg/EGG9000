@@ -35,7 +35,7 @@ namespace EGG9000.Bot.Commands {
         [StaffOnly(StaffTier.ChickenTender)]
         public async Task AddMerit(
             [Summary("reason", "Merit Reason")] string reason,
-            [ComplexParameter] UserSlots userSlots) {
+            [ComplexParameter] GuildUserSlots userSlots) {
             await Context.Interaction.RespondAsyncGettingMessage("Adding Merits");
             var users = userSlots.Users;
             var admin = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);

@@ -26,7 +26,8 @@ namespace EGG9000.Test.Assignment {
             CompletedExactlyTwoGoals = false,
             MissingColleggtible = missingColleggtible,
             MissingSeasonalPe = false,
-            SeasonalPeCsGoal = 0
+            SeasonalPeCsGoal = 0,
+            SeasonCs = 0
         };
 
         private static ContractFacts BaseContract(bool isColleggtible = false) => new() {
@@ -108,7 +109,8 @@ namespace EGG9000.Test.Assignment {
                 CompletedExactlyTwoGoals = false,
                 MissingColleggtible = false,
                 MissingSeasonalPe = false,
-                SeasonalPeCsGoal = 0
+                SeasonalPeCsGoal = 0,
+                SeasonCs = 0
             };
 
             var accounts = new List<(AccountFacts facts, AssignmentSettings settings)> {
