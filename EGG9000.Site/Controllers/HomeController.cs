@@ -502,6 +502,11 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]
         [HttpGet]
+        [Route("api/LeaderboardJson")]
+        // Keys issued before the move to /api were documented against this path. Attribute routing
+        // replaces the conventional route, so without this line every existing consumer 404s.
+        // Kept for compatibility for now while existing users switch to api/
+        [Route("Home/LeaderboardJson")]
         public async Task<IActionResult> LeaderboardJson() {
             var guildId = GetGuildId();
             var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildId);
@@ -525,6 +530,43 @@ namespace EGG9000.Site.Controllers {
                 NumPrestiges = x.Backup.NumPrestiges
             }).ToList();
             return Json(result);
+        }
+
+        // Co-op membership does not turn over fast enough for a minute of staleness to matter, and this
+        // is the only thing standing between a polling client and a full re-read of every co-op on a
+        // contract, blob decode included.
+        private static readonly TimeSpan GuildCoopsCacheTtl = TimeSpan.FromSeconds(60);
+
+        [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]
+        [HttpGet]
+        [Route("api/GuildCoopsJson")]
+        public async Task<IActionResult> GuildCoopsJson(string contractId) {
+            var guildTag = User.Claims.FirstOrDefault(x => x.Type == "MembersOfGuildOnly")?.Value;
+            var error = ValidateGuildCoopsRequest(contractId, guildTag);
+            if(error != null) return BadRequest(new { error });
+
+            var guildId = GetGuildId();
+            var cacheKey = BuildGuildCoopsCacheKey(guildId, contractId, guildTag);
+            if(!_cache.TryGetValue(cacheKey, out List<GuildCoopApiItem> coops)) {
+                coops = await GuildCoops.QueryAsync(_db, guildId, contractId, guildTag, HttpContext.RequestAborted);
+                _cache.Set(cacheKey, coops, GuildCoopsCacheTtl);
+            }
+            return Json(coops);
+        }
+
+        // Returns null when the request is servable, otherwise the message to hand back as a 400.
+        public static string ValidateGuildCoopsRequest(string contractId, string guildTag) {
+            if(string.IsNullOrWhiteSpace(contractId))
+                return "A contractId is required.";
+            // The claim is only added when the key carries a guild, so an absent one means the key was
+            // never scoped. Fails loudly to better inform the user. 
+            if(string.IsNullOrWhiteSpace(guildTag))
+                return "This API key is not scoped to a guild.";
+            return null;
+        }
+
+        public static string BuildGuildCoopsCacheKey(ulong guildId, string contractId, string guildTag) {
+            return $"guildcoops:{guildId}:{contractId}:{guildTag?.Trim().ToLowerInvariant()}";
         }
 
         private const string NoLinkedGuildMessage = "Your account is not linked to a Discord server this site knows about.";
