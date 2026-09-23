@@ -218,7 +218,7 @@ namespace EGG9000.Bot.Commands {
             if(existingOwner is not null) {
                 var isSameUser = existingOwner.DiscordId == user.Id;
                 await reply(m => { m.Content = ""; m.Embed = EmbedError(isSameUser ? $"You have already registered EggInc ID `{eggincid}` with the bot." : $"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
-                if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but it's already registered to {(isSameUser ? "the same user" : "another user")}.");
+                if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but it's already registered to {(isSameUser ? "the same user" : "another user")}.", !isSameUser);
                 return;
             }
 
@@ -354,10 +354,10 @@ namespace EGG9000.Bot.Commands {
             }
             if(onComplete != null) await onComplete();
 
-            async Task NotifyRegistrationIssueChannel(string description) {
+            async Task NotifyRegistrationIssueChannel(string description, bool pingRole = true) {
                 if(guild is null || guildObj is null || !guildObj.HasChannel(GuildChannelType.RegisterIssues)) return;
                 var staffRole = guild.Roles.FirstOrDefault(x => x.Id == (guildObj.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole)?.Id ?? 0));
-                var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
+                var staffTag = (staffRole is null || !pingRole) ? "" : $"<@&{staffRole.Id}>: ";
                 await ChannelHelper.DetermineAndSend(_client.Gateway, guildObj, GuildChannelType.RegisterIssues, new() { Text = $"{staffTag}{description}" });
             }
         }
