@@ -357,7 +357,7 @@ namespace EGG9000.Bot.Commands {
             async Task NotifyRegistrationIssueChannel(string description, bool pingRole = true) {
                 if(guild is null || guildObj is null || !guildObj.HasChannel(GuildChannelType.RegisterIssues)) return;
                 var staffRole = guild.Roles.FirstOrDefault(x => x.Id == (guildObj.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole)?.Id ?? 0));
-                var staffTag = (staffRole is null || !pingRole) ? "" : $"<@&{staffRole.Id}>: ";
+                var staffTag = (staffRole is null || !pingRole) ? "" : $"@silent <@&{staffRole.Id}>: ";
                 await ChannelHelper.DetermineAndSend(_client.Gateway, guildObj, GuildChannelType.RegisterIssues, new() { Text = $"{staffTag}{description}" });
             }
         }
