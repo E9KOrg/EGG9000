@@ -213,6 +213,7 @@ public static class BotHostFactory {
             AddGated<ManageOverflow>();
             AddGated<RemoveTempRoles>();
             AddGated<HandleGradeChanges>();
+            AddGated<RemovedAccountsSweep>();
             AddGated<RefreshNasaApod>();
             AddGated<UpdateBackups>();
             AddGated<CleanAutomationLogs>();

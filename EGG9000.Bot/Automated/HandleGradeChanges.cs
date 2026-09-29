@@ -25,31 +25,35 @@ namespace EGG9000.Bot.Automated {
             var chunkedUsers = users.Chunk(25);
             foreach(var userchunk in chunkedUsers) {
                 StillAlive();
-                var mutatedUsers = new ConcurrentBag<DBUser>();
+                var fetchedByUser = new ConcurrentBag<(Guid UserId, List<(string EggIncId, Ei.ContractPlayerInfo Info)> Fetched)>();
                 await Parallel.ForEachAsync(userchunk, new ParallelOptions { MaxDegreeOfParallelism = 3 }, async (user, token) => {
                     try {
-                        var userMutated = false;
+                        var fetched = new List<(string, Ei.ContractPlayerInfo)>();
                         foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
                             var info = await AccountRefresh.FetchExtrasAsync(user, account, _logger);
                             if(info is null) {
                                 _logger.LogWarning("Null response for {user} ({account})", user.DiscordUsername, account.Id);
                                 continue;
                             }
-                            userMutated |= AccountRefresh.ApplyExtras(user, account, info, _logger);
+                            fetched.Add((account.Id, info));
                         }
-                        if(userMutated) mutatedUsers.Add(user);
+                        if(fetched.Count > 0) fetchedByUser.Add((user.Id, fetched));
                     } catch(Exception e) {
                         _bugSnag.Notify(e);
                         _logger.LogError(e, "Error checking for grade update for {user}", user.DiscordUsername);
                     }
                 });
 
-                if(mutatedUsers.IsEmpty) continue;
+                if(fetchedByUser.IsEmpty) continue;
                 using var saveScope = _provider.CreateScope();
                 var saveDb = saveScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                foreach(var user in mutatedUsers) {
-                    await saveDb.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
-                        .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte), CancellationToken.None);
+                foreach(var (userId, fetched) in fetchedByUser) {
+                    try {
+                        await AccountRefresh.ApplyExtrasToStoredRowAsync(userId, fetched, saveDb, _logger, CancellationToken.None);
+                    } catch(Exception e) {
+                        _bugSnag.Notify(e);
+                        _logger.LogError(e, "Error applying grade update for user {UserId}", userId);
+                    }
                 }
             }
         }

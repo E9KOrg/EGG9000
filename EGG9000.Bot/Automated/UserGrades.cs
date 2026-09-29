@@ -17,7 +17,7 @@ namespace EGG9000.Bot.Automated {
         public async override Task Run(object state, CancellationToken cancellationToken) {
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            var users = await _db.DBUsers.Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
+            var users = await _db.DBUsers.AsNoTracking().Where(x => x.GuildId != 0).ToListAsync(CancellationToken.None);
             if(BuildConfig.IsDebug) {
                 users = [.. users.Where(x => x.DiscordUsername.StartsWith("heimdallr"))];
             }
@@ -31,22 +31,12 @@ namespace EGG9000.Bot.Automated {
                 tasks.Add(Task.Run(async () => {
                     foreach(var account in user.EggIncAccounts) {
                         try {
-                            // Network call first, with no DB scope held open across the round-trip.
                             var info = await AccountRefresh.FetchExtrasAsync(user, account, _logger);
+                            if(info is null) continue;
 
                             using var scope = _provider.CreateScope();
                             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-
-                            if(info is not null) {
-                                var mutated = AccountRefresh.ApplyExtras(user, account, info, _logger);
-                                if(info.Status == Ei.ContractPlayerInfo.Types.Status.Complete)
-                                    await AccountRefresh.UpsertSeasonProgress(account.Id, info.SeasonProgress, db, CancellationToken.None);
-                                if(mutated) {
-                                    await db.DBUsers.Where(c => c.Id == user.Id).ExecuteUpdateAsync(s => s
-                                        .SetProperty(c => c._contractRegistrationByte, user._contractRegistrationByte));
-                                }
-                            }
-                            await db.SaveChangesAsync(CancellationToken.None);
+                            await AccountRefresh.ApplyExtrasToStoredRowAsync(user.Id, [(account.Id, info)], db, _logger, CancellationToken.None);
                         } catch(Exception ex) {
                             _logger.LogError(ex, $"Error getting grade for user {user.DiscordUsername} {account.Name}");
                         } finally {
