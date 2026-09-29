@@ -21,7 +21,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class DemeritCommands {
         public static async Task<List<string>> BuildDemeritLines(Guid dbuserid, ApplicationDbContext db) {
-            var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuserid && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).ToListAsync();
+            var demerits = await db.Demerit.AsQueryable().Where(x => x.UserId == dbuserid && x.When > DateTimeOffset.UtcNow.AddMonths(-1)).OrderBy(x => x.When).ToListAsync();
             var monthAgo = DateTimeOffset.UtcNow.AddMonths(-1);
             return [.. demerits.Select(x => $"Expires in {(monthAgo - x.When).Humanize(2)} for reason: {x.Reason}")];
         }
