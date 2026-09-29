@@ -252,6 +252,8 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
     services.AddSingleton<ArtifactImageRenderer>();
+    // Scoped, not singleton: it holds the request's ApplicationDbContext.
+    services.AddScoped<LeaderboardService>();
     services.AddHostedService<StorageDictionaryStartup>();
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();

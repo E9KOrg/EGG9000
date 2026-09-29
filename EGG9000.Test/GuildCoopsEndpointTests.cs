@@ -1,4 +1,4 @@
-using EGG9000.Site.Controllers;
+﻿using EGG9000.Site.Controllers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace EGG9000.Test {
@@ -11,30 +11,30 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void MissingContractId_IsRejected() {
-            Assert.IsNotNull(HomeController.ValidateGuildCoopsRequest(contractId: "", guildTag: "Tachyon"));
+            Assert.IsNotNull(APIController.ValidateGuildCoopsRequest(contractId: "", guildTag: "Tachyon"));
         }
 
         [TestMethod]
         public void WhitespaceContractId_IsRejected() {
-            Assert.IsNotNull(HomeController.ValidateGuildCoopsRequest(contractId: "   ", guildTag: "Tachyon"));
+            Assert.IsNotNull(APIController.ValidateGuildCoopsRequest(contractId: "   ", guildTag: "Tachyon"));
         }
 
         [TestMethod]
         public void KeyWithNoGuildScope_IsRejected() {
             // Most existing API keys have MembersOfGuildOnly unset. A guild-scoped endpoint must say so
             // loudly rather than quietly hand back an empty list that looks like "no co-ops".
-            Assert.IsNotNull(HomeController.ValidateGuildCoopsRequest(contractId: "winter-jubilee-2026", guildTag: null));
+            Assert.IsNotNull(APIController.ValidateGuildCoopsRequest(contractId: "winter-jubilee-2026", guildTag: null));
         }
 
         [TestMethod]
         public void ContractIdAndGuildScopePresent_IsAccepted() {
-            Assert.IsNull(HomeController.ValidateGuildCoopsRequest(contractId: "winter-jubilee-2026", guildTag: "Tachyon"));
+            Assert.IsNull(APIController.ValidateGuildCoopsRequest(contractId: "winter-jubilee-2026", guildTag: "Tachyon"));
         }
 
         [TestMethod]
         public void CacheKeySeparatesGuildTagsOnTheSameServerAndContract() {
-            var tachyon = HomeController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "Tachyon");
-            var other = HomeController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "SomeOtherGuild");
+            var tachyon = APIController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "Tachyon");
+            var other = APIController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "SomeOtherGuild");
 
             Assert.AreNotEqual(tachyon, other, "Two guilds on one server must never share a cache entry.");
         }
@@ -42,15 +42,15 @@ namespace EGG9000.Test {
         [TestMethod]
         public void CacheKeySeparatesServers() {
             Assert.AreNotEqual(
-                HomeController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "Tachyon"),
-                HomeController.BuildGuildCoopsCacheKey(456, "winter-jubilee-2026", "Tachyon"));
+                APIController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "Tachyon"),
+                APIController.BuildGuildCoopsCacheKey(456, "winter-jubilee-2026", "Tachyon"));
         }
 
         [TestMethod]
         public void CacheKeySeparatesContracts() {
             Assert.AreNotEqual(
-                HomeController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "Tachyon"),
-                HomeController.BuildGuildCoopsCacheKey(123, "spring-festival-2026", "Tachyon"));
+                APIController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "Tachyon"),
+                APIController.BuildGuildCoopsCacheKey(123, "spring-festival-2026", "Tachyon"));
         }
 
         [TestMethod]
@@ -58,8 +58,8 @@ namespace EGG9000.Test {
             // The query matches tags case-insensitively, so the cache must not split one guild's entry
             // across every way an admin happened to type the tag.
             Assert.AreEqual(
-                HomeController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "Tachyon"),
-                HomeController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "  tachyon "));
+                APIController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "Tachyon"),
+                APIController.BuildGuildCoopsCacheKey(123, "winter-jubilee-2026", "  tachyon "));
         }
     }
 }

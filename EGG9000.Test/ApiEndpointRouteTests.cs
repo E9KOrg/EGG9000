@@ -1,4 +1,6 @@
+﻿using EGG9000.Site.Auth;
 using EGG9000.Site.Controllers;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
@@ -15,8 +17,8 @@ namespace EGG9000.Test {
     public class ApiEndpointRouteTests {
 
         private static string[] RouteTemplatesFor(string actionName) {
-            var method = typeof(HomeController).GetMethod(actionName, BindingFlags.Public | BindingFlags.Instance);
-            Assert.IsNotNull(method, $"HomeController.{actionName} does not exist.");
+            var method = typeof(APIController).GetMethod(actionName, BindingFlags.Public | BindingFlags.Instance);
+            Assert.IsNotNull(method, $"APIController.{actionName} does not exist.");
             return [.. method.GetCustomAttributes<RouteAttribute>().Select(a => a.Template)];
         }
 
@@ -27,7 +29,7 @@ namespace EGG9000.Test {
             var templates = RouteTemplatesFor(actionName);
             Assert.IsTrue(
                 templates.Any(t => string.Equals(t, path, StringComparison.OrdinalIgnoreCase)),
-                $"HomeController.{actionName} does not answer '{path}'. Routes: {string.Join(", ", templates)}");
+                $"APIController.{actionName} does not answer '{path}'. Routes: {string.Join(", ", templates)}");
         }
 
         [TestMethod]
@@ -45,6 +47,25 @@ namespace EGG9000.Test {
             // Keys in the wild were issued against /Home/LeaderboardJson. Dropping this route is a
             // breaking change for every existing consumer, so it has to be a deliberate one.
             AssertServesPath("LeaderboardJson", "Home/LeaderboardJson");
+        }
+
+        [TestMethod]
+        public void ApiKeyEndpointsAreNotCoveredByAControllerLevelAllowAnonymous() {
+            // [AllowAnonymous] on the controller wins over [Authorize] on an action, so one added to
+            // APIController would hand every API-key endpoint to the public without failing anything
+            // else. The open image endpoints carry their own [AllowAnonymous] instead.
+            Assert.AreEqual(
+                0,
+                typeof(APIController).GetCustomAttributes<Microsoft.AspNetCore.Authorization.AllowAnonymousAttribute>(inherit: true).Count(),
+                "APIController must not be [AllowAnonymous] at the class level; mark the open actions individually.");
+
+            foreach(var action in new[] { "GuildCoopsJson", "LeaderboardJson" }) {
+                var method = typeof(APIController).GetMethod(action, BindingFlags.Public | BindingFlags.Instance);
+                Assert.IsNotNull(method, $"APIController.{action} does not exist.");
+                Assert.IsTrue(
+                    method.GetCustomAttributes<AuthorizeAttribute>().Any(a => a.AuthenticationSchemes == ApiKeyAuthenticationHandler.SchemeName),
+                    $"{action} must require the {ApiKeyAuthenticationHandler.SchemeName} scheme.");
+            }
         }
 
         [TestMethod]

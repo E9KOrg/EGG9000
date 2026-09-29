@@ -95,20 +95,17 @@ namespace EGG9000.Common.Helpers {
         }
 
         // A player can have several Egg Inc accounts carrying different guild tags, so membership is
-        // decided by the account that actually joined this co-op. Only when the xref does not name one
-        // do we fall back to any tagged account.
+        // decided by the account that actually joined this co-op, and by nothing else. No match means
+        // no guild: either the xref names no account, or it names an EID the user has since removed.
         private static EggIncAccount ResolveAccount(string eggIncIds, byte[] contractRegistrationByte, string eggIncId) {
+            if(string.IsNullOrWhiteSpace(eggIncId))
+                return null;
+
             var accounts = DBUser.FromAccountColumns(eggIncIds, contractRegistrationByte).EggIncAccounts;
             if(accounts is null || accounts.Count == 0)
                 return null;
 
-            if(!string.IsNullOrWhiteSpace(eggIncId)) {
-                var joined = accounts.FirstOrDefault(a => string.Equals(a.Id, eggIncId, StringComparison.OrdinalIgnoreCase));
-                if(joined is not null)
-                    return joined;
-            }
-
-            return accounts.FirstOrDefault(a => !string.IsNullOrWhiteSpace(a.Guild)) ?? accounts[0];
+            return accounts.FirstOrDefault(a => string.Equals(a.Id, eggIncId, StringComparison.OrdinalIgnoreCase));
         }
     }
 
