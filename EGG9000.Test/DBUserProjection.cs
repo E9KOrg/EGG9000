@@ -75,6 +75,13 @@ namespace EGG9000.Test {
             Assert.IsEmpty(projected.EggIncAccounts);
         }
 
+        [TestMethod]
+        public void EmptyBlobYieldsNoAccountsAndIsNotUnreadable() {
+            var projected = DBUser.FromAccountColumns(null, []);
+            Assert.IsEmpty(projected.EggIncAccounts);
+            Assert.IsFalse(projected.AccountsUnreadable);
+        }
+
         // The EggIncAccounts getter syncs LastGrade from the most-recent backup contract grade. That
         // sync may only catch the grade up, never push it down. A lower-grade backup contract accepted
         // after PromotionTime is a grade pull (ULTRA all-grade coop join), not a demotion - it must not

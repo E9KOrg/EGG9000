@@ -137,7 +137,7 @@ namespace EGG9000.Common.Database.Entities {
         public List<EggIncAccount> EggIncAccounts {
             get {
                 try {
-                    if(_contractRegistrationByte is null) {
+                    if(_contractRegistrationByte is null or []) {
                         _accounts = JsonConvert.DeserializeObject<List<EggIncAccount>>(_eggIncIds ?? "[]");
                     } else if(_accounts is not null) {
                         return _accounts;
