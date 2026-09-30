@@ -65,6 +65,30 @@ namespace EGG9000.Common.Helpers {
             return mutated;
         }
 
+        public static async Task<bool> ApplyExtrasToStoredRowAsync(Guid userId, IReadOnlyList<(string EggIncId, Ei.ContractPlayerInfo Info)> fetched, ApplicationDbContext db, ILogger logger, CancellationToken cancellationToken = default) {
+            var user = await db.DBUsers.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+            if(user is null) {
+                logger.LogWarning("User {UserId} vanished before its fetched grade data could be applied", userId);
+                return false;
+            }
+            var accounts = user.EggIncAccounts;
+            if(user.AccountsUnreadable) return false;
+
+            var mutated = false;
+            foreach(var (eggIncId, info) in fetched) {
+                var account = accounts.FirstOrDefault(a => string.Equals(a.Id, eggIncId, StringComparison.OrdinalIgnoreCase));
+                if(account is null) {
+                    logger.LogInformation("Account {EggIncId} is no longer on user {User} ({UserId}), skipping fetched grade data", eggIncId, user.DiscordUsername, userId);
+                    continue;
+                }
+                mutated |= ApplyExtras(user, account, info, logger);
+                if(info.Status == Ei.ContractPlayerInfo.Types.Status.Complete)
+                    await UpsertSeasonProgress(account.Id, info.SeasonProgress, db, cancellationToken);
+            }
+            await db.SaveChangesAsync(cancellationToken);
+            return mutated;
+        }
+
         // Network-only half of ApplyExtrasAsync. Callers that need to avoid holding a DB connection
         // open across the Egg Inc API call (e.g. batch jobs) can call this first, then ApplyExtras +
         // UpsertSeasonProgress against a short-lived scope once the network round-trip is done.

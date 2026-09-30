@@ -132,6 +132,7 @@ namespace EGG9000.Common.Database {
         public DbSet<ApiKeyRequestLog> ApiKeyRequestLogs { get; set; }
         public DbSet<ApiKeyDailyUsage> ApiKeyDailyUsages { get; set; }
         public DbSet<StorageDictionaryRow> StorageDictionaries { get; set; }
+        public DbSet<RemovedAccount> RemovedAccounts { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -300,6 +301,8 @@ namespace EGG9000.Common.Database {
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
             builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
             builder.Entity<DBCustomEgg>().HasKey(x => new { x.Identifier });
+            builder.Entity<RemovedAccount>().HasKey(x => new { x.UserId, x.EggIncId });
+            builder.Entity<RemovedAccount>().HasIndex(x => x.EggIncId);
 
             builder.Entity<Demerit>().HasOne(x => x.User).WithMany(x => x.Demerits).HasForeignKey(x => x.UserId);
             builder.Entity<Demerit>().HasOne(x => x.AdminUser).WithMany(x => x.DemeritsGiven).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);

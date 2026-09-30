@@ -30,6 +30,13 @@ namespace EGG9000.Bot.Commands {
                 return;
             } else if(dbUser.EggIncAccounts.Any(x => x.Id == eggincid)) {
                 dbUser.RemoveID(eggincid);
+                var tombstone = await db.RemovedAccounts.FirstOrDefaultAsync(r => r.UserId == dbUser.Id && r.EggIncId == eggincid);
+                if(tombstone is null) {
+                    db.RemovedAccounts.Add(new RemovedAccount { UserId = dbUser.Id, EggIncId = eggincid, RemovedOn = DateTimeOffset.UtcNow, RemovedByDiscordId = command.User.Id });
+                } else {
+                    tombstone.RemovedOn = DateTimeOffset.UtcNow;
+                    tombstone.RemovedByDiscordId = command.User.Id;
+                }
             } else {
                 Embed[] embedArrayErr = [EmbedError($"Unable to find the EggIncId `{eggincid}` registered with <@{userid}>")];
                 embedArrayErr = [.. embedArrayErr, .. (await UserStatusCommands.AccountsString(db, dbUser, false)).Select(b => b.Build()).ToArray()];
@@ -211,12 +218,14 @@ namespace EGG9000.Bot.Commands {
                 logger.LogError(ex, "Error checking banned users");
             }
 
-            var existingAccountColumns = await db.DBUsers
-                .Select(u => new { u.DiscordId, u._eggIncIds })
-                .ToListAsync();
-            var existingOwner = existingAccountColumns.FirstOrDefault(u => DBUser.FromAccountColumns(u._eggIncIds, []).EggIncAccounts.Any(a => a.Id.Equals(eggincid, StringComparison.CurrentCultureIgnoreCase)));
+            var removedFrom = (await db.RemovedAccounts.Where(r => r.EggIncId == eggincid).Select(r => r.UserId).ToListAsync()).ToHashSet();
+            var existingAccountColumns = (await db.DBUsers
+                .Select(u => new { u.Id, u.DiscordId, u._eggIncIds, u._contractRegistrationByte })
+                .ToListAsync())
+                .Select(u => new AccountOwnership.Row(u.Id, u.DiscordId, u._eggIncIds, u._contractRegistrationByte));
+            var existingOwner = AccountOwnership.FindOwner(existingAccountColumns, removedFrom, eggincid);
             if(existingOwner is not null) {
-                var isSameUser = existingOwner.DiscordId == user.Id;
+                var isSameUser = existingOwner.Value.DiscordId == user.Id;
                 await reply(m => { m.Content = ""; m.Embed = EmbedError(isSameUser ? $"You have already registered EggInc ID `{eggincid}` with the bot." : $"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
                 if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but it's already registered to {(isSameUser ? "the same user" : "another user")}.", !isSameUser);
                 return;
@@ -270,6 +279,9 @@ namespace EGG9000.Bot.Commands {
             }
 
             await AccountRefresh.ApplyExtrasAsync(dbuser, newAccount, db, logger);
+
+            var reRegistered = await db.RemovedAccounts.FirstOrDefaultAsync(r => r.UserId == dbuser.Id && r.EggIncId == newAccount.Id);
+            if(reRegistered is not null) db.RemovedAccounts.Remove(reRegistered);
 
             await db.SaveChangesAsync();
 
