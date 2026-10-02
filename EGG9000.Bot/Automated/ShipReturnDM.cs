@@ -21,10 +21,11 @@ namespace EGG9000.Bot.Automated {
         private record PendingSend(DBUser User, DBUser.ShipDM ShipDm, Discord.IUser DiscordUser, Discord.Embed Embed, Discord.MessageComponent Components);
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
+            _logger.LogInformation("ShipReturnDM Run() starting");
             var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var dbEggs = await _db.GetCustomEggsAsync();
             var users = await _db.DBUsers.AsQueryable().Where(x => x.GuildId > 0 && x.DMOnShipReturn && x.NextShipReturnDMDue <= DateTimeOffset.UtcNow).ToListAsync(CancellationToken.None);
-
+            _logger.LogInformation("ShipReturnDM Run() found {count} users to process", users.Count);
             var pending = new List<PendingSend>();
             var touched = false;
 
@@ -32,6 +33,7 @@ namespace EGG9000.Bot.Automated {
             totalTimings.Start();
 
             foreach(var user in users) {
+                base.StillAlive();
                 var discordUser = _client.GetUser(user.DiscordId);
                 if(discordUser == null) {
                     continue;
@@ -118,6 +120,7 @@ namespace EGG9000.Bot.Automated {
                     }
                 }
             }
+            _logger.LogInformation("ShipReturnDM Run() finished processing {count} users", pending.Count);
 
             totalTimings.Set("Processed Users");
 
@@ -130,19 +133,23 @@ namespace EGG9000.Bot.Automated {
                 return (p, result);
             });
             var sendResults = await Task.WhenAll(sendTasks);
+            _logger.LogInformation("ShipReturnDM Run() finished sending {count} DMs", sendResults.Length);
 
             totalTimings.Set("Sent DMs");
 
             var retryTouched = false;
+
+            var retryResults = sendResults.Where(x => !ShipReturnDmBuilder.ShouldMarkSent(x.result)).ToList();
+
             foreach(var (p, result) in sendResults) {
                 if(!ShipReturnDmBuilder.ShouldMarkSent(result)) {
                     p.ShipDm.Sent = false;
                     p.User.ShipDMs = p.User.ShipDMs;
                     retryTouched = true;
-                    //Re-enable the below after the Sept 15th, 2026
-                    //_logger.LogWarning("ShipReturnDM to {user} failed transiently ({result}); will retry next tick", p.User.DiscordUsername, result.Exception.Message);
+                    _logger.LogWarning("ShipReturnDM to {user} failed transiently ({result}); will retry next tick", p.User.DiscordUsername, result.Exception.Message);
                 }
             }
+
 
             totalTimings.Set("Processed Send Results");
 
@@ -155,7 +162,7 @@ namespace EGG9000.Bot.Automated {
             await _db.SaveChangesAsync(CancellationToken.None);
 
             var timingsResult = totalTimings.Finished(); 
-            //_logger.LogInformation("ShipReturnDM Run(): {timings}", String.Join(", ", timingsResult.Select(x => $"[{x.name}: {x.time.TotalMilliseconds}ms]")));
+            _logger.LogInformation("ShipReturnDM Run(): {timings}", String.Join(", ", timingsResult.Select(x => $"[{x.name}: {x.time.TotalMilliseconds}ms]")));
         }
 
         public static async Task<TimeSpan> UpdateNextShipDM(List<DBUser> dbusers, ApplicationDbContext _db, ILogger logger) {
