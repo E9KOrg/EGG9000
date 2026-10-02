@@ -104,12 +104,12 @@ app.Use(async (context, next) => {
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     headers["Content-Security-Policy-Report-Only"] =
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
-        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'unsafe-inline' https://js.stripe.com https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; " +
+        "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; " +
         "img-src 'self' data: https:; " +
         "font-src 'self' data:; " +
         "frame-src https://js.stripe.com https://hooks.stripe.com; " +
-        "connect-src 'self' https://api.stripe.com; " +
+        (BuildConfig.IsRelease ? "connect-src 'self' https://api.stripe.com; " : "connect-src *;") +
         "frame-ancestors 'none'";
     await next();
 });
