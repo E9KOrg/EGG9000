@@ -171,6 +171,26 @@ public class GuildCoopsQueryTests {
     }
 
     [TestMethod]
+    public async Task Query_RedactsDiscordIdOfNonGuildMembers() {
+        await using var ctx = new ApplicationDbContext(Options());
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
+        var contractId = await FreshContractAsync(ctx);
+
+        var coop = SeedCoop(ctx, contractId, KeyGuildId, "e9k-redact");
+        SeedPlayer(ctx, coop, "guildie", GuildTag);
+        SeedPlayer(ctx, coop, "outsider", guildTag: null);
+        SeedPlayer(ctx, coop, "otherguild", "SomeOtherGuild");
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
+
+        var result = await GuildCoops.QueryAsync(ctx, KeyGuildId, contractId, GuildTag, TestContext!.CancellationToken);
+        var byName = result.Single().Players.ToDictionary(p => p.DiscordName, p => p);
+
+        Assert.IsNotNull(byName["guildie"].DiscordId, "Guild members keep their Discord id.");
+        Assert.IsNull(byName["outsider"].DiscordId, "A player with no guild must not have their Discord id exposed to the key.");
+        Assert.IsNull(byName["otherguild"].DiscordId, "A player in another guild must not have their Discord id exposed to the key.");
+    }
+
+    [TestMethod]
     public async Task Query_ExcludesCoopsFromOtherContracts() {
         await using var ctx = new ApplicationDbContext(Options());
         await ctx.Database.MigrateAsync(TestContext!.CancellationToken);

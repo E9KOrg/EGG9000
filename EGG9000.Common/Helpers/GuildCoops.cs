@@ -64,7 +64,9 @@ namespace EGG9000.Common.Helpers {
 
                     players.Add(new GuildCoopPlayerApiItem {
                         DiscordName = p.DiscordUsername,
-                        DiscordId = p.DiscordId.ToString(),
+                        // The key is scoped to one in-game guild, so it only gets the Discord ids of
+                        // that guild's members. Everyone else in the co-op is listed without one.
+                        DiscordId = inGuild ? p.DiscordId.ToString() : null,
                         EggIncName = p.FixedUserName ?? account?.Name,
                         Guild = playerGuild,
                         InGuild = inGuild,
