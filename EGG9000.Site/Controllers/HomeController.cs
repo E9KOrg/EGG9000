@@ -31,7 +31,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     public partial class HomeController(ILogger<HomeController> logger, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<ApplicationUser> signInManager,
-        DiscordSocketClient discord, ApplicationDbContext db, IMemoryCache cache, DatabaseCache databaseCache) : E9KControllerBase {
+        DiscordSocketClient discord, ApplicationDbContext db, IMemoryCache cache, LeaderboardService leaderboards) : E9KControllerBase {
 
         private readonly ILogger<HomeController> _logger = logger;
         private readonly ApplicationDbContext _db = db;
@@ -40,7 +40,7 @@ namespace EGG9000.Site.Controllers {
         private readonly DiscordSocketClient _discord = discord;
         private readonly IMemoryCache _cache = cache;
         private readonly SignInManager<ApplicationUser> _signInManager = signInManager;
-        private readonly DatabaseCache _databaseCache = databaseCache;
+        private readonly LeaderboardService _leaderboards = leaderboards;
 
         [AllowAnonymous]
         public async Task<IActionResult> TestBugsink() {
@@ -198,32 +198,7 @@ namespace EGG9000.Site.Controllers {
             return View("Index");
         }
 
-        public async Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) {
-            var dbguild = await _db.Guilds.FirstAsync(x => x.Id == guildid);
-
-            var guild = _discord.Guilds.FirstOrDefault(g => g.Id == guildid);
-            if(guild is null) return [];
-            // Membership is the DB GuildId, not the live Discord cache. The site runs its own bare
-            // socket client whose member cache can read "complete" while actually partial, and gating
-            // on it dropped real members from the board (the recurring CSLeaderboard "few users" bug).
-            // ManageOverflow owns reconciling GuildId against true Discord membership; the board just
-            // trusts it. DiscordUser is still resolved below for the display name only.
-            var allUsers = await _databaseCache.GetDbUsers();
-            var rawusers = allUsers.Where(x => x.GuildId == guildid && !x.TempDisabled);
-
-            var accounts = rawusers.SelectMany(dbu => dbu.EggIncAccounts.Select(y => new LeaderboardUser {
-                User = dbu,
-                Backup = y.Backup,
-                DiscordUser = guild.Users.FirstOrDefault(du => du.Id == dbu.DiscordId),
-                TotalContracts = dbu.GuildCoops,
-                TotalCS = y.Backup?.TotalCS ?? 0,
-                SeasonCS = y.Backup?.SeasonCS ?? 0,
-                TotalCraftingXP = y.Backup?.CraftingXP ?? 0,
-                CraftingLevel = y.Backup?.GetCraftingLevel() ?? 1,
-            })).Where(x => x.Backup != null && x.Backup.Farms.Count > 0 && (x.Account.Active || guildid == 1108127105088241746)).OrderByDescending(x => x.Backup.EarningsBonus).ToList();
-
-            return accounts;
-        }
+        public Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) => _leaderboards.GetLeaderboardAsync(guildid);
 
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Authorize]
@@ -498,33 +473,6 @@ namespace EGG9000.Site.Controllers {
                 ProPermit = x.Backup.PermitLevel == 1
             });
             return new ObjectResult(leaderboard);
-        }
-
-        [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]
-        [HttpGet]
-        public async Task<IActionResult> LeaderboardJson() {
-            var guildId = GetGuildId();
-            var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildId);
-            if(guild == null) return StatusCode(503);
-            await guild.DownloadUsersAsync();
-            var leaderboard = await _getLeaderboard(guildId);
-
-            var membersOfGuildOnly = User.Claims.FirstOrDefault(x => x.Type == "MembersOfGuildOnly")?.Value;
-            if(!string.IsNullOrWhiteSpace(membersOfGuildOnly))
-                leaderboard = [.. leaderboard.Where(x => string.Equals(x.Account?.Guild?.Trim(), membersOfGuildOnly.Trim(), StringComparison.OrdinalIgnoreCase))];
-
-            var result = leaderboard.Select(x => new Home_LeaderboardApiItem {
-                DiscordName = x.DisplayName,
-                DiscordId = x.DisplayDiscordId,
-                EggIncName = x.Backup.UserName,
-                EarningsBonus = x.Backup.EarningsBonus,
-                SoulEggs = x.Backup.SoulEggs,
-                EggsOfProphecy = x.Backup.EggsOfProphecy,
-                MER = x.Backup.MER,
-                EggsOfTruth = x.Backup.EggsOfTruth,
-                NumPrestiges = x.Backup.NumPrestiges
-            }).ToList();
-            return Json(result);
         }
 
         private const string NoLinkedGuildMessage = "Your account is not linked to a Discord server this site knows about.";
