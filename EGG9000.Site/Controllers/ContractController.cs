@@ -293,10 +293,15 @@ namespace EGG9000.Site.Controllers {
             times.Set("Download Guild Users");
             var scoreGridItems = coops.SelectMany(coop => {
                 var contract = contracts.First(x => x.ID == coop.ContractID);
-                var details = new CoopDetails(coop, contract, coop.League, [.. coop.UserCoopsXrefs.SelectMany(xref => {
+                var backups = coop.UserCoopsXrefs.SelectMany(xref => {
                     var user = users.First(u => u.Id == xref.UserId);
                     return user.EggIncAccounts.Select(acc => new UserWithBackup { Account = acc, Backup = acc.Backup, User = xref.User });
-                })], customEggs, _discord, coop.LastStatusUpdate);
+                });
+
+                if(backups.Any(x => x.Backup is null))
+                    _logger.LogWarning($"Coop {coop.Name} has {backups.Count(x => x.Backup is null)} null backups");
+
+                var details = new CoopDetails(coop, contract, coop.League, [.. backups.Where(x => x.Backup is not null)], customEggs, _discord, coop.LastStatusUpdate);
 
                 return details.CoopParticipants.Where(p => p.DBUser is not null && p.DBUser.GuildId == guildid).Select(p => {
                     var role = groupRoles.Length > 0 ? dbguild.GroupRoles.Split(",").FirstOrDefault(gr => guild.GetUser(p.DBUser.DiscordId)?.Roles.Any(r => r.Id.ToString() == gr) ?? false) : "";

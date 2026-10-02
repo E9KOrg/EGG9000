@@ -1,33 +1,50 @@
 ﻿@model List<ContractScoring.UserContractScore>
+@using System.Text.Json
 @{
-	ViewData["Title"] = "Contract Scores";
-	var chartData = Model.Select(x => new {
-		name = x.UserName,
-		data = new object[] { new object[] { x.SoulPower, Math.Log10(x.Score) } }
-	});
-}
+    ViewData["Title"] = "Contract Scores";
+    var chartData = Model.Select(x => new {
+        name = x.UserName,
+        data = new object[] { new object[] { x.SoulPower, Math.Log10(x.Score) } }
+    });
 
+    var tableData = Model.Select(x => new {
+        UserId = x.UserId,
+        UserName = x.UserName,
+        SoulPower = x.SoulPower,
+        League = ((Ei.Contract.Types.PlayerGrade)x.League).ToString(),
+        EggsShipped = x.EggsShipped,
+        TokensSpent = x.TokensSpent,
+        Joined = x.Joined.Humanize(),
+        Score = x.Score,
+        LogScore = Math.Log10(x.Score <= 0 ? 1 : x.Score)
+    });
+}
+<link rel="stylesheet" href="https://cdn.datatables.net/3.1.3/css/dataTables.bootstrap5.min.css" />
 
 <h2>@ViewBag.ContractID</h2>
 
 <div id="chart"></div>
 
-@{
-	<table class="table table-striped">
-		<thead>
-			<tr>
-				<th></th>
-				<th>Soul Power</th>
-				<th>Grade</th>
-				<th>Eggs Shipped</th>
-				<th>Tokens Spent</th>
-				<th>Joined</th>
-				<th>Score</th>
-				<th>LogScore</th>
-			</tr>
-		</thead>
-		<tbody>
-			@foreach (var score in Model.OrderBy(x => x.SoulPower)) {
+<script id="contract-scores-data" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(tableData))
+</script>
+
+
+<table class="table table-striped" id="contractScoresTable">
+    <thead>
+        <tr>
+            <th></th>
+            <th>Soul Power</th>
+            <th>Grade</th>
+            <th>Eggs Shipped</th>
+            <th>Tokens Spent</th>
+            <th>Joined</th>
+            <th>Score</th>
+            <th>LogScore</th>
+        </tr>
+    </thead>
+    <tbody>
+        @* 			@foreach (var score in Model.OrderBy(x => x.SoulPower)) {
 				<tr>
 					<td><a href="/Home/ViewUser/@(score.UserId)">@score.UserName</a></td>
 					<td>@score.SoulPower </td>
@@ -38,64 +55,84 @@
 					<td>@score.Score</td>
 					<td>@Math.Log10(score.Score)</td>
 				</tr>
-			}
-		</tbody>
-	</table>
-}
+			} *@
+    </tbody>
+</table>
 
 <style>
-	.StandardOnly .Elite {
-		display: none;
-	}
+    .StandardOnly .Elite {
+        display: none;
+    }
 
-	.Standard td {
-		color: #42a479;
-	}
+    .Standard td {
+        color: #42a479;
+    }
 </style>
+
 @if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
-	<partial name="_ApexCharts" />
-	<script type="text/javascript">
-		var options = {
-			chart: {
-				type: 'scatter',
-				zoom: {
-					enabled: true,
-					type: 'xy'
-				},
-				animations: {
-					enabled: false
-				}
-			},
-			series: @Html.Raw(JsonConvert.SerializeObject(chartData)),
-			yaxis: {
-			//logarithmic: true
-			decimalsInFloat: 2
-			},
-			xaxis: {
-			logarithmic: true,
-			//type: "numeric",
-			//tickAmount: 10
+    <partial name="_ApexCharts" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/3.1.3/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/3.1.3/js/dataTables.bootstrap5.min.js"></script>
 
-			//    type: 'datetime'
-			},
-			//tooltip: {
-			//    x: {
-			//        format: 'dd MMM yyyy'
-			//    }
-			//},
-			dataLabels: {
-			enabled: false
-			},
-			stroke: {
-			width: 2
-			},
-			legend: {
-			show: false
-			},
-			}
+    <script type="text/javascript">
+        const raw = document.getElementById('contract-scores-data').textContent;
+        const rows = JSON.parse(raw);
 
-			var chart = new ApexCharts(document.querySelector("#chart"), options);
+        $('#contractScoresTable').DataTable({
+            data: rows,
+            pageLength: 25,
+            deferRender: true,
+            columns: [
+                {
+                    data: 'UserName',
+                    render: function (data, type, row) {
+                        if (type !== 'display') return data;
+                        return `<a href="/Home/ViewUser/${row.UserId}">${data}</a>`;
+                    }
+                },
+                { data: 'SoulPower' },
+                { data: 'League' },
+                { data: 'EggsShipped' },
+                { data: 'TokensSpent' },
+                { data: 'Joined' },
+                { data: 'Score' },
+                { data: 'LogScore' }
+            ]
+        });
 
-			chart.render();
-	</script>
+        var options = {
+            chart: {
+                type: 'scatter',
+                zoom: {
+                    enabled: true,
+                    type: 'xy'
+                },
+                animations: {
+                    enabled: false
+                }
+            },
+            series: @Html.Raw(JsonConvert.SerializeObject(chartData)),
+            yaxis: {
+                decimalsInFloat: 2
+            },
+            xaxis: {
+                logarithmic: true,
+            },
+
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                width: 2
+            },
+            legend: {
+                show: false
+            },
+        }
+
+        var chart = new ApexCharts(document.querySelector("#chart"), options);
+
+        chart.render();
+    </script>
 }
