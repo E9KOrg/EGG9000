@@ -1,10 +1,15 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.AfxSets;
+using Discord.WebSocket;
+using EGG9000.Site.Auth;
+using EGG9000.Site.Models.Home;
+using EGG9000.Site.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using SixLabors.Fonts;
 using SixLabors.ImageSharp;
@@ -22,14 +27,20 @@ using static EGG9000.Common.Helpers.ArtifactHelpers;
 
 namespace EGG9000.Site.Controllers {
 
-    [AllowAnonymous]
-    public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env, Services.ArtifactImageRenderer renderer) : Controller {
+    // No controller-level [AllowAnonymous] here on purpose: it beats any [Authorize] on an action, so
+    // adding one would silently unauthenticate the API-key endpoints below. Each open endpoint opts out
+    // of the deny-by-default FallbackPolicy for itself.
+    public class APIController(ApplicationDbContext db, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<APIController> logger, IWebHostEnvironment env,
+        Services.ArtifactImageRenderer renderer, DiscordSocketClient discord, IMemoryCache cache, LeaderboardService leaderboards) : E9KControllerBase {
         private readonly ApplicationDbContext _db = db;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
         private readonly IServiceProvider _provider = provider;
         private readonly ILogger<APIController> _logger = logger;
         private readonly IWebHostEnvironment _env = env;
         private readonly Services.ArtifactImageRenderer _renderer = renderer;
+        private readonly DiscordSocketClient _discord = discord;
+        private readonly IMemoryCache _cache = cache;
+        private readonly LeaderboardService _leaderboards = leaderboards;
 
         private void DrawArtifactCell(Image<Rgba32> canvas, EggIncArtifactInstance inst, int cellX, int rowY, AfxSetsCreatorConfig config) {
             var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
@@ -73,6 +84,7 @@ namespace EGG9000.Site.Controllers {
             return System.IO.File.Exists(imageDur) ? imageDur : null;
         }
 
+        [AllowAnonymous]
         [HttpPost]
         [Route("api/generateeventimage")]
         public IActionResult GenerateEventImage([FromHeader] string authenticationKey, [FromBody] DBEvent customEvent) {
@@ -144,6 +156,7 @@ namespace EGG9000.Site.Controllers {
             return File(ms.ToArray(), "image/png");
         }
 
+        [AllowAnonymous]
         [HttpPost]
         [Route("api/generateinventoryb64")]
         public async Task<IActionResult> GenerateInventoryB64([FromHeader] string authenticationKey, [FromBody] InventoryAPIObject userObject) {
@@ -165,6 +178,7 @@ namespace EGG9000.Site.Controllers {
             return File(render.Jpeg, "image/jpeg");
         }
 
+        [AllowAnonymous]
         [HttpPost]
         [Route("api/generateafxsetsb64")]
         public async Task<IActionResult> GenerateAfxSetsB64([FromHeader] string authenticationKey, [FromBody] AfxSetsAPIObject userObject) {
@@ -232,6 +246,7 @@ namespace EGG9000.Site.Controllers {
             return Ok(new AfxSetsB64Response { Pages = pages });
         }
 
+        [AllowAnonymous]
         [HttpPost]
         [Route("api/generateartifactsetb64")]
         public IActionResult GenerateArtifactSetB64([FromHeader] string authenticationKey, [FromBody] ArtifactSetRenderRequest request) {
@@ -270,6 +285,75 @@ namespace EGG9000.Site.Controllers {
             using var ms = new MemoryStream();
             pageImage.Save(ms, new JpegEncoder());
             return Ok(new ArtifactSetRenderResponse { Page = Convert.ToBase64String(ms.ToArray()) });
+        }
+
+        [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]
+        [HttpGet]
+        [Route("api/LeaderboardJson")]
+        // Keys issued before the move to /api were documented against this path. Attribute routing
+        // replaces the conventional route, so without this line every existing consumer 404s.
+        // Kept for compatibility for now while existing users switch to api/
+        [Route("Home/LeaderboardJson")]
+        public async Task<IActionResult> LeaderboardJson() {
+            var guildId = GetGuildId();
+            var guild = _discord.Guilds.FirstOrDefault(x => x.Id == guildId);
+            if(guild == null) return StatusCode(503);
+            await guild.DownloadUsersAsync();
+            var leaderboard = await _leaderboards.GetLeaderboardAsync(guildId);
+
+            var membersOfGuildOnly = User.Claims.FirstOrDefault(x => x.Type == "MembersOfGuildOnly")?.Value;
+            if(!string.IsNullOrWhiteSpace(membersOfGuildOnly))
+                leaderboard = [.. leaderboard.Where(x => string.Equals(x.Account?.Guild?.Trim(), membersOfGuildOnly.Trim(), StringComparison.OrdinalIgnoreCase))];
+
+            var result = leaderboard.Select(x => new Home_LeaderboardApiItem {
+                DiscordName = x.DisplayName,
+                DiscordId = x.DisplayDiscordId,
+                EggIncName = x.Backup.UserName,
+                EarningsBonus = x.Backup.EarningsBonus,
+                SoulEggs = x.Backup.SoulEggs,
+                EggsOfProphecy = x.Backup.EggsOfProphecy,
+                MER = x.Backup.MER,
+                EggsOfTruth = x.Backup.EggsOfTruth,
+                NumPrestiges = x.Backup.NumPrestiges
+            }).ToList();
+            return Json(result);
+        }
+
+        // Co-op membership does not turn over fast enough for a minute of staleness to matter, and this
+        // is the only thing standing between a polling client and a full re-read of every co-op on a
+        // contract, blob decode included.
+        private static readonly TimeSpan GuildCoopsCacheTtl = TimeSpan.FromSeconds(60);
+
+        [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]
+        [HttpGet]
+        [Route("api/GuildCoopsJson")]
+        public async Task<IActionResult> GuildCoopsJson(string contractId) {
+            var guildTag = User.Claims.FirstOrDefault(x => x.Type == "MembersOfGuildOnly")?.Value;
+            var error = ValidateGuildCoopsRequest(contractId, guildTag);
+            if(error != null) return BadRequest(new { error });
+
+            var guildId = GetGuildId();
+            var cacheKey = BuildGuildCoopsCacheKey(guildId, contractId, guildTag);
+            if(!_cache.TryGetValue(cacheKey, out List<GuildCoopApiItem> coops)) {
+                coops = await GuildCoops.QueryAsync(_db, guildId, contractId, guildTag, HttpContext.RequestAborted);
+                _cache.Set(cacheKey, coops, GuildCoopsCacheTtl);
+            }
+            return Json(coops);
+        }
+
+        // Returns null when the request is servable, otherwise the message to hand back as a 400.
+        public static string ValidateGuildCoopsRequest(string contractId, string guildTag) {
+            if(string.IsNullOrWhiteSpace(contractId))
+                return "A contractId is required.";
+            // The claim is only added when the key carries a guild, so an absent one means the key was
+            // never scoped. Fails loudly to better inform the user.
+            if(string.IsNullOrWhiteSpace(guildTag))
+                return "This API key is not scoped to a guild.";
+            return null;
+        }
+
+        public static string BuildGuildCoopsCacheKey(ulong guildId, string contractId, string guildTag) {
+            return $"guildcoops:{guildId}:{contractId}:{guildTag?.Trim().ToLowerInvariant()}";
         }
     }
 }
