@@ -225,6 +225,50 @@ public class GuildCoopsQueryTests {
         Assert.IsEmpty(result, "A kicked guild member is no longer in the co-op, so the co-op stops being a guild co-op.");
     }
 
+    [TestMethod]
+    public async Task Query_ReturnsBoardingGroupWhenServerHasBgsEnabled() {
+        await using var ctx = new ApplicationDbContext(Options());
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
+        var contractId = await FreshContractAsync(ctx);
+        var guildId = SeedGuild(ctx, disableBg: false);
+
+        var bg2 = SeedCoop(ctx, contractId, guildId, "e9k-bg2", group: 2);
+        SeedPlayer(ctx, bg2, "guildie-a", GuildTag);
+        var manual = SeedCoop(ctx, contractId, guildId, "e9k-manual", group: 0);
+        SeedPlayer(ctx, manual, "guildie-b", GuildTag);
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
+
+        var result = await GuildCoops.QueryAsync(ctx, guildId, contractId, GuildTag, TestContext!.CancellationToken);
+        var byCode = result.ToDictionary(c => c.CoopCode, c => c);
+
+        Assert.AreEqual(2, byCode["e9k-bg2"].BoardingGroup);
+        Assert.IsNull(byCode["e9k-manual"].BoardingGroup, "A co-op not made by a BG launch has no boarding group to report.");
+    }
+
+    [TestMethod]
+    public async Task Query_OmitsBoardingGroupWhenServerHasBgsDisabled() {
+        await using var ctx = new ApplicationDbContext(Options());
+        await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
+        var contractId = await FreshContractAsync(ctx);
+        var guildId = SeedGuild(ctx, disableBg: true);
+
+        var coop = SeedCoop(ctx, contractId, guildId, "e9k-nobg", group: 1);
+        SeedPlayer(ctx, coop, "guildie", GuildTag);
+        await ctx.SaveChangesAsync(TestContext!.CancellationToken);
+
+        var result = await GuildCoops.QueryAsync(ctx, guildId, contractId, GuildTag, TestContext!.CancellationToken);
+
+        Assert.IsNull(result.Single().BoardingGroup, "The Group stamp is meaningless on a server with BGs off.");
+        var json = System.Text.Json.JsonSerializer.Serialize(result.Single());
+        Assert.DoesNotContain("BoardingGroup", json, "With BGs off the field is left out of the response, not sent as null.");
+    }
+
+    private static ulong SeedGuild(ApplicationDbContext ctx, bool disableBg) {
+        var id = (ulong)Random.Shared.NextInt64(900_000_000, 999_999_999);
+        ctx.Guilds.Add(new Guild { Id = id, Name = "bg-test", DisableBG = disableBg });
+        return id;
+    }
+
     private static async Task<string> FreshContractAsync(ApplicationDbContext ctx) {
         var id = $"{ContractId}-{Guid.NewGuid():N}"[..32];
         ctx.Contracts.Add(new DBContract { ID = id, Created = DateTimeOffset.UtcNow });
@@ -232,7 +276,7 @@ public class GuildCoopsQueryTests {
         return id;
     }
 
-    private static Coop SeedCoop(ApplicationDbContext ctx, string contractId, ulong guildId, string code) {
+    private static Coop SeedCoop(ApplicationDbContext ctx, string contractId, ulong guildId, string code, ulong group = 0) {
         var coop = new Coop {
             Id = Guid.NewGuid(),
             ContractID = contractId,
@@ -241,7 +285,8 @@ public class GuildCoopsQueryTests {
             Status = CoopStatus.WaitingOnAssigned,
             CoopEnds = DateTimeOffset.UtcNow.AddDays(1),
             Created = DateTimeOffset.UtcNow,
-            CreatorID = "real"
+            CreatorID = "real",
+            Group = group
         };
         ctx.Coops.Add(coop);
         return coop;

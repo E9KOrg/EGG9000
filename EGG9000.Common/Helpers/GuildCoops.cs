@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,6 +21,14 @@ namespace EGG9000.Common.Helpers {
             if(string.IsNullOrWhiteSpace(tag) || string.IsNullOrWhiteSpace(contractId))
                 return [];
 
+            // Servers that turn boarding groups off still stamp a Group on every co-op, so the number
+            // only means something when BGs are on. No guild row is treated the same as BGs off.
+            var bgEnabled = await db.Guilds
+                .AsNoTracking()
+                .Where(g => g.Id == guildId)
+                .Select(g => !g.DisableBG)
+                .FirstOrDefaultAsync(cancellationToken);
+
             // (GuildId, ContractID) is the leading prefix of the existing (GuildId, ContractID, League)
             // index, so this is a seek. The per-player projection is deliberate: loading whole DBUser
             // rows would drag the ship-DM, coop-setting and backup blobs along for every member of
@@ -30,6 +39,7 @@ namespace EGG9000.Common.Helpers {
                 .Select(c => new {
                     c.Name,
                     c.Status,
+                    c.Group,
                     Players = c.UserCoopsXrefs.Select(x => new {
                         x.EggIncId,
                         x.FixedUserName,
@@ -67,7 +77,7 @@ namespace EGG9000.Common.Helpers {
                         // The key is scoped to one in-game guild, so it only gets the Discord ids of
                         // that guild's members. Everyone else in the co-op is listed without one.
                         DiscordId = inGuild ? p.DiscordId.ToString() : null,
-                        EggIncName = p.FixedUserName ?? account?.Name,
+                        EggIncName = account?.Backup?.UserName ?? account?.Name,
                         Guild = playerGuild,
                         InGuild = inGuild,
                         Status = ResolvePlayerStatus(p.Removed, p.JoinedCoop, p.WasAssigned),
@@ -81,6 +91,8 @@ namespace EGG9000.Common.Helpers {
                 coops.Add(new GuildCoopApiItem {
                     CoopCode = row.Name,
                     Status = row.Status.ToString(),
+                    // Group 0 means the co-op was not made by a BG launch (manual or test co-ops).
+                    BoardingGroup = bgEnabled && row.Group > 0 ? (int)row.Group : null,
                     GuildPlayerCount = guildPlayerCount,
                     Players = players
                 });
@@ -114,6 +126,9 @@ namespace EGG9000.Common.Helpers {
     public class GuildCoopApiItem {
         public string CoopCode { get; set; }
         public string Status { get; set; }
+        // Left out of the JSON entirely when the server has boarding groups disabled.
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public int? BoardingGroup { get; set; }
         public int GuildPlayerCount { get; set; }
         public List<GuildCoopPlayerApiItem> Players { get; set; }
     }
