@@ -9,5 +9,7 @@ namespace EGG9000.Site.Models.Contract {
         public CoopsBreakdown CoopsBreakdown { get; set; }
         public List<UserPreFarm> UserPreFarms { get; set; }
         public uint League { get; set; }
+        // When BGs are off, Coop.Group holds a group role ID instead of a BG number.
+        public bool DisableBG { get; set; }
     }
 }

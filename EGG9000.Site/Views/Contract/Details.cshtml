@@ -25,8 +25,17 @@
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
     var isStaff = isAdmin || User.IsInRole("GuildReadOnlyAdmin");
 
+    // Only real BG numbers or group roles get a label. Group 0 is a co-op not made by a BG launch
+    // (/addcoop, test co-ops) and uint.MaxValue is the allow-all-grades marker from manual create commands.
+    var maxBoardingGroup = (ulong)EGG9000.Common.Contracts.BoardingGroupLaunch.MaxBoardingGroup(Model.GuildContract.Contract.cc_only);
+    string GroupLabel(ulong group) {
+        if(Model.DisableBG) return guild.GetRole(group)?.Name;
+        return group >= 1 && group <= maxBoardingGroup ? $"BG{group}" : null;
+    }
+
     var activeCoops = currentCoops.Select(c => new {
-        Name = (isStaff || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
+        Group = GroupLabel(c.Coop.Group),
+        Name =(isStaff || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
         c.Coop.ContractID,
         CurrentCoop = c.CoopParticipants.Any(x => x.DiscordUser?.Id.ToString() == discordId),
         Status = c.Coop.Finished ? "Finished" : c.TimeRemaining < TimeSpan.Zero ? "Complete once everyone checks in" : $"Time to complete {c.TimeRemaining.Humanize(precision: 2).ShortenTime()}",
@@ -122,6 +131,10 @@
         background-color: white;
     }
 
+    [data-bs-theme="dark"] .card-header {
+        background-color: var(--bs-tertiary-bg);
+    }
+
     .CurrentCoop .card-header {
         background-color: #a2ffa1;
     }
@@ -146,6 +159,22 @@
         font-weight: normal;
         font-size: 90%;
         float: right;
+    }
+
+    /* The users/max count floats as one unit so the "/" between its spans stays with the numbers. */
+    .card-header abbr {
+        float: right;
+    }
+
+    .card-header abbr span {
+        float: none;
+    }
+
+    /* Sits inline beside the coop name instead of joining the right-floated status spans. */
+    .card-header .group-badge {
+        float: none;
+        margin-left: .5rem;
+        vertical-align: middle;
     }
 
     .dndPlaceHolder {
@@ -257,12 +286,27 @@
                 Note: The co-ops are sorted such that the top ones listed have spots available with the soonest ending on top.
             </p>
             }
-            <template x-for="(coop, coopIndex) in ActiveCoops" :key="coopIndex">
+            <div class="mb-2 d-flex gap-2 align-items-center" x-show="groupOptions().length > 1">
+                <label for="GroupFilter">Group</label>
+                <select id="GroupFilter" class="form-select form-select-sm w-auto" x-model="GroupFilter">
+                    <option value="">All</option>
+                    <template x-for="g in groupOptions()" :key="g">
+                        <option :value="g" x-text="g === NoGroup ? 'No group' : g"></option>
+                    </template>
+                </select>
+                <label for="GroupSort">Sort</label>
+                <select id="GroupSort" class="form-select form-select-sm w-auto" x-model="GroupSort">
+                    <option value="default">Default</option>
+                    <option value="group">By group</option>
+                </select>
+            </div>
+            <template x-for="(coop, coopIndex) in visibleCoops()" :key="coopIndex">
                 <div class="card" :class="{ CurrentCoop: coop.CurrentCoop }">
                     <div x-show="coop.CurrentCoop" style="position: relative; top: -20px;" :id="coop.Name"></div>
                     <h5 class="card-header" @@click="coop.Hide = !coop.Hide" style="cursor:pointer;">
                         <a @@click.stop="" x-show="IsStaff || coop.CurrentCoop" :href="'/coop/' + coop.ContractID + '/' + coop.Name" x-text="coop.Name"></a>
                         <a @@click.stop="" x-show="(IsStaff || coop.CurrentCoop) && !coop.DeletedChannel" :href="'discord://discordapp.com/channels/' + coop.OverflowGuildId + '/' + coop.DiscordChannelId + '/'"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+                        <span x-show="coop.Group" class="badge bg-secondary group-badge" style="user-select: none;" x-text="coop.Group"></span>
                         <span style="font-size: 0;"> - <span x-text="coop.MaxSize - coop.Users.length"></span> <span x-text="coop.MaxSize - coop.Users.length > 1 ? 'spots' : 'spot'"></span></span>
                         <div x-show="!IsStaff">Co-op</div>
                         <span style="user-select: none;" x-text="coop.Status"></span>
@@ -526,6 +570,10 @@
                 SortSolo: 'Name',
                 CurrentCoopCount: @count,
                 UsersByEB: [],
+                // Filter value for co-ops with no group label; cannot collide with a real label.
+                NoGroup: '__none__',
+                GroupFilter: '',
+                GroupSort: 'default',
 
                 init() {
                     const _activeRaw = @Html.Raw(JsonConvert.SerializeObject(activeCoops));
@@ -548,6 +596,27 @@
                     }, 1000);
 
                     this.$nextTick(() => this.initSortable());
+                    // Filtering can render new coop cards, which need SortableJS attached.
+                    this.$watch('GroupFilter', () => this.$nextTick(() => this.initSortable()));
+                    this.$watch('GroupSort', () => this.$nextTick(() => this.initSortable()));
+                },
+
+                groupOptions() {
+                    const labels = _.uniq(this.ActiveCoops.map(c => c.Group || this.NoGroup));
+                    return _.sortBy(labels, [g => g === this.NoGroup ? 1 : 0, g => g]);
+                },
+
+                // Works on a copy so ActiveCoops keeps its server order and spot counts stay over every coop.
+                visibleCoops() {
+                    let coops = this.ActiveCoops;
+                    if (this.GroupFilter) {
+                        coops = coops.filter(c => (c.Group || this.NoGroup) === this.GroupFilter);
+                    }
+                    if (this.GroupSort === 'group') {
+                        // _.sortBy is stable, so the default order holds within each group. Ungrouped last.
+                        coops = _.sortBy(coops, [c => c.Group ? 0 : 1, c => c.Group]);
+                    }
+                    return coops;
                 },
 
                 initSortable() {
