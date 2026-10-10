@@ -370,8 +370,7 @@ namespace EGG9000.Bot.Commands {
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
                 await session.Cts.CancelAsync();
-            else
-                await component.RestoreComponentsAsync();
+            await component.RestoreComponentsAsync();
         }
 
         [ComponentInteraction("SysLoadDismiss", ignoreGroupNames: true)]
