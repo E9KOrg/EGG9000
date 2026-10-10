@@ -77,11 +77,8 @@ namespace EGG9000.Common.Helpers.AfxSets {
         public static async Task<(List<string> pages, string error)> AfxSetsB64(EggIncAccount account, int? page = null) {
             var posted = new AfxSetsAPIObject { EID = account.Id, Config = new AfxSetsCreatorConfig(100), Page = page };
 
-            var siteApi = SiteApiClient.Create();
-            using var client = siteApi.client;
-            var baseUrl = siteApi.baseUrl;
-
-            var apiUrl = $"{baseUrl}/api/generateafxsetsb64";
+            var client = SiteApiClient.Client;
+            var apiUrl = $"{SiteApiClient.BaseUrl()}/api/generateafxsetsb64";
             var content = new StringContent(JsonSerializer.Serialize(posted), Encoding.UTF8, "application/json");
 
             _logger.Info($"AfxSetsB64: POST {apiUrl} for EID {account.Id}");
@@ -115,10 +112,8 @@ namespace EGG9000.Common.Helpers.AfxSets {
                 Label = label
             };
 
-            var siteApi = SiteApiClient.Create();
-            using var client = siteApi.client;
-            var baseUrl = siteApi.baseUrl;
-            var apiUrl = $"{baseUrl}/api/generateartifactsetb64";
+            var client = SiteApiClient.Client;
+            var apiUrl = $"{SiteApiClient.BaseUrl()}/api/generateartifactsetb64";
             var content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json");
 
             _logger.Info($"RenderSingleSetB64: POST {apiUrl} ({artifacts.Count} artifacts)");
