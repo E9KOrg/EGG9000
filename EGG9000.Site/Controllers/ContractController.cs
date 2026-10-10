@@ -186,11 +186,9 @@ namespace EGG9000.Site.Controllers {
 
                 var coopsBreakdown = await GetBreakdown(_db, guildContract, _discord, League);
 
-                var disableBG = await _db.Guilds
+                var dbGuild = await _db.Guilds
                     .AsNoTracking()
-                    .Where(g => g.Id == GuildId)
-                    .Select(g => g.DisableBG)
-                    .FirstOrDefaultAsync();
+                    .FirstOrDefaultAsync(g => g.Id == GuildId);
 
                 ViewBag.Discord = _discord;
 
@@ -198,7 +196,7 @@ namespace EGG9000.Site.Controllers {
                     GuildContract = guildContract,
                     CoopsBreakdown = coopsBreakdown,
                     League = League,
-                    DisableBG = disableBG
+                    Guild = dbGuild
                 });
             }
         }
