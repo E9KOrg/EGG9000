@@ -1,6 +1,9 @@
 @using EGG9000.Common.Database.Entities
 @using EGG9000.Site.Models.Admin
 @model Admin_NonServerUsersModel
+@{
+    ViewData["BodyClass"] = "full-width";
+}
 
 <h2>Non-Server Users</h2>
 <p>Users registered to this server whose Discord account is no longer a member.</p>
@@ -40,9 +43,3 @@
 		</tbody>
 	</table>
 }
-
-<style>
-	.container {
-		max-width: initial !important;
-	}
-</style>

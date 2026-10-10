@@ -1,0 +1,131 @@
+.card {
+    vertical-align: top;
+}
+
+.nobreak span {
+    white-space: nowrap;
+}
+
+/* .container also comes from the tab partials and artifact-overlay.js. */
+.tab-pane ::deep .container {
+    padding: 0px;
+}
+
+/* The switches live in the _ContractSettings and _TestAssignment partials. */
+#myfarms-content ::deep .form-switch {
+    padding-left: 3.1em;
+}
+
+#myfarms-content ::deep .form-switch .form-check-input {
+    width: 2.6em;
+    height: 1.4em;
+    margin-top: 0.05em;
+    margin-left: -3.1em;
+    cursor: pointer;
+    background-color: #c62828;
+    border-color: #c62828;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e");
+    transition: background-position .18s ease-in-out, background-color .18s ease-in-out, border-color .18s ease-in-out;
+}
+
+#myfarms-content ::deep .form-switch .form-check-input:checked {
+    background-color: #2e7d32;
+    border-color: #2e7d32;
+}
+
+#myfarms-content ::deep .form-switch .form-check-label {
+    margin-left: 6px;
+}
+
+#myfarms-content ::deep .form-switch p {
+    margin-left: -3.1em;
+}
+
+.Expired td {
+    opacity: 60%;
+}
+
+.cs-save-bar {
+    display: none;
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1090;
+    background: #4a4f55;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,.5);
+    align-items: center;
+    gap: 12px;
+}
+
+.cs-save-bar.cs-visible {
+    display: flex;
+}
+
+@keyframes cs-wiggle {
+    0%, 100% { transform: translateX(-50%) rotate(0deg); }
+    20% { transform: translateX(-50%) rotate(-3deg); }
+    40% { transform: translateX(-50%) rotate(3deg); }
+    60% { transform: translateX(-50%) rotate(-3deg); }
+    80% { transform: translateX(-50%) rotate(3deg); }
+}
+
+.cs-save-bar.cs-wiggle {
+    animation: cs-wiggle 0.4s ease;
+}
+
+.tooltip-custom {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-custom:hover .tooltiptext-custom {
+    display: inline-block;
+    z-index: 3;
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%); /* Center the tooltip */
+}
+
+.tooltiptext-custom {
+    display: none;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    text-align: center; /* Center the text within the tooltip */
+    position: absolute;
+    background-color: rgba(130, 135, 140, 0.95);
+}
+
+[data-bs-theme="dark"] .tooltiptext-custom {
+    background-color: rgba(33, 37, 41, 0.95);
+}
+
+[data-bs-theme="dark"] .speech-bubble {
+    background-color: rgba(33, 37, 41, 0.95);
+}
+
+.speech-bubble {
+    position: relative;
+    padding: 10px;
+    margin: 10px auto; /* Center the bubble horizontally */
+    border-radius: 5px; /* Rounded corners for the bubble */
+    background-color: rgba(130, 135, 140, 0.95);
+}
+
+/* Create the triangle */
+.speech-bubble :after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -15px; /* Half of the triangle's width */
+    border-width: 15px;
+    border-style: solid;
+    border-color: #ccc transparent transparent transparent;
+}

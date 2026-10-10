@@ -1,6 +1,7 @@
 ﻿@using EGG9000.Common.Helpers
 @model List<DBUser>
 @{
+    ViewData["BodyClass"] = "full-width";
     var xrefs = (List<UserCoopXref>)ViewBag.Xrefs;
     var demerits = (List<Demerit>)ViewBag.Demerits;
     var merits = (List<Merit>)ViewBag.Merits;
@@ -23,11 +24,6 @@
             };
         }));
 }
-<style>
-    .container {
-        max-width: inherit !important;
-    }
-</style>
 
 <h2>Standard Permits</h2>
 
@@ -64,12 +60,3 @@
         }
     </tbody>
 </table>
-
-                <style>
-                    td {
-                        white-space: nowrap;
-                    }
-                    .container {
-                        width: auto !important;
-                    }
-                </style>

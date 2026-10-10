@@ -5,6 +5,7 @@
 @model Contract_CoopsViewModel
 @{
     ViewData["Title"] = "Coops - " + Model.GuildContract.Contract.Name;
+    ViewData["BodyClass"] = "full-width contract-details";
     var targetAmount = Model.GuildContract.Contract.Details.GradeSpecs[(int)Model.League - 1].Goals.Last().TargetAmount;
 
     DiscordSocketClient discord = ViewBag.Discord;

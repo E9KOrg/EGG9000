@@ -2,6 +2,7 @@
 @model (List<PotentialCoopGroup> coopGroups, List<(String reason, UserByAccount account)> excluded)
 @inject DiscordSocketClient discordClient
 @{
+    ViewData["BodyClass"] = "full-width";
     Guild dbguild = ViewBag.DBGuild;
     SocketGuild guild = ViewBag.Guild;
     var contract = (ViewBag.Contract as DBContract).Details;
@@ -42,23 +43,6 @@
     var grades = Model.coopGroups.GroupBy(x => x.Grade).Where(x => x.Count() > 0);
 
 }
-<style>
-    .container {
-        max-width: 100% !important;
-    }
-
-    .card {
-        margin-bottom: 50px;
-    }
-
-    h2 span {
-        font-size: 12pt;
-    }
-
-    .modal {
-        overflow: scroll !important;
-    }
-</style>
 <div x-data="day1CoopsPage()">
 
 <div>

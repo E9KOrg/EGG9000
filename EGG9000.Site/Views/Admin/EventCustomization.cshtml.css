@@ -1,0 +1,66 @@
+.tooltip-custom {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-custom:hover .tooltiptext-custom {
+    display: inline-block;
+    z-index: 3;
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%); /* Center the tooltip */
+}
+
+.tooltiptext-custom {
+    display: none;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    text-align: center; /* Center the text within the tooltip */
+    position: absolute;
+    background-color: rgba(130, 135, 140, 0.95);
+}
+
+[data-bs-theme="dark"] .tooltiptext-custom {
+    background-color: rgba(33, 37, 41, 0.95);
+}
+
+[data-bs-theme="dark"] .speech-bubble {
+    background-color: rgba(33, 37, 41, 0.95);
+}
+
+.speech-bubble {
+    position: relative;
+    padding: 10px;
+    margin: 10px auto; /* Center the bubble horizontally */
+    border-radius: 5px; /* Rounded corners for the bubble */
+    background-color: rgba(130, 135, 140, 0.95);
+}
+
+/* Create the triangle */
+.speech-bubble :after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -15px; /* Half of the triangle's width */
+    border-width: 15px;
+    border-style: solid;
+    border-color: #ccc transparent transparent transparent;
+}
+
+.modal-body {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+}
+.tip-container {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    padding: 10px;
+}
+.tip-item {
+    margin-bottom: 10px;
+}
