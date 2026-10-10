@@ -11,6 +11,7 @@ namespace EGG9000.Test.Integration;
 // re-sends forever. ApplicationDbContext.NormalizeAdminUserIds maps the sentinel to null at save.
 [TestClass]
 [TestCategory("Integration")]
+[RequiresDocker]
 public class DemeritAdminUserIdTests {
     private static DbContextOptions<ApplicationDbContext> Options() {
         return new DbContextOptionsBuilder<ApplicationDbContext>()

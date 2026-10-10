@@ -6,6 +6,7 @@ namespace EGG9000.Test.Integration;
 
 [TestClass]
 [TestCategory("Integration")]
+[RequiresDocker]
 public class DbLaunchTests {
     // This suite verifies the committed migrations apply cleanly to an empty database. Whether the
     // entity model is in sync with those migrations is a separate concern owned by ModelDriftTests,

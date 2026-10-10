@@ -12,6 +12,7 @@ namespace EGG9000.Test.Integration;
 // UserCoopXrefs as a live assignment has to filter Removed.
 [TestClass]
 [TestCategory("Integration")]
+[RequiresDocker]
 public class SoftRemovedXrefQueryTests {
     private const string ContractId = "soft-removed-contract";
 

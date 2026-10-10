@@ -11,6 +11,7 @@ namespace EGG9000.Test.Integration;
 // "Cannot write DateTimeOffset with Offset=... only offset 0 (UTC) is supported".
 [TestClass]
 [TestCategory("Integration")]
+[RequiresDocker]
 public class UtcConverterTests {
     private static DbContextOptions<ApplicationDbContext> Options() {
         return new DbContextOptionsBuilder<ApplicationDbContext>()

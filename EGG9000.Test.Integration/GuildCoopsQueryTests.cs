@@ -13,6 +13,7 @@ namespace EGG9000.Test.Integration;
 // projection the query uses to keep row size down.
 [TestClass]
 [TestCategory("Integration")]
+[RequiresDocker]
 public class GuildCoopsQueryTests {
     private const string ContractId = "guild-coops-contract";
     private const string GuildTag = "Tachyon";
