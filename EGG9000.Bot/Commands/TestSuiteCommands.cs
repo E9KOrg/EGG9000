@@ -54,7 +54,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var maxUsers = contract.MaxUsers > 0 ? contract.MaxUsers : 10;
-            CoopStatusEnum[] cycle = [CoopStatusEnum.AllAssignedJoined, CoopStatusEnum.WaitingOnThread, CoopStatusEnum.Completed];
+            CoopStatus[] cycle = [CoopStatus.AllAssignedJoined, CoopStatus.WaitingOnThread, CoopStatus.Completed];
 
             var seeded = new List<Coop>();
             for(var i = 0; i < count; i++) {
@@ -66,8 +66,8 @@ namespace EGG9000.Bot.Commands {
                     Status = status,
                     League = 0,
                     MaxUsers = maxUsers,
-                    CurrentUsers = status == CoopStatusEnum.WaitingOnThread ? 0 : 1 + (i % maxUsers),
-                    ThreadID = status == CoopStatusEnum.WaitingOnThread ? 0ul : (ulong)(1_000_000 + i),
+                    CurrentUsers = status == CoopStatus.WaitingOnThread ? 0 : 1 + (i % maxUsers),
+                    ThreadID = status == CoopStatus.WaitingOnThread ? 0ul : (ulong)(1_000_000 + i),
                     CoopEnds = DateTimeOffset.UtcNow.AddDays(2),
                     Created = DateTimeOffset.UtcNow,
                     AddedFromBackup = true,
@@ -84,7 +84,7 @@ namespace EGG9000.Bot.Commands {
                 var gc = await Db.GuildContracts.FirstOrDefaultAsync(c => c.GuildID == guildId && c.ContractID == contractid);
                 if(_client.GetChannel(gc?.DiscordChannelId ?? 0) is ITextChannel channel) {
                     var made = 0;
-                    foreach(var coop in seeded.Where(c => c.Status != CoopStatusEnum.WaitingOnThread)) {
+                    foreach(var coop in seeded.Where(c => c.Status != CoopStatus.WaitingOnThread)) {
                         try {
                             var thread = await channel.CreateThreadAsync(coop.Name, autoArchiveDuration: ThreadArchiveDuration.OneDay, type: ThreadType.PublicThread);
                             coop.ThreadID = thread.Id;
@@ -171,7 +171,7 @@ namespace EGG9000.Bot.Commands {
                 ContractID = contractid,
                 Name = $"{SeedPrefix}{ShortId()}",
                 GuildId = Context.Guild?.Id ?? 0,
-                Status = CoopStatusEnum.AllAssignedJoined,
+                Status = CoopStatus.AllAssignedJoined,
                 League = 0,
                 MaxUsers = contract.MaxUsers > 0 ? contract.MaxUsers : 10,
                 CurrentUsers = 1,

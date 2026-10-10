@@ -85,7 +85,6 @@ namespace EGG9000.Common.Helpers {
         public static int GetShipLevel(this CustomBackup backup, Spaceship ship) {
             if(backup.ShipsSent == null) return 0;
 
-            //If they don't have the ship unlocked
             if(!backup.ShipsSent.Any(x => x.ship == ship)) return 0;
 
             for(var i = LevelRequirements[ship].Count; i > 0; i--) {

@@ -24,9 +24,7 @@ namespace EGG9000.Common.Database.Entities {
         public string OverflowServersJson { get; set; }
         [NotMapped]
         public ReadOnlyCollection<ulong> OverflowServers {
-            get {
-                return JsonConvert.DeserializeObject<ReadOnlyCollection<ulong>>(OverflowServersJson ?? "[]");
-            }
+            get { return JsonConvert.DeserializeObject<ReadOnlyCollection<ulong>>(OverflowServersJson ?? "[]"); }
         }
 
         [GuildConfig("Co-op Name Prefix", "Text", GuildConfigKind.String, Description = "Prefix for auto-generated co-op names")]
@@ -47,33 +45,23 @@ namespace EGG9000.Common.Database.Entities {
 
         public string _coopSettingsJson { get; set; }
         [NotMapped]
-        private List<ServerCoopSetting> _coopSettings { get; set; }
+        private readonly JsonBlobAccessor<List<ServerCoopSetting>> _coopSettings = new("[]");
         [NotMapped]
         public List<ServerCoopSetting> CoopSettings {
-            get {
-                _coopSettings ??= JsonConvert.DeserializeObject<List<ServerCoopSetting>>(_coopSettingsJson ?? "[]");
-                return _coopSettings;
-            }
+            get { return _coopSettings.Get(_coopSettingsJson); }
             set {
                 value.RemoveAll(x => !x.Enabled && !x.Locked);
-                _coopSettings = value;
-                _coopSettingsJson = JsonConvert.SerializeObject(value);
+                _coopSettingsJson = _coopSettings.Set(value, _coopSettingsJson);
             }
         }
 
         public string _eventCustomizationsJson { get; set; }
         [NotMapped]
-        private List<EventCustomization> _eventCustomizations { get; set; }
+        private readonly JsonBlobAccessor<List<EventCustomization>> _eventCustomizations = new("[]");
         [NotMapped]
         public List<EventCustomization> EventCustomizations {
-            get {
-                _eventCustomizations ??= JsonConvert.DeserializeObject<List<EventCustomization>>(_eventCustomizationsJson ?? "[]");
-                return _eventCustomizations;
-            }
-            set {
-                _eventCustomizations = value;
-                _eventCustomizationsJson = JsonConvert.SerializeObject(value);
-            }
+            get { return _eventCustomizations.Get(_eventCustomizationsJson); }
+            set { _eventCustomizationsJson = _eventCustomizations.Set(value, _eventCustomizationsJson); }
         }
 
         public string _faqTopicsJson { get; set; }
@@ -99,24 +87,18 @@ namespace EGG9000.Common.Database.Entities {
                 if(string.IsNullOrEmpty(_rankupDisabledGroupsCsv)) return [];
                 return [.. _rankupDisabledGroupsCsv.Split(",", System.StringSplitOptions.RemoveEmptyEntries).Select(int.Parse)];
             }
-            set {
-                _rankupDisabledGroupsCsv = string.Join(",", value);
-            }
+            set { _rankupDisabledGroupsCsv = string.Join(",", value); }
         }
 
         public string _channelDetailsJson { get; set; }
         [NotMapped]
-        private List<ChannelDetail> _channelDetails { get; set; }
+        private readonly JsonBlobAccessor<List<ChannelDetail>> _channelDetails = new("[]");
         [NotMapped]
         public List<ChannelDetail> ChannelDetails {
-            get {
-                _channelDetails ??= JsonConvert.DeserializeObject<List<ChannelDetail>>(_channelDetailsJson ?? "[]");
-                return _channelDetails;
-            }
+            get { return _channelDetails.Get(_channelDetailsJson); }
             set {
                 value.RemoveAll(x => x.Id == 0);
-                _channelDetails = value;
-                _channelDetailsJson = JsonConvert.SerializeObject(value);
+                _channelDetailsJson = _channelDetails.Set(value, _channelDetailsJson);
             }
         }
         public bool HasChannel(GuildChannelType channelType) {
@@ -129,18 +111,16 @@ namespace EGG9000.Common.Database.Entities {
             return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) ?? new ServerCoopSetting { CoopSetting = coopSetting };
         }
         public bool IsLockedAndEnabled(GuildCoopSetting coopSetting) {
-            var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
-            return setting != null && setting.Enabled && setting.Locked;
+            return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) is { Enabled: true, Locked: true };
         }
         public bool IsLockedAndDisabled(GuildCoopSetting coopSetting) {
-            var setting = CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting);
-            return setting != null && !setting.Enabled && setting.Locked;
+            return CoopSettings.FirstOrDefault(s => s.CoopSetting == coopSetting) is { Enabled: false, Locked: true };
         }
         [GuildConfig("Roles to Sync", "Lists", GuildConfigKind.CsvRoles, Description = "Roles synced to overflow servers")]
         public string RolesToSync { get; set; }
         [GuildConfig("Disable Boarding Groups", "Toggles", GuildConfigKind.Bool, Description = "Disable boarding-group staggering")]
         public bool DisableBG { get; set; }
-        [GuildConfig("Allow Guilds", "Toggles", GuildConfigKind.Bool, Description = "Let in-game guild members team up")]
+        [GuildConfig("Allow Guilds", "Toggles", GuildConfigKind.Bool, Description = "Let members group into guilds in Contract Settings")]
         public bool AllowGuilds { get; set; }
         [GuildConfig("Group Roles", "Lists", GuildConfigKind.CsvRoles, Description = "Boarding-group roles")]
         public string GroupRoles { get; set; }
@@ -148,8 +128,24 @@ namespace EGG9000.Common.Database.Entities {
         public bool PublicScoreGrid { get; set; }
         [GuildConfig("Remove Find Coop Spot", "Toggles", GuildConfigKind.Bool, Description = "Hide Find Coop Spot buttons")]
         public bool RemoveFindCoopSpot { get; set; }
+        [GuildConfig("Remove Test Assignment", "Toggles", GuildConfigKind.Bool, Description = "Hide the Test Assignment button")]
+        public bool RemoveTestAssignment { get; set; }
+        [GuildConfig("Offline Hours Per Demerit", "Numbers", GuildConfigKind.Int, Description = "Hours of raw offline time per demerit (only used when boarding groups are enabled)")]
+        public int OfflineDemeritHours { get; set; } = 30;
+        [GuildConfig("Offline Warning Hours", "Numbers", GuildConfigKind.Int, Description = "Hours offline before a courtesy reminder DM is sent. Must be below Offline Hours Per Demerit (only used when boarding groups are enabled)")]
+        public int OfflineWarningHours { get; set; } = 22;
+        [GuildConfig("Hours To Join (normal)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join a co-op before being removed")]
+        public int JoinTimeHours { get; set; } = 18;
+        [GuildConfig("Hours To Join (ultra)", "Numbers", GuildConfigKind.Int, Description = "Hours an assigned user has to join an ultra (cc-only) co-op before being removed")]
+        public int JoinTimeUltraHours { get; set; } = 24;
         [GuildConfig("Show Contract Stats Embeds", "Toggles", GuildConfigKind.Bool, Description = "Show a live co-op stats embed inside each contract channel")]
         public bool ShowContractStatsEmbeds { get; set; }
+        [GuildConfig("Silo Reminders", "Toggles", GuildConfigKind.Bool, Description = "DM players in a co-op who have not bought every silo their permit allows")]
+        public bool SiloRemindersEnabled { get; set; }
+        [GuildConfig("Silo Reminder Hours (first)", "Numbers", GuildConfigKind.Int, Description = "Hours after joining a co-op before the first missing-silo reminder DM")]
+        public int SiloReminderFirstHours { get; set; } = 12;
+        [GuildConfig("Silo Reminder Hours (second)", "Numbers", GuildConfigKind.Int, Description = "Hours after joining a co-op before the second missing-silo reminder, which is also logged. Must be above the first")]
+        public int SiloReminderSecondHours { get; set; } = 24;
     }
 
     [NotMapped]
@@ -270,8 +266,6 @@ namespace EGG9000.Common.Database.Entities {
         BannedUserThread = 36,
         [Description("/TC/Optional: Where potential cheaters will be outed.")]
         CheaterThread = 37,
-        /*[Description("Optional: Channel ID where non-ultra members will be pinged if an ultra contract appears that they have not completed")]
-        UnobtainedUltraChannel = 38*/
         [Description("/TC/Optional: Where changes in players' ULTRA status will be logged")]
         UltraLog = 39,
         [Description("/TC/Optional: Where players who join coops while on break will be logged")]
@@ -282,8 +276,6 @@ namespace EGG9000.Common.Database.Entities {
         StandardPermitRole = 42,
         [Description("/R/Role for users that have the Pro Permit (must be paired with Standard Permit role)")]
         ProPermitRole = 43,
-        /*[Description("/R/Users with this role will be added to all coop threads")]
-        AllCoopsRole = 44*/
         [Description("/TC/Optional: Where NASA Astronomy Pictures of the Day (APOD) will be posted")]
         NasaApod = 46,
         [Description("/TC/Optional: Bot Log, gives status updates when the bot detects new contract and launches boarding groups")]
@@ -292,5 +284,9 @@ namespace EGG9000.Common.Database.Entities {
         CoopStatsChannel = 48,
         [Description("/TC/Optional: Where E9K will log issues that occur with users trying to /register")]
         RegisterIssues = 49,
+        [Description("/R/Role for users whose latest backup came back with no in-game name (likely logged out of Google Play Games/Game Center)")]
+        NoAliasRole = 50,
+        [Description("/TC/Optional: Where missing silo reminders will be logged")]
+        SiloLog = 51,
     }
 }

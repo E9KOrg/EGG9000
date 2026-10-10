@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Automated;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
@@ -14,7 +15,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static EGG9000.Common.Helpers.FixedWidthTable;
 
 namespace EGG9000.Bot.Commands.Informational {
-    public class ChasingModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : Interactions.E9KModuleBase(dbFactory) {
+    public class ChasingModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
 
         [SlashCommand("chasing", "Show you players ahead and behind you.")]

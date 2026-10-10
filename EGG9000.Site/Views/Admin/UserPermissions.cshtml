@@ -1,4 +1,5 @@
-﻿@model EGG9000.Site.Controllers.AdminController.UserPermissionsModel
+﻿@using EGG9000.Site.Models.Admin
+@model Admin_UserPermissionsModel
 @{
     var users = Model.Users.Select(u => {
         var login = Model.Logins.FirstOrDefault(l => l.UserId == u.Id);

@@ -54,7 +54,7 @@ namespace EGG9000.Common.Helpers {
                     });
                 }
             }
-            histories = [.. histories.GroupBy(x => x.UserId).Select(x => x.OrderBy(y => y.EggsShipped).First())];
+            histories = [.. histories.GroupBy(x => x.xref.EggIncId).Select(x => x.OrderBy(y => y.EggsShipped).First())];
 
             var historiesByGrade = histories.GroupBy(x => x.League).ToList();
 

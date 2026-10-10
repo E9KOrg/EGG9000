@@ -1,7 +1,23 @@
 ﻿using System;
 using System.Linq;
+using System.Text;
 
 public static class StringExtensions {
+    // "HighestEB" -> "Highest EB". Space goes before every uppercase letter that follows a
+    // non-uppercase one, so runs of capitals (acronyms like EB) are left alone.
+    public static string SplitPascalCase(this string value) {
+        if(string.IsNullOrEmpty(value))
+            return value;
+
+        var sb = new StringBuilder(value.Length + 8);
+        for(var i = 0; i < value.Length; i++) {
+            if(i > 0 && char.IsUpper(value[i]) && !char.IsUpper(value[i - 1]))
+                sb.Append(' ');
+            sb.Append(value[i]);
+        }
+        return sb.ToString();
+    }
+
     public static string FirstCharToUpper(this string input) =>
         input switch {
             null => "",

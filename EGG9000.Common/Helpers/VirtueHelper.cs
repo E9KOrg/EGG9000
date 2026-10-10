@@ -1,6 +1,7 @@
 ﻿using EGG9000.Common.Database;
 
 using System;
+using System.Linq;
 
 namespace EGG9000.Common.Helpers {
     public class VirtueHelper {
@@ -10,7 +11,7 @@ namespace EGG9000.Common.Helpers {
         ];
 
         public static VirtueEggStats EggStats(CustomBackup backup, Ei.Egg egg) {
-            return EggStats(backup.VirtueEggsDelivered[(int)egg - 50]);
+            return EggStats(backup.VirtueEggsDelivered.ElementAtOrDefault((int)egg - 50));
         }
 
         public static VirtueEggStats EggStats(double eggsShipped) {

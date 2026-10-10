@@ -11,7 +11,6 @@ namespace EGG9000.Site.Controllers {
 
         [HttpGet]
         public IActionResult Get() {
-            // Simple health check - can be extended to check DB, services, etc.
             return Ok(new { status = "healthy", timestamp = System.DateTime.UtcNow });
         }
     }

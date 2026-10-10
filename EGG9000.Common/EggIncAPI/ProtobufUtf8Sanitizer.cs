@@ -12,8 +12,18 @@ namespace EGG9000.Common.EggIncAPI {
     // recursed into first, so only genuine string/bytes leaves get scrubbed.
     public static class ProtobufUtf8Sanitizer {
 
-        public static bool IsInvalidUtf8(Exception e) =>
-            e.Message?.Contains("invalid UTF-8", StringComparison.OrdinalIgnoreCase) == true;
+        public static bool IsInvalidUtf8(Exception e) {
+            // Check the exception and all inner exceptions for UTF-8 error messages
+            var current = e;
+            while(current is not null) {
+                if(current.Message?.Contains("invalid UTF-8", StringComparison.OrdinalIgnoreCase) == true ||
+                   current is System.Text.DecoderFallbackException) {
+                    return true;
+                }
+                current = current.InnerException;
+            }
+            return false;
+        }
 
         // Returns a copy of the wire bytes with invalid UTF-8 scrubbed out of length-delimited leaves.
         // On any structural surprise it leaves the offending region untouched rather than guessing.

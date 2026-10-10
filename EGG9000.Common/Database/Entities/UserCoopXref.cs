@@ -7,12 +7,10 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Reflection;
 
 namespace EGG9000.Common.Database.Entities {
     [Index(nameof(UserId), nameof(JoinedCoop))]
     [Index(nameof(JoinedCoop), nameof(CreatedOn))]
-    [Index(nameof(JoinedCoop))]
     [Index(nameof(CoopId))]
     public class UserCoopXref {
         public Guid UserId { get; set; }
@@ -26,10 +24,19 @@ namespace EGG9000.Common.Database.Entities {
         public bool AddedToChannel { get; set; }
         public bool Starter { get; set; }
         public bool WasAssigned { get; set; }
+        public bool Removed { get; set; }
+        public DateTimeOffset? RemovedOn { get; set; }
 
+        // Legacy names from the fixed 12h/24h reminders. Now: 12h = first scaled join reminder
+        // (1/3 of the guild join window), 24h = second (2/3). Kept to avoid a column rename.
         public bool JoinWarning12h { get; set; }
         public bool JoinWarning24h { get; set; }
         public bool JoinWarning24TillFinish { get; set; }
+
+        // One reminder each per user per co-op, never repeated. Same shape as the JoinWarning
+        // flags above.
+        public bool SiloWarningFirst { get; set; }
+        public bool SiloWarningSecond { get; set; }
 
         public DateTimeOffset? LastStatusTime { get; set; }
         public DateTimeOffset? SleepingWarningTime { get; set; }
@@ -39,29 +46,17 @@ namespace EGG9000.Common.Database.Entities {
 
         public byte[] _lastStatusByte { get; set; }
         [NotMapped]
-        private ContributionInfoCompact _lastStatus { get; set; }
+        private readonly MessagePackBlobAccessor<ContributionInfoCompact> _lastStatus = new(lz4Options);
         [NotMapped]
         public ContributionInfoCompact LastStatus {
             get {
                 if(Status != null && Status != "null") {
-                    var status = JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(Status);
-                    _lastStatus = new ContributionInfoCompact(status);
+                    _lastStatus.Prime(new ContributionInfoCompact(JsonConvert.DeserializeObject<Ei.ContractCoopStatusResponse.Types.ContributionInfo>(Status)));
                     Status = null;
                 }
-                if(_lastStatus != null)
-                    return _lastStatus;
-                if(_lastStatusByte == null)
-                    return null;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-
-                _lastStatus = MessagePackSerializer.Deserialize<ContributionInfoCompact>(_lastStatusByte, lz4Options);
-                return _lastStatus;
+                return _lastStatus.Get(_lastStatusByte);
             }
-            set {
-                _lastStatus = value;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _lastStatusByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            set { _lastStatusByte = _lastStatus.Set(value, _lastStatusByte); }
         }
 
         public ulong SleepingDiscordMessageID { get; set; }
@@ -76,7 +71,9 @@ namespace EGG9000.Common.Database.Entities {
         public float? Score { get; set; }
         public float? RunningScore { get; set; }
         public double? SoulPower { get; set; }
-        public Guid GetID() { return UserId; }
+        public Guid GetID() {
+            return UserId;
+        }
 
         public bool OutsideCoop { get; set; }
         public bool HasTachyonDeflector { get; set; }
@@ -89,48 +86,23 @@ namespace EGG9000.Common.Database.Entities {
         public ulong Group { get; set; }
         public bool GussetCheatDetected { get; set; } = false;
 
+        private static readonly MessagePackSerializerOptions lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
         public byte[] _sleepTrackingByte { get; set; }
         [NotMapped]
-        private List<SleepTracking> _sleepTracking { get; set; }
+        private readonly MessagePackBlobAccessor<List<SleepTracking>> _sleepTracking = new(lz4Options, () => []);
         [NotMapped]
         public List<SleepTracking> SleepTracking {
-            get {
-                if(_sleepTracking != null)
-                    return _sleepTracking;
-                if(_sleepTrackingByte == null) {
-                    _sleepTracking = [];
-                    return _sleepTracking;
-                }
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _sleepTracking = MessagePackSerializer.Deserialize<List<SleepTracking>>(_sleepTrackingByte, lz4Options);
-                return _sleepTracking;
-            }
-            set {
-                _sleepTracking = value;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _sleepTrackingByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            get { return _sleepTracking.Get(_sleepTrackingByte); }
+            set { _sleepTrackingByte = _sleepTracking.Set(value, _sleepTrackingByte); }
         }
 
         public byte[] _coopSettingByte { get; set; }
         [NotMapped]
-        private CoopSetting _coopSetting { get; set; }
+        private readonly MessagePackBlobAccessor<CoopSetting> _coopSetting = new(lz4Options);
         [NotMapped]
         public CoopSetting CoopSetting {
-            get {
-                if(_coopSetting != null)
-                    return _coopSetting;
-                if(_coopSettingByte == null)
-                    return null;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _coopSetting = MessagePackSerializer.Deserialize<CoopSetting>(_coopSettingByte, lz4Options);
-                return _coopSetting;
-            }
-            set {
-                _coopSetting = value;
-                var lz4Options = MessagePackSerializerOptions.Standard.WithCompression(MessagePackCompression.Lz4BlockArray);
-                _coopSettingByte = MessagePackSerializer.Serialize(value, lz4Options);
-            }
+            get { return _coopSetting.Get(_coopSettingByte); }
+            set { _coopSettingByte = _coopSetting.Set(value, _coopSettingByte); }
         }
 
         public void UpdateCoopSetting() {
@@ -148,9 +120,8 @@ namespace EGG9000.Common.Database.Entities {
         [Key(3)]
         public string UserName { get; set; }
 
-        public ContributionInfoCompact() {
+        public ContributionInfoCompact() { }
 
-        }
         public ContributionInfoCompact(Ei.ContractCoopStatusResponse.Types.ContributionInfo info) {
             SoulPower = info.SoulPower;
             ContributionAmount = info.ContributionAmount;
@@ -207,21 +178,11 @@ namespace EGG9000.Common.Database.Entities {
 
         [IgnoreMember]
         public bool this[string propertyName] {
-            get {
-                Type myType = typeof(CoopSetting);
-                PropertyInfo myPropInfo = myType.GetProperty(propertyName);
-                return (bool)myPropInfo.GetValue(this);
-            }
-            set {
-                Type myType = typeof(CoopSetting);
-                PropertyInfo myPropInfo = myType.GetProperty(propertyName);
-                myPropInfo.SetValue(this, value);
-            }
+            get => (bool)typeof(CoopSetting).GetProperty(propertyName).GetValue(this);
+            set => typeof(CoopSetting).GetProperty(propertyName).SetValue(this, value);
         }
 
-        public CoopSetting() {
-
-        }
+        public CoopSetting() { }
 
         public CoopSetting(UserCoopXref xref, DBUser user, Guild userGuild) {
             user.CoopSetting ??= new CoopSetting();

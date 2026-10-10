@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>preview</LangVersion>
+    <Configurations>Debug;Release;DEV9002;DEV9001</Configurations>
+    <NoWarn>$(NoWarn);NU1701</NoWarn>
+    <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
+    <ProjectReference Include="..\EGG9000.Analyzers\EGG9000.Analyzers.csproj" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
+  </ItemGroup>
+</Project>

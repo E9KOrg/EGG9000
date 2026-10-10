@@ -1,8 +1,9 @@
-using Bugsnag;
+﻿using Bugsnag;
 using Discord;
 using Discord.Interactions;
 using Discord.Net;
 using Discord.WebSocket;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
@@ -29,6 +30,13 @@ namespace EGG9000.Bot.Commands {
                 return;
             } else if(dbUser.EggIncAccounts.Any(x => x.Id == eggincid)) {
                 dbUser.RemoveID(eggincid);
+                var tombstone = await db.RemovedAccounts.FirstOrDefaultAsync(r => r.UserId == dbUser.Id && r.EggIncId == eggincid);
+                if(tombstone is null) {
+                    db.RemovedAccounts.Add(new RemovedAccount { UserId = dbUser.Id, EggIncId = eggincid, RemovedOn = DateTimeOffset.UtcNow, RemovedByDiscordId = command.User.Id });
+                } else {
+                    tombstone.RemovedOn = DateTimeOffset.UtcNow;
+                    tombstone.RemovedByDiscordId = command.User.Id;
+                }
             } else {
                 Embed[] embedArrayErr = [EmbedError($"Unable to find the EggIncId `{eggincid}` registered with <@{userid}>")];
                 embedArrayErr = [.. embedArrayErr, .. (await UserStatusCommands.AccountsString(db, dbUser, false)).Select(b => b.Build()).ToArray()];
@@ -210,14 +218,16 @@ namespace EGG9000.Bot.Commands {
                 logger.LogError(ex, "Error checking banned users");
             }
 
-            var existingAccountColumns = await db.DBUsers
-                .Select(u => new { u.DiscordId, u._eggIncIds, u._contractRegistrationByte })
-                .ToListAsync();
-            var existingOwner = existingAccountColumns.FirstOrDefault(u => DBUser.FromAccountColumns(u._eggIncIds, u._contractRegistrationByte).EggIncAccounts.Any(a => a.Id.Equals(eggincid, StringComparison.CurrentCultureIgnoreCase)));
+            var removedFrom = (await db.RemovedAccounts.Where(r => r.EggIncId == eggincid).Select(r => r.UserId).ToListAsync()).ToHashSet();
+            var existingAccountColumns = (await db.DBUsers
+                .Select(u => new { u.Id, u.DiscordId, u._eggIncIds, u._contractRegistrationByte })
+                .ToListAsync())
+                .Select(u => new AccountOwnership.Row(u.Id, u.DiscordId, u._eggIncIds, u._contractRegistrationByte));
+            var existingOwner = AccountOwnership.FindOwner(existingAccountColumns, removedFrom, eggincid);
             if(existingOwner is not null) {
-                var isSameUser = existingOwner.DiscordId == user.Id;
+                var isSameUser = existingOwner.Value.DiscordId == user.Id;
                 await reply(m => { m.Content = ""; m.Embed = EmbedError(isSameUser ? $"You have already registered EggInc ID `{eggincid}` with the bot." : $"EggInc ID `{eggincid}` is already registered with the bot. Reach out to staff for help."); });
-                if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but it's already registered to {(isSameUser ? "the same user" : "another user")}.");
+                if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but it's already registered to {(isSameUser ? "the same user" : "another user")}.", !isSameUser);
                 return;
             }
 
@@ -259,9 +269,19 @@ namespace EGG9000.Bot.Commands {
                 addedUser = true;
             } else {
                 addedUser = dbuser.EggIncAccounts.Count == 0;
+                if(dbuser.AccountsUnreadable) {
+                    await reply(m => { m.Content = ""; m.Embed = EmbedError("Your registered accounts could not be read, so nothing was changed. Reach out to staff for help."); });
+                    if(!isStaff) await NotifyRegistrationIssueChannel($"{user.Mention} tried to register EggInc ID `{eggincid}` in <#{channel.Id}>, but their stored accounts are unreadable. Nothing was written.");
+                    return;
+                }
                 dbuser.EggIncAccounts.Add(newAccount);
                 dbuser.UpdateAccounts();
             }
+
+            await AccountRefresh.ApplyExtrasAsync(dbuser, newAccount, db, logger);
+
+            var reRegistered = await db.RemovedAccounts.FirstOrDefaultAsync(r => r.UserId == dbuser.Id && r.EggIncId == newAccount.Id);
+            if(reRegistered is not null) db.RemovedAccounts.Remove(reRegistered);
 
             await db.SaveChangesAsync();
 
@@ -298,18 +318,24 @@ namespace EGG9000.Bot.Commands {
                 roleText = $"You have been assigned the rank of {role?.Name} thanks to your EB of {earningsBonus.ToEggString()}";
             }
 
-            var faqChannel = ChannelHelper.DetermineChannelType(db.Guilds.FirstOrDefault(g => g.Id == guild.Id), guild, GuildChannelType.FaqChannel);
+            var dbGuild = await db.Guilds.FirstOrDefaultAsync(g => g.Id == guild.Id);
+
+            var faqChannel = ChannelHelper.DetermineChannelType(dbGuild, guild, GuildChannelType.FaqChannel);
             var faqMention = faqChannel != null ? (faqChannel.GetType() == typeof(SocketTextChannel) ? ((SocketTextChannel)faqChannel).Mention : ((SocketThreadChannel)faqChannel).Mention) : null;
             var faqText = (faqMention != null && dbuser.EggIncAccounts.Count == 1) ? $" When you have a chance, read over {faqMention} to get an idea on how the server and bot functions." : "";
 
             var compiledMessage = $"Welcome {user.Mention}! {roleText}.{faqText}";
-            await ChannelHelper.DetermineAndSend(_client.Gateway, db.Guilds.FirstOrDefault(g => g.Id == guild.Id), GuildChannelType.General, new() { Text = compiledMessage }, logger);
+            await ChannelHelper.DetermineAndSend(_client.Gateway, dbGuild, GuildChannelType.General, new() { Text = compiledMessage }, logger);
             if(firstContactResponse == null) await channel.SendMessageAsync(compiledMessage);
 
             if(dbuser.EggIncAccounts.Count == 1) {
                 var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
                 if(overflowRole != null) {
-                    await socketGuildUser.AddRoleAsync(overflowRole);
+                    if(await OverflowSyncing.IsMissingFromAnyOverflowAsync(guildObj, _client, user.Id)) {
+                        await socketGuildUser.AddRoleAsync(overflowRole);
+                    } else if(socketGuildUser.RoleIds.Any(x => x == overflowRole.Id)) {
+                        await socketGuildUser.RemoveRoleAsync(overflowRole);
+                    }
                 }
             }
 
@@ -340,10 +366,10 @@ namespace EGG9000.Bot.Commands {
             }
             if(onComplete != null) await onComplete();
 
-            async Task NotifyRegistrationIssueChannel(string description) {
+            async Task NotifyRegistrationIssueChannel(string description, bool pingRole = true) {
                 if(guild is null || guildObj is null || !guildObj.HasChannel(GuildChannelType.RegisterIssues)) return;
                 var staffRole = guild.Roles.FirstOrDefault(x => x.Id == (guildObj.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole)?.Id ?? 0));
-                var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
+                var staffTag = (staffRole is null || !pingRole) ? "" : $"@silent <@&{staffRole.Id}>: ";
                 await ChannelHelper.DetermineAndSend(_client.Gateway, guildObj, GuildChannelType.RegisterIssues, new() { Text = $"{staffTag}{description}" });
             }
         }
@@ -374,7 +400,7 @@ namespace EGG9000.Bot.Commands {
         private static partial Regex MyRegex1();
     }
 
-    public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger) : Interactions.E9KModuleBase(dbFactory) {
+    public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly IClient _bugsnag = bugsnag;
         private readonly ILogger<RegisterModule> _logger = logger;
@@ -419,7 +445,11 @@ namespace EGG9000.Bot.Commands {
                 if(dbguild != null && dbguild.OverflowServers.Count > 0) {
                     var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
                     if(overflowRole != null) {
-                        await guildUser.AddRoleAsync(overflowRole);
+                        if(await OverflowSyncing.IsMissingFromAnyOverflowAsync(dbguild, _client, guildUser.Id)) {
+                            await guildUser.AddRoleAsync(overflowRole);
+                        } else if(guildUser.Roles.Any(x => x.Id == overflowRole.Id)) {
+                            await guildUser.RemoveRoleAsync(overflowRole);
+                        }
                     }
                 }
 

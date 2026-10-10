@@ -49,13 +49,13 @@ public static partial class NasaHelper {
             logger.LogWarning("Failed to fetch latest APOD.");
             return false;
         } else if(_latestApodCache is not null && latestApod.ID == _latestApodCache.ID) {
-            logger.LogInformation("No new APOD found.");
+            //logger.LogInformation("No new APOD found.");
             return false;
         }
 
         var existingApod = await GetLatestApod(_db);
         if(existingApod is not null && latestApod.ID == existingApod.ID) {
-            logger.LogInformation("No new APOD found against database.");
+            //logger.LogInformation("No new APOD found against database.");
             _latestApodCache = existingApod;
             return false;
         }
@@ -137,30 +137,6 @@ public static partial class NasaHelper {
             Embed = apodEmbed.Build(),
             Components = apod.CreateEphemeralExplanationButton()
         });
-
-
-        /*
-        if(TryExtractYouTubeId(apod.BestUrl) is string videoId) {
-            var apodEmbed = apod.GetEmbedBuilder().WithImageUrl($"https://img.youtube.com/vi/{videoId}/maxresdefault.jpg");
-            return new CustomDiscordMessage {
-                Embed = apodEmbed.Build(),
-                Components = apod.CreateEphemeralExplanationButton()
-            };
-
-        } else {
-            var attachment = await apod.GetFileAttachmentOrNull(db, logger);
-            if(attachment is not FileAttachment fileAttachment) {
-                logger.LogWarning("Failed to get NASA APOD image attachment for APOD ID: {apodId}", apod.ID);
-                return null;
-            }
-            var apodEmbed = apod.GetEmbedBuilder().WithImageUrl($"attachment://{fileAttachment.FileName}");
-            return new CustomDiscordMessage {
-                Embed = apodEmbed.Build(),
-                File = fileAttachment,
-                SendFile = true,
-                Components = apod.CreateEphemeralExplanationButton()
-            };
-        }*/
     }
 
     public static async Task<bool> TrySendNasaAPOD(this GuildNasaApodDetails details, NasaApod apod, DiscordHostedService client, ApplicationDbContext db, ILogger logger) {
@@ -206,7 +182,7 @@ public static partial class NasaHelper {
     public static async Task<NasaApod?> GetNasaApodResponseAsync(ILogger logger, CancellationToken cancellationToken) {
         string? streamContentString = null;
         try {
-            logger.LogInformation("Trying to fetch from: {}", NasaApiUrl);
+            //logger.LogInformation("Trying to fetch from: {}", NasaApiUrl);
             var response = await _sharedClient.GetAsync(NasaApiUrl, cancellationToken);
             if(response is null || !response.IsSuccessStatusCode) {
                 logger.LogWarning("Failed to retrieve NASA APOD. Status Code: {statusCode}", response?.StatusCode);

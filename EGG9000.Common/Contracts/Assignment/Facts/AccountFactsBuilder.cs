@@ -50,6 +50,7 @@ namespace EGG9000.Common.Contracts.Assignment.Facts {
                 MissingColleggtible = missingColleggtible,
                 MissingSeasonalPe = SeasonalPeProgress.IsMissing(account.Id, grade, season, seasonProgresses),
                 SeasonalPeCsGoal = SeasonalPeProgress.CsGoalForPe(account.Id, grade, season, seasonProgresses),
+                SeasonCs = SeasonalPeProgress.CsSoFar(account.Id, season, seasonProgresses) is var seasonCs && seasonCs > 0 ? seasonCs : backup?.SeasonCS ?? 0,
                 PreviousScoreOnThisContract = latestHistory?.Cxp
             };
         }

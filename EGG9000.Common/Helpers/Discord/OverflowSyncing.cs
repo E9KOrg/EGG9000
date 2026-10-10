@@ -248,6 +248,28 @@ namespace EGG9000.Common.Helpers.Discord {
             return true;
         }
 
+        public static async Task<bool> IsMissingFromAnyOverflowAsync(Guild guild, DiscordHostedService client, ulong userId) {
+            if(guild is null)
+                return true;
+            if(guild.OverflowServers.Count == 0)
+                return false;
+
+            foreach(var overflowId in guild.OverflowServers) {
+                var overflowServer = client.GetGuild(overflowId);
+                if(overflowServer is null)
+                    return true;
+                if(overflowServer.GetUser(userId) is not null)
+                    continue;
+                try {
+                    if(await client.Rest.GetGuildUserAsync(overflowId, userId) is null)
+                        return true;
+                } catch {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /// <summary>
         /// Map roles from main guild to overflow guilds.
         /// </summary>

@@ -21,5 +21,9 @@ namespace EGG9000.Common.Database.Entities {
         public DateTimeOffset? ExpiresAt { get; set; }
 
         public bool Revoked { get; set; }
+
+        // Null/empty = no filter. When set, LeaderboardJson returns only accounts whose EggIncAccount.Guild tag matches.
+        [MaxLength(100)]
+        public string MembersOfGuildOnly { get; set; }
     }
 }

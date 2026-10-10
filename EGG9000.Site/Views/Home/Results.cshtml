@@ -118,32 +118,3 @@
     <br /><br />
 </div>
 }
-
-@*{
-        void RowTemplate(LeaderboardUser account, int i) {
-            var snapshot = snapshots.FirstOrDefault(x => x.EggIncID == account.Backup.EggIncId);
-            <tr id="@account.User.DiscordId">
-
-                <td align="right"> @i </td>
-
-                <td style="max-width: 150px; text-overflow: ellipsis; line-break: strict;">
-                    @account.DiscordUser.GetCleanName()
-                </td>
-                <td align="right"> @account.Backup.SoulEggs.ToEggString() </td>
-
-                <td align="right"> @account.Backup.EggsOfProphecy </td>
-
-                <td align="right"> @account.Backup.EarningsBonus.ToEggString() </td>
-
-                <td align="right"> @account.Backup.NumPrestiges </td>
-                @if(snapshot != null) {
-                    <td align="right"> @snapshot.SoulEggs.ToEggString() </td>
-
-                    <td align="right"> @snapshot.EggsOfProphecy </td>
-
-                    <td align="right"> @snapshot.EarningsBonus.ToEggString() </td>
-                    <td align="right"> @snapshot.Prestiges</td>
-                }
-            </tr>
-        }
-    }*@

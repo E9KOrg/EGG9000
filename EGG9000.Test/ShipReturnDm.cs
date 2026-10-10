@@ -2,6 +2,8 @@ using EGG9000.Common.Helpers;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
+using System;
+
 using static Ei.MissionInfo.Types;
 
 namespace EGG9000.Test {
@@ -34,17 +36,17 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void ShouldMarkSentOnSuccess() {
-            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(DiscordHelpersExt.DMResult.Success));
+            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(new DiscordHelpersExt.DMResult { Success = true }));
         }
 
         [TestMethod]
         public void ShouldMarkSentWhenBlocked() {
-            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(DiscordHelpersExt.DMResult.CannotSendToUser));
+            Assert.IsTrue(ShipReturnDmBuilder.ShouldMarkSent(new DiscordHelpersExt.DMResult { CannotSendToUser = true }));
         }
 
         [TestMethod]
         public void ShouldNotMarkSentOnTransientError() {
-            Assert.IsFalse(ShipReturnDmBuilder.ShouldMarkSent(DiscordHelpersExt.DMResult.DiscordError));
+            Assert.IsFalse(ShipReturnDmBuilder.ShouldMarkSent(new DiscordHelpersExt.DMResult { Success = false, Exception = new Exception() }));
         }
 
         [TestMethod]

@@ -75,7 +75,7 @@ namespace EGG9000.Site.Controllers {
                 });
                 await _db.SaveChangesAsync();
 
-                var dbuser = await _db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.Id == userId);
+                var dbuser = await _db.DBUsers.FirstOrDefaultAsync(x => x.Id == userId);
                 if(dbuser is not null) {
                     discordUser = guild.Users.FirstOrDefault(x => x.Id == dbuser.DiscordId);
                     var role = guild.Roles.FirstOrDefault(x => x.Id == DonorRoleId);

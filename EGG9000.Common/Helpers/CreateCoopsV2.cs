@@ -5,7 +5,12 @@ using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Newtonsoft.Json;
+
 using Polly;
 using System;
 using System.Collections.Generic;
@@ -56,7 +61,7 @@ namespace EGG9000.Common.Helpers {
                 GuildId = guild.Id,
                 Name = words.GetCoopName(accounts, guild, dbGuild),
                 MaxUsers = contract.MaxUsers,
-                Status = CoopStatusEnum.WaitingOnCreation,
+                Status = CoopStatus.WaitingOnCreation,
                 League = (uint)grade,
                 AnyLeague = allowAllGrades,
                 CoopEnds = coopEnds,
@@ -87,7 +92,7 @@ namespace EGG9000.Common.Helpers {
 
 
 
-        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true, TimingsFactory timings = null) {
+        public static async Task<bool> CreateCoopViaApi(string ContractID, Ei.Contract.Types.PlayerGrade grade, string coopName, double secondsRemaining, string userId, bool allowAllGrades, bool kickCreator = true, TimingsFactory timings = null, ILogger logger = null) {
             userId ??= EggIncApi.UserId;
             var policy = Policy
               .Handle<Exception>()
@@ -124,7 +129,14 @@ namespace EGG9000.Common.Helpers {
             };
 
 
-            var response = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, true);
+            var statusResult = await EggIncApi.PostResult<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, false);
+            if(statusResult.Failed) {
+                logger?.LogWarning("CoopStatusUpdate failed for {CoopName} (user {UserId}): {Error}", coopName, userId, statusResult.Error);
+            } else if(!statusResult.Value.Exists) {
+                logger?.LogWarning("CoopStatusUpdate returned invalid status for {CoopName} (user {UserId}): {Status}", coopName, userId, JsonConvert.SerializeObject(statusResult.Value));
+            } else {
+                logger?.LogInformation("CoopStatusUpdate succeeded for {CoopName} (user {UserId}): {Status}", coopName, userId, JsonConvert.SerializeObject(statusResult.Value));
+            }
             timings?.Set("CoopStatusUpdate");
 
 
@@ -137,6 +149,9 @@ namespace EGG9000.Common.Helpers {
                     Reason = Ei.KickPlayerCoopRequest.Types.Reason.Private,
                     RequestingUserId = userId
                 }, userId);
+                if(!r) {
+                    logger?.LogWarning("KickPlayerCoopRequest failed for {CoopName} (user {UserId}): {Error}", coopName, userId, "Request failed");
+                }
                 timings?.Set("Kick Creator");
             }
 
@@ -172,6 +187,29 @@ namespace EGG9000.Common.Helpers {
             return response;
         }
 
+
+        // Persists an xref built by MoveUser. If a row already exists for the same (user, co-op, account)
+        // it's revived in place instead of inserted - the not-joined kick only soft-removes the xref, so
+        // re-placing a user into a co-op they were kicked from would otherwise collide with the existing PK.
+        public static async Task AddOrReviveXrefAsync(ApplicationDbContext db, UserCoopXref newXref) {
+            var existing = db.UserCoopXrefs.Local.FirstOrDefault(x => x.UserId == newXref.UserId && x.CoopId == newXref.CoopId && x.EggIncId == newXref.EggIncId)
+                ?? await db.UserCoopXrefs.FirstOrDefaultAsync(x => x.UserId == newXref.UserId && x.CoopId == newXref.CoopId && x.EggIncId == newXref.EggIncId);
+
+            if(existing is null) {
+                db.Add(newXref);
+                return;
+            }
+
+            existing.Removed = false;
+            existing.RemovedOn = null;
+            existing.AddedToChannel = newXref.AddedToChannel;
+            existing.WasAssigned = true;
+            existing.CreatedOn = newXref.CreatedOn;
+            // Fresh join window, so the reminder/kick cycle starts over rather than firing immediately.
+            existing.JoinWarning12h = false;
+            existing.JoinWarning24h = false;
+            existing.JoinWarning24TillFinish = false;
+        }
 
         public static async Task<UserCoopXref> MoveUser(Coop targetCoop, Guid dbUserId, string EggIncId, string eggIncName, ApplicationDbContext db, IUser user, DBUser dbUser, SocketTextChannel targetChannel, SocketTextChannel commandChannel, bool silent = false) {
             var newxref = new UserCoopXref {

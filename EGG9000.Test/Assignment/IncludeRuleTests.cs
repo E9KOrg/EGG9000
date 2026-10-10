@@ -15,8 +15,6 @@ namespace EGG9000.Test.Assignment {
             return new() { GoalRewards = [.. rewards] };
         }
 
-        // RewardMatch -------------------------------------------------------
-
         [TestMethod]
         [TestCategory("Unit")]
         public void RewardMatch_EmptyFilter_AlwaysMatches() {
@@ -72,8 +70,6 @@ namespace EGG9000.Test.Assignment {
             Assert.IsFalse(RewardMatch.MatchesLast(Grade(), Ei.RewardType.Gold));
         }
 
-        // RewardFilterRule --------------------------------------------------
-
         [TestMethod]
         [TestCategory("Unit")]
         public void RewardFilter_AppliesToAllContracts() {
@@ -127,8 +123,6 @@ namespace EGG9000.Test.Assignment {
             var facts = TestFactsBuilder.Account().Grade(G.GradeA).Build();
             Assert.AreEqual(RuleOutcome.Exclude, rule.Evaluate(facts, contract, new AssignmentSettings()));
         }
-
-        // PreviouslyCompletedRule -------------------------------------------
 
         private static AccountFactsTestBuilder Completed() {
             return TestFactsBuilder.Account().Grade(G.GradeC).PreviouslyCompleted(true);
@@ -210,8 +204,6 @@ namespace EGG9000.Test.Assignment {
             var nonSeasonal = TestFactsBuilder.Contract().Seasonal(false).Grade(G.GradeC, Ei.RewardType.Gold).Build();
             Assert.AreEqual(RuleOutcome.Pass, rule.Evaluate(Completed().Build(), nonSeasonal, s));
         }
-
-        // 2 -> 3 branch -----------------------------------------------------
 
         private static AccountFacts TwoOfThree() {
             return TestFactsBuilder.Account().Grade(G.GradeC).PreviouslyCompleted(false).CompletedExactlyTwoGoals(true).Build();

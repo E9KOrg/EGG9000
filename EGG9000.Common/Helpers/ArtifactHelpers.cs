@@ -162,6 +162,12 @@ namespace EGG9000.Common.Helpers {
 
         public record LegendaryLuckResult(double ExpectedLeggies, int LegCount, uint PossibleCraftCount, double LLC, int LLCPercent);
 
+        public const int LLCPercentHardCutoff = 50;
+        public const int LLCPercentSoftCutoff = 15;
+        public const double AFSZScoreCutoff = 1.0;
+        public const double AFSZScoreAloneCutoff = 3.0;
+        public const int NoBaselineLLCPercent = 999;
+
         // Legendary Luck Coefficient: how many legendaries an account "should" have given its actual
         // ship launches (by ship/duration/level, weighted against Menno's crowd-sourced drop rates) and
         // its crafting history (simulated per-craft odds from crafting XP/level at the time of each
@@ -191,7 +197,6 @@ namespace EGG9000.Common.Helpers {
                 //Don't account for Lunar totems in LLC calc, re: sync with Menno data
                 if(craftType.Key.Artifact == "Lunar Totem" && craftType.Key.Tier == 4) continue;
 
-                //Get the number of crafts that have been performed for this artifact
                 var numCrafted = (double)(afHall.Where(a => a.NumberCrafted > 0).FirstOrDefault(a => a.Artifact.Tier == craftType.Key.Tier && a.Artifact.Artifact == craftType.Key.Artifact)?.NumberCrafted ?? 0.0);
                 if(numCrafted == 0) continue;
                 var assumedXpPerCraft = account.Backup.CraftingXP / numCrafted;
@@ -220,9 +225,18 @@ namespace EGG9000.Common.Helpers {
 
             var newExpectedLeggies = newLLCSum + sumOfRatios;
             var newLLC = Math.Round(legCount - newExpectedLeggies, 2);
-            var newLLCPercent = newExpectedLeggies != 0 ? (int)Math.Round((legCount * 100 / newExpectedLeggies) - 100) : 0;
+            var newLLCPercent = newExpectedLeggies != 0
+                ? (int)Math.Round((legCount * 100 / newExpectedLeggies) - 100)
+                : (legCount > 0 ? NoBaselineLLCPercent : 0);
 
             return new LegendaryLuckResult(newExpectedLeggies, legCount, craftCount, newLLC, newLLCPercent);
+        }
+
+        public static bool IsCheatFlagged(bool hasLlc, int llcPercent, bool hasAfs, double afsZ) {
+            if(hasLlc && llcPercent >= LLCPercentHardCutoff) return true;
+            if(hasLlc && hasAfs && llcPercent >= LLCPercentSoftCutoff && afsZ > AFSZScoreCutoff) return true;
+            if(hasAfs && afsZ >= AFSZScoreAloneCutoff) return true;
+            return false;
         }
 
         public static double GetArtifactFairnessScore(List<ArtifactCount> ArtifactHall) {
@@ -416,9 +430,9 @@ namespace EGG9000.Common.Helpers {
             var size = context.GetCurrentSize();
             context.SetGraphicsOptions(new GraphicsOptions() {
                 Antialias = true,
-                AlphaCompositionMode = PixelAlphaCompositionMode.DestOut // Enforces that any part of this shape that has color is punched out of the background
+                AlphaCompositionMode = PixelAlphaCompositionMode.DestOut // punches any colored part of this shape out of the background
             });
-            BuildCorners(size.Width, size.Height, cornerRadius).ToList().ForEach(p => context = context.Fill(Color.Red, p)); //Color here is un-important, just can't be transparent
+            BuildCorners(size.Width, size.Height, cornerRadius).ToList().ForEach(p => context = context.Fill(Color.Red, p)); // color is arbitrary, just can't be transparent
             return context;
         }
 
@@ -438,7 +452,7 @@ namespace EGG9000.Common.Helpers {
             var graphicsOptions = new GraphicsOptions {
                 Antialias = true,
             };
-            image.Mutate(x => x.Fill(backgroundColor)); // Fill the image with a background 
+            image.Mutate(x => x.Fill(backgroundColor));
             image.Mutate(x => x.ApplyRoundedCorners(radius));
             return image;
         }
@@ -574,10 +588,6 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static async Task<(string B64, InventoryCreatorConfig Config)> InventoryB64(EggIncAccount account, bool removeB64Header = true) {
-            /*
-            * Constants that will determine how the image comes out
-            */
-
             var orderedList = GetOrderedInventory(account);
             if(orderedList is null) return ("$ERROR$:orderedList is null", null);
 
@@ -602,7 +612,6 @@ namespace EGG9000.Common.Helpers {
                 if(!response.IsSuccessStatusCode) return ("$ERROR$:response status code is not success", null);
 
                 var contentType = response.Content.Headers.ContentType?.MediaType;
-                // Check if the response contains an image
                 if(contentType?.StartsWith("image/") != true) return ("$ERROR$:response was not an image", null);
 
                 var imageBytes = await response.Content.ReadAsByteArrayAsync();
@@ -610,7 +619,6 @@ namespace EGG9000.Common.Helpers {
                 var image = Image.Load(ms);
                 var imageB64 = image.ToBase64String(JpegFormat.Instance);
                 if(removeB64Header) {
-                    // Remove everything up until, and including 'base64,'
                     var splits = imageB64.Split("base64,");
                     if(splits.Length > 1) imageB64 = splits[1];
                 }

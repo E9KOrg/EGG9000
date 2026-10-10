@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Services {
 
         public Task StartAsync(CancellationToken cancellationToken) {
             _logger.LogInformation("Starting JobService");
-            _jobs = [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
+            var discovered = AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetLoadableExportedTypes())
                       .SelectMany(t => t.GetMethods())
                       .Where(m => m.GetCustomAttributes(typeof(JobAttribute), false).Length > 0)
                       .Select(x =>
@@ -32,7 +32,15 @@ namespace EGG9000.Bot.Services {
                             Parameters = x.GetParameters(),
                             DeclaringType = x.DeclaringType,
                             NextRun = GetNextRun(x.GetCustomAttribute<JobAttribute>().Cron)
-                        })];
+                        }).ToList();
+
+            var allowlist = ServiceAllowlist.Default;
+            _jobs = [.. discovered.Where(x => allowlist.IsEnabled(x.DeclaringType) || allowlist.IsEnabled(x.Name))];
+            if(allowlist.Active) {
+                foreach(var job in discovered.Except(_jobs)) {
+                    _logger.LogInformation("Service allowlist skipped job {jobDeclareType}.{jobName}", job.DeclaringType.Name, job.Name);
+                }
+            }
 
             _ = Main(cancellationToken);
             return Task.CompletedTask;
@@ -44,15 +52,15 @@ namespace EGG9000.Bot.Services {
                     var jobs = _jobs.Where(x => x.NextRun < DateTimeOffset.UtcNow && !x.Running).OrderBy(x => x.NextRun);
                     foreach(var job in jobs) {
                         job.NextRun = GetNextRun(job.Details.Cron);
-                        _logger.LogInformation("Running Job {jobDeclareType}.{jobName}, Current time: {currentTime}, next run at {nextRun}",
-                            job.DeclaringType.Name, job.Name, $"{DateTimeOffset.UtcNow:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
+                        //_logger.LogInformation("Running Job {jobDeclareType}.{jobName}, Current time: {currentTime}, next run at {nextRun}",
+                        //    job.DeclaringType.Name, job.Name, $"{DateTimeOffset.UtcNow:h:mm:ss:ff}", $"{job.NextRun:h:mm:ss:ff}");
 
                         _ = Task.Run(async () => {
                             job.Running = true;
                             var timer = System.Diagnostics.Stopwatch.StartNew();
                             await RunJobAsync(job);
-                            _logger.LogInformation("{jobDeclareType}.{jobName} took {timerHumanized}",
-                                job.DeclaringType.Name, job.Name, timer.Elapsed.Humanize());
+                            //_logger.LogInformation("{jobDeclareType}.{jobName} took {timerHumanized}",
+                            //    job.DeclaringType.Name, job.Name, timer.Elapsed.Humanize());
                             job.Running = false;
                         });
                     }
@@ -66,11 +74,11 @@ namespace EGG9000.Bot.Services {
                     if(delay < TimeSpan.Zero) {
                         delay = TimeSpan.FromSeconds(1);
                     }
-                    _logger.LogInformation("Next job {jobDeclareType}.{jobName} in {delaySeconds} seconds, delaying for {delaySeconds} seconds",
-                        nextJob.DeclaringType.Name, nextJob.Name, delay.TotalSeconds, delay.TotalSeconds);
+                    //_logger.LogInformation("Next job {jobDeclareType}.{jobName} in {delaySeconds} seconds, delaying for {delaySeconds} seconds",
+                    //    nextJob.DeclaringType.Name, nextJob.Name, delay.TotalSeconds, delay.TotalSeconds);
                     await Task.Delay((int)delay.TotalMilliseconds, cancellationToken);
                 } else {
-                    _logger.LogInformation("No jobs found, delaying for 1 second");
+                    //_logger.LogInformation("No jobs found, delaying for 1 second");
                     await Task.Delay(1000, cancellationToken);
                 }
 

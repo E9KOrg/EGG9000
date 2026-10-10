@@ -6,6 +6,7 @@ using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
+using EGG9000.Common.Services;
 using EGG9000.Site.Auth;
 using EGG9000.Site.Data;
 using EGG9000.Site.Services;
@@ -52,10 +53,21 @@ SecretsHelper.Initialize(builder.Configuration);
 builder.WebHost.UseUrls("http://0.0.0.0:5013");
 builder.Logging.ClearProviders();
 builder.Host.UseNLog();
+
+builder.WebHost.UseSentry(options => {
+    // You can load the DSN from configuration or hardcode it for testing
+    options.Dsn = SecretsHelper.GetConfigOrSecret(builder.Configuration, "ConnectionStrings:BugsInkURL", "bugsink_url") ?? "";
+    options.SendDefaultPii = true;
+    options.TracesSampleRate = 0.0;
+
+    // Crucial: Instructs the SDK to process and append stack trace metadata
+    options.AttachStacktrace = true;
+});
+
 ConfigureServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
-
+app.UseSentryTracing();
 if(BuildConfig.IsRelease) {
     // Apply pending migrations on startup. Production only - dev runs against the live DB and must
     // stay manual. Single shared ApplicationDbContext; EF takes an advisory lock so the bot and site
@@ -92,12 +104,12 @@ app.Use(async (context, next) => {
     headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     headers["Content-Security-Policy-Report-Only"] =
         "default-src 'self'; " +
-        "script-src 'self' 'unsafe-inline' https://js.stripe.com; " +
-        "style-src 'self' 'unsafe-inline'; " +
+        "script-src 'self' 'unsafe-inline' https://js.stripe.com https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; " +
+        "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; " +
         "img-src 'self' data: https:; " +
         "font-src 'self' data:; " +
         "frame-src https://js.stripe.com https://hooks.stripe.com; " +
-        "connect-src 'self' https://api.stripe.com; " +
+        (BuildConfig.IsRelease ? "connect-src 'self' https://api.stripe.com; " : "connect-src *;") +
         "frame-ancestors 'none'";
     await next();
 });
@@ -199,8 +211,17 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         options.ClientSecret = Configuration.GetConnectionString("ClientSecret");
         options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents {
             OnTicketReceived = context => {
-                Console.WriteLine("est");
                 return Task.FromResult(0);
+            },
+            OnRemoteFailure = context => {
+                var target = "/Identity/Account/Login";
+                var returnUrl = context.Properties?.RedirectUri;
+                if(!string.IsNullOrEmpty(returnUrl) && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//")) {
+                    target += "?returnUrl=" + Uri.EscapeDataString(returnUrl);
+                }
+                context.Response.Redirect(target);
+                context.HandleResponse();
+                return Task.CompletedTask;
             }
         };
         options.SaveTokens = true;
@@ -231,6 +252,9 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddRazorPages();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
     services.AddSingleton<ArtifactImageRenderer>();
+    // Scoped, not singleton: it holds the request's ApplicationDbContext.
+    services.AddScoped<LeaderboardService>();
+    services.AddHostedService<StorageDictionaryStartup>();
     services.AddHostedService<NewCoopChecker>();
     services.AddSingleton<DatabaseCache>();
     services.AddHostedService<UserCacheRefreshService>();
@@ -272,7 +296,6 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
         var bugsnagConfig = new Bugsnag.Configuration(bugsnagKey);
         var bs = new Bugsnag.Client(bugsnagConfig);
         services.AddSingleton<Bugsnag.IClient>(bs);
-        // Test Bugsnag is working
         if(bs != null) {
             try {
                 bs.Notify(new Exception("Bugsnag test - startup successful"));
@@ -299,6 +322,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
             // Per-instance temporary queue so a version update fans out to every running process
             // instead of being load-balanced across a shared queue.
             x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
+            x.AddConsumer<StorageDictionaryAdoptedConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
             // Same broadcast pattern: every site instance applies every bot metrics snapshot.
             x.AddConsumer<EGG9000.Site.Consumers.BotMetricsSnapshotConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
             var host = Configuration.GetConnectionString("RabbitMQServer");

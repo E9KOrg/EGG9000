@@ -25,7 +25,6 @@ namespace EGG9000.Bot.Interactions {
         public StaffTier Tier { get; } = tier;
 
         public override Task<PreconditionResult> CheckRequirementsAsync(IInteractionContext context, ICommandInfo commandInfo, IServiceProvider services) {
-
             //Temporary bypass until we decide for certain if we are going to use this or not.
             if (BuildConfig.IsRelease || BuildConfig.IsAnyDev) return Task.FromResult(PreconditionResult.FromSuccess());
 

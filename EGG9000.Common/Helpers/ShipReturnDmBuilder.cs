@@ -27,7 +27,7 @@ namespace EGG9000.Common.Helpers {
             string SiteBaseUrl);
 
         public static bool ShouldMarkSent(DMResult result) {
-            return result is DMResult.Success or DMResult.CannotSendToUser;
+            return result is { Success: true } or { CannotSendToUser: true };
         }
 
         public static (Embed Embed, MessageComponent Components) Build(ShipReturnDmModel m) {

@@ -41,7 +41,7 @@ namespace EGG9000.Common.Database {
             public ulong GuildId { get; init; }
             public string ContractID { get; init; }
             public Guid CoopId { get; init; }
-            public CoopStatusEnum Status { get; init; }
+            public CoopStatus Status { get; init; }
             public ulong ThreadID { get; init; }
             public int? CurrentUsers { get; init; }
             public int? MaxUsers { get; init; }
@@ -85,12 +85,11 @@ namespace EGG9000.Common.Database {
                     .ToDictionary(g => g.Key, g => g.Select(x => x.UserId).ToHashSet());
 
                 static bool IsActive(CoopRow c, DateTimeOffset n) =>
-                    (int)c.Status > 2 && (int)c.Status < 13 && c.CoopEnds > n;
+                    CoopStatusSets.OpenForAssignment.Contains(c.Status) && c.CoopEnds > n;
                 static bool IsPending(CoopRow c) =>
-                    c.Status == CoopStatusEnum.WaitingOnThread && c.ThreadID == 0;
+                    c.Status == CoopStatus.WaitingOnThread && c.ThreadID == 0;
                 static bool IsFinished(CoopRow c) =>
-                    c.Status == CoopStatusEnum.Completed || c.Status == CoopStatusEnum.Failed
-                    || c.Status == CoopStatusEnum.CompletedAllCheckIn;
+                    CoopStatusSets.FinishedOrFailed.Contains(c.Status);
 
                 var contractStats = new Dictionary<(ulong, string), ContractStats>();
 

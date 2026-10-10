@@ -1,7 +1,7 @@
 ﻿@using Discord.WebSocket
 @using System.Drawing;
-@using static EGG9000.Site.Controllers.ContractController;
-@model (ScoreGridContract[] Contracts, ScoreGridItem[] GridItems, SocketRole[] Roles)
+@using EGG9000.Site.Models.Contract
+@model Contract_RecentScoresGridModel
 @inject DiscordSocketClient discordClient
 @{
     Guild dbguild = ViewBag.DBGuild;
@@ -78,16 +78,6 @@
                             </tr>
                         }
                     </tbody>
-                    @*                <tfoot>
-            <tr>
-            <th></th>
-            @foreach (var contract in contracts) {
-            <th>@contract.MaxScore.ToEggString()</th>
-            }
-
-            </tr>
-            </tfoot>
-            *@
                 </table>
 
             </div>

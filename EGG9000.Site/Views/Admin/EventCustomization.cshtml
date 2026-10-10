@@ -249,12 +249,7 @@
                     this.selectedItem.Fields = JSON.stringify(this.selectedItem.Tips);
                     this.selectedItem._settings = JSON.stringify(this.selectedItem.settings);
                     try {
-                        const r = await fetch('/admin/saveeventcustomization/', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(this.selectedItem)
-                        });
-                        const data = await r.json();
+                        const data = await postJson('/admin/saveeventcustomization/', this.selectedItem);
                         if (data.Error) {
                             alert(data.Error);
                             return;

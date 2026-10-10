@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 
 namespace EGG9000.Common.Database.Entities {
@@ -16,8 +17,19 @@ namespace EGG9000.Common.Database.Entities {
         /// Only stores goals where RewardType == EggsOfProphecy.
         /// </summary>
         public string GoalsJson { get; set; } = string.Empty;
+        public string _response { get; set; }
+        [NotMapped]
+        private readonly JsonBlobAccessor<ContractSeasonInfo> _details = new();
+        [NotMapped]
+        public ContractSeasonInfo Details {
+            get { return _details.Get(_response); }
+        }
 
-        public static SeasonInfo FromProto(ContractSeasonInfo proto) {
+        public void ApplyDetails(ContractSeasonInfo proto) {
+            _response = _details.Set(proto, _response);
+            Id = proto.Id;
+            Name = proto.Name;
+            StartTime = DateTimeOffset.UnixEpoch.AddSeconds(proto.StartTime);
             var goals = new Dictionary<int, List<SeasonPeGoal>>();
             foreach(var gs in proto.GradeGoals) {
                 var peGoals = gs.Goals
@@ -27,46 +39,48 @@ namespace EGG9000.Common.Database.Entities {
                 if(peGoals.Count > 0)
                     goals[(int)gs.Grade] = peGoals;
             }
-            return new SeasonInfo {
-                Id = proto.Id,
-                Name = proto.Name,
-                StartTime = DateTimeOffset.UnixEpoch.AddSeconds(proto.StartTime),
-                GoalsJson = JsonConvert.SerializeObject(goals)
-            };
+            GoalsJson = JsonConvert.SerializeObject(goals);
         }
 
-        public static bool HasPeRewards(ContractSeasonInfo proto) =>
-            proto.GradeGoals.Any(gs => gs.Goals.Any(g => g.RewardType == RewardType.EggsOfProphecy && g.Cxp > 0));
+        public static SeasonInfo FromProto(ContractSeasonInfo proto) {
+            var info = new SeasonInfo();
+            info.ApplyDetails(proto);
+            return info;
+        }
+
+        public static bool HasPeRewards(ContractSeasonInfo proto) {
+            return proto.GradeGoals.Any(gs => gs.Goals.Any(g => g.RewardType == RewardType.EggsOfProphecy && g.Cxp > 0));
+        }
 
         private Dictionary<int, List<SeasonPeGoal>> _goals;
-        private Dictionary<int, List<SeasonPeGoal>> Goals =>
-            _goals ??= JsonConvert.DeserializeObject<Dictionary<int, List<SeasonPeGoal>>>(GoalsJson ?? "{}") ?? [];
+        private Dictionary<int, List<SeasonPeGoal>> Goals {
+            get {
+                return _goals ??= JsonConvert.DeserializeObject<Dictionary<int, List<SeasonPeGoal>>>(GoalsJson ?? "{}") ?? [];
+            }
+        }
 
         // Season goals are set based on the starting grade, so even if player is demoted or promoted during the season, the goals will stay at what starting grade was.
         public int GetPeEarned(Contract.Types.PlayerGrade grade, double totalCxp) {
-            if(!Goals.TryGetValue((int)grade, out var gradeGoals))
-                return 0;
+            if(!Goals.TryGetValue((int)grade, out var gradeGoals)) return 0;
             return gradeGoals.Where(g => totalCxp >= g.Cxp).Sum(g => g.PeAmount);
         }
 
         public int GetMaxPe(Contract.Types.PlayerGrade grade) {
-            if(!Goals.TryGetValue((int)grade, out var gradeGoals))
-                return 0;
+            if(!Goals.TryGetValue((int)grade, out var gradeGoals)) return 0;
             return gradeGoals.Sum(g => g.PeAmount);
         }
 
         // CS (season Cxp) at which the grade earns all of its PE - the highest PE-goal Cxp. 0 when the
         // grade has no PE goals.
         public double GetMaxPeCxp(Contract.Types.PlayerGrade grade) {
-            if(!Goals.TryGetValue((int)grade, out var gradeGoals) || gradeGoals.Count == 0)
-                return 0;
+            if(!Goals.TryGetValue((int)grade, out var gradeGoals) || gradeGoals.Count == 0) return 0;
             return gradeGoals.Max(g => g.Cxp);
         }
 
-        public IEnumerable<SeasonPeGoal> GetUnearnedGoals(Contract.Types.PlayerGrade grade, double totalCxp) =>
-            Goals.TryGetValue((int)grade, out var gradeGoals)
-                ? gradeGoals.Where(g => totalCxp < g.Cxp)
-                : [];
+        public IEnumerable<SeasonPeGoal> GetUnearnedGoals(Contract.Types.PlayerGrade grade, double totalCxp) {
+            if(!Goals.TryGetValue((int)grade, out var gradeGoals)) return [];
+            return gradeGoals.Where(g => totalCxp < g.Cxp);
+        }
     }
 
     public class SeasonPeGoal {

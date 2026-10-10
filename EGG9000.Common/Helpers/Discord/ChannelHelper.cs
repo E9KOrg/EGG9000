@@ -11,16 +11,13 @@ namespace EGG9000.Common.Helpers.Discord {
     public class ChannelHelper {
         public static object DetermineChannelType(Guild dbGuild, SocketGuild discordGuild, GuildChannelType channelType) {
 
-            //Null checks
             if(dbGuild is null || discordGuild is null) return null;
             var channelDetails = dbGuild.ChannelDetails.FirstOrDefault(d => d.ChannelType == channelType);
             if(channelDetails is null) return null;
 
-            //Thread
             var thread = discordGuild.GetThreadChannel(channelDetails.Id);
             if(thread is not null) return thread;
 
-            //Channel
             var channel = discordGuild.GetTextChannel(channelDetails.Id);
             if(channel is not null) return channel;
 
@@ -64,8 +61,12 @@ namespace EGG9000.Common.Helpers.Discord {
             }
         }
 
-        public static async Task<IUserMessage> DetermineAndSend(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null) {
-            return await SendCustomMessage(DetermineChannelType(dbGuild, _client.GetGuild(dbGuild.Id), channelType), message, logger);
+        public static async Task<IUserMessage> DetermineAndSend(DiscordSocketClient _client, Guild dbGuild, GuildChannelType channelType, CustomDiscordMessage message, ILogger logger = null, ApplicationDbContext db = null) {
+            var dbGuildProper = db is null ? dbGuild : (await db.Guilds.FirstOrDefaultAsync(g => g.OverflowServersJson.Contains(dbGuild.Id.ToString())) ?? dbGuild);
+            var target = DetermineChannelType(dbGuildProper, _client.GetGuild(dbGuildProper.Id), channelType);
+            if(target is null)
+                logger?.LogWarning("DetermineAndSend: no {channelType} channel resolved for guild {guild} ({guildId})", channelType, dbGuildProper.Name, dbGuildProper.Id);
+            return await SendCustomMessage(target, message, logger);
         }
 
         public static async Task<IUserMessage> SendCustomMessage(object target, CustomDiscordMessage message, ILogger logger = null) {

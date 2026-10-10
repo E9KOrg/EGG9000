@@ -112,12 +112,12 @@ namespace EGG9000.Common.Services {
                 var since = status.Since.AddMinutes(-5);
                 var coops = await scopedDb.Coops.AsNoTracking()
                     .Where(c => c.ContractID == contractid && c.GuildId == guildId && c.Group == group
-                        && c.Created >= since && c.Status != CoopStatusEnum.Failed)
+                        && c.Created >= since && c.Status != CoopStatus.Failed)
                     .Select(c => new { c.Status, c.ThreadID })
                     .ToListAsync();
 
                 status.CoopCount = coops.Count;
-                status.StartedCount = coops.Count(c => (int)c.Status >= (int)CoopStatusEnum.WaitingOnThread);
+                status.StartedCount = coops.Count(c => (int)c.Status >= (int)CoopStatus.WaitingOnThread);
                 status.ThreadCreatedCount = coops.Count(c => c.ThreadID != 0);
 
                 await status.Message.ModifyAsync(m => m.Embed = GenerateBoardingGroupEmbed(status));

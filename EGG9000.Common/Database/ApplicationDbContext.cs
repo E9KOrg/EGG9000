@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System;
 using System.Collections.Frozen;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -114,8 +115,6 @@ namespace EGG9000.Common.Database {
         public DbSet<Donation> Donations { get; set; }
         public DbSet<DBCustomEgg> CustomEggs { get; set; }
 
-        public DbSet<GlobalLeaderboardCoop> GlobalLeaderboardCoops { get; set; }
-        public DbSet<GlobalLeaderboardUser> GlobalLeaderboardUsers { get; set; }
         public DbSet<UserSnapShot> UserSnapShots { get; set; }
 
         public DbSet<TemporaryRole> TemporaryRoles { get; set; }
@@ -132,6 +131,8 @@ namespace EGG9000.Common.Database {
         public DbSet<ApiKey> ApiKeys { get; set; }
         public DbSet<ApiKeyRequestLog> ApiKeyRequestLogs { get; set; }
         public DbSet<ApiKeyDailyUsage> ApiKeyDailyUsages { get; set; }
+        public DbSet<StorageDictionaryRow> StorageDictionaries { get; set; }
+        public DbSet<RemovedAccount> RemovedAccounts { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -142,28 +143,58 @@ namespace EGG9000.Common.Database {
             }
         }
 
+        public const string EiContractsCacheKey = "DbContext-EiContracts";
+        public const string DbContractsCacheKey = "DbContext-DbContracts";
+        public const string SeasonInfosCacheKey = "DbContext-SeasonInfos";
+
         public async Task<FrozenSet<Ei.Contract>> CachedEiContractsAsync() {
-            return await _cache.GetOrCreateAsync("DbContext-EiContracts", async entry => {
+            return await _cache.GetOrCreateAsync(EiContractsCacheKey, async entry => {
                 var dbcontracts = await Contracts.ToListAsync();
                 var (eiContracts, _) = await EggIncAPI.EggIncApi.GetContractsArchive(EggIncAPI.EggIncApi.UserId);
 
                 var contracts = eiContracts?.Archive?.Select(x => x.Contract).ToList() ?? [];
                 // Archive fetch failed (e.g. API timeout) - fall back to DB contracts and retry soon instead of caching the degraded set for an hour.
                 entry.AbsoluteExpirationRelativeToNow = contracts.Count > 0 ? TimeSpan.FromHours(1) : TimeSpan.FromMinutes(1);
-                contracts.AddRange(dbcontracts.Where(dbc => !contracts.Any(c => c.Identifier == dbc.ID)).Select(x => x.Details));
-                return contracts.ToFrozenSet();
+                contracts.AddRange(dbcontracts.Where(dbc => !contracts.Any(c => c.Identifier == dbc.ID)).Select(x => x.Details).Where(x => x != null));
+                return contracts.DistinctBy(x => x.Identifier).ToFrozenSet();
             });
-
         }
 
+        public async Task<List<DBContract>> CachedDbContractsAsync() {
+            return await _cache.GetOrCreateAsync(DbContractsCacheKey, async entry => {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+                return await Contracts.AsNoTracking().ToListAsync();
+            });
+        }
+
+        public async Task<List<SeasonInfo>> CachedSeasonInfosAsync() {
+            return await _cache.GetOrCreateAsync(SeasonInfosCacheKey, async entry => {
+                entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+                return await SeasonInfos.AsNoTracking().ToListAsync();
+            });
+        }
+
+        private static readonly string[] _contractCacheKeys = [EiContractsCacheKey, DbContractsCacheKey, SeasonInfosCacheKey];
+
         public void ExpireCachedEiContracts() {
-            _cache.Remove("DbContext-EiContracts");
+            foreach(var key in _contractCacheKeys) _cache.Remove(key);
+        }
+
+        // Drops the contract/season caches in this process, then broadcasts the same expiry to every other
+        // process (bot <-> site) so a newly-ingested contract or season is visible everywhere immediately
+        // instead of waiting out the 1h TTL.
+        public async Task ExpireCachedEiContractsAsync(MassTransit.IPublishEndpoint publishEndpoint) {
+            ExpireCachedEiContracts();
+            if(publishEndpoint is null)
+                return;
+            foreach(var key in _contractCacheKeys)
+                await publishEndpoint.Publish(new Consumers.ExpireCacheMessage(key));
         }
 
         // Registers contract definitions fetched by identifier (get_contracts_info) that the periodicals
         // feed never delivered to us (e.g. single-player contracts), so they exist in the DB and resolve
         // in CachedEiContractsAsync for everyone. Inserts the row only; fires no channel/coop automation.
-        public async Task<int> RegisterMissingContractsAsync(System.Collections.Generic.IEnumerable<Ei.Contract> contractDefs, CancellationToken ct = default) {
+        public async Task<int> RegisterMissingContractsAsync(IEnumerable<Ei.Contract> contractDefs, MassTransit.IPublishEndpoint publishEndpoint = null, CancellationToken ct = default) {
             var defs = contractDefs
                 .Where(c => c is not null && !string.IsNullOrEmpty(c.Identifier))
                 .GroupBy(c => c.Identifier)
@@ -176,28 +207,17 @@ namespace EGG9000.Common.Database {
             if(missing.Count == 0) return 0;
 
             foreach(var def in missing) {
-                Contracts.Add(new DBContract {
+                var row = new DBContract {
                     ID = def.Identifier,
-                    Created = DateTimeOffset.UtcNow,
-                    Description = def.Description,
-                    Name = def.Name,
-                    goals = Newtonsoft.Json.JsonConvert.SerializeObject(def.Goals),
-                    GoodUntil = DateTimeOffset.FromUnixTimeSeconds((long)def.ExpirationTime),
-                    MaxUsers = (int)def.MaxCoopSize,
-                    coop_allowed = def.CoopAllowed,
-                    max_boosts = (int)def.MaxBoosts,
-                    max_soul_eggs = def.MaxSoulEggs,
-                    min_client_version = (int)def.MinClientVersion,
-                    debug = def.Debug,
-                    length_seconds = def.LengthSeconds,
-                    egg = def.Egg.ToString(),
-                    cc_only = def.CcOnly,
-                    _response = Newtonsoft.Json.JsonConvert.SerializeObject(def)
-                });
+                    Created = DateTimeOffset.UtcNow
+                };
+                row.ApplyDetails(def);
+                Contracts.Add(row);
             }
 
             await SaveChangesAsync(ct);
-            ExpireCachedEiContracts();
+            if(publishEndpoint is not null) await ExpireCachedEiContractsAsync(publishEndpoint);
+            else ExpireCachedEiContracts();
             return missing.Count;
         }
 
@@ -281,6 +301,8 @@ namespace EGG9000.Common.Database {
             builder.Entity<TemporaryRole>().HasKey(x => new { x.UserId, x.RoleId, x.Created });
             builder.Entity<UserCsHistoryEntry>().HasKey(x => new { x.CoopIdentifier, x.ContractIdentifier, x.EggIncId });
             builder.Entity<DBCustomEgg>().HasKey(x => new { x.Identifier });
+            builder.Entity<RemovedAccount>().HasKey(x => new { x.UserId, x.EggIncId });
+            builder.Entity<RemovedAccount>().HasIndex(x => x.EggIncId);
 
             builder.Entity<Demerit>().HasOne(x => x.User).WithMany(x => x.Demerits).HasForeignKey(x => x.UserId);
             builder.Entity<Demerit>().HasOne(x => x.AdminUser).WithMany(x => x.DemeritsGiven).OnDelete(DeleteBehavior.ClientSetNull).HasForeignKey(x => x.AdminUserId);
@@ -294,12 +316,12 @@ namespace EGG9000.Common.Database {
             builder.Entity<ApiKeyRequestLog>().HasIndex(x => new { x.ApiKeyId, x.Timestamp });
             builder.Entity<ApiKeyDailyUsage>().HasKey(x => new { x.ApiKeyId, x.Date });
             builder.Entity<DBUser>().HasIndex(x => x.DiscordId);
-            builder.Entity<UserCoopXref>().HasIndex(x => new { x.CreatedOn, x.JoinedCoop });
             builder.Entity<Guild>().HasIndex(x => x.DiscordSeverId);
             builder.Entity<GuildContract>().HasIndex(x => x.DiscordChannelId);
+            builder.Entity<StorageDictionaryRow>().HasIndex(x => new { x.Corpus, x.Active });
 
             builder.Entity<Coop>().HasIndex(x => new { x.GuildId, x.ContractID, x.League })
-                .HasFilter("NOT \"Finished\" AND NOT \"DeletedChannel\" AND NOT \"ThreadArchived\"");
+                .HasFilter("NOT \"Finished\" AND NOT \"ThreadArchived\"");
 
             // DEV test-harness coops are excluded from every Coop query by default so they can never
             // trigger real thread/API creation or status polling. The harness opts back in where it

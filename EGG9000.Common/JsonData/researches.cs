@@ -36,17 +36,12 @@ namespace EGG9000.Common.JsonData {
             using var stream2 = assembly.GetManifestResourceStream(resourceName);
             using(var reader2 = new StreamReader(stream2)) {
                 using(var csv = new CsvReader(reader2, CultureInfo.InvariantCulture)) {
-                    // Optional: Configure CsvHelper if needed (e.g., for headers)
-                    // csv.Configuration.HasHeaderRecord = true;
-
-
                     var records = csv.GetRecords<dynamic>();
                     foreach(var record in records) {
                         if(int.TryParse(record.Tier, out int tier)) {
                             var researchItem = data.FirstOrDefault(r => r.Tier == tier && r.Name.Equals(record.Name, StringComparison.OrdinalIgnoreCase));
                             if(researchItem != null) {
                                 if(researchItem.EoVPrices == null) researchItem.EoVPrices = [];
-                                // Ensure the list is large enough
                                 while(researchItem.EoVPrices.Count < int.Parse(record.Level)) {
                                     researchItem.EoVPrices.Add(0);
                                 }

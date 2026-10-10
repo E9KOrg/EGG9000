@@ -1,4 +1,5 @@
 using Discord.Interactions;
+using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.Logging;
 using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Commands {
-    public class NasaModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<NasaModule> logger) : Interactions.E9KModuleBase(dbFactory) {
+    public class NasaModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<NasaModule> logger) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly ILogger<NasaModule> _logger = logger;
 

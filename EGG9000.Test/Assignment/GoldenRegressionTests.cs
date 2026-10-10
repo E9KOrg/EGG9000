@@ -60,9 +60,14 @@ namespace EGG9000.Test.Assignment {
                 new AssignmentSettings { Seasonal = new SeasonalRule { Mode = SeasonalMode.UntilPeEarned, RewardFilterAfter = false } }, false);
 
             yield return new("seasonal UntilCsGoal below -> assigned",
-                TestFactsBuilder.Account().Grade(G.GradeC).PreviousScore(4000).Build(),
+                TestFactsBuilder.Account().Grade(G.GradeC).SeasonCs(4000).Build(),
                 TestFactsBuilder.Contract().Seasonal(true).Grade(G.GradeC, Ei.RewardType.Gold).Build(),
                 new AssignmentSettings { Seasonal = new SeasonalRule { Mode = SeasonalMode.UntilCsGoal, CsGoal = 5000 } }, true);
+
+            yield return new("seasonal UntilCsGoal season CS past goal -> not assigned",
+                TestFactsBuilder.Account().Grade(G.GradeC).SeasonCs(824_000).Build(),
+                TestFactsBuilder.Contract().Seasonal(true).Grade(G.GradeC, Ei.RewardType.Gold).Build(),
+                new AssignmentSettings { Seasonal = new SeasonalRule { Mode = SeasonalMode.UntilCsGoal, CsGoal = 800_000 } }, false);
 
             yield return new("redo No + completed -> not assigned",
                 TestFactsBuilder.Account().Grade(G.GradeC).PreviouslyCompleted(true).Build(),

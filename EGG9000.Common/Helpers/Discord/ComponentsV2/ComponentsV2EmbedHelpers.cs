@@ -44,6 +44,17 @@ namespace EGG9000.Common.Helpers.Discord.ComponentsV2 {
 
         public static MessageComponent Custom(Color color, string title, string text) => Framed(color, title, text);
 
+        // Red-framed page for modal validation failures: error text + Re-enter / Cancel buttons.
+        // Used by the ContractSettings and ShipReturnDM modal handlers.
+        public static MessageComponent ErrorWithRetry(string title, string error, string reenterCustomId, string cancelCustomId) =>
+            new MenuPageBuilder(title)
+                .WithAccent(Color.Red)
+                .AddRow("ERROR", error)
+                .AddButtons(
+                    new ButtonBuilder("Re-enter", reenterCustomId, ButtonStyle.Primary),
+                    new ButtonBuilder("Cancel", cancelCustomId, ButtonStyle.Secondary))
+                .Build();
+
         public static MessageComponent ExceptionFrame(Exception e) {
             foreach(var frame in new StackTrace(e, true).GetFrames() ?? []) {
                 if(frame.GetFileLineNumber() > 0) {
