@@ -6,6 +6,7 @@ using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Helpers.Discord.ComponentsV2;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -47,7 +48,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
 
             var components = MainMenu(dbuser.CoopSetting ?? new CoopSetting(), "CSAll", "Default Settings", coopOnly, openedFromContSets, Db, dbuser);
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         public static MessageComponent MainMenu(CoopSetting coopSetting, string prefix, string title, bool coopOnly, bool mcs, ApplicationDbContext db, DBUser dbuser) =>
@@ -103,7 +104,6 @@ namespace EGG9000.Bot.Commands {
         public async Task CSCoop(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
 
-            if(!component.HasResponded) await component.DeferAsync();
             var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var dbGuild = Db.CachedGuilds.FirstOrDefault(g => g.Id == dbuser.GuildId);
@@ -138,7 +138,7 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
 
             var components = MainMenu(dbuser.CoopSetting, "CSAll", "Default Settings", false, openedFromContSets, Db, dbuser);
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("CSCoopOnly:*", ignoreGroupNames: true)]
@@ -160,7 +160,7 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
 
             var components = MainMenu(setting, "CSCoopOnly", "This Co-op", true, openedFromContSets, Db, dbuser);
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [SlashCommand("showeb", "Have the bot add your EB to your nickname in this server (will auto update)")]

@@ -79,7 +79,7 @@ namespace EGG9000.Bot.Commands {
             if(component.User.Id != invokerId) { await Pager.RejectNonInvokerAsync(component); return; }
 
             var targetUser = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetDiscordId);
-            if(targetUser is null) return;
+            if(targetUser is null) { await component.RejectAsync("That user no longer exists."); return; }
             var lines = await DemeritCommands.BuildDemeritLines(targetUser.Id, Db);
             var pager = new DemeritListPager(lines, page, $"<@{targetDiscordId}>", invokerId, targetDiscordId);
             await pager.UpdateComponentAsync(component);
