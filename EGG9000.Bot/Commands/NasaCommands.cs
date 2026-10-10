@@ -14,6 +14,7 @@ namespace EGG9000.Bot.Commands {
         private readonly ILogger<NasaModule> _logger = logger;
 
         [ComponentInteraction("APODExplanation:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task APODExplanation(string data) {
             var apodId = System.Guid.Parse(data);
             var explanation = await NasaHelper.GetExplanationOrEmpty(apodId, Db);

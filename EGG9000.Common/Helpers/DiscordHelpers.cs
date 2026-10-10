@@ -9,8 +9,6 @@ using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Png;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -118,11 +116,8 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        public static FileAttachment GetFileAttachment(this SixLabors.ImageSharp.Image image, string imageName = "Image.png", string imageDescription = "An image") {
-            var imageB64 = image.ToBase64String(PngFormat.Instance);
-            imageB64 = imageB64.Replace("data:image/png;base64,", "");
-            var discordImage = new FileAttachment(new MemoryStream(Convert.FromBase64String(imageB64)), imageName, imageDescription);
-            return discordImage;
+        public static FileAttachment GetFileAttachment(this byte[] png, string imageName = "Image.png", string imageDescription = "An image") {
+            return new FileAttachment(new MemoryStream(png), imageName, imageDescription);
         }
 
         public static async Task<RestUserMessage> SendFileIfExistsAsync(this SocketTextChannel channel, FileAttachment? attachment, string text = null, bool isTTS = false, Embed embed = null,

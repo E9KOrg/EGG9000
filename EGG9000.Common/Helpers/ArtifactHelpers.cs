@@ -6,15 +6,9 @@ using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Runtime.InteropServices;
@@ -426,35 +420,47 @@ namespace EGG9000.Common.Helpers {
 
         #region InventoryImages
 
-        public static IImageProcessingContext ApplyRoundedCorners(this IImageProcessingContext context, float cornerRadius) {
-            var size = context.GetCurrentSize();
-            context.SetGraphicsOptions(new GraphicsOptions() {
-                Antialias = true,
-                AlphaCompositionMode = PixelAlphaCompositionMode.DestOut // punches any colored part of this shape out of the background
-            });
-            BuildCorners(size.Width, size.Height, cornerRadius).ToList().ForEach(p => context = context.Fill(Color.Red, p)); // color is arbitrary, just can't be transparent
-            return context;
+        public const int JpegQuality = 75;
+        public static readonly SKSamplingOptions ResizeSampling = new(SKCubicResampler.Mitchell);
+
+        public static SKColor RarityColor(int rarity) => rarity switch {
+            2 => SKColor.Parse("#6cb6d9"),
+            3 => SKColor.Parse("#b72de0"),
+            4 => SKColor.Parse("#f2d61b"),
+            _ => SKColor.Parse("#383834")
+        };
+
+        public static void DrawRoundedTile(this SKCanvas canvas, SKColor color, float x, float y, float width, float height, float radius) {
+            using var paint = new SKPaint { Color = color, IsAntialias = true };
+            canvas.DrawRoundRect(x, y, width, height, radius, radius, paint);
         }
 
-        public static IPathCollection BuildCorners(int imageWidth, int imageHeight, float cornerRadius) {
-            var rect = new RectangularPolygon(-0.5f, -0.5f, cornerRadius, cornerRadius);
-            var cornerTopLeft = rect.Clip(new EllipsePolygon(cornerRadius - 0.5f, cornerRadius - 0.5f, cornerRadius));
-            var rightPos = imageWidth - cornerTopLeft.Bounds.Width + 1;
-            var bottomPos = imageHeight - cornerTopLeft.Bounds.Height + 1;
-            var cornerTopRight = cornerTopLeft.RotateDegree(90).Translate(rightPos, 0);
-            var cornerBottomLeft = cornerTopLeft.RotateDegree(-90).Translate(0, bottomPos);
-            var cornerBottomRight = cornerTopLeft.RotateDegree(180).Translate(rightPos, bottomPos);
-            return new PathCollection(cornerTopLeft, cornerBottomLeft, cornerTopRight, cornerBottomRight);
+        public static void DrawTextFromTop(this SKCanvas canvas, string text, float x, float top, SKFont font, SKColor color) {
+            using var paint = new SKPaint { Color = color, IsAntialias = true };
+            var capHeight = font.Metrics.CapHeight > 0 ? font.Metrics.CapHeight : -font.Metrics.Ascent;
+            canvas.DrawText(text, x, top + capHeight, SKTextAlign.Left, font, paint);
         }
 
-        public static Image BackgroundImage(Color backgroundColor, int size, int radius) {
-            var image = new Image<Rgba32>(size, size);
-            var graphicsOptions = new GraphicsOptions {
-                Antialias = true,
-            };
-            image.Mutate(x => x.Fill(backgroundColor));
-            image.Mutate(x => x.ApplyRoundedCorners(radius));
-            return image;
+        public static SKBitmap ResizeTo(this SKBitmap bitmap, int width, int height) => bitmap.Resize(bitmap.Info.WithSize(width, height), ResizeSampling);
+
+        public static SKBitmap Crop(this SKBitmap bitmap, SKRectI rect) {
+            var cropped = new SKBitmap(bitmap.Info.WithSize(rect.Width, rect.Height));
+            cropped.Erase(SKColors.Transparent);
+            using var canvas = new SKCanvas(cropped);
+            canvas.DrawBitmap(bitmap, -rect.Left, -rect.Top, SKSamplingOptions.Default);
+            return cropped;
+        }
+
+        public static void DrawImageFile(this SKCanvas canvas, string path, float x, float y, int size) {
+            using var image = SKImage.FromEncodedData(path);
+            if(image is null) return;
+            canvas.DrawImage(image, SKRect.Create(x, y, size, size), ResizeSampling);
+        }
+
+        public static byte[] EncodeImage(this SKSurface surface, SKEncodedImageFormat format) {
+            using var image = surface.Snapshot();
+            using var data = image.Encode(format, JpegQuality);
+            return data.ToArray();
         }
 
         public static (int x, int y) GetPositionInGrid(int index, int rows, int columns, int itemSize, int padding) {
@@ -615,13 +621,11 @@ namespace EGG9000.Common.Helpers {
                 if(contentType?.StartsWith("image/") != true) return ("$ERROR$:response was not an image", null);
 
                 var imageBytes = await response.Content.ReadAsByteArrayAsync();
-                using var ms = new MemoryStream(imageBytes);
-                var image = Image.Load(ms);
-                var imageB64 = image.ToBase64String(JpegFormat.Instance);
-                if(removeB64Header) {
-                    var splits = imageB64.Split("base64,");
-                    if(splits.Length > 1) imageB64 = splits[1];
-                }
+                using var image = SKImage.FromEncodedData(imageBytes);
+                if(image is null) return ("$ERROR$:response was not a decodable image", null);
+                using var jpeg = image.Encode(SKEncodedImageFormat.Jpeg, JpegQuality);
+                var imageB64 = Convert.ToBase64String(jpeg.ToArray());
+                if(!removeB64Header) imageB64 = "data:image/jpeg;base64," + imageB64;
                 return (imageB64, config);
             } catch(Exception e) {
                 return ($"$ERROR$:exception caught\n{e.Message}", null);
