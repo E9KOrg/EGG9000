@@ -437,13 +437,15 @@ namespace EGG9000.Common.Helpers {
 
         public static void DrawTextFromTop(this SKCanvas canvas, string text, float x, float top, SKFont font, SKColor color) {
             using var paint = new SKPaint { Color = color, IsAntialias = true };
-            canvas.DrawText(text, x, top - font.Metrics.Ascent, SKTextAlign.Left, font, paint);
+            var capHeight = font.Metrics.CapHeight > 0 ? font.Metrics.CapHeight : -font.Metrics.Ascent;
+            canvas.DrawText(text, x, top + capHeight, SKTextAlign.Left, font, paint);
         }
 
         public static SKBitmap ResizeTo(this SKBitmap bitmap, int width, int height) => bitmap.Resize(bitmap.Info.WithSize(width, height), ResizeSampling);
 
         public static SKBitmap Crop(this SKBitmap bitmap, SKRectI rect) {
             var cropped = new SKBitmap(bitmap.Info.WithSize(rect.Width, rect.Height));
+            cropped.Erase(SKColors.Transparent);
             using var canvas = new SKCanvas(cropped);
             canvas.DrawBitmap(bitmap, -rect.Left, -rect.Top, SKSamplingOptions.Default);
             return cropped;

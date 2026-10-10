@@ -155,8 +155,8 @@ namespace EGG9000.Site.Services {
             baseImage.DrawRoundedTile(SKColor.Parse("#4f4f4f"), left, top, textWidth, config.TextHeight, config.TextCornerRadius);
 
             var measured = font.MeasureText(text);
-            var lineHeight = font.Metrics.Descent - font.Metrics.Ascent;
-            baseImage.DrawTextFromTop(text, left + (textWidth - measured) / 2f, top + (config.TextHeight - lineHeight) / 2f, font, SKColors.White);
+            var capHeight = font.Metrics.CapHeight > 0 ? font.Metrics.CapHeight : -font.Metrics.Ascent;
+            baseImage.DrawTextFromTop(text, left + (textWidth - measured) / 2f, top + (config.TextHeight - capHeight) / 2f, font, SKColors.White);
         }
 
         // Pixel rect -> percentage-of-image hotspot.
