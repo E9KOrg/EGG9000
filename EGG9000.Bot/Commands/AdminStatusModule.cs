@@ -348,7 +348,6 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("SysLoadNav", ignoreGroupNames: true)]
         public async Task SysLoadNav(string[] values) {
             var component = (SocketMessageComponent)Context.Interaction;
-            await component.DeferDisablingAsync();
             var section = values.FirstOrDefault() ?? "overview";
             var refreshing = _sysLoad.TryGetValue(component.Message.Id, out var session);
             if(refreshing) session.Section = section;
@@ -360,7 +359,6 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("SysLoadRefresh:*", ignoreGroupNames: true)]
         public async Task SysLoadRefresh(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            await component.DeferDisablingAsync();
             var section = string.IsNullOrEmpty(data) ? "overview" : data;
             var refreshing = _sysLoad.ContainsKey(component.Message.Id);
             var snap = await GatherSysLoad(Db, gateway, serviceProvider.GetService<IDiscordQueue>(), serviceProvider);
@@ -369,13 +367,15 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("SysLoadStop", ignoreGroupNames: true)]
         public async Task SysLoadStop() {
-            await Context.Interaction.DeferAsync();
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
                 await session.Cts.CancelAsync();
+            else
+                await component.RestoreComponentsAsync();
         }
 
         [ComponentInteraction("SysLoadDismiss", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task SysLoadDismiss() {
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))

@@ -53,14 +53,9 @@ namespace EGG9000.Bot.Commands.Informational {
             var originalUserId = ulong.Parse(dataObjs[2]);
 
             if(component.User.Id != originalUserId) {
-                if(component.HasResponded)
-                    await component.ModifyOriginalResponseAsync(x => { x.Content = null; x.Embed = EmbedError("This wasn't yours to run - don't click others' commands!"); x.Components = null; });
-                else
-                    await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                await component.RejectAsync("This wasn't yours to run - don't click others' commands!");
                 return;
             }
-
-            await component.DeferDisablingAsync();
 
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             if(dbUser is null) { await component.RejectAsync("Could not find your record. Are you registered?"); return; }

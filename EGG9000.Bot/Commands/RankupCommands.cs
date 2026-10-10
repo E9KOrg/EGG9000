@@ -119,7 +119,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("RuNav", ignoreGroupNames: true)]
         public async Task RuNav(string[] values) {
-            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = await BuildViewAsync(Db, values.FirstOrDefault() ?? "overview", g);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
@@ -127,7 +126,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("RuBack:*", ignoreGroupNames: true)]
         public async Task RuBack(string data) {
-            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (section, payload) = SplitFirst(string.IsNullOrEmpty(data) ? "overview" : data);
             var (embed, components) = await BuildViewAsync(Db, section, g, payload);
@@ -136,7 +134,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("RuToggle:*", ignoreGroupNames: true)]
         public async Task RuToggle(string data) {
-            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             if(data == nameof(Guild.RankupMessagesEnabled)) g.RankupMessagesEnabled = !g.RankupMessagesEnabled;
             else if(data == nameof(Guild.RankupExclusivePool)) g.RankupExclusivePool = !g.RankupExclusivePool;
@@ -147,7 +144,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("RuFilter", ignoreGroupNames: true)]
         public async Task RuFilter(string[] values) {
-            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var enabled = values.Select(int.Parse).ToHashSet();
             g.RankupDisabledGroups = [.. RankRegistry.GroupLeads.Select(l => l.GroupBase).Where(b => !enabled.Contains(b))];
@@ -158,7 +154,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("RuPickGroup", ignoreGroupNames: true)]
         public async Task RuPickGroup(string[] values) {
-            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = await BuildViewAsync(Db, "pool", g, values.FirstOrDefault());
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
@@ -166,13 +161,13 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("RuPickMsg", ignoreGroupNames: true)]
         public async Task RuPickMsg(string[] values) {
-            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = await BuildViewAsync(Db, "detail", g, values.FirstOrDefault());
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
         [ComponentInteraction("RuAdd:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task RuAdd(string data) {
             var modal = new ModalBuilder().WithTitleSafe("New rank-up message").WithCustomId($"RuMsgModal:new:{data}")
                 .AddTextInputSafe("Message", customId: "text", TextInputStyle.Paragraph, placeholder: "Use {{user}} {{rank}} {{eb}} {{oom}} {{emoji:name}}", required: true, maxLength: 1500)
@@ -181,6 +176,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentInteraction("RuEditBtn:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task RuEditBtn(string data) {
             var msg = await Db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data);
             if(msg is null) { await ((SocketMessageComponent)Context.Interaction).RejectAsync("That message no longer exists."); return; }
@@ -192,7 +188,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("RuDelBtn:*", ignoreGroupNames: true)]
         public async Task RuDelBtn(string data) {
-            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var msg = await Db.RankupMessages.FirstOrDefaultAsync(m => m.InternalId == data && m.GuildId == g.Id);
             var scope = msg?.GroupBaseOom ?? RankupMessage.GlobalPool;

@@ -178,7 +178,6 @@ namespace EGG9000.Bot.Commands {
         // Renders a single page on the Site, swaps in the new attachment, and refreshes the
         // full-resolution link. Used by the page + set-select component handlers.
         private static async Task RenderAfxPage(SocketMessageComponent component, DBUser user, EggIncAccount account, int accountIndex, List<List<EggIncArtifactInstance>> sets, int pageCount, int page, Embed detailEmbed) {
-            await component.DeferDisablingAsync();
             var (pages, _) = await AfxSetsRender.AfxSetsB64(account, page);
             if(pages is null || pages.Count == 0) {
                 await component.RejectAsync("The artifact set image could not be generated. Try again in a moment.");

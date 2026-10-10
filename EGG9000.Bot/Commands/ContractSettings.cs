@@ -412,7 +412,6 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("MCSAccounts:*", ignoreGroupNames: true)]
         public async Task MCSAccounts(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            await component.DeferDisablingAsync();
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.GetAccountButtons(dbuser, "MCSMenu"); });
@@ -421,7 +420,6 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("MCSMenu:*", ignoreGroupNames: true)]
         public async Task MCSMenu(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            await component.DeferDisablingAsync();
             var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
@@ -437,7 +435,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BGComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BGComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("MCSBoardingGroup:*", ignoreGroupNames: true)]
@@ -451,7 +449,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
             var components = ContractSettingsCommands.MainMenu(dbuser, dbuser.EggIncAccounts[index], index, Db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("MCSUBg:*", ignoreGroupNames: true)]
@@ -461,7 +459,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.UBGComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.UBGComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("MCSUBoardingGroup:*", ignoreGroupNames: true)]
@@ -475,7 +473,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
             var components = ContractSettingsCommands.MainMenu(dbuser, dbuser.EggIncAccounts[index], index, Db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("MCSRL:*", ignoreGroupNames: true)]
@@ -486,10 +484,11 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.RedoLeggaciesComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.RedoLeggaciesComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("RLThreshModal:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task RLThreshModal(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
@@ -539,7 +538,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
 
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.RedoLeggaciesComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.RedoLeggaciesComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("MCSExcludeSeasonal:*", ignoreGroupNames: true)]
@@ -552,7 +551,7 @@ namespace EGG9000.Bot.Commands {
             account.Assignment.Redo.ExcludeSeasonal = !account.Assignment.Redo.ExcludeSeasonal;
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.RedoLeggaciesComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.RedoLeggaciesComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("MCSSeasonalPe:*", ignoreGroupNames: true)]
@@ -563,7 +562,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
             var peExample = await ContractSettingsCommands.LatestSeasonPeExample(Db, account);
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.SeasonalComponents(dbuser, account, index, peExample); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.SeasonalComponents(dbuser, account, index, peExample); });
         }
 
         [ComponentInteraction("MCSSeasonalPeSet:*", ignoreGroupNames: true)]
@@ -578,7 +577,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
             var peExample = await ContractSettingsCommands.LatestSeasonPeExample(Db, account);
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.SeasonalComponents(dbuser, account, index, peExample); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.SeasonalComponents(dbuser, account, index, peExample); });
         }
 
         [ComponentInteraction("MCSSeasonalFilterAfter:*", ignoreGroupNames: true)]
@@ -593,10 +592,11 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
             var peExample = await ContractSettingsCommands.LatestSeasonPeExample(Db, account);
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.SeasonalComponents(dbuser, account, index, peExample); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.SeasonalComponents(dbuser, account, index, peExample); });
         }
 
         [ComponentInteraction("SeasonalPeThreshModal:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task SeasonalPeThreshModal(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
@@ -661,7 +661,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.TwoToThreeComponents(dbuser, account, account.Assignment.TwoToThree, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.TwoToThreeComponents(dbuser, account, account.Assignment.TwoToThree, index); });
         }
 
         [ComponentInteraction("MCSToggleTwoToThree:*", ignoreGroupNames: true)]
@@ -677,7 +677,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
 
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.TwoToThreeComponents(dbuser, account, toggleState, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.TwoToThreeComponents(dbuser, account, toggleState, index); });
         }
 
         [ComponentInteraction("MCSColleggtible:*", ignoreGroupNames: true)]
@@ -689,7 +689,7 @@ namespace EGG9000.Bot.Commands {
             var account = dbuser.EggIncAccounts[index];
             var enabled = account.Assignment.Get(PermanentRewardKind.Colleggtible).Mode == ForceMode.AssignIfMissing;
             var components = await ContractSettingsCommands.ColleggtiblesComponents(Db, dbuser, account, enabled, index);
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("MCSToggleColleggtible:*", ignoreGroupNames: true)]
@@ -706,7 +706,7 @@ namespace EGG9000.Bot.Commands {
             await Db.SaveChangesAsync();
 
             var components = await ContractSettingsCommands.ColleggtiblesComponents(Db, dbuser, account, toggleState, index);
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("MCSUltraPing:*", ignoreGroupNames: true)]
@@ -717,7 +717,7 @@ namespace EGG9000.Bot.Commands {
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
 
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.UltraPingComponents(dbuser, account, account.PingForNCUltra, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.UltraPingComponents(dbuser, account, account.PingForNCUltra, index); });
         }
 
         [ComponentInteraction("MCSUltraPingToggle:*", ignoreGroupNames: true)]
@@ -733,7 +733,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
 
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.UltraPingComponents(dbuser, account, toggleState, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.UltraPingComponents(dbuser, account, toggleState, index); });
         }
 
         [ComponentInteraction("MCSBreak:*", ignoreGroupNames: true)]
@@ -743,7 +743,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BreakComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BreakComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("BreakAddDay:*", ignoreGroupNames: true)]
@@ -756,7 +756,7 @@ namespace EGG9000.Bot.Commands {
             account.SetBreak(ContractSettingsCommands.AddCappedDays(account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.UtcNow ? DateTimeOffset.UtcNow : account.OnBreakUntil, 1), dbuser);
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BreakComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BreakComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("BreakAddWeek:*", ignoreGroupNames: true)]
@@ -769,7 +769,7 @@ namespace EGG9000.Bot.Commands {
             account.SetBreak(ContractSettingsCommands.AddCappedDays(account.OnBreakUntil == default || account.OnBreakUntil < DateTimeOffset.UtcNow ? DateTimeOffset.UtcNow : account.OnBreakUntil, 7), dbuser);
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BreakComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BreakComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("StopBreakEarly:*", ignoreGroupNames: true)]
@@ -782,7 +782,7 @@ namespace EGG9000.Bot.Commands {
             account.SetBreak(default, dbuser);
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BreakComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.BreakComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("MCSRewards:*", ignoreGroupNames: true)]
@@ -792,7 +792,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);
             var account = dbuser.EggIncAccounts[index];
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.RewardsComponents(dbuser, account, index); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.RewardsComponents(dbuser, account, index); });
         }
 
         [ComponentInteraction("MCSRewardsSet:*", ignoreGroupNames: true)]
@@ -811,7 +811,7 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
             var components = ContractSettingsCommands.MainMenu(dbuser, dbuser.EggIncAccounts[index], index, Db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("MCSRewardsClear:*", ignoreGroupNames: true)]
@@ -825,10 +825,11 @@ namespace EGG9000.Bot.Commands {
             dbuser.UpdateAccounts();
             await Db.SaveChangesAsync();
             var components = ContractSettingsCommands.MainMenu(dbuser, dbuser.EggIncAccounts[index], index, Db.CachedGuilds.FirstOrDefault(x => x.Id == dbuser.GuildId));
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = components; });
         }
 
         [ComponentInteraction("MCSGuild:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task MCSGuild(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[1]) : 0;

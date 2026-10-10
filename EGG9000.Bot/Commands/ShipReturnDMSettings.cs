@@ -21,7 +21,7 @@ namespace EGG9000.Bot.Commands {
 
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
         }
 
         public static MessageComponent MainMenu(DBUser user, Color color = default) {
@@ -60,7 +60,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = true;
             await Db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
         }
 
         [ComponentInteraction("SRDDisable:*", ignoreGroupNames: true)]
@@ -71,7 +71,7 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.DMOnShipReturn = false;
             await Db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
         }
 
         [ComponentInteraction("SRDSecondDM:*", ignoreGroupNames: true)]
@@ -82,10 +82,11 @@ namespace EGG9000.Bot.Commands {
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             dbuser.ShipReturnDMAfterFuel = !dbuser.ShipReturnDMAfterFuel;
             await Db.SaveChangesAsync();
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = MainMenu(dbuser); });
         }
 
         [ComponentInteraction("SRDSetFueledTime:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task SRDSetFueledTime(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
 
@@ -117,6 +118,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentInteraction("SRDSetNotFueledTime:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task SRDSetNotFueledTime(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
 

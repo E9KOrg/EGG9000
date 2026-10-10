@@ -678,6 +678,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentInteraction("FindMyCoop", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task FindMyCoop() {
             var component = (SocketMessageComponent)Context.Interaction;
             await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
@@ -735,11 +736,11 @@ namespace EGG9000.Bot.Commands {
             var originalUserId = ulong.Parse(dataObjs[2]);
 
             if(Context.User.Id != originalUserId) {
-                await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                await component.RejectAsync("This wasn't yours to run - don't click others' commands!");
                 return;
             }
 
-            await component.UpdateAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Working..."); x.Components = null; });
+            await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Working..."); x.Components = null; });
             var user = await Db.DBUsers.FirstAsync(x => x.DiscordId == Context.User.Id);
             var contractid = data.Split("|")[0];
             var contract = await Db.Contracts.FirstAsync(x => x.ID == contractid);
@@ -778,6 +779,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("FindCoopSpot", ignoreGroupNames: true)]
         [ChannelContext(ContractWithContract = true, ContractGuildScoped = true)]
+        [NoAutoAck]
         public async Task FindCoopSpot() {
             var component = (SocketMessageComponent)Context.Interaction;
             await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
@@ -824,7 +826,6 @@ namespace EGG9000.Bot.Commands {
         [ChannelContext(Contract = true, ContractGuildScoped = true)]
         public async Task FindCoopSpotForAccount(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            if(!component.HasResponded) await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Coops are being filtered. This may take a few seconds."); x.Components = null; });
             var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == Context.User.Id);
             var dbguild = await Db.Guilds.FirstOrDefaultAsync(g => g.Id == Context.Interaction.GuildId);
@@ -901,6 +902,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentInteraction("TestAssignment", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task TestAssignment() {
             var component = (SocketMessageComponent)Context.Interaction;
             await component.RespondAsync(text: "", embed: EmbedInProgress("Working..."), ephemeral: true);
@@ -973,6 +975,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentInteraction("TestAssignmentManageSettings:*", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task TestAssignmentManageSettings(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
             var discordId = ulong.Parse(data);
@@ -989,7 +992,6 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("AcceptCoopOffer:*", ignoreGroupNames: true)]
         public async Task AcceptCoopOffer(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            if(!component.HasResponded) await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Attempting to move you to the coop. This may take a few seconds."); x.Components = null; });
             var discordUser = Context.User;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(u => u.DiscordId == Context.User.Id);
@@ -1027,7 +1029,6 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("NoSpotsCreateCoop:*", ignoreGroupNames: true)]
         public async Task NoSpotsCreateCoop(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            if(!component.HasResponded) await component.DeferAsync();
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedInProgress("Coop is being created. This may take a few seconds."); x.Components = null; });
             var user = await Db.DBUsers.FirstAsync(x => x.DiscordId == Context.User.Id);
             var contractid = data.Split("|")[0];
