@@ -45,7 +45,7 @@ namespace EGG9000.Bot.Automated {
             // GetPeriodicalsAsync is network-only; release the pooled connection while it's in flight
             // instead of holding it open-but-idle. EF reopens it lazily on the next _db access below.
             await _db.Database.CloseConnectionAsync();
-            var contractsResponse = await EggIncApi.GetPeriodicalsAsync();
+            var contractsResponse = await _eggIncApi.GetPeriodicalsAsync();
 
 
             if(contractsResponse == null) {
@@ -167,7 +167,7 @@ namespace EGG9000.Bot.Automated {
                 }
 
                 // Self-heals past seasons that were missed or changed.
-                var (seasonInfos, seasonInfosError) = await EggIncApi.GetSeasonInfosAsync();
+                var (seasonInfos, seasonInfosError) = await _eggIncApi.GetSeasonInfosAsync();
                 if(seasonInfos == null) {
                     _logger.LogWarning("Failed to fetch season infos: {error}", seasonInfosError);
                 } else {

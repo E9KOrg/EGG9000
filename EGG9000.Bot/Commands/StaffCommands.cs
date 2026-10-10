@@ -182,7 +182,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var joinResponse = await EggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
+            var joinResponse = await eggIncApi.Post<Ei.JoinCoopResponse, Ei.JoinCoopRequest>(new Ei.JoinCoopRequest {
 
                 ContractIdentifier = CoopChannel.ContractID,
                 CoopIdentifier = CoopChannel.Name.ToLower(),
@@ -191,7 +191,7 @@ namespace EGG9000.Bot.Commands {
             }, account.Id);
 
 
-            var updateResponse = await EggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
+            var updateResponse = await eggIncApi.Post<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(new Ei.ContractCoopStatusUpdateRequest {
                 ContractIdentifier = CoopChannel.ContractID,
                 CoopIdentifier = CoopChannel.Name.ToLower(),
                 Eop = 1, SoulPower = 24, UserId = account.Id, Amount = 0, Rate = 0, TimeCheatsDetected = 0, PushUserId = account.Backup.DeviceId, BoostTokens = 0, BoostTokensSpent = 0, EggLayingRateBuff = 1, EarningsBuff = 1,

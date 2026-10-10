@@ -30,8 +30,8 @@ using Exception = System.Exception;
 namespace EGG9000.Bot.Commands {
     public static class ContractCommandsSlash {
 
-        static async internal Task _fixFullCoopError(SocketInteraction command, ApplicationDbContext db, DiscordHostedService _client, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
-            var status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
+        static async internal Task _fixFullCoopError(SocketInteraction command, ApplicationDbContext db, DiscordHostedService _client, IEggIncApi api, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ILogger logger, DBUser dbuser, Coop coop) {
+            var status = await api.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
             if(status is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("The API is unresponsive, please try again in a minute or two."); });
@@ -61,14 +61,14 @@ namespace EGG9000.Bot.Commands {
 
             logger.LogInformation("Attempting to fix {user} in {coop} by creating temp co-op", dbuser.DiscordUsername, coop.Name);
             var contract = await db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
-            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
+            await CreateCoopsV2.CreateCoopViaApi(api, coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
             await Task.Delay(TimeSpan.FromSeconds(2));
-            status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
+            status = await api.GetCoopStatus(coop.ContractID, coop.Name, coop.CreatorID);
 
             if(status?.Participants?.Count == contract.MaxUsers) {
                 logger.LogInformation("Attempting to fix {user} in {coop} by submitting kick request", dbuser.DiscordUsername, coop.Name);
-                var res3 = await EggIncApi.Send(new KickPlayerCoopRequest {
+                var res3 = await api.Send(new KickPlayerCoopRequest {
                     ClientVersion = 24,
                     ContractIdentifier = coop.ContractID,
                     CoopIdentifier = coop.Name,
@@ -76,7 +76,7 @@ namespace EGG9000.Bot.Commands {
                 }, coop.CreatorID);
 
                 await Task.Delay(TimeSpan.FromSeconds(2));
-                status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
+                status = await api.GetCoopStatus(coop.ContractID, coop.Name);
             }
 
 
@@ -187,8 +187,9 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class ContractModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, DiscordHostedService client, Words words, IServiceProvider provider, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, CoopAssignmentLookup lookup, ILogger<ContractModule> logger) : E9KModuleBase(dbFactory) {
+    public class ContractModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, DiscordHostedService client, Words words, IServiceProvider provider, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, CoopAssignmentLookup lookup, ILogger<ContractModule> logger, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _gateway = gateway;
+        private readonly IEggIncApi _eggIncApi = eggIncApi;
         private readonly DiscordHostedService _client = client;
         private readonly Words _words = words;
         private readonly IServiceProvider _provider = provider;
@@ -206,7 +207,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            await ContractCommandsSlash._fixFullCoopError(Context.Interaction, Db, _client, _coopStatusUpdaterThreads, _logger, dbuser, CoopChannel);
+            await ContractCommandsSlash._fixFullCoopError(Context.Interaction, Db, _client, _eggIncApi, _coopStatusUpdaterThreads, _logger, dbuser, CoopChannel);
         }
 
         [SlashCommand("makepublic", "Makes a co-op public")]
@@ -221,7 +222,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var response = await EggIncApi.Post<UpdateCoopPermissionsResponse, UpdateCoopPermissionsRequest>(new UpdateCoopPermissionsRequest {
+            var response = await _eggIncApi.Post<UpdateCoopPermissionsResponse, UpdateCoopPermissionsRequest>(new UpdateCoopPermissionsRequest {
                 ClientVersion = EggIncApi.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),
@@ -298,7 +299,7 @@ namespace EGG9000.Bot.Commands {
                 _ => default
             });
 
-            var freshBackup = await AccountRefresh.RefreshFullAsync(account, await Db.CachedEiContractsAsync(), dbuser, Db, _logger);
+            var freshBackup = await AccountRefresh.RefreshFullAsync(_eggIncApi, account, await Db.CachedEiContractsAsync(), dbuser, Db, _logger);
             if(freshBackup is not null) {
                 dbuser.UpdateAccounts();
             }
@@ -413,7 +414,7 @@ namespace EGG9000.Bot.Commands {
 
             var contractChannel = (await _gateway.GetChannelAsync(guildContract.DiscordChannelId) as SocketTextChannel);
 
-            var status = await EggIncApi.GetCoopStatusBot(guildContract.ContractID, coopname.ToLower());
+            var status = await _eggIncApi.GetCoopStatusBot(guildContract.ContractID, coopname.ToLower());
             if(status != null && status.Success) {
                 var coop = new Coop {
                     ContractID = guildContract.ContractID,
@@ -853,7 +854,7 @@ namespace EGG9000.Bot.Commands {
                     var customEggs = await Db.GetCustomEggsAsync();
                     var coop = newCoopResponse.FoundCoop;
                     var users = coop.UserCoopsXrefs.Select(c => c.User).SelectMany(x => x.EggIncAccounts.Select(y => new UserWithBackup { Backup = y.Backup, User = x })).ToList();
-                    var statusReponse = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
+                    var statusReponse = await _eggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
                     if(statusReponse is null || !statusReponse.Success || statusReponse.Contributors is null) {
                         statusReponse = coop.LastStatusUpdate; //Fallback to last known status
                     }
@@ -1089,10 +1090,10 @@ namespace EGG9000.Bot.Commands {
             }
 
             var contract = await Db.Contracts.FirstAsync(x => x.ID == coop.ContractID);
-            await CreateCoopsV2.CreateCoopViaApi(coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
+            await CreateCoopsV2.CreateCoopViaApi(_eggIncApi, coop.ContractID, (PlayerGrade)coop.League, coopName: "test" + new Random().Next(10000), contract.Details.LengthSeconds, xref.EggIncId, coop.AnyLeague);
 
             await Task.Delay(TimeSpan.FromSeconds(2));
-            var status = await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
+            var status = await _eggIncApi.GetCoopStatus(coop.ContractID, coop.Name);
 
             if(status?.Participants?.Count < contract.MaxUsers) {
                 _logger.LogInformation("Successfully remove {user} from {coop}", dbUser.DiscordUsername, coop.Name);
@@ -1123,7 +1124,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            await ContractCommandsSlash._fixFullCoopError(Context.Interaction, Db, client, coopStatusUpdaterThreads, _logger, dbuser, CoopChannel);
+            await ContractCommandsSlash._fixFullCoopError(Context.Interaction, Db, client, eggIncApi, coopStatusUpdaterThreads, _logger, dbuser, CoopChannel);
         }
     }
 
@@ -1132,7 +1133,7 @@ namespace EGG9000.Bot.Commands {
     // preserve the pre-migration command names.
     [DefaultMemberPermissions(GuildPermission.ManageChannels)]
     [StaffOnly(StaffTier.CluckingCoordinator)]
-    public partial class ContractStaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<ContractStaffModule> logger, DiscordSocketClient gateway) : E9KModuleBase(dbFactory) {
+    public partial class ContractStaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<ContractStaffModule> logger, DiscordSocketClient gateway, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
         private readonly ILogger<ContractStaffModule> _logger = logger;
 
         [SlashCommand("makeprivate", "Makes this co-op private")]
@@ -1146,7 +1147,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var response = await EggIncApi.Post<UpdateCoopPermissionsResponse, UpdateCoopPermissionsRequest>(new UpdateCoopPermissionsRequest {
+            var response = await eggIncApi.Post<UpdateCoopPermissionsResponse, UpdateCoopPermissionsRequest>(new UpdateCoopPermissionsRequest {
                 ClientVersion = EggIncApi.ClientVersion,
                 ContractIdentifier = coop.ContractID,
                 CoopIdentifier = coop.Name.ToLower(),

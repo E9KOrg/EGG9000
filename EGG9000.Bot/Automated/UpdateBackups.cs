@@ -100,7 +100,7 @@ namespace EGG9000.Bot.Automated {
         // get_periodicals, so NewContracts never absorbs them. For every contract a player references
         // (active or archived) that we have no definition for, fetch it by identifier and stage it for
         // registration. This is the same id set CustomBackup.AddContracts would otherwise skip.
-        private static async Task DiscoverUnknownContracts(string eggIncId, Ei.Backup backup, HashSet<string> knownContractIds, System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract> discoveredContractDefs) {
+        private async Task DiscoverUnknownContracts(string eggIncId, Ei.Backup backup, HashSet<string> knownContractIds, System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract> discoveredContractDefs) {
             if(backup?.Contracts is null)
                 return;
 
@@ -118,7 +118,7 @@ namespace EGG9000.Bot.Automated {
                 return;
 
             foreach(var chunk in missing.Chunk(50)) {
-                var (info, _) = await EggIncApi.GetContractsInfoAsync(eggIncId, chunk);
+                var (info, _) = await _eggIncApi.GetContractsInfoAsync(eggIncId, chunk);
                 if(info is null)
                     continue;
                 foreach(var def in info.Contracts) {
@@ -133,7 +133,7 @@ namespace EGG9000.Bot.Automated {
         public async Task UpdateUser(DBUser user, List<Guild> guilds, FrozenSet<Ei.Contract> cachedContracts, HashSet<string> knownContractIds, System.Collections.Concurrent.ConcurrentDictionary<string, Ei.Contract> discoveredContractDefs) {
             var update = false;
             foreach(var account in user.EggIncAccounts) {
-                var firstContact = await EggIncApi.FirstContact(account.Id, _logger);
+                var firstContact = await _eggIncApi.FirstContact(account.Id, _logger);
                 var dbGuild = guilds.FirstOrDefault(x => x.Id == user.GuildId);
 
                 if(dbGuild is null)
@@ -162,7 +162,7 @@ namespace EGG9000.Bot.Automated {
                     // For older backups fetch from the dedicated endpoint instead.
                     // Newer clients reliably include SubInfo, so trust it as-is 
                     if(account.Backup.GetLastBackupDateTime() < StableUltraInfoDTO) {
-                        var (subscription, subError) = await EggIncApi.GetUserSubscription(backup.EggIncId);
+                        var (subscription, subError) = await _eggIncApi.GetUserSubscription(backup.EggIncId);
                         if(subscription is null) {
                             _logger.LogWarning("Failed to fetch subscription for {user} {id}: {error}", user.DiscordUsername, account.Id, subError);
                         } else {
