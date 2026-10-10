@@ -14,6 +14,7 @@ using MassTransit.Initializers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -369,8 +370,9 @@ namespace EGG9000.Bot.Commands {
             async Task NotifyRegistrationIssueChannel(string description, bool pingRole = true) {
                 if(guild is null || guildObj is null || !guildObj.HasChannel(GuildChannelType.RegisterIssues)) return;
                 var staffRole = guild.Roles.FirstOrDefault(x => x.Id == (guildObj.ChannelDetails.FirstOrDefault(c => c.ChannelType == GuildChannelType.CallStaffTagRole)?.Id ?? 0));
-                var staffTag = (staffRole is null || !pingRole) ? "" : $"@silent <@&{staffRole.Id}>: ";
-                await ChannelHelper.DetermineAndSend(_client.Gateway, guildObj, GuildChannelType.RegisterIssues, new() { Text = $"{staffTag}{description}" });
+                var staffTag = staffRole is null ? "" : $"<@&{staffRole.Id}>: ";
+                var messageFlags = pingRole ? 0x00 : MessageFlags.SuppressNotification;
+                await ChannelHelper.DetermineAndSend(_client.Gateway, guildObj, GuildChannelType.RegisterIssues, new() { Text = $"{staffTag}{description}", Flags = messageFlags });
             }
         }
 
