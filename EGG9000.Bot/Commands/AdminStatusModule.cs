@@ -347,7 +347,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("SysLoadNav", ignoreGroupNames: true)]
         public async Task SysLoadNav(string[] values) {
-            await Context.Interaction.DeferAsync();
             var component = (SocketMessageComponent)Context.Interaction;
             var section = values.FirstOrDefault() ?? "overview";
             var refreshing = _sysLoad.TryGetValue(component.Message.Id, out var session);
@@ -359,7 +358,6 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("SysLoadRefresh:*", ignoreGroupNames: true)]
         public async Task SysLoadRefresh(string data) {
-            await Context.Interaction.DeferAsync();
             var component = (SocketMessageComponent)Context.Interaction;
             var section = string.IsNullOrEmpty(data) ? "overview" : data;
             var refreshing = _sysLoad.ContainsKey(component.Message.Id);
@@ -369,13 +367,14 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("SysLoadStop", ignoreGroupNames: true)]
         public async Task SysLoadStop() {
-            await Context.Interaction.DeferAsync();
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))
                 await session.Cts.CancelAsync();
+            await component.RestoreComponentsAsync();
         }
 
         [ComponentInteraction("SysLoadDismiss", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task SysLoadDismiss() {
             var component = (SocketMessageComponent)Context.Interaction;
             if(_sysLoad.TryGetValue(component.Message.Id, out var session))

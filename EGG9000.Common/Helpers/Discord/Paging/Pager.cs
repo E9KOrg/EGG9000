@@ -43,14 +43,10 @@ namespace EGG9000.Common.Helpers.Discord.Paging {
 
         public async Task UpdateComponentAsync(SocketMessageComponent component) {
             var (embed, components) = await RenderAsync();
-            await component.UpdateAsync(x => { x.Embed = embed; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
-        public static async Task RejectNonInvokerAsync(SocketMessageComponent component) {
-            if(component.HasResponded)
-                await component.ModifyOriginalResponseAsync(x => { x.Content = null; x.Embed = EmbedError("This wasn't yours to run - don't click others' commands!"); x.Components = null; });
-            else
-                await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
-        }
+        public static Task RejectNonInvokerAsync(SocketMessageComponent component) =>
+            component.RejectAsync("This wasn't yours to run - don't click others' commands!");
     }
 }

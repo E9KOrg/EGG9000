@@ -2,10 +2,8 @@
 using EGG9000.Common.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
-using SixLabors.ImageSharp;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -53,9 +51,9 @@ namespace EGG9000.Common.Helpers {
             return "EventCustomizationCache:" + g.Id.ToString();
         }
 
-        public static async Task<Image> GetEventImageAsync(this ApplicationDbContext db, DBEvent customEvent) {
+        public static async Task<byte[]> GetEventImageAsync(this ApplicationDbContext db, DBEvent customEvent) {
             var eventKey = $"{customEvent.Type.ToLowerInvariant()}-U:{customEvent.CcOnly}";
-            if(!db._cache.TryGetValue(eventKey, out Image image)) {
+            if(!db._cache.TryGetValue(eventKey, out byte[] image)) {
                 image = await GenerateEventImageAsync(customEvent);
                 if(image is null) return null;
                 db._cache.Set(eventKey, image);
@@ -63,7 +61,7 @@ namespace EGG9000.Common.Helpers {
             return image;
         }
 
-        private static async Task<Image> GenerateEventImageAsync(DBEvent customEvent) {
+        private static async Task<byte[]> GenerateEventImageAsync(DBEvent customEvent) {
             var client = SiteApiClient.Client;
             var apiUrl = $"{SiteApiClient.BaseUrl()}/api/generateeventimage";
             var jsonContent = JsonSerializer.Serialize(customEvent);
@@ -76,9 +74,7 @@ namespace EGG9000.Common.Helpers {
                 var contentType = response.Content.Headers.ContentType?.MediaType;
                 if(contentType?.StartsWith("image/") != true) return null;
 
-                var imageBytes = await response.Content.ReadAsByteArrayAsync();
-                using var ms = new MemoryStream(imageBytes);
-                return Image.Load(ms);
+                return await response.Content.ReadAsByteArrayAsync();
             } catch(Exception) {
                 return null;
             }
