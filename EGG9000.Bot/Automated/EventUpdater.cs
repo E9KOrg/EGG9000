@@ -42,7 +42,7 @@ namespace EGG9000.Bot.Automated {
             await _db.Database.CloseConnectionAsync();
             await CheckShells(_db);
 
-            var response = await EggIncApi.GetPeriodicalsAsync();
+            var response = await _eggIncApi.GetPeriodicalsAsync();
             var responseDateTime = DateTimeOffset.UtcNow;
             var recentEvents = await _db.Events.AsQueryable().Where(x => x.Ends > DateTimeOffset.UtcNow.AddDays(-1)).ToListAsync(CancellationToken.None);
 
@@ -415,7 +415,7 @@ namespace EGG9000.Bot.Automated {
         }
 
         public async Task CheckShells(ApplicationDbContext db) {
-            var config = await EggIncApi.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsUnlocked = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, EggIncApi.UserId, true);
+            var config = await _eggIncApi.Post<ConfigResponse, ConfigRequest>(new ConfigRequest { ArtifactsUnlocked = true, FuelTankUnlocked = true, SoulEggs = 2e30 }, EggIncApi.UserId, true);
 
             if(config is null) return;
             var shells = config.DlcCatalog.ShellObjects.Where(x => x.Expires).ToList();

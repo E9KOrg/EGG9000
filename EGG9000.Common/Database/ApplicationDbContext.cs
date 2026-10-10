@@ -1,4 +1,5 @@
 ﻿using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -150,7 +151,7 @@ namespace EGG9000.Common.Database {
         public async Task<FrozenSet<Ei.Contract>> CachedEiContractsAsync() {
             return await _cache.GetOrCreateAsync(EiContractsCacheKey, async entry => {
                 var dbcontracts = await Contracts.ToListAsync();
-                var (eiContracts, _) = await EggIncAPI.EggIncApi.GetContractsArchive(EggIncAPI.EggIncApi.UserId);
+                var eiContracts = _eggIncApi is null ? null : (await _eggIncApi.GetContractsArchive(EggIncApi.UserId)).Value;
 
                 var contracts = eiContracts?.Archive?.Select(x => x.Contract).ToList() ?? [];
                 // Archive fetch failed (e.g. API timeout) - fall back to DB contracts and retry soon instead of caching the degraded set for an hour.
@@ -222,9 +223,11 @@ namespace EGG9000.Common.Database {
         }
 
         public readonly IMemoryCache _cache;
+        private readonly IEggIncApi _eggIncApi;
 #nullable enable
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IMemoryCache? cache = null) : base(options) {
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, IMemoryCache? cache = null, IEggIncApi? eggIncApi = null) : base(options) {
             _cache = cache ?? new MemoryCache(new MemoryCacheOptions());
+            _eggIncApi = eggIncApi;
             ChangeTracker.Tracked += OnEntityTracked;
             ChangeTracker.StateChanged += OnEntityStateChanged;
         }

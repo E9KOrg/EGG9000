@@ -37,10 +37,11 @@ using static Ei.Contract.Types;
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
     public partial class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
-        ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint, IHttpClientFactory httpClientFactory) : E9KControllerBase {
+        ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint, IHttpClientFactory httpClientFactory, IEggIncApi eggIncApi) : E9KControllerBase {
 
         private readonly ApplicationDbContext _db = db;
         private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
+        private readonly IEggIncApi _eggIncApi = eggIncApi;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly DiscordSocketClient _discord = discord;
         private readonly IMemoryCache _cache = cache;
@@ -82,7 +83,7 @@ namespace EGG9000.Site.Controllers {
             if(clientVersion <= 0 || string.IsNullOrWhiteSpace(appVersion) || string.IsNullOrWhiteSpace(appBuild))
                 return Content("clientVersion must be positive and appVersion/appBuild must be non-empty. Nothing changed.");
 
-            var valid = await EggIncApi.ValidateVersionsAsync((uint)clientVersion, appVersion, appBuild);
+            var valid = await _eggIncApi.ValidateVersionsAsync((uint)clientVersion, appVersion, appBuild);
             if(!valid)
                 return Content($"Rejected {clientVersion} / {appVersion} / {appBuild}: the API returned no contracts (bad/stale/typo'd version, or a transient failure). Nothing changed.");
 
@@ -209,7 +210,7 @@ namespace EGG9000.Site.Controllers {
             var dbCustomizations = await _db.EventCustomizations.ToListAsync();
             var eventTypes = dbCustomizations.Select(x => x.Type).ToList();
 
-            var periodicalsResponse = await EggIncApi.GetPeriodicalsAsync();
+            var periodicalsResponse = await _eggIncApi.GetPeriodicalsAsync();
             var periodicalsTypes = periodicalsResponse.Events.Events.Where(x => !eventTypes.Contains(x.Type)).Select(x => x.Type).ToList();
             eventTypes.AddRange(periodicalsTypes);
 
@@ -1300,7 +1301,7 @@ music
         public async Task<IActionResult> CheckCoopCreators() {
             var creators = new List<Admin_CoopCreatorRow>();
             foreach(var a in EggIncApi.CoopCreatorIds) {
-                var r = await EggIncApi.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), a.EggIncId);
+                var r = await _eggIncApi.Post<ContractPlayerInfo, BasicRequestInfo>(new BasicRequestInfo(), a.EggIncId);
                 creators.Add(new Admin_CoopCreatorRow(a.EggIncId, a.Grade, a.Name, r));
             }
 

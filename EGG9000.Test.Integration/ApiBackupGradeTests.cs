@@ -8,11 +8,8 @@ namespace EGG9000.Test.Integration;
 [TestCategory("Network")]
 public class ApiBackupGradeTests {
 
-    private static string Eid {
-        get {
-            return EggIncApi.UserId;
-        }
-    }
+    private static string Eid => EggIncApi.UserId;
+    private static readonly IEggIncApi Api = TestEggIncApi.Create();
 
     [ClassInitialize]
     public static void InitSalt(TestContext _) {
@@ -24,14 +21,14 @@ public class ApiBackupGradeTests {
 
     [TestMethod]
     public async Task FirstContact_Succeeds() {
-        var fc = await EggIncApi.FirstContact(Eid);
+        var fc = await Api.FirstContact(Eid);
         Assert.IsTrue(fc.Success, $"first_contact failed for {Eid}: {fc.Error}");
         Assert.IsNotNull(fc.Backup, "first_contact succeeded but Backup was null");
     }
 
     [TestMethod]
     public async Task FirstContact_BackupStillContainsContracts() {
-        var fc = await EggIncApi.FirstContact(Eid);
+        var fc = await Api.FirstContact(Eid);
         Assert.IsTrue(fc.Success, $"first_contact failed: {fc.Error}");
 
         var my = fc.Backup.Contracts;
@@ -44,7 +41,7 @@ public class ApiBackupGradeTests {
 
     [TestMethod]
     public async Task FirstContact_BackupCarriesPlayerGrade() {
-        var fc = await EggIncApi.FirstContact(Eid);
+        var fc = await Api.FirstContact(Eid);
         Assert.IsTrue(fc.Success, $"first_contact failed: {fc.Error}");
 
         var my = fc.Backup.Contracts;
@@ -72,7 +69,7 @@ public class ApiBackupGradeTests {
             return;
         }
 
-        var (info, error) = await EggIncApi.GetContractPlayerInfo(Eid);
+        var (info, error) = await Api.GetContractPlayerInfo(Eid);
         if(info is not null)
             TestContext!.WriteLine($"grade: {info.Grade}, status: {info.Status}");
 

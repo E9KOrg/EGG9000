@@ -5,6 +5,7 @@ using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Consumers;
 using EGG9000.Common.Database;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Mocks;
@@ -85,6 +86,7 @@ public static class BotHostFactory {
                 options.AddInterceptors(new QueryCountingInterceptor());
             });
 
+            services.AddEggIncApi();
             services.AddSingleton<DatabaseCache>();
             services.AddHostedService<UserCacheRefreshService>();
             services.AddHostedService<ActiveCoopsCacheRefreshService>();

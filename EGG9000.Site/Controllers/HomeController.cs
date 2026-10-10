@@ -30,9 +30,10 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     public partial class HomeController(ILogger<HomeController> logger, UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, SignInManager<ApplicationUser> signInManager,
-        DiscordSocketClient discord, ApplicationDbContext db, IMemoryCache cache, LeaderboardService leaderboards) : E9KControllerBase {
+        DiscordSocketClient discord, ApplicationDbContext db, IMemoryCache cache, LeaderboardService leaderboards, IEggIncApi eggIncApi) : E9KControllerBase {
 
         private readonly ILogger<HomeController> _logger = logger;
+        private readonly IEggIncApi _eggIncApi = eggIncApi;
         private readonly ApplicationDbContext _db = db;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly RoleManager<IdentityRole> _roleManager = roleManager;
@@ -81,7 +82,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Produces("application/xml")]
         public async Task<IActionResult> XmlOut(string ei) {
-            var (backup, _) = await EggIncApi.GetBackupAsync(ei, await _db.CachedEiContractsAsync());
+            var (backup, _) = await _eggIncApi.GetBackupAsync(ei, await _db.CachedEiContractsAsync());
             return new ObjectResult(backup);
         }
 
@@ -89,7 +90,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> JsonOut(string ei) {
-            var (backup, _) = await EggIncApi.GetBackupAsync(ei, await _db.CachedEiContractsAsync());
+            var (backup, _) = await _eggIncApi.GetBackupAsync(ei, await _db.CachedEiContractsAsync());
             return new ObjectResult(backup);
         }
 
@@ -97,7 +98,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> RawJsonOut(string ei) {
-            var backup = await EggIncApi.FirstContact(ei);
+            var backup = await _eggIncApi.FirstContact(ei);
             return new ObjectResult(backup);
         }
 
@@ -105,7 +106,7 @@ namespace EGG9000.Site.Controllers {
         [ResponseCache(Duration = 360, VaryByQueryKeys = ["*"])]
         [Produces("application/json")]
         public async Task<IActionResult> CustomBackupOut(string ei) {
-            var rawBackup = await EggIncApi.FirstContact(ei);
+            var rawBackup = await _eggIncApi.FirstContact(ei);
             var customBackup = new CustomBackup(rawBackup.Backup, await _db.CachedEiContractsAsync());
             return Json(customBackup);
         }
@@ -567,7 +568,7 @@ namespace EGG9000.Site.Controllers {
             var user = new DBUser {
                 UserCoopXrefs = []
             };
-            var (backup, _) = await EggIncApi.GetBackupAsync(id, await _db.CachedEiContractsAsync());
+            var (backup, _) = await _eggIncApi.GetBackupAsync(id, await _db.CachedEiContractsAsync());
             user.EggIncAccounts = [new() { Backup = backup }];
             user.DiscordUsername = backup.UserName;
             return View("ViewUser", user);
@@ -599,8 +600,8 @@ namespace EGG9000.Site.Controllers {
 
 
             model.CoopStatus = model.DbCoop is not null 
-                ? await EggIncApi.GetCoopStatus(ContractId, CoopId.ToLower(), EIID: model.DbCoop?.CreatorID, xrefs: model.DbCoop?.UserCoopsXrefs ?? [], _logger: _logger)
-                : await EggIncApi.GetCoopStatusBot(ContractId, CoopId.ToLower(), _logger: _logger);
+                ? await _eggIncApi.GetCoopStatus(ContractId, CoopId.ToLower(), eiid: model.DbCoop?.CreatorID, xrefs: model.DbCoop?.UserCoopsXrefs ?? [], logger: _logger)
+                : await _eggIncApi.GetCoopStatusBot(ContractId, CoopId.ToLower(), logger: _logger);
 
             model.CoopStatus ??= model.DbCoop?.LastStatusUpdate;
 
@@ -635,7 +636,7 @@ namespace EGG9000.Site.Controllers {
             if(model.Contract.Details == null) {
                 var carrier = model.UserInfos.FirstOrDefault(x => x.Backup != null);
                 if(carrier is null) return View("Message", $"Unable to find contract definition for {ContractId}.");
-                var firstContact = await EggIncApi.FirstContact(carrier.Backup.EggIncId);
+                var firstContact = await _eggIncApi.FirstContact(carrier.Backup.EggIncId);
                 var myContracts = firstContact?.Backup?.Contracts;
                 var contract = myContracts is null
                     ? null

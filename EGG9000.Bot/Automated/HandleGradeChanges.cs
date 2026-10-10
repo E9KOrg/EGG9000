@@ -30,7 +30,7 @@ namespace EGG9000.Bot.Automated {
                     try {
                         var fetched = new List<(string, Ei.ContractPlayerInfo)>();
                         foreach(var account in user.EggIncAccounts.Where(x => !string.IsNullOrEmpty(x.Id) && x.Id.StartsWith("EI") && x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
-                            var info = await AccountRefresh.FetchExtrasAsync(user, account, _logger);
+                            var info = await AccountRefresh.FetchExtrasAsync(_eggIncApi, user, account, _logger);
                             if(info is null) {
                                 _logger.LogWarning("Null response for {user} ({account})", user.DiscordUsername, account.Id);
                                 continue;

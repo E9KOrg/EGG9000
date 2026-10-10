@@ -31,7 +31,7 @@ namespace EGG9000.Bot.Automated {
                 tasks.Add(Task.Run(async () => {
                     foreach(var account in user.EggIncAccounts) {
                         try {
-                            var info = await AccountRefresh.FetchExtrasAsync(user, account, _logger);
+                            var info = await AccountRefresh.FetchExtrasAsync(_eggIncApi, user, account, _logger);
                             if(info is null) continue;
 
                             using var scope = _provider.CreateScope();

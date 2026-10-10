@@ -40,7 +40,7 @@ namespace EGG9000.Bot.Commands {
                 }
             } else {
                 Embed[] embedArrayErr = [EmbedError($"Unable to find the EggIncId `{eggincid}` registered with <@{userid}>")];
-                embedArrayErr = [.. embedArrayErr, .. (await UserStatusCommands.AccountsString(db, dbUser, false)).Select(b => b.Build()).ToArray()];
+                embedArrayErr = [.. embedArrayErr, .. (await UserStatusCommands.AccountsString(db, null, dbUser, false)).Select(b => b.Build()).ToArray()];
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embedArrayErr; });
                 return;
             }
@@ -48,7 +48,7 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
 
             db.Entry(dbUser).Reload();
-            Embed[] embedArray = [EmbedSuccess($"ID `{eggincid}` removed from <@{userid}>"), .. (await UserStatusCommands.AccountsString(db, dbUser, false)).Select(b => b.Build()).ToArray()];
+            Embed[] embedArray = [EmbedSuccess($"ID `{eggincid}` removed from <@{userid}>"), .. (await UserStatusCommands.AccountsString(db, null, dbUser, false)).Select(b => b.Build()).ToArray()];
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embedArray; });
         }
 
@@ -112,13 +112,13 @@ namespace EGG9000.Bot.Commands {
             await db.SaveChangesAsync();
         }
 
-        public static async Task _UpdateID(SocketInteraction command, ApplicationDbContext db, string eggincid, SocketGuildUser targetUser, int accountnumber) {
+        public static async Task _UpdateID(SocketInteraction command, ApplicationDbContext db, IEggIncApi api, string eggincid, SocketGuildUser targetUser, int accountnumber) {
             await command.DeferAsync(ephemeral: true);
             if(targetUser is null) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("`SocketGuildUser` instance could not be found."); });
                 return;
             }
-            var response = await EggIncApi.FirstContact(eggincid);
+            var response = await api.FirstContact(eggincid);
             var backup = new CustomBackup(response.Backup, await db.CachedEiContractsAsync());
             if(backup == null || backup.Farms == null || backup.Farms.Count == 0) {
                 await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Possibly wrong EggInc ID"); });
@@ -173,7 +173,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             foreach(var account in user.EggIncAccounts) {
-                var customBackup = new CustomBackup((await EggIncApi.FirstContact(account.Id))?.Backup, cachedContracts, account?.Backup ?? null);
+                var customBackup = new CustomBackup((await api.FirstContact(account.Id))?.Backup, cachedContracts, account?.Backup ?? null);
                 if(customBackup?.Farms is not null) {
                     account.Backup = customBackup;
                 }
@@ -181,11 +181,11 @@ namespace EGG9000.Bot.Commands {
             user.UpdateAccounts();
             await db.SaveChangesAsync();
 
-            var updatedEmbeds = (await UserStatusCommands.AccountsString(db, user, false)).Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("EID Updated")).ToArray();
+            var updatedEmbeds = (await UserStatusCommands.AccountsString(db, api, user, false)).Select(b => b.Build()).ToArray().Prepend(EmbedSuccess("EID Updated")).ToArray();
             await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = updatedEmbeds; });
         }
 
-        public static async Task RegisterAccountAsync(IMessageChannel channel, Func<Action<MessageProperties>, Task> reply, ApplicationDbContext db, DiscordHostedService _client, IClient bugsnag, string eggincid, IUser user, ILogger logger, Func<Task> onComplete = null, bool isStaff = false) {
+        public static async Task RegisterAccountAsync(IMessageChannel channel, Func<Action<MessageProperties>, Task> reply, ApplicationDbContext db, DiscordHostedService _client, IEggIncApi api, IClient bugsnag, string eggincid, IUser user, ILogger logger, Func<Task> onComplete = null, bool isStaff = false) {
             eggincid = eggincid.ToUpper();
 
             if(!MyRegex().IsMatch(eggincid)) {
@@ -232,7 +232,7 @@ namespace EGG9000.Bot.Commands {
                 return;
             }
 
-            var firstContactResponse = await EggIncApi.FirstContact(eggincid);
+            var firstContactResponse = await api.FirstContact(eggincid);
             var cachedContractsRa = await db.CachedEiContractsAsync();
             var backup = new CustomBackup(firstContactResponse.Backup, cachedContractsRa);
             if(backup?.Farms == null || backup.Farms.Count == 0) {
@@ -241,7 +241,7 @@ namespace EGG9000.Bot.Commands {
                     id = id[1..];
                 }
                 if(id.Length > 7) {
-                    var (b, _) = await EggIncApi.GetBackupAsync(eggincid, cachedContractsRa);
+                    var (b, _) = await api.GetBackupAsync(eggincid, cachedContractsRa);
                     backup = b;
                 }
             }
@@ -279,7 +279,7 @@ namespace EGG9000.Bot.Commands {
                 dbuser.UpdateAccounts();
             }
 
-            await AccountRefresh.ApplyExtrasAsync(dbuser, newAccount, db, logger);
+            await AccountRefresh.ApplyExtrasAsync(api, dbuser, newAccount, db, logger);
 
             var reRegistered = await db.RemovedAccounts.FirstOrDefaultAsync(r => r.UserId == dbuser.Id && r.EggIncId == newAccount.Id);
             if(reRegistered is not null) db.RemovedAccounts.Remove(reRegistered);
@@ -402,8 +402,9 @@ namespace EGG9000.Bot.Commands {
         private static partial Regex MyRegex1();
     }
 
-    public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger) : E9KModuleBase(dbFactory) {
+    public class RegisterModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, IClient bugsnag, ILogger<RegisterModule> logger, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
+        private readonly IEggIncApi _eggIncApi = eggIncApi;
         private readonly IClient _bugsnag = bugsnag;
         private readonly ILogger<RegisterModule> _logger = logger;
 
@@ -439,7 +440,7 @@ namespace EGG9000.Bot.Commands {
                 dbUser.GuildId = guild.Id;
                 await Db.SaveChangesAsync();
 
-                var (response, _) = await EggIncApi.GetBackupAsync(dbUser.EggIncAccounts.First().Id, await Db.CachedEiContractsAsync());
+                var (response, _) = await _eggIncApi.GetBackupAsync(dbUser.EggIncAccounts.First().Id, await Db.CachedEiContractsAsync());
                 var earningsBonus = response.EarningsBonus;
 
                 var guildUser = guild.Users.First(x => x.Id == Context.User.Id);
@@ -477,13 +478,13 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("updateid", "Update your EggIncID if it has changed")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task UpdateID([Summary("eggincid", "EggIncID starting with EI")] string eggincid, [Summary("accountnumber", "Account Number (if you have more than one)")] int accountnumber = 0) {
-            await RegisterCommandsSlash._UpdateID(Context.Interaction, Db, eggincid, await Context.Channel.GetUserAsync(Context.User.Id) as SocketGuildUser, accountnumber);
+            await RegisterCommandsSlash._UpdateID(Context.Interaction, Db, _eggIncApi, eggincid, await Context.Channel.GetUserAsync(Context.User.Id) as SocketGuildUser, accountnumber);
         }
 
         [SlashCommand("register", "Register your EggInc account with the bot")]
         public async Task Register([Summary("eggincid", "EggIncID which begins with EI followed by 16 numbers")] string eggincid) {
             await Context.Interaction.DeferAsync(ephemeral: true);
-            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, _client, _bugsnag, eggincid, Context.User, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(Exception) { } });
+            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, _client, _eggIncApi, _bugsnag, eggincid, Context.User, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(Exception) { } });
         }
     }
 
@@ -500,13 +501,13 @@ namespace EGG9000.Bot.Commands {
 
         [SlashCommand("updateid", "EggIncID someones ID")]
         public async Task UpdateID([Summary("eggincid", "EggIncID starting with EI")] string eggincid, [Summary("targetuser")] SocketGuildUser targetUser, [Summary("accountnumber", "Account Number (if you have more than one)")] int accountnumber = 0) {
-            await RegisterCommandsSlash._UpdateID(Context.Interaction, Db, eggincid, targetUser, accountnumber);
+            await RegisterCommandsSlash._UpdateID(Context.Interaction, Db, eggIncApi, eggincid, targetUser, accountnumber);
         }
 
         [SlashCommand("register", "Register your EggInc account with the bot")]
         public async Task Register([Summary("eggincid", "EggIncID which begins with EI followed by 16 numbers")] string eggincid, [Summary("user")] SocketGuildUser user) {
             await Context.Interaction.DeferAsync();
-            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, client, bugsnag, eggincid, user, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(Exception) { } }, isStaff: true);
+            await RegisterCommandsSlash.RegisterAccountAsync(Context.Channel, mut => Context.Interaction.ModifyOriginalResponseAsync(mut), Db, client, eggIncApi, bugsnag, eggincid, user, _logger, onComplete: async () => { try { await Context.Interaction.DeleteOriginalResponseAsync(); } catch(Exception) { } }, isStaff: true);
         }
 
         [SlashCommand("clean", "Removes any unpinned messages from the channel")]
