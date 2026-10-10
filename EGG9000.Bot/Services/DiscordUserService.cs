@@ -119,13 +119,11 @@ namespace EGG9000.Bot.Services {
                 if(dbguild != null) {
                     var mainServer = _discord.Guilds.First(x => x.Id == dbguild.DiscordSeverId);
                     var overflowServers = _discord.Guilds.Where(x => dbguild.OverflowServers.Contains(x.Id));
-                    const ulong overflowRoleID = 775547850134257675;
-
-                    bool inMainWithRole = mainServer.Users.Any(u => u.Id == user.Id && u.Roles.Any(r => r.Id == overflowRoleID)),
+                    bool inMainWithRole = mainServer.Users.Any(u => u.Id == user.Id && u.Roles.Any(r => r.Id == KnownRoles.Overflow)),
                         inAllOverFlows = overflowServers.All(o => o.Users.Any(u => u.Id == user.Id) || o.Id == user.Guild.Id);
                     if(inMainWithRole && inAllOverFlows) {
                         _logger.LogInformation("Removing overflow role for {user}, they joined all overflows", mainServer.Users.First(u => u.Id == user.Id).GetName());
-                        await mainServer.Users.First(u => u.Id == user.Id).RemoveRoleAsync(overflowRoleID);
+                        await mainServer.Users.First(u => u.Id == user.Id).RemoveRoleAsync(KnownRoles.Overflow);
                     }
 
                     try {

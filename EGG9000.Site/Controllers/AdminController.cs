@@ -21,6 +21,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -36,9 +37,10 @@ using static Ei.Contract.Types;
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
     public partial class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
-        ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : E9KControllerBase {
+        ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint, IHttpClientFactory httpClientFactory) : E9KControllerBase {
 
         private readonly ApplicationDbContext _db = db;
+        private readonly IHttpClientFactory _httpClientFactory = httpClientFactory;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly DiscordSocketClient _discord = discord;
         private readonly IMemoryCache _cache = cache;
@@ -1225,47 +1227,69 @@ music
             return Content("Success");
         }
 
-        [Authorize(Roles = "Admin,GuildAdmin")]
-        public IActionResult Sync() {
-            var url = Url.ActionLink("DiscordReturn");
-            return Redirect($"https://discordapp.com/api/oauth2/authorize?response_type=code&client_id={_configuration.GetConnectionString("ClientId")}&scope=identify%20guilds.join%20applications.commands.permissions.update&state=15773059ghq9183habn&redirect_uri={url}");
-        }
-
-        public async Task<IActionResult> DiscordReturn() {
-            string code = Request.Query["code"];
-
-            var url = "https://discordapp.com/api/oauth2/token";
-            var parameters = $"client_id={_configuration.GetConnectionString("ClientId")}&client_secret={_configuration.GetConnectionString("ClientSecret")}&grant_type=authorization_code&code={code}&redirect_uri={Url.ActionLink("DiscordReturn")}";
-
-            using var httpClient = new HttpClient();
-            var content = new StringContent(parameters, Encoding.UTF8, "application/x-www-form-urlencoded");
-            var response = await httpClient.PostAsync(url, content);
-
-            if(response.IsSuccessStatusCode) {
-                var responseContent = await response.Content.ReadAsStringAsync();
-                dynamic jsonObject = JsonConvert.DeserializeObject(responseContent);
-                string access_token = jsonObject.access_token;
-
-                return Redirect($"/admin/SyncCommandPermissions?access_token={access_token}");
-            } else {
-                return BadRequest("Failed to retrieve access token.");
-            }
-        }
+        private const string OverflowSyncStateKey = "OverflowSyncState";
 
         [Authorize(Roles = "Admin,GuildAdmin")]
-        public async Task<IActionResult> SyncCommandPermissions(string access_token) {
+        public async Task<IActionResult> Sync() {
             var guild = await GetDbGuildByIdAsync(GetGuildId());
-            if(guild.RolesToSync is null)
-                return Content("No roles found to sync");
-            var roleids = guild.RolesToSync.Split(",");
-            var mainServer = _discord.Guilds.First(x => x.Id == guild.Id);
-            var overflowServers = _discord.Guilds.Where(x => guild.OverflowServers.Contains(x.Id));
-            var rolesToSync = mainServer.Roles.Where(x => roleids.Any(y => y == x.Id.ToString()));
+            if(guild.OverflowServers.Count == 0)
+                return Content("This server has no overflow servers to sync.");
 
-            var roleMaps = OverflowSyncing.GetRoleMaps([.. rolesToSync], overflowServers);
-            var output = await OverflowSyncing.HandleCommandPermissionSyncsAsync(_discord, mainServer, overflowServers, roleMaps, access_token);
+            var state = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+            TempData[OverflowSyncStateKey] = state;
 
-            return Content(output);
+            var query = new Dictionary<string, string> {
+                ["response_type"] = "code",
+                ["client_id"] = _configuration.GetConnectionString("ClientId"),
+                ["scope"] = "identify applications.commands.permissions.update",
+                ["state"] = state,
+                ["redirect_uri"] = Url.ActionLink("DiscordReturn"),
+            };
+            return Redirect("https://discord.com/api/oauth2/authorize?" + string.Join("&", query.Select(kv => $"{kv.Key}={Uri.EscapeDataString(kv.Value)}")));
+        }
+
+        [Authorize(Roles = "Admin,GuildAdmin")]
+        public async Task<IActionResult> DiscordReturn(string code, string state) {
+            var expectedState = TempData[OverflowSyncStateKey] as string;
+            if(string.IsNullOrEmpty(code) || string.IsNullOrEmpty(expectedState) || string.IsNullOrEmpty(state)
+                || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(expectedState), Encoding.UTF8.GetBytes(state)))
+                return BadRequest("OAuth state did not match. Start the sync again from the admin page.");
+
+            var httpClient = _httpClientFactory.CreateClient();
+            var form = new FormUrlEncodedContent(new Dictionary<string, string> {
+                ["client_id"] = _configuration.GetConnectionString("ClientId"),
+                ["client_secret"] = _configuration.GetConnectionString("ClientSecret"),
+                ["grant_type"] = "authorization_code",
+                ["code"] = code,
+                ["redirect_uri"] = Url.ActionLink("DiscordReturn"),
+            });
+            var response = await httpClient.PostAsync("https://discord.com/api/oauth2/token", form);
+            if(!response.IsSuccessStatusCode)
+                return BadRequest("Failed to retrieve access token.");
+
+            var accessToken = JObject.Parse(await response.Content.ReadAsStringAsync())["access_token"]?.ToString();
+            if(string.IsNullOrEmpty(accessToken))
+                return BadRequest("Discord did not return an access token.");
+
+            return Content(await SyncCommandPermissionsAsync(accessToken));
+        }
+
+        private async Task<string> SyncCommandPermissionsAsync(string accessToken) {
+            var guild = await GetDbGuildByIdAsync(GetGuildId());
+            var mainServer = _discord.GetGuild(guild.DiscordSeverId);
+            if(mainServer is null)
+                return "The bot is not in this server.";
+
+            var overflowServers = _discord.Guilds.Where(x => guild.OverflowServers.Contains(x.Id)).ToList();
+            if(overflowServers.Count == 0)
+                return "The bot is not in any of this server's overflow servers.";
+
+            var rolesToSync = OverflowSyncing.GetRolesToSync(guild, mainServer);
+            if(rolesToSync.Count == 0)
+                return "No roles are configured to sync. Set Roles to Sync under Customize Server first.";
+
+            var roleMaps = OverflowSyncing.GetRoleMaps(rolesToSync, overflowServers);
+            return await OverflowSyncing.HandleCommandPermissionSyncsAsync(_discord, mainServer, overflowServers, roleMaps, accessToken);
         }
 
         public async Task<IActionResult> Guilds() {

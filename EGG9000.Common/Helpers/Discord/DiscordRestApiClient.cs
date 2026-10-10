@@ -1,82 +1,51 @@
+using Discord.WebSocket;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-using Discord;
-using Discord.WebSocket;
-
 namespace EGG9000.Common.Helpers.Discord {
-    /// <summary>
-    /// Enhanced Discord REST API client for direct API calls.
-    /// Supports easy token management via Discord.Net instances.
-    /// </summary>
-    public class DiscordRestApiClient : IDisposable {
-        private readonly HttpClient _httpClient;
-        private readonly ulong? _applicationId;
-        private readonly string _botToken;
+    public sealed class DiscordRestApiClient : IDisposable {
         private const string DiscordApiBaseUrl = "https://discord.com/api/";
 
+        private readonly HttpClient _httpClient;
+        private readonly ulong _applicationId;
 
         public DiscordRestApiClient(DiscordSocketClient client) {
             ArgumentNullException.ThrowIfNull(client);
-
             _applicationId = client.CurrentUser?.Id ?? throw new InvalidOperationException("DiscordSocketClient.CurrentUser is not available yet.");
-            _botToken = SecretsHelper.BotToken;
-            if (string.IsNullOrWhiteSpace(_botToken))
+
+            var botToken = SecretsHelper.BotToken;
+            if(string.IsNullOrWhiteSpace(botToken))
                 throw new InvalidOperationException("Bot token is not configured.");
 
-            _httpClient = new HttpClient();
-            ConfigureHttpClient();
+            _httpClient = new HttpClient { BaseAddress = new Uri(DiscordApiBaseUrl) };
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("EGG9000/1.0");
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bot", botToken);
         }
 
-        private void ConfigureHttpClient() {
-            _httpClient.BaseAddress = new Uri(DiscordApiBaseUrl);
-            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("DiscordRestApiClient/1.0");
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bot", _botToken);
-        }
-
-        private static void AddBearerAuth(HttpRequestMessage request, string accessToken) {
-            if(string.IsNullOrWhiteSpace(accessToken)) {
-                throw new ArgumentNullException(nameof(accessToken));
-            }
-
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        }
-        private ulong GetApplicationId() {
-            if(_applicationId == null) {
-                throw new InvalidOperationException("Application ID is not available. Initialize with DiscordSocketClient or provide application ID explicitly.");
-            }
-            return _applicationId.Value;
-        }
-
-      
-        /// <summary>
-        /// Edit permissions for an application command in a guild using the stored application ID.
-        /// PUT /applications/{application.id}/guilds/{guild.id}/commands/{command.id}/permissions
-        /// </summary>
-        /// <param name="guildId">The ID of the guild</param>
-        /// <param name="commandId">The ID of the command</param>
-        /// <param name="permissions">The permission payload containing the permissions array</param>
-        /// <param name="accessToken">The access token for authentication</param>
-        /// <returns>The updated Application Command Permissions object</returns>
-
-        public async Task<GuildApplicationCommandPermissionRest> EditApplicationCommandPermissionsAsync(ulong guildId, ulong commandId, object permissions, string accessToken) {
+        public async Task<List<GuildApplicationCommandPermissionRest>> GetApplicationCommandPermissionsAsync(ulong guildId) {
             try {
-                var applicationId = GetApplicationId();
-                var endpoint = $"applications/{applicationId}/guilds/{guildId}/commands/{commandId}/permissions";
-                var json = JsonSerializer.Serialize(permissions);
+                var response = await _httpClient.GetAsync($"applications/{_applicationId}/guilds/{guildId}/commands/permissions");
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadFromJsonAsync<List<GuildApplicationCommandPermissionRest>>() ?? [];
+            } catch(HttpRequestException ex) {
+                throw new DiscordRestException($"Failed to get command permissions in guild {guildId}", ex);
+            }
+        }
 
-                using var request = new HttpRequestMessage(HttpMethod.Put, endpoint) {
-                    Content = new StringContent(json, Encoding.UTF8, "application/json")
+        public async Task<GuildApplicationCommandPermissionRest> EditApplicationCommandPermissionsAsync(ulong guildId, ulong commandId, IReadOnlyCollection<CommandPermissionRest> permissions, string accessToken) {
+            if(string.IsNullOrWhiteSpace(accessToken))
+                throw new ArgumentException("A user access token is required to edit command permissions.", nameof(accessToken));
+
+            try {
+                using var request = new HttpRequestMessage(HttpMethod.Put, $"applications/{_applicationId}/guilds/{guildId}/commands/{commandId}/permissions") {
+                    Content = JsonContent.Create(new { permissions })
                 };
-
-                AddBearerAuth(request, accessToken);
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
                 var response = await _httpClient.SendAsync(request);
                 response.EnsureSuccessStatusCode();
@@ -86,37 +55,10 @@ namespace EGG9000.Common.Helpers.Discord {
             }
         }
 
-        /// <summary>
-        /// Get permissions for an application command in a guild using the stored application ID.
-        /// GET /applications/{application.id}/guilds/{guild.id}/commands/{command.id}/permissions
-        /// </summary>
-        /// <param name="guildId">The ID of the guild</param>
-        /// <param name="commandId">The ID of the command</param>
-        /// <returns>The Application Command Permissions object</returns>
-        public async Task<List<GuildApplicationCommandPermissionRest>> GetApplicationCommandPermissionsAsync(ulong guildId) {
-            try {
-                var applicationId = GetApplicationId();
-                var endpoint = $"applications/{applicationId}/guilds/{guildId}/commands/permissions";
-                var response = await _httpClient.GetAsync(endpoint);
-                response.EnsureSuccessStatusCode();
-                return await response.Content.ReadFromJsonAsync<List<GuildApplicationCommandPermissionRest>>();
-            } catch (HttpRequestException ex) {
-                throw new DiscordRestException($"Failed to get permissions for commands in guild {guildId} and application {GetApplicationId()}", ex);
-            }
-        }
-
-        public void Dispose() {
-            _httpClient?.Dispose();
-        }
+        public void Dispose() => _httpClient.Dispose();
     }
 
-    /// <summary>
-    /// Custom exception for Discord REST API errors.
-    /// </summary>
-    public class DiscordRestException : Exception {
-        public DiscordRestException(string message) : base(message) { }
-        public DiscordRestException(string message, Exception innerException) : base(message, innerException) { }
-    }
+    public class DiscordRestException(string message, Exception innerException) : Exception(message, innerException);
 
     public class GuildApplicationCommandPermissionRest {
         [JsonPropertyName("id")]
@@ -126,7 +68,7 @@ namespace EGG9000.Common.Helpers.Discord {
         [JsonPropertyName("guild_id")]
         public ulong GuildId { get; set; }
         [JsonPropertyName("permissions")]
-        public List<CommandPermissionRest> Permissions { get; set; } = new List<CommandPermissionRest>();
+        public List<CommandPermissionRest> Permissions { get; set; } = [];
     }
 
     public class CommandPermissionRest {

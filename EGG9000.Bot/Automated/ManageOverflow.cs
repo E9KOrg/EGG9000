@@ -1,4 +1,3 @@
-﻿using Discord;
 using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
@@ -18,13 +17,11 @@ namespace EGG9000.Bot.Automated {
     public class ManageOverflow(IServiceProvider provider) : _UpdaterBase<ManageOverflow>(TimeSpan.FromMinutes(5.6), TimeSpan.FromMinutes(0), provider) {
 
         public async override Task Run(object state, CancellationToken cancellationToken) {
-            var _db = _provider.CreateScope().ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var guilds = await _db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
+            using var scope = _provider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var guilds = await db.Guilds.AsQueryable().ToListAsync(CancellationToken.None);
 
-            // Handle member departures and returns across all guilds
-            await HandleMemberTracking(_db, guilds, cancellationToken);
-
-            // Handle overflow server management for guilds with overflow servers
+            await HandleMemberTracking(db, guilds, cancellationToken);
             await HandleOverflowServers(guilds, cancellationToken);
         }
 
@@ -35,261 +32,200 @@ namespace EGG9000.Bot.Automated {
             public ulong? LastGuild { get; set; }
         }
 
-        /// <summary>
-        /// Track member departures and returns across all guilds using REST lookups for accuracy.
-        /// </summary>
         private async Task HandleMemberTracking(ApplicationDbContext db, List<Guild> guilds, CancellationToken cancellationToken) {
             var users = await db.DBUsers.Select(x => new BasicUserInfo { DiscordId = x.DiscordId, GuildId = x.GuildId, Id = x.Id, LastGuild = x.LastGuild }).ToListAsync(CancellationToken.None);
-            
-            foreach (var guild in guilds) {
-                if (cancellationToken.IsCancellationRequested) break;
+
+            foreach(var guild in guilds) {
+                if(cancellationToken.IsCancellationRequested)
+                    break;
 
                 var mainServer = _client.Guilds.FirstOrDefault(x => x.Id == guild.DiscordSeverId);
-                if (mainServer is null)
+                if(mainServer is null)
                     continue;
 
                 await mainServer.DownloadUsersAsync();
 
-                // Handle member departures
-                await HandleMemberDepartures(db, guild, mainServer, users, cancellationToken);
-
-                // Handle member returns
-                await HandleMemberReturns(db, guild, mainServer, users, cancellationToken);
+                await HandleMemberDepartures(db, guild, mainServer, users);
+                await HandleMemberReturns(db, guild, mainServer, users);
 
                 await db.SaveChangesAsync(CancellationToken.None);
                 StillAlive();
             }
         }
 
-        /// <summary>
-        /// Handle members who have left the guild.
-        /// </summary>
-        private async Task HandleMemberDepartures(ApplicationDbContext db, Guild guild, SocketGuild mainServer, List<BasicUserInfo> users, CancellationToken cancellationToken) {
-            var members = users.Where(x => x.GuildId == guild.Id).ToList();
-            var missingFromCache = members.Where(x => mainServer.GetUser(x.DiscordId) is null).ToList();
-
-            if (!mainServer.HasAllMembers || mainServer.Users.Count == 0) {
-                _logger.LogWarning("Skipping departure handling for {name}: HasAllMembers={hasAll}, likely an incomplete member download", guild.Name, mainServer.HasAllMembers);
+        private async Task HandleMemberDepartures(ApplicationDbContext db, Guild guild, SocketGuild mainServer, List<BasicUserInfo> users) {
+            if(!mainServer.HasAllMembers || mainServer.Users.Count == 0) {
+                _logger.LogWarning("Skipping departure handling for {Name}: HasAllMembers={HasAll}, likely an incomplete member download", guild.Name, mainServer.HasAllMembers);
                 return;
             }
 
-            // REST-confirm each candidate to avoid false positives from stale cache
+            var missingFromCache = users.Where(x => x.GuildId == guild.Id && mainServer.GetUser(x.DiscordId) is null).ToList();
+
             var confirmedMissing = new List<Guid>();
-            foreach (var candidate in missingFromCache) {
-                var restUser = await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId);
-                if (restUser is null)
+            foreach(var candidate in missingFromCache) {
+                if(await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId) is null)
                     confirmedMissing.Add(candidate.Id);
                 StillAlive();
             }
 
-            if (confirmedMissing.Count == 0)
+            if(confirmedMissing.Count == 0)
                 return;
 
-            // Mark members as departed
             var membersMissing = await db.DBUsers.Where(x => confirmedMissing.Contains(x.Id)).ToListAsync(CancellationToken.None);
-            membersMissing.ForEach(x => {
-                x.GuildId = 0;
-                x.LastGuild = guild.Id;
-                _logger.LogInformation("Removing member from guild {guildName}: {memberName}", guild.Name, x.DiscordUsername);
+            foreach(var member in membersMissing) {
+                member.GuildId = 0;
+                member.LastGuild = guild.Id;
+                _logger.LogInformation("Removing member from guild {GuildName}: {MemberName}", guild.Name, member.DiscordUsername);
                 StillAlive();
-            });
+            }
 
-            // Purge pending coop assignments for departed members
             await PurgePendingAssignments(db, confirmedMissing, guild.Id);
         }
 
-        /// <summary>
-        /// Handle members who have returned to the guild.
-        /// </summary>
-        private async Task HandleMemberReturns(ApplicationDbContext db, Guild guild, SocketGuild mainServer, List<BasicUserInfo> users, CancellationToken cancellationToken) {
+        private async Task HandleMemberReturns(ApplicationDbContext db, Guild guild, SocketGuild mainServer, List<BasicUserInfo> users) {
             var returnCandidates = users.Where(x => x.GuildId == 0 && mainServer.GetUser(x.DiscordId) is not null).ToList();
-
-            if (returnCandidates.Count == 0)
+            if(returnCandidates.Count == 0)
                 return;
 
-            // REST-confirm each candidate to avoid false positives from stale cache
             var confirmedReturned = new List<Guid>();
-            foreach (var candidate in returnCandidates) {
-                var restUser = await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId);
-                if (restUser is not null)
+            foreach(var candidate in returnCandidates) {
+                if(await _client.Rest.GetGuildUserAsync(guild.DiscordSeverId, candidate.DiscordId) is not null)
                     confirmedReturned.Add(candidate.Id);
                 StillAlive();
             }
 
-            if (confirmedReturned.Count == 0)
+            if(confirmedReturned.Count == 0)
                 return;
 
-            // Re-associate returned members
             var membersReturn = await db.DBUsers.Where(x => confirmedReturned.Contains(x.Id)).ToListAsync(CancellationToken.None);
-            membersReturn.ForEach(x => {
-                x.GuildId = guild.Id;
-                _logger.LogInformation("Re-associating member to guild {guildName}: {memberName} (REST-confirmed present)", guild.Name, x.DiscordUsername);
+            foreach(var member in membersReturn) {
+                member.GuildId = guild.Id;
+                _logger.LogInformation("Re-associating member to guild {GuildName}: {MemberName} (REST-confirmed present)", guild.Name, member.DiscordUsername);
                 StillAlive();
-            });
+            }
         }
 
-        /// <summary>
-        /// Handle overflow server management: syncing, role management, and member management.
-        /// </summary>
         private async Task HandleOverflowServers(List<Guild> guilds, CancellationToken cancellationToken) {
-            foreach (var guild in guilds.Where(x => x.OverflowServers.Count > 0)) {
-                if (cancellationToken.IsCancellationRequested)
+            foreach(var guild in guilds.Where(x => x.OverflowServers.Count > 0)) {
+                if(cancellationToken.IsCancellationRequested)
                     break;
 
-                _logger.LogInformation("Managing overflow servers for {guildName}", guild.Name);
-
                 var mainServer = _client.Guilds.FirstOrDefault(x => x.Id == guild.DiscordSeverId);
-                if (mainServer is null)
+                if(mainServer is null)
                     continue;
 
                 var overflowServers = _client.Guilds.Where(x => guild.OverflowServers.Contains(x.Id)).ToList();
-                if (overflowServers.Count == 0)
+                if(overflowServers.Count == 0)
                     continue;
 
-                // Download all users
+                _logger.LogInformation("Managing overflow servers for {GuildName}", guild.Name);
+
                 await mainServer.DownloadUsersAsync();
-                foreach (var server in overflowServers) {
+                foreach(var server in overflowServers)
                     await server.DownloadUsersAsync();
-                }
 
-                // Sync settings from main to overflow servers
                 await SyncOverflowSettings(guild, mainServer, overflowServers, cancellationToken);
-
-                // Manage overflow role assignments
                 await ManageOverflowRoles(mainServer, overflowServers, cancellationToken);
-
-                // Manage member access and nicknames
                 await ManageOverflowMembers(mainServer, overflowServers, cancellationToken);
 
                 StillAlive();
             }
         }
 
-        /// <summary>
-        /// Sync role configurations from main to overflow servers.
-        /// </summary>
         private async Task SyncOverflowSettings(Guild guild, SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
             try {
-                await OverflowSyncing.HandleRoleSyncsAsync(guild, mainServer, overflowServers, _provider, _logger, cancellationToken);
-
-                StillAlive();
-            } catch (Exception ex) {
-                _logger.LogError(ex, "Error syncing overflow settings for {guildName}", guild.Name);
+                await OverflowSyncing.HandleChannelPermissionSyncsAsync(_client, mainServer, overflowServers, _logger, cancellationToken);
+            } catch(Exception ex) {
+                _logger.LogError(ex, "Error syncing coop category permissions for {GuildName}", guild.Name);
             }
+            StillAlive();
+
+            try {
+                await OverflowSyncing.HandleRoleSyncsAsync(guild, mainServer, overflowServers, _logger, cancellationToken);
+            } catch(Exception ex) {
+                _logger.LogError(ex, "Error syncing roles for {GuildName}", guild.Name);
+            }
+            StillAlive();
         }
 
-        /// <summary>
-        /// Manage overflow role assignments for users based on their server presence.
-        /// </summary>
-        private async Task ManageOverflowRoles(SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
-            const ulong overflowRoleID = 775547850134257675;
-            const ulong registeredRoleID = 794713762396897280;
-
-            var overflowServerList = overflowServers.ToList();
-            var role = mainServer.Roles.FirstOrDefault(x => x.Id == overflowRoleID);
-
-            if (role is null) {
-                _logger.LogWarning("Unable to find overflow role in main server");
+        private async Task ManageOverflowRoles(SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+            var role = mainServer.GetRole(KnownRoles.Overflow);
+            if(role is null) {
+                _logger.LogWarning("Unable to find overflow role in {ServerName}", mainServer.Name);
                 return;
             }
 
-            // Find users who should have the overflow role
-            var onlyMain = mainServer.Users.Where(x => !overflowServerList.All(o => o.Users.Any(y => y.Id == x.Id)) && !x.IsBot);
-            var allOverflows = mainServer.Users.Where(x => (overflowServerList.All(o => o.Users.Any(y => y.Id == x.Id)) || !x.Roles.Any(y => y.Id == registeredRoleID)) && !x.IsBot);
+            bool InAllOverflows(SocketGuildUser user) => overflowServers.All(o => o.GetUser(user.Id) is not null);
+            bool IsRegistered(SocketGuildUser user) => user.Roles.Any(r => r.Id == KnownRoles.Registered);
+            bool HasOverflowRole(SocketGuildUser user) => user.Roles.Any(r => r.Id == KnownRoles.Overflow);
 
-            var bothAllWithRole = allOverflows.Where(x => x.Roles.Any(y => y.Id == overflowRoleID));
-            var onlyMainWithoutRole = onlyMain.Where(x => !x.Roles.Any(y => y.Id == overflowRoleID) && x.Roles.Count > 2 && x.Roles.Any(y => y.Id == registeredRoleID));
+            var humans = mainServer.Users.Where(x => !x.IsBot).ToList();
+            var needsRole = humans.Where(x => !InAllOverflows(x) && !HasOverflowRole(x) && IsRegistered(x) && x.Roles.Count > 2).ToList();
+            var doneWithRole = humans.Where(x => HasOverflowRole(x) && (InAllOverflows(x) || !IsRegistered(x))).ToList();
 
-            // Add overflow role to users who are only in main
-            foreach (var user in onlyMainWithoutRole) {
-                if (cancellationToken.IsCancellationRequested)
+            foreach(var user in needsRole) {
+                if(cancellationToken.IsCancellationRequested)
                     break;
-
                 await WaitOnCoopsBeingCreated(cancellationToken);
                 await user.AddRoleAsync(role);
-                _logger.LogInformation("Added overflow role to {userName}", user.GetName());
+                _logger.LogInformation("Added overflow role to {UserName}", user.GetName());
                 StillAlive();
             }
 
-            // Remove overflow role from users with only that role
-            foreach (var user in mainServer.Users.Where(x => x.Roles.Count == 1 && x.Roles.Any(y => y.Id == overflowRoleID) && !x.IsBot)) {
-                if (cancellationToken.IsCancellationRequested)
+            foreach(var user in doneWithRole) {
+                if(cancellationToken.IsCancellationRequested)
                     break;
-
                 await WaitOnCoopsBeingCreated(cancellationToken);
                 await user.RemoveRoleAsync(role);
-                _logger.LogInformation("Removed overflow role from {userName} (was only role)", user.GetName());
-                StillAlive();
-            }
-
-            // Remove overflow role from users in all servers
-            foreach (var user in bothAllWithRole) {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-
-                await WaitOnCoopsBeingCreated(cancellationToken);
-                await user.RemoveRoleAsync(role);
-                _logger.LogInformation("Removed overflow role from {userName} (in all servers)", user.GetName());
+                _logger.LogInformation("Removed overflow role from {UserName}, they are {Reason}", user.GetName(), IsRegistered(user) ? "in all overflow servers" : "not registered");
                 StillAlive();
             }
         }
 
-        /// <summary>
-        /// Manage member access and synchronization across overflow servers.
-        /// </summary>
-        private async Task ManageOverflowMembers(SocketGuild mainServer, IEnumerable<SocketGuild> overflowServers, CancellationToken cancellationToken) {
-            foreach (var overflowServer in overflowServers) {
-                if (cancellationToken.IsCancellationRequested)
+        private async Task ManageOverflowMembers(SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+            foreach(var overflowServer in overflowServers) {
+                if(cancellationToken.IsCancellationRequested)
                     break;
 
                 await WaitOnCoopsBeingCreated(cancellationToken);
 
-                // Kick members who are no longer in main server
-                var onlyOverflow = overflowServer.Users.Where(x => !mainServer.Users.Any(y => y.Id == x.Id) && !x.IsBot);
-                foreach (var user in onlyOverflow) {
-                    await user.KickAsync("No longer in main server");
-                    _logger.LogInformation("Kicked {userName} from overflow server {serverName} (not in main)", user.GetName(), overflowServer.Name);
-                    StillAlive();
+                if(!mainServer.HasAllMembers) {
+                    _logger.LogWarning("Skipping overflow kicks for {ServerName}: main server member download incomplete", overflowServer.Name);
+                } else {
+                    foreach(var user in overflowServer.Users.Where(x => !x.IsBot && mainServer.GetUser(x.Id) is null).ToList()) {
+                        await user.KickAsync("No longer in main server");
+                        _logger.LogInformation("Kicked {UserName} from {ServerName}, not in main server", user.GetName(), overflowServer.Name);
+                        StillAlive();
+                    }
                 }
 
-                // Sync nicknames for members present in both servers
                 await SyncMemberNicknames(mainServer, overflowServer, cancellationToken);
-
                 StillAlive();
             }
         }
 
-        /// <summary>
-        /// Sync member nicknames from main server to overflow servers.
-        /// </summary>
         private async Task SyncMemberNicknames(SocketGuild mainServer, SocketGuild overflowServer, CancellationToken cancellationToken) {
-            foreach (var overflowUser in overflowServer.Users) {
-                if (cancellationToken.IsCancellationRequested)
+            foreach(var overflowUser in overflowServer.Users.ToList()) {
+                if(cancellationToken.IsCancellationRequested)
                     break;
 
-                await WaitOnCoopsBeingCreated(cancellationToken);
-
-                var mainServerUser = mainServer.Users.FirstOrDefault(x => x.Id == overflowUser.Id);
-                if (mainServerUser == null)
+                var mainServerUser = mainServer.GetUser(overflowUser.Id);
+                if(mainServerUser is null || overflowUser.IsBot || overflowServer.OwnerId == overflowUser.Id || overflowUser.Nickname == mainServerUser.Nickname)
                     continue;
 
-                if (overflowUser.Nickname != mainServerUser.Nickname && !overflowUser.IsBot && overflowUser.Guild.OwnerId != overflowUser.Id) {
-                    try {
-                        _logger.LogInformation("Updating nickname for {userName} in {serverName}", mainServerUser.GetName(), overflowServer.Name);
-                        await overflowUser.ModifyAsync(x => x.Nickname = mainServerUser.Nickname);
-                    } catch (Exception ex) {
-                        _logger.LogWarning(ex, "Unable to change nickname for {userName}", mainServerUser.GetName());
-                    }
-                    StillAlive();
+                await WaitOnCoopsBeingCreated(cancellationToken);
+                try {
+                    await overflowUser.ModifyAsync(x => x.Nickname = mainServerUser.Nickname);
+                    _logger.LogInformation("Updated nickname for {UserName} in {ServerName}", mainServerUser.GetName(), overflowServer.Name);
+                } catch(Exception ex) {
+                    _logger.LogWarning(ex, "Unable to change nickname for {UserName} in {ServerName}", mainServerUser.GetName(), overflowServer.Name);
                 }
+                StillAlive();
             }
         }
 
-        /// <summary>
-        /// Purge pending coop assignments for members who have left the guild.
-        /// </summary>
         private async Task PurgePendingAssignments(ApplicationDbContext db, List<Guid> departedUserIds, ulong guildId) {
-            if (departedUserIds.Count == 0)
+            if(departedUserIds.Count == 0)
                 return;
 
             var staleXrefs = await db.UserCoopXrefs
@@ -297,27 +233,23 @@ namespace EGG9000.Bot.Automated {
                 .Select(x => new { x.UserId, x.Coop.ContractID, Xref = x })
                 .ToListAsync(CancellationToken.None);
 
-            if (staleXrefs.Count == 0)
+            if(staleXrefs.Count == 0)
                 return;
 
             db.UserCoopXrefs.RemoveRange(staleXrefs.Select(x => x.Xref));
             var lookup = _provider.GetService<CoopAssignmentLookup>();
-            foreach (var stale in staleXrefs) {
+            foreach(var stale in staleXrefs) {
                 lookup?.Remove(stale.UserId, stale.ContractID);
-                _logger.LogInformation("Purged pending coop assignment for departed user {userId}", stale.UserId);
+                _logger.LogInformation("Purged pending coop assignment for departed user {UserId} in contract {Contract}", stale.UserId, stale.ContractID);
                 StillAlive();
             }
         }
 
-        /// <summary>
-        /// Filter for pending coop assignments that should be purged.
-        /// </summary>
         public static Expression<Func<UserCoopXref, bool>> PendingAssignmentPurgeFilter(List<Guid> departedUserIds, ulong guildId, DateTimeOffset now) =>
             x => departedUserIds.Contains(x.UserId)
               && !x.JoinedCoop
               && x.Coop.GuildId == guildId
               && (int)x.Coop.Status > 2 && (int)x.Coop.Status < 13
               && x.Coop.CoopEnds > now && !x.Coop.PseudoExpired;
-
     }
 }

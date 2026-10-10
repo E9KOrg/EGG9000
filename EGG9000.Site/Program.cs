@@ -250,6 +250,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
 
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
     services.AddRazorPages();
+    services.AddHttpClient();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
     services.AddSingleton<ArtifactImageRenderer>();
     // Scoped, not singleton: it holds the request's ApplicationDbContext.
