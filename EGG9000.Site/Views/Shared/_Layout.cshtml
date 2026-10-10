@@ -19,14 +19,9 @@
 	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
 	<meta name="msapplication-TileColor" content="#da532c">
 	<meta name="theme-color" content="#ffffff">
-	<style>
-		body {
-			height: auto !important;
-		}
-	</style>
 	@RenderSection("Head", required: false)
 </head>
-<body>
+<body class="@ViewData["BodyClass"]">
 	<header>
 		<nav class="navbar navbar-expand-sm border-bottom box-shadow mb-3">
 			<div class="container">

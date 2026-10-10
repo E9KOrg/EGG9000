@@ -1,6 +1,7 @@
 ﻿@model List<LeaderboardUser>
 @inject Discord.WebSocket.DiscordSocketClient discord
 @{
+    ViewData["BodyClass"] = "full-width";
     ViewData["Title"] = "Leaderboard";
 
     var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
@@ -24,13 +25,6 @@
     }).Where(x => x != null && x.DiscordUser != null);
 }
 
-<style>
-        .container
-
-    {
-        max-width: initial !important;
-    }
-</style>
 @foreach(var accounts in allaccounts.GroupBy(x => x.DiscordUser.Roles.First(x => x.Name.ToLower().EndsWith("farmer")))) {
 <div>
     <h2>@accounts.Key.Name</h2>

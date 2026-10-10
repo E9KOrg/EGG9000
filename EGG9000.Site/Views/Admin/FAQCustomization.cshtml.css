@@ -1,0 +1,4 @@
+.modal-body { max-height: calc(100vh - 180px); overflow-y: auto; }
+.grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 10px; }
+.grid-item { display: flex; flex-direction: column; }
+.grid-item label { margin-bottom: 5px; }

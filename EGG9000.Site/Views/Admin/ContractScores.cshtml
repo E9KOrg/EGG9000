@@ -59,15 +59,6 @@
     </tbody>
 </table>
 
-<style>
-    .StandardOnly .Elite {
-        display: none;
-    }
-
-    .Standard td {
-        color: #42a479;
-    }
-</style>
 
 @if (User.IsInRole("Admin") || User.IsInRole("GuildAdmin")) {
     <partial name="_ApexCharts" />

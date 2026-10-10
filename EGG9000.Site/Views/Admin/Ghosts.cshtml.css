@@ -1,0 +1,13 @@
+bootstrap tr.NotMentioned td {
+    background-color: lightgoldenrodyellow;
+}
+bootstrap-dark tr.NotMentioned td {
+    background-color: darkgoldenrod;
+}
+
+bootstrap tr.Missing td {
+    background-color: lightpink;
+}
+bootstrap-dark tr.Missing td {
+    background-color: #580414;
+}

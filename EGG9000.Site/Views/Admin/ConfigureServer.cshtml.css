@@ -1,0 +1,124 @@
+.card {
+    margin-top: 50px;
+}
+
+.table {
+    border-bottom: 1px solid #ccc;
+    caption-side: top !important;
+}
+
+div.custom-card {
+    display: inline-block;
+    padding: 2px 5px;
+    border-radius: 7px;
+    margin: 5px;
+    border: 2px solid;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+div.tc-card {
+    background-color: gray;
+    border-color: darkgray;
+    color: black;
+}
+
+div.requ-card {
+    background-color: lightsalmon;
+    border-color: darksalmon;
+    color: black;
+}
+
+div.opt-card {
+    background-color: lightgreen;
+    border-color: darkolivegreen;
+    color: darkgreen;
+}
+
+.tooltip-custom {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-custom:hover .tooltiptext-custom {
+    display: inline-block;
+    z-index: 3;
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.tooltiptext-custom {
+    display: none;
+    border: 1px solid #ccc;
+    padding: 10px;
+    border-radius: 4px;
+    white-space: nowrap;
+    text-align: center;
+    position: absolute;
+    background-color: rgba(130, 135, 140, 0.95);
+}
+
+[data-bs-theme="dark"] .tooltiptext-custom {
+    background-color: rgba(33, 37, 41, 0.95);
+}
+
+[data-bs-theme="dark"] .speech-bubble {
+    background-color: rgba(33, 37, 41, 0.95);
+    color: white !important;
+}
+
+.speech-bubble {
+    background-color: rgba(130, 135, 140, 0.95);
+    color: black !important;
+    position: relative;
+    padding: 10px;
+    margin: 10px auto;
+    border-radius: 5px;
+}
+
+.speech-bubble :after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -15px;
+    border-width: 15px;
+    border-style: solid;
+    border-color: #ccc transparent transparent transparent;
+}
+
+.custom-input {
+    display: inline-block;
+    padding: 4px;
+    border: 1px solid #ced4da;
+    border-radius: 3px;
+    color: #333;
+    background-color: #fff;
+    margin-right: 6px;
+}
+
+.custom-input:focus {
+    outline: none;
+    box-shadow: none;
+    border-color: #86b7fe;
+}
+
+[data-bs-theme="dark"] .custom-input {
+    border-color: #495057;
+    color: #fff;
+    background-color: #343a40;
+}
+
+[data-bs-theme="dark"] .custom-input:focus {
+    border-color: #6c757d;
+}
+
+.card-body > div {
+    margin-bottom: 6px;
+}
+
+.card-body > div:last-child {
+    margin-bottom: 0;
+}
