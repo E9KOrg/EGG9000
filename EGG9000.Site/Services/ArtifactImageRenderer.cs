@@ -1,12 +1,7 @@
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.ArtifactImaging;
 using Microsoft.AspNetCore.Hosting;
-using SixLabors.Fonts;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -64,10 +59,12 @@ namespace EGG9000.Site.Services {
 
             var fontPath = WWWPath("Always Together.otf");
             if(fontPath is null) return new RenderResult { Error = "`Always Together.otf` could not be found." };
-            var font = new FontCollection().Add(fontPath).CreateFont(config.TextFontSize, FontStyle.Bold);
+            using var typeface = SKTypeface.FromFile(fontPath);
+            using var font = new SKFont(typeface, config.TextFontSize);
 
-            using var baseImage = new Image<Rgba32>(config.TotalWidth, config.TotalHeight);
-            baseImage.Mutate(x => x.Fill(Color.ParseHex(BackgroundHex)));
+            using var surface = SKSurface.Create(new SKImageInfo(config.TotalWidth, config.TotalHeight));
+            var baseImage = surface.Canvas;
+            baseImage.Clear(SKColor.Parse(BackgroundHex));
 
             var manifest = new ArtifactOverlayManifest { Width = config.TotalWidth, Height = config.TotalHeight };
 
@@ -86,7 +83,7 @@ namespace EGG9000.Site.Services {
                 index++;
             }
 
-            return new RenderResult { Jpeg = Encode(baseImage), Manifest = manifest };
+            return new RenderResult { Jpeg = surface.EncodeImage(SKEncodedImageFormat.Jpeg), Manifest = manifest };
         }
 
         // A single farm's active artifacts as one row of slots, with the same hover targets. Used inline by
@@ -103,8 +100,9 @@ namespace EGG9000.Site.Services {
             var width = (slots.Count * afSize) + (padding * (slots.Count + 1));
             var height = afSize + (padding * 2);
 
-            using var baseImage = new Image<Rgba32>(width, height);
-            baseImage.Mutate(x => x.Fill(Color.ParseHex(highlightBest ? BestBackgroundHex : BackgroundHex)));
+            using var surface = SKSurface.Create(new SKImageInfo(width, height));
+            var baseImage = surface.Canvas;
+            baseImage.Clear(SKColor.Parse(highlightBest ? BestBackgroundHex : BackgroundHex));
 
             var manifest = new ArtifactOverlayManifest { Width = width, Height = height };
 
@@ -113,29 +111,26 @@ namespace EGG9000.Site.Services {
                 PaintCell(baseImage, manifest, slots[i], 1, x, padding, afSize, padding, stoneSize, cornerRadius, drawStones: true);
             }
 
-            return new RenderResult { Jpeg = Encode(baseImage), Manifest = manifest };
+            return new RenderResult { Jpeg = surface.EncodeImage(SKEncodedImageFormat.Jpeg), Manifest = manifest };
         }
 
         // Paints one artifact cell (rarity background + artifact, plus stone icons in the corner) and
         // records its hover target. Returns false when the artifact sprite is missing so callers can skip
         // any follow-up drawing for that cell.
-        private bool PaintCell(Image<Rgba32> baseImage, ArtifactOverlayManifest manifest, EggIncArtifactInstance artifact, int count, int x, int y, int afSize, int padding, int stoneSize, int cornerRadius, bool drawStones) {
+        private bool PaintCell(SKCanvas baseImage, ArtifactOverlayManifest manifest, EggIncArtifactInstance artifact, int count, int x, int y, int afSize, int padding, int stoneSize, int cornerRadius, bool drawStones) {
             var isFrag = artifact.Artifact.Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
             var afName = artifact.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
             var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? artifact.Tier + 1 : artifact.Tier);
 
             var afImagePath = WWWPath("images", "artifacts", afName, $"{afName}_{afTier}.png");
             if(afImagePath is null) return false;
-            using var afImage = Image.Load(afImagePath);
-            afImage.Mutate(i => i.Resize(new Size(afSize, afSize)));
 
             // One hotspot per cell. Its tooltip lists the artifact and any slotted stones, so the small
             // stone icons drawn in the corner don't need separate hover targets.
             manifest.Hotspots.Add(MakeHotspot(x, y, afSize, afSize, manifest, ArtifactDisplay.TooltipHtml(artifact, count)));
 
-            using var backgroundImage = BackgroundImage(RarityColor(artifact.Rarity), afSize, cornerRadius);
-            backgroundImage.Mutate(i => i.DrawImage(afImage, new Point(0, 0), 1f));
-            baseImage.Mutate(b => b.DrawImage(backgroundImage, new Point(x, y), 1f));
+            baseImage.DrawRoundedTile(RarityColor(artifact.Rarity), x, y, afSize, afSize, cornerRadius);
+            baseImage.DrawImageFile(afImagePath, x, y, afSize);
 
             if(drawStones) {
                 var stoneIndex = 1;
@@ -143,48 +138,25 @@ namespace EGG9000.Site.Services {
                     var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
                     var stonePath = WWWPath("images", "artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png");
                     if(stonePath is null) continue;
-                    using var stoneImage = Image.Load(stonePath);
-                    stoneImage.Mutate(i => i.Resize(new Size(stoneSize, stoneSize), true));
                     var sx = x + afSize - (int)(padding * 0.5) - (stoneSize * stoneIndex);
                     var sy = (int)(y + afSize - (padding * 1.5));
-                    baseImage.Mutate(b => b.DrawImage(stoneImage, new Point(sx, sy), 1f));
+                    baseImage.DrawImageFile(stonePath, sx, sy, stoneSize);
                     stoneIndex++;
                 }
             }
             return true;
         }
 
-        private static byte[] Encode(Image<Rgba32> image) {
-            using var ms = new MemoryStream();
-            image.Save(ms, new JpegEncoder());
-            return ms.ToArray();
-        }
-
-        private static void DrawCountBadge(Image<Rgba32> baseImage, Font font, int afCount, int x, int y, InventoryCreatorConfig config) {
+        private static void DrawCountBadge(SKCanvas baseImage, SKFont font, int afCount, int x, int y, InventoryCreatorConfig config) {
             var text = afCount.ToString();
             var textWidth = Math.Max(config.TextHeight, (text.Length * config.TextBaseWidth) + config.TextBaseWidth);
-            using var textImage = new Image<Rgba32>(textWidth, config.TextHeight);
-            textImage.Mutate(c => c
-                .Fill(Color.ParseHex("#4f4f4f"))
-                .Fill(Color.Transparent, new SixLabors.ImageSharp.Drawing.RectangularPolygon(config.TextCornerRadius, config.TextCornerRadius, textWidth - config.TextCornerRadius, config.TextCornerRadius)));
-            textImage.Mutate(c => c.ApplyRoundedCorners(config.TextCornerRadius));
-            var center = new PointF(textImage.Width / 2f, textImage.Height / 2f);
-            var measured = TextMeasurer.MeasureSize(text, new TextOptions(font));
-            textImage.Mutate(c => c.DrawText(text, font, Color.White, new PointF(center.X - measured.Width / 2, center.Y - measured.Height / 2)));
+            var left = x + config.AFSize - (int)(textWidth / 1.5);
+            var top = y + config.AFSize - (int)(config.TextHeight / 1.5);
+            baseImage.DrawRoundedTile(SKColor.Parse("#4f4f4f"), left, top, textWidth, config.TextHeight, config.TextCornerRadius);
 
-            var baseCenter = new Point(x + config.AFSize, y + config.AFSize);
-            var textPosition = new Point(baseCenter.X - (int)(textImage.Width / 1.5), baseCenter.Y - (int)(textImage.Height / 1.5));
-            baseImage.Mutate(b => b.DrawImage(textImage, textPosition, 1f));
-        }
-
-        private static Color RarityColor(int rarity) {
-            return rarity switch {
-                1 => Color.ParseHex("#383834"),
-                2 => Color.ParseHex("#6cb6d9"),
-                3 => Color.ParseHex("#b72de0"),
-                4 => Color.ParseHex("#f2d61b"),
-                _ => Color.ParseHex("#383834")
-            };
+            var measured = font.MeasureText(text);
+            var capHeight = font.Metrics.CapHeight > 0 ? font.Metrics.CapHeight : -font.Metrics.Ascent;
+            baseImage.DrawTextFromTop(text, left + (textWidth - measured) / 2f, top + (config.TextHeight - capHeight) / 2f, font, SKColors.White);
         }
 
         // Pixel rect -> percentage-of-image hotspot.

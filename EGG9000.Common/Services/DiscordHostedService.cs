@@ -16,8 +16,7 @@ using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -434,17 +433,15 @@ namespace EGG9000.Common.Services {
             const double scaleFactorStep = 0.9;
 
             while(imageBytes.Length > maxSizeInBytes) {
-                using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
+                using var image = SKBitmap.Decode(imageBytes);
 
                 var scaleFactor = Math.Sqrt((double)maxSizeInBytes / imageBytes.Length) * scaleFactorStep;
                 var newWidth = (int)(image.Width * scaleFactor);
                 var newHeight = (int)(image.Height * scaleFactor);
 
-                image.Mutate(x => x.Resize(newWidth, newHeight));
-
-                using var ms = new MemoryStream();
-                image.Save(ms, new PngEncoder());
-                imageBytes = ms.ToArray();
+                using var resized = image.ResizeTo(newWidth, newHeight);
+                using var png = resized.Encode(SKEncodedImageFormat.Png, 100);
+                imageBytes = png.ToArray();
             }
 
             using var imageStream = new MemoryStream(imageBytes);
