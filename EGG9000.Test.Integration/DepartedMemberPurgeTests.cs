@@ -28,6 +28,7 @@ public class DepartedMemberPurgeTests {
     }
 
     [TestMethod]
+    [RequiresDocker]
     public async Task PendingAssignmentPurgeFilter_SelectsOnlyActiveUnjoinedThisGuild() {
         await using var ctx = new ApplicationDbContext(Options());
         await ctx.Database.MigrateAsync(TestContext!.CancellationToken);
