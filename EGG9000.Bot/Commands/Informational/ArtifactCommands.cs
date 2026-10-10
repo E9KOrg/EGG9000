@@ -260,8 +260,6 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("AfxSetsPage:*", ignoreGroupNames: true)]
         public async Task AfxSetsPage(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            await component.DeferAsync();
-            if(!component.HasResponded) await component.DeferAsync();
             var parts = data.Split(",");
             if(parts.Length < 3) { await component.RejectAsync("This button is from an older version of the bot. Run the command again."); return; }
             var discordId = ulong.Parse(parts[0]);
@@ -269,7 +267,7 @@ namespace EGG9000.Bot.Commands {
             var page = int.Parse(parts[2]);
 
             var user = Db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
-            if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) { return; }
+            if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) { await component.RejectAsync("That account no longer exists."); return; }
             var account = user.EggIncAccounts[accountIndex];
             var sets = account.Backup?.ArtifactSets;
             if(sets is null || sets.Count == 0) { await component.RejectAsync("No artifact sets are stored for this account anymore."); return; }
