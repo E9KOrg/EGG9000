@@ -40,6 +40,7 @@ namespace EGG9000.Bot.Services {
         private readonly ILogger<MessageHandlerService> _logger = logger;
         private readonly InteractionService _interactions = interactions;
         private readonly Guild _cpGuild = ResolveCpGuild(configuration, dbContextFactory);
+        private static readonly HttpClient _httpClient = new(new SocketsHttpHandler { PooledConnectionLifetime = System.TimeSpan.FromMinutes(2) });
 
         private static Guild ResolveCpGuild(IConfiguration configuration, IDbContextFactory<ApplicationDbContext> dbContextFactory) {
             _ = ulong.TryParse(configuration.GetConnectionString("CPGuildId"), out var _CPGuildId);
@@ -76,8 +77,7 @@ namespace EGG9000.Bot.Services {
             var attachment = message.Attachments.First();
             if(!attachment.ContentType.StartsWith("image/")) return;
 
-            using var httpClient = new HttpClient();
-            var imageStream = await httpClient.GetStreamAsync(attachment.Url);
+            var imageStream = await _httpClient.GetStreamAsync(attachment.Url);
             using var image = SixLabors.ImageSharp.Image.Load(imageStream);
 
             var croppedImage = EIIDScreenShots.CropScreenShot(image);
@@ -154,8 +154,7 @@ namespace EGG9000.Bot.Services {
             var attachment = message.Attachments.First();
             if(!attachment.ContentType.StartsWith("image/")) return;
 
-            using var httpClient = new HttpClient();
-            var imageStream = await httpClient.GetStreamAsync(attachment.Url);
+            var imageStream = await _httpClient.GetStreamAsync(attachment.Url);
             using var image = SixLabors.ImageSharp.Image.Load(imageStream);
 
             var croppedImage = EIIDScreenShots.CropScreenShot(image);

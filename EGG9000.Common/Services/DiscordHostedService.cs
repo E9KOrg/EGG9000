@@ -243,6 +243,7 @@ namespace EGG9000.Common.Services {
 
 
     public static partial class DiscordExtensions {
+        private static readonly HttpClient _httpClient = new(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(2) });
         public static async Task SendDMToKendrome(this DiscordSocketClient _discord, string message) {
             var kendromeUser = _discord.GetUser(248865520756064257);
             if(kendromeUser is null) return;
@@ -423,7 +424,6 @@ namespace EGG9000.Common.Services {
             var existingEmotes = await _client.Gateway.GetApplicationEmotesAsync();
             var imageUrl = newEgg.Icon.Url.ToString();
             byte[] imageBytes;
-            using var _httpClient = new HttpClient();
             using var response = await _httpClient.GetAsync(imageUrl, CancellationToken.None);
             response.EnsureSuccessStatusCode();
             imageBytes = await response.Content.ReadAsByteArrayAsync(CancellationToken.None);
