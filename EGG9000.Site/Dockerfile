@@ -1,5 +1,4 @@
-# Multi-stage build for ASP.NET Core 10 web application
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.1 AS base
 WORKDIR /app
 EXPOSE 8080
 
@@ -10,7 +9,7 @@ RUN apt-get update \
 
 USER app
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.1 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["EGG9000.Site/EGG9000.Site.csproj", "EGG9000.Site/"]
