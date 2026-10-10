@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Services;
 
 using Microsoft.EntityFrameworkCore;
@@ -93,7 +94,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("FeBack", ignoreGroupNames: true)]
         public async Task FeBack() {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = await BuildViewAsync(Db, client, "list", g);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
@@ -101,7 +102,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("FePick", ignoreGroupNames: true)]
         public async Task FePick(string[] values) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = await BuildViewAsync(Db, client, "detail", g, values.FirstOrDefault());
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
@@ -115,13 +116,13 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("FeEditText:*", ignoreGroupNames: true)]
         public async Task FeEditText(string data) {
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data);
-            if(t is null) { await Context.Interaction.DeferAsync(); return; }
+            if(t is null) { await ((SocketMessageComponent)Context.Interaction).RejectAsync("That topic no longer exists."); return; }
             await Context.Interaction.RespondWithModalAsync(TopicModal($"FeModal:edit:{data}", t).Build());
         }
 
         [ComponentInteraction("FeStaff:*", ignoreGroupNames: true)]
         public async Task FeStaff(string data) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
             if(t is not null) { t.StaffOnly = !t.StaffOnly; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
@@ -131,7 +132,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("FePalace:*", ignoreGroupNames: true)]
         public async Task FePalace(string data) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
             if(t is not null && IsPalaceGuild(g)) { t.PalaceOnly = !t.PalaceOnly; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
@@ -146,7 +147,7 @@ namespace EGG9000.Bot.Commands {
         public async Task FeWDn(string data) => await AdjustWeight(data, -1);
 
         private async Task AdjustWeight(string data, int delta) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
             if(t is not null) { t.Weight += delta; await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }
@@ -156,7 +157,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("FeDel:*", ignoreGroupNames: true)]
         public async Task FeDel(string data) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var t = await Db.FAQTopics.FirstOrDefaultAsync(x => x.InternalId == data && x.GuildId == g.Id);
             if(t is not null) { Db.FAQTopics.Remove(t); await Db.SaveChangesAsync(); Db.InvalidateFAQTopics(g); }

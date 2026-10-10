@@ -4,6 +4,7 @@ using Discord.WebSocket;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -223,7 +224,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgNav", ignoreGroupNames: true)]
         public async Task CfgNav(string[] values) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = BuildView(values.FirstOrDefault() ?? "overview", g);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });
@@ -231,7 +232,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgPickChannel:*", ignoreGroupNames: true)]
         public async Task CfgPickChannel(string slot, string[] values) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = BuildView("channels", g, values.FirstOrDefault());
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
@@ -239,7 +240,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgPickRole:*", ignoreGroupNames: true)]
         public async Task CfgPickRole(string slot, string[] values) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = BuildView("roles", g, values.FirstOrDefault());
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
@@ -247,7 +248,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgPickCoop", ignoreGroupNames: true)]
         public async Task CfgPickCoop(string[] values) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = BuildView("coop", g, values.FirstOrDefault());
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
@@ -255,7 +256,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgPickList", ignoreGroupNames: true)]
         public async Task CfgPickList(string[] values) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = BuildView("lists", g, values.FirstOrDefault());
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
@@ -263,7 +264,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgSetChannel:*", ignoreGroupNames: true)]
         public async Task CfgSetChannel(string data, IChannel[] channels) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildChannelType>(data, out var t)) {
                 SetChannel(g, t, channels.FirstOrDefault()?.Id ?? 0);
@@ -275,7 +276,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgSetRole:*", ignoreGroupNames: true)]
         public async Task CfgSetRole(string data, IRole[] roles) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildChannelType>(data, out var t)) {
                 SetChannel(g, t, roles.FirstOrDefault()?.Id ?? 0);
@@ -287,7 +288,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgClear:*", ignoreGroupNames: true)]
         public async Task CfgClear(string data) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildChannelType>(data, out var t)) {
                 SetChannel(g, t, 0);
@@ -300,7 +301,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgCoopEn:*", ignoreGroupNames: true)]
         public async Task CfgCoopEn(string data) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildCoopSetting>(data, out var s)) {
                 SetCoop(g, s, !g.GetCoopSetting(s).Enabled, null);
@@ -312,7 +313,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgCoopLock:*", ignoreGroupNames: true)]
         public async Task CfgCoopLock(string data) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             if(Enum.TryParse<GuildCoopSetting>(data, out var s)) {
                 SetCoop(g, s, null, !g.GetCoopSetting(s).Locked);
@@ -324,7 +325,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgToggle:*", ignoreGroupNames: true)]
         public async Task CfgToggle(string data) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
             if(f is not null && f.Kind == GuildConfigKind.Bool) {
@@ -337,7 +338,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgSetCsvCat:*", ignoreGroupNames: true)]
         public async Task CfgSetCsvCat(string data, IChannel[] channels) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
             if(f is not null) {
@@ -350,7 +351,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgSetCsvRole:*", ignoreGroupNames: true)]
         public async Task CfgSetCsvRole(string data, IRole[] roles) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
             if(f is not null) {
@@ -365,7 +366,7 @@ namespace EGG9000.Bot.Commands {
         public async Task CfgEdit(string data) {
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var f = GuildConfigReflection.Get(data);
-            if(f is null) { await Context.Interaction.DeferAsync(); return; }
+            if(f is null) { await ((SocketMessageComponent)Context.Interaction).RejectAsync("That setting no longer exists."); return; }
             var cur = f.Property.GetValue(g)?.ToString() ?? "";
             var hint = f.Kind switch {
                 GuildConfigKind.Int => $"{f.Description} (whole number, 0 or more)",
@@ -415,7 +416,7 @@ namespace EGG9000.Bot.Commands {
 
         [ComponentInteraction("CfgBack:*", ignoreGroupNames: true)]
         public async Task CfgBack(string data) {
-            await Context.Interaction.DeferAsync();
+            await ((SocketMessageComponent)Context.Interaction).DeferDisablingAsync();
             var g = await LoadGuild(Db, Context.Guild?.Id);
             var (embed, components) = BuildView(string.IsNullOrEmpty(data) ? "overview" : data, g);
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = components; });

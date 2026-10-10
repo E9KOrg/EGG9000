@@ -5,6 +5,7 @@ using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Helpers.Discord.Paging;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -129,12 +130,12 @@ namespace EGG9000.Bot.Commands.Informational {
             var (dbUserId, accountIndex, page) = EBHistoryPager.ParseCustomId(data);
 
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.Id == dbUserId);
-            if(dbuser is null || accountIndex < 0 || accountIndex >= dbuser.EggIncAccounts.Count) return;
+            if(dbuser is null || accountIndex < 0 || accountIndex >= dbuser.EggIncAccounts.Count) { await component.RejectAsync("That account no longer exists."); return; }
             if(component.User.Id != dbuser.DiscordId) { await Pager.RejectNonInvokerAsync(component); return; }
 
             var account = dbuser.EggIncAccounts[accountIndex];
             var snapshots = await Db.UserSnapShots.AsQueryable().Where(x => x.UserId == dbuser.Id && x.EggIncID == account.Id).ToListAsync();
-            if(snapshots.Count == 0) return;
+            if(snapshots.Count == 0) { await component.RejectAsync("No EB history is stored for this account anymore."); return; }
 
             var (lines, headerRow) = BuildEntries(snapshots);
             var preamble = $"{component.User.Mention} - {account.Backup?.UserName ?? account.Name}'s Earnings Boost rank history, with a first entry from {DiscordHelpers.TimeStamper(snapshots.First().Date)}.";

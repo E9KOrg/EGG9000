@@ -759,7 +759,7 @@ namespace EGG9000.Bot.Commands {
 
             if(existingXrefs.Any(x => x.EggIncId == account.Id)) {
                 var xref = existingXrefs.First();
-                await component.UpdateAsync(x => {
+                await component.ModifyOriginalResponseAsync(x => {
                     x.Content = ""; x.Embed = EmbedError($"You already have an assigned coop for <#{guildContract.DiscordChannelId}>. A new one was not created. Access your existing coop here: " +
                     $"<#{xref.Coop.ThreadID}>");
                 });
@@ -767,7 +767,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             if(activeXrefs.Count(x => x.EggIncId == account.Id) >= 4) {
-                await component.UpdateAsync(x => { x.Content = ""; x.Embed = EmbedError($"You have 4 active coops, and cannot be assigned a new one at this time. Try again when a current coop finishes."); });
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"You have 4 active coops, and cannot be assigned a new one at this time. Try again when a current coop finishes."); });
                 return;
             }
 
@@ -998,11 +998,17 @@ namespace EGG9000.Bot.Commands {
 
             var contractId = data.Split("|")[1];
             var contract = await Db.Contracts.FirstOrDefaultAsync(c => c.ID == contractId);
-            if(contract is null) return;
+            if(contract is null) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedError("That contract no longer exists."); });
+                return;
+            }
 
             var coopId = data.Split("|")[2];
             var coop = await Db.Coops.FirstOrDefaultAsync(c => c.GuildId == dbuser.GuildId && c.Name == coopId);
-            if(coop is null) return;
+            if(coop is null) {
+                await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedError($"Co-op `{coopId}` no longer exists."); });
+                return;
+            }
 
             var coopChannel = _gateway.GetChannel(coop.ThreadID);
 

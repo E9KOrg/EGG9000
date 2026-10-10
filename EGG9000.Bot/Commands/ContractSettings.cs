@@ -7,6 +7,7 @@ using EGG9000.Common.Contracts.Assignment;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using EGG9000.Common.Helpers.Discord.ComponentsV2;
 
 using Microsoft.EntityFrameworkCore;
@@ -411,7 +412,7 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("MCSAccounts:*", ignoreGroupNames: true)]
         public async Task MCSAccounts(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            if(!component.HasResponded) await component.DeferAsync();
+            await component.DeferDisablingAsync();
             var bypassUserId = data.Split(",").Length > 0 ? Convert.ToUInt64(data.Split(",")[0]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = null; x.Flags = MessageFlags.ComponentsV2; x.Components = ContractSettingsCommands.GetAccountButtons(dbuser, "MCSMenu"); });
@@ -420,7 +421,7 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("MCSMenu:*", ignoreGroupNames: true)]
         public async Task MCSMenu(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            if(!component.HasResponded) await component.DeferAsync();
+            await component.DeferDisablingAsync();
             var bypassUserId = data.Split(",").Length > 1 ? Convert.ToUInt64(data.Split(",")[1]) : 0;
             var dbuser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == (bypassUserId != 0 ? bypassUserId : component.User.Id));
             var index = int.Parse(data.Split(",")[0]);

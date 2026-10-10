@@ -42,8 +42,9 @@ namespace EGG9000.Common.Helpers.Discord.Paging {
         }
 
         public async Task UpdateComponentAsync(SocketMessageComponent component) {
+            await component.DeferDisablingAsync();
             var (embed, components) = await RenderAsync();
-            await component.UpdateAsync(x => { x.Embed = embed; x.Components = components; });
+            await component.ModifyOriginalResponseAsync(x => { x.Embed = embed; x.Components = components; });
         }
 
         public static async Task RejectNonInvokerAsync(SocketMessageComponent component) {

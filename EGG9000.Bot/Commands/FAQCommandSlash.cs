@@ -200,7 +200,7 @@ namespace EGG9000.Bot.Commands {
         [ComponentInteraction("PostFAQ:*", ignoreGroupNames: true)]
         public async Task PostFAQ(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
-            if(!component.HasResponded) await component.DeferAsync();
+            await component.DeferDisablingAsync();
             var splits = data.Split(",");
 
             var guildId = ulong.Parse(splits[0]);
@@ -224,6 +224,7 @@ namespace EGG9000.Bot.Commands {
             var isOnCooldown = DateTimeOffset.UtcNow - (userRunning.LastFAQPosted ?? DateTimeOffset.MinValue) < TimeSpan.FromMinutes(guildObj.FAQTopicCooldownMinutes);
 
             if(isOnCooldown && !hasStaffPerms) {
+                await component.RestoreComponentsAsync();
                 await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedCustom(
                         EmbedHelpers.EmbedType.Alert,
                         "Post Cooldown",
@@ -234,7 +235,8 @@ namespace EGG9000.Bot.Commands {
 
             var faqTopics = await Db.QueryFAQTopicsAsync(guildObj, hasStaffPerms && withStaffPerms, query);
             if(faqTopics.Count == 0 || faqTopics[targetIndex] == null) {
-                await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Could not find an FAQ topic at this index. Try running {faqCommand} again."));
+                await component.RestoreComponentsAsync();
+                await component.ModifyOriginalResponseAsync(x => x.Embed = EmbedError("Could not find an FAQ topic at this index. Try running the FAQ command again."));
                 return;
             }
 

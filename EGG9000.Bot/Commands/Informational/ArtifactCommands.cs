@@ -38,7 +38,7 @@ namespace EGG9000.Bot.Commands {
             if(string.IsNullOrEmpty(B64) || B64.StartsWith("$ERROR$:")) {
                 await command.ModifyOriginalResponseAsync(x => {
                     x.Content = "";
-                    x.Embed = EmbedError($"User inventory could not be converted.${(B64.StartsWith("$ERROR$:") ? $"\n```{B64.Replace("$ERROR$:", "")}```" : "")}");
+                    x.Embed = EmbedError($"User inventory could not be converted.{(B64.StartsWith("$ERROR$:") ? $"\n```{B64.Replace("$ERROR$:", "")}```" : "")}");
                 });
                 return;
             }
@@ -178,9 +178,12 @@ namespace EGG9000.Bot.Commands {
         // Renders a single page on the Site, swaps in the new attachment, and refreshes the
         // full-resolution link. Used by the page + set-select component handlers.
         private static async Task RenderAfxPage(SocketMessageComponent component, DBUser user, EggIncAccount account, int accountIndex, List<List<EggIncArtifactInstance>> sets, int pageCount, int page, Embed detailEmbed) {
-            await component.DeferAsync();
+            await component.DeferDisablingAsync();
             var (pages, _) = await AfxSetsRender.AfxSetsB64(account, page);
-            if(pages is null || pages.Count == 0) return;
+            if(pages is null || pages.Count == 0) {
+                await component.RejectAsync("The artifact set image could not be generated. Try again in a moment.");
+                return;
+            }
 
             var file = new FileAttachment(new MemoryStream(Convert.FromBase64String(pages[0])), AfxSetsImageFileName, "Artifact Sets");
             await component.ModifyOriginalResponseAsync(x => {
@@ -258,19 +261,19 @@ namespace EGG9000.Bot.Commands {
         public async Task AfxSetsPage(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
             var parts = data.Split(",");
-            if(parts.Length < 3) return;
+            if(parts.Length < 3) { await component.RejectAsync("This button is from an older version of the bot. Run the command again."); return; }
             var discordId = ulong.Parse(parts[0]);
             var accountIndex = int.Parse(parts[1]);
             var page = int.Parse(parts[2]);
 
             var user = Db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
-            if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
+            if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) { await component.RejectAsync("That account no longer exists."); return; }
             var account = user.EggIncAccounts[accountIndex];
             var sets = account.Backup?.ArtifactSets;
-            if(sets is null || sets.Count == 0) return;
+            if(sets is null || sets.Count == 0) { await component.RejectAsync("No artifact sets are stored for this account anymore."); return; }
             var perPage = AfxSetsCreatorConfig.DefaultSetsPerPage;
             var pageCount = (sets.Count + perPage - 1) / perPage;
-            if(page < 0 || page >= pageCount) return;
+            if(page < 0 || page >= pageCount) { await component.RejectAsync("That page no longer exists."); return; }
 
             await RenderAfxPage(component, user, account, accountIndex, sets, pageCount, page, AfxSetsDetailEmbed(null));
         }
@@ -279,20 +282,20 @@ namespace EGG9000.Bot.Commands {
         public async Task AfxSetsSelect(string data) {
             var component = (SocketMessageComponent)Context.Interaction;
             var parts = data.Split(",");
-            if(parts.Length < 3) return;
+            if(parts.Length < 3) { await component.RejectAsync("This menu is from an older version of the bot. Run the command again."); return; }
             var discordId = ulong.Parse(parts[0]);
             var accountIndex = int.Parse(parts[1]);
             var page = int.Parse(parts[2]);
             var selected = int.Parse(component.Data.Values.First());
 
             var user = Db.DBUsers.FirstOrDefault(x => x.DiscordId == discordId);
-            if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) return;
+            if(user is null || user.EggIncAccounts.Count - 1 < accountIndex) { await component.RejectAsync("That account no longer exists."); return; }
             var account = user.EggIncAccounts[accountIndex];
             var sets = account.Backup?.ArtifactSets;
-            if(sets is null || selected < 0 || selected >= sets.Count) return;
+            if(sets is null || selected < 0 || selected >= sets.Count) { await component.RejectAsync("That set no longer exists."); return; }
             var perPage = AfxSetsCreatorConfig.DefaultSetsPerPage;
             var pageCount = (sets.Count + perPage - 1) / perPage;
-            if(page < 0 || page >= pageCount) return;
+            if(page < 0 || page >= pageCount) { await component.RejectAsync("That page no longer exists."); return; }
 
             await RenderAfxPage(component, user, account, accountIndex, sets, pageCount, page, AfxSetsDetailEmbed(sets[selected], selected));
         }

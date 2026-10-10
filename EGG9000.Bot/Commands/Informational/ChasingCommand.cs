@@ -6,6 +6,7 @@ using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
@@ -59,14 +60,14 @@ namespace EGG9000.Bot.Commands.Informational {
                 return;
             }
 
-            if(!component.HasResponded) await component.DeferAsync();
+            await component.DeferDisablingAsync();
 
-            var dbUser = await Db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            if(dbUser is null) return;
-            var account = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            if(dbUser is null) { await component.RejectAsync("Could not find your record. Are you registered?"); return; }
+            var account = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]) ?? dbUser.EggIncAccounts.First();
             var parameter = (ChasingParameters)int.Parse(dataObjs[1]);
 
-            var embed = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), Db);
+            var embed = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, account, Db);
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = null; });
         }
 
