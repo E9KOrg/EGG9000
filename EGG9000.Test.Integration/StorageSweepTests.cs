@@ -15,6 +15,7 @@ namespace EGG9000.Test.Integration;
 
 [TestClass]
 [TestCategory("Integration")]
+[RequiresDocker]
 public class StorageSweepTests {
     public TestContext? TestContext { get; set; }
 
