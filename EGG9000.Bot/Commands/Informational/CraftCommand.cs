@@ -68,17 +68,17 @@ namespace EGG9000.Bot.Commands.Informational {
             var originalUserId = ulong.Parse(dataObjs[2]);
 
             if(component.User.Id != originalUserId) {
-                await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                await component.RejectAsync("This wasn't yours to run - don't click others' commands!");
                 return;
             }
 
-            var user = await Db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            if(user is null) return;
+            var user = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            if(user is null) { await component.RejectAsync("Could not find your record. Are you registered?"); return; }
             var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[1]);
 
             var embed = await CraftedCountEmbedBuilder(account, requestedArtifact, await Db.CachedEiContractsAsync());
-            await component.UpdateAsync(x => { x.Components = null; x.Embed = embed; x.Content = null; });
+            await component.ModifyOriginalResponseAsync(x => { x.Components = null; x.Embed = embed; x.Content = null; });
         }
 
         private async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
@@ -159,19 +159,19 @@ namespace EGG9000.Bot.Commands.Informational {
             var originalUserId = ulong.Parse(dataObjs[4]);
 
             if(component.User.Id != originalUserId) {
-                await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                await component.RejectAsync("This wasn't yours to run - don't click others' commands!");
                 return;
             }
 
-            var user = await Db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            if(user is null) return;
+            var user = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            if(user is null) { await component.RejectAsync("Could not find your record. Are you registered?"); return; }
             var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var quality = (TierInput)int.Parse(dataObjs[1]);
             var quantity = int.Parse(dataObjs[2]);
             var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[3]);
 
             var embeds = await CraftStringBuilder(account, quantity, quality, requestedArtifact, await Db.CachedEiContractsAsync());
-            await component.UpdateAsync(x => { x.Components = null; x.Content = ""; x.Embeds = embeds.ToArray(); });
+            await component.ModifyOriginalResponseAsync(x => { x.Components = null; x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
         private async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {

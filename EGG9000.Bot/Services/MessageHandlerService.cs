@@ -14,7 +14,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-using SixLabors.ImageSharp.Formats.Png;
+using SkiaSharp;
 
 using System;
 using System.IO;
@@ -79,22 +79,23 @@ namespace EGG9000.Bot.Services {
             var attachment = message.Attachments.First();
             if(!attachment.ContentType.StartsWith("image/")) return;
 
-            var imageStream = await _httpClient.GetStreamAsync(attachment.Url);
-            using var image = SixLabors.ImageSharp.Image.Load(imageStream);
+            var imageBytes = await _httpClient.GetByteArrayAsync(attachment.Url);
+            using var image = SKBitmap.Decode(imageBytes);
+            if(image is null) return;
 
-            var croppedImage = EIIDScreenShots.CropScreenShot(image);
+            using var croppedImage = EIIDScreenShots.CropScreenShot(image);
             var eiid = EIIDScreenShots.ReadText(croppedImage);
 
             var destThreadId = BuildConfig.IsRelease ? 1294422983904985098UL : 1294422767713652801UL;
 
             var destinationThread = _discord.GetChannel(destThreadId) as SocketThreadChannel;
 
-            using var imageMs = new MemoryStream();
-            image.Save(imageMs, new PngEncoder());
+            using var imagePng = image.Encode(SKEncodedImageFormat.Png, 100);
+            using var imageMs = new MemoryStream(imagePng.ToArray());
             var imageAttachment = new FileAttachment(imageMs, "Original_Image.png", "Original Image");
 
-            using var croppedMs = new MemoryStream();
-            croppedImage.Save(croppedMs, new PngEncoder());
+            using var croppedPng = croppedImage.Encode(SKEncodedImageFormat.Png, 100);
+            using var croppedMs = new MemoryStream(croppedPng.ToArray());
             var croppedImageAttachment = new FileAttachment(croppedMs, "Cropped_Image.png", "Cropped Image");
 
             var embedText = $"""
@@ -156,10 +157,11 @@ namespace EGG9000.Bot.Services {
             var attachment = message.Attachments.First();
             if(!attachment.ContentType.StartsWith("image/")) return;
 
-            var imageStream = await _httpClient.GetStreamAsync(attachment.Url);
-            using var image = SixLabors.ImageSharp.Image.Load(imageStream);
+            var imageBytes = await _httpClient.GetByteArrayAsync(attachment.Url);
+            using var image = SKBitmap.Decode(imageBytes);
+            if(image is null) return;
 
-            var croppedImage = EIIDScreenShots.CropScreenShot(image);
+            using var croppedImage = EIIDScreenShots.CropScreenShot(image);
             var eiid = EIIDScreenShots.ReadText(croppedImage);
             var eiidMatch = MyRegex().Match(eiid);
 

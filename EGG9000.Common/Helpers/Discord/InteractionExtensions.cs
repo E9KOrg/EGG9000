@@ -23,6 +23,42 @@ namespace EGG9000.Common.Helpers.Discord {
             return await i.GetOriginalResponseAsync();
         }
 
+        public static async Task DeferDisablingAsync(this SocketMessageComponent component) {
+            if(component.HasResponded) return;
+            var disabled = ComponentDisabling.DisabledCopy(component.Message);
+            if(disabled is null) {
+                await component.DeferAsync();
+                return;
+            }
+            var v2 = component.Message.IsComponentsV2();
+            await component.UpdateAsync(x => {
+                x.Components = disabled;
+                if(v2) x.Flags = MessageFlags.ComponentsV2;
+            });
+        }
+
+        public static async Task RejectAsync(this SocketMessageComponent component, string reason) {
+            if(component.HasResponded) {
+                await component.RestoreComponentsAsync();
+                await component.FollowupAsync(embed: EmbedHelpers.EmbedError(reason), ephemeral: true);
+            } else {
+                await component.RespondAsync(embed: EmbedHelpers.EmbedError(reason), ephemeral: true);
+            }
+        }
+
+        public static async Task RestoreComponentsAsync(this SocketMessageComponent component) {
+            var original = component.Message?.Components;
+            if(original is null || original.Count == 0) return;
+            var v2 = component.Message.IsComponentsV2();
+            var restored = v2
+                ? new ComponentBuilderV2().WithComponents(original.Select(c => c.ToBuilder()).ToList()).Build()
+                : ComponentBuilder.FromComponents(original).Build();
+            await component.ModifyOriginalResponseAsync(x => {
+                x.Components = restored;
+                if(v2) x.Flags = MessageFlags.ComponentsV2;
+            });
+        }
+
         public static async Task RespondWithPremiumRequiredAsync(this SocketInteraction i, RequestOptions options = null) =>
             await i.RespondAsyncGettingMessage("", embed: EmbedHelpers.EmbedCustom(EmbedHelpers.EmbedType.Error, "How did you get here...?", "Nothing in E9K is behind a paywall. If you're seeing this, there's been an error."), options: options);
 

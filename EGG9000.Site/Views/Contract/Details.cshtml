@@ -25,8 +25,23 @@
     var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin") || User.IsInRole("GuildLesserAdmin");
     var isStaff = isAdmin || User.IsInRole("GuildReadOnlyAdmin");
 
-    var activeCoops = currentCoops.Select(c => new {
-        Name = (isStaff || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
+    // Filter value for co-ops with no group label; cannot collide with a real label.
+    const string noGroup = "__none__";
+    var groupLabels = currentCoops.Select(c => Model.GroupLabel(c.Coop, guild)).ToList();
+    // Labelled groups first, then ungrouped. OrderBy is stable, so the default order holds within a group.
+    var groupOptions = groupLabels.Distinct().OrderBy(g => g is null).ThenBy(g => g, StringComparer.Ordinal).ToList();
+    // Each co-op's position in the "By group" sort, so the client only has to sort by one number.
+    var groupRanks = groupLabels
+        .Select((label, index) => (label, index))
+        .OrderBy(x => x.label is null).ThenBy(x => x.label, StringComparer.Ordinal)
+        .Select((x, rank) => (x.index, rank))
+        .ToDictionary(x => x.index, x => x.rank);
+
+    var activeCoops = currentCoops.Select((c, i) => new {
+        Group = groupLabels[i],
+        GroupKey = groupLabels[i] ?? noGroup,
+        GroupRank = groupRanks[i],
+        Name =(isStaff || c.CoopParticipants.Any(u => u.DiscordUser?.Id.ToString() == discordId)) ? c.Coop.Name : "",
         c.Coop.ContractID,
         CurrentCoop = c.CoopParticipants.Any(x => x.DiscordUser?.Id.ToString() == discordId),
         Status = c.Coop.Finished ? "Finished" : c.TimeRemaining < TimeSpan.Zero ? "Complete once everyone checks in" : $"Time to complete {c.TimeRemaining.Humanize(precision: 2).ShortenTime()}",
@@ -105,97 +120,7 @@
         Locked = !isAdmin
     });
 }
-<style>
-    #CurrentCoop {
-        border-color: #00ff90;
-    }
-
-    [data-bs-theme="dark"] #CurrentCoop {
-        border-color: #4c664b !important;
-    }
-
-    .card {
-        margin-bottom: 10px;
-    }
-
-    .card-header {
-        background-color: white;
-    }
-
-    .CurrentCoop .card-header {
-        background-color: #a2ffa1;
-    }
-
-    [data-bs-theme="dark"] .CurrentCoop .card-header {
-        background-color: #2c462b;
-    }
-
-    .card-body {
-        padding: 0 !important
-    }
-
-    .table {
-        margin-bottom: 0;
-    }
-
-    .card-header div {
-        float: left;
-    }
-
-    .card-header span {
-        font-weight: normal;
-        font-size: 90%;
-        float: right;
-    }
-
-    .dndPlaceHolder {
-        background-color: #ddd !important;
-        display: block;
-        min-height: 42px;
-    }
-
-    [data-bs-theme="dark"] .dndPlaceHolder {
-        background-color: #333 !important;
-    }
-
-    .container {
-        max-width: initial !important;
-    }
-
-    .scrollable {
-        height: 100%;
-        overflow: hidden;
-    }
-
-    .scrollable > * {
-        overflow: auto;
-        height: 100%;
-    }
-
-    .pb-3, .py-3 {
-        padding-bottom: 0;
-    }
-    .table td, .table th {
-        padding: .4rem !important;
-    }
-    .card-header {
-        padding: .4rem 1.25rem !important;
-    }
-    
-
-    [data-bs-theme="dark"] .pb-3, [data-bs-theme="dark"] .py-3 {
-    padding-bottom: 0 !important;
-}
-</style>
-        @if (isSolo) {<style>
-            .col-sm {
-                flex-grow: 0 !important;
-            }
-    </style>}
-
-
-
-<div x-data="detailsPage()">
+<div x-data="detailsPage()" class="contract-details @(isSolo ? "solo" : "")">
     <div style="float: left;">
         <h3><img src="@PlayerGradeDetails.GetImage(Model.League)" style="height: 1em;" /> @Model.GuildContract.Contract.Name</h3>
         <select id="League">
@@ -257,12 +182,29 @@
                 Note: The co-ops are sorted such that the top ones listed have spots available with the soonest ending on top.
             </p>
             }
-            <template x-for="(coop, coopIndex) in ActiveCoops" :key="coopIndex">
+            @if(groupOptions.Count > 1) {
+            <div class="mb-2 d-flex gap-2 align-items-center">
+                <label for="GroupFilter">Group</label>
+                <select id="GroupFilter" class="form-select form-select-sm w-auto" x-model="GroupFilter">
+                    <option value="">All</option>
+                    @foreach(var g in groupOptions) {
+                    <option value="@(g ?? noGroup)">@(g ?? "No group")</option>
+                    }
+                </select>
+                <label for="GroupSort">Sort</label>
+                <select id="GroupSort" class="form-select form-select-sm w-auto" x-model="GroupSort">
+                    <option value="default">Default</option>
+                    <option value="group">By group</option>
+                </select>
+            </div>
+            }
+            <template x-for="(coop, coopIndex) in visibleCoops()" :key="coopIndex">
                 <div class="card" :class="{ CurrentCoop: coop.CurrentCoop }">
                     <div x-show="coop.CurrentCoop" style="position: relative; top: -20px;" :id="coop.Name"></div>
                     <h5 class="card-header" @@click="coop.Hide = !coop.Hide" style="cursor:pointer;">
                         <a @@click.stop="" x-show="IsStaff || coop.CurrentCoop" :href="'/coop/' + coop.ContractID + '/' + coop.Name" x-text="coop.Name"></a>
                         <a @@click.stop="" x-show="(IsStaff || coop.CurrentCoop) && !coop.DeletedChannel" :href="'discord://discordapp.com/channels/' + coop.OverflowGuildId + '/' + coop.DiscordChannelId + '/'"><img src="/images/discordicon.png" style="max-height: 1em;" /></a>
+                        <span x-show="coop.Group" class="badge bg-secondary group-badge" style="user-select: none;" x-text="coop.Group"></span>
                         <span style="font-size: 0;"> - <span x-text="coop.MaxSize - coop.Users.length"></span> <span x-text="coop.MaxSize - coop.Users.length > 1 ? 'spots' : 'spot'"></span></span>
                         <div x-show="!IsStaff">Co-op</div>
                         <span style="user-select: none;" x-text="coop.Status"></span>
@@ -453,13 +395,7 @@
     </div>
 
 </div>
-@if(isSolo) {
-<style>
-    .row.scrollable {
-        display: block;
-    }
-</style>
-}
+
 
 @{
     //void PotentialRowDetails() {
@@ -526,6 +462,8 @@
                 SortSolo: 'Name',
                 CurrentCoopCount: @count,
                 UsersByEB: [],
+                GroupFilter: '',
+                GroupSort: 'default',
 
                 init() {
                     const _activeRaw = @Html.Raw(JsonConvert.SerializeObject(activeCoops));
@@ -548,6 +486,22 @@
                     }, 1000);
 
                     this.$nextTick(() => this.initSortable());
+                    // Filtering can render new coop cards, which need SortableJS attached.
+                    this.$watch('GroupFilter', () => this.$nextTick(() => this.initSortable()));
+                    this.$watch('GroupSort', () => this.$nextTick(() => this.initSortable()));
+                },
+
+                // Works on a copy so ActiveCoops keeps its server order and spot counts stay over every coop.
+                // GroupKey and GroupRank are computed server side.
+                visibleCoops() {
+                    let coops = this.ActiveCoops;
+                    if (this.GroupFilter) {
+                        coops = coops.filter(c => c.GroupKey === this.GroupFilter);
+                    }
+                    if (this.GroupSort === 'group') {
+                        coops = _.sortBy(coops, 'GroupRank');
+                    }
+                    return coops;
                 },
 
                 initSortable() {

@@ -1,8 +1,4 @@
-﻿using SixLabors.Fonts;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 
 using System;
 using System.Collections.Generic;
@@ -13,14 +9,14 @@ namespace EGG9000.Common.Helpers {
         private static readonly double MinRedPercent = 0.30;
         private static readonly double MinWhitePercent = 0.50;
 
-        public static Image<Rgba32> CropScreenShot(Image image) {
-            var rgbaImage = image.CloneAs<Rgba32>();
+        public static SKBitmap CropScreenShot(SKBitmap image) {
+            var rgbaImage = image.Copy(SKColorType.Rgba8888);
 
             var rows = new ImageRowStats[image.Height];
             for(var y = 0; y < image.Height; y++) {
                 rows[y] = new ImageRowStats();
                 for(var x = 0; x < image.Width; x++) {
-                    var pixel = rgbaImage[x, y];
+                    var pixel = rgbaImage.GetPixel(x, y);
                     if(IsWhite(pixel)) {
                         rows[y].WhitePixelCount++;
                     }
@@ -36,7 +32,7 @@ namespace EGG9000.Common.Helpers {
                         rows[y].MostlyRedRowCount = 1 + rows[y - 1].MostlyRedRowCount;
 
                     for(var x = 0; x < 20; x++) {
-                        rgbaImage[x, y] = new Rgba32(255, 0, 255);
+                        rgbaImage.SetPixel(x, y, new SKColor(255, 0, 255));
                     }
                 }
                 if(rows[y].RedPixelCount < rows[y].WhitePixelCount && rows[y].WhitePixelCount > image.Width * MinWhitePercent) {
@@ -44,7 +40,7 @@ namespace EGG9000.Common.Helpers {
                     if(y > 0)
                         rows[y].MostlyWhiteRowCount = 1 + rows[y - 1].MostlyWhiteRowCount;
                     for(var x = 0; x < 20; x++) {
-                        rgbaImage[x, y] = new Rgba32(0, 255, 255);
+                        rgbaImage.SetPixel(x, y, new SKColor(0, 255, 255));
                     }
                 }
 
@@ -54,24 +50,25 @@ namespace EGG9000.Common.Helpers {
 
             for(var y = EILocation.yStart; y < EILocation.yEnd; y++) {
                 for(var x = 20; x < 40; x++) {
-                    rgbaImage[x, y] = new Rgba32(255, 255, 0);
+                    rgbaImage.SetPixel(x, y, new SKColor(255, 255, 0));
                 }
             }
 
             if(EILocation.yStart > 0) {
-                rgbaImage.Mutate(x =>
-                x.Crop(new Rectangle((int)(image.Width * 0.25), EILocation.yStart, (int)(image.Width * 0.5), EILocation.yEnd - EILocation.yStart)));
+                var marked = rgbaImage;
+                rgbaImage = marked.Crop(SKRectI.Create((int)(image.Width * 0.25), EILocation.yStart, (int)(image.Width * 0.5), EILocation.yEnd - EILocation.yStart));
+                marked.Dispose();
 
                 for(var x = 0; x < rgbaImage.Width; x++) {
                     for(var y = 0; y < rgbaImage.Height; y++) {
-                        var pixel = new Rgba32(ContrastCurve(rgbaImage[x, y].R), ContrastCurve(rgbaImage[x, y].G), ContrastCurve(rgbaImage[x, y].B));
-                        rgbaImage[x, y] = pixel;
+                        var p = rgbaImage.GetPixel(x, y);
+                        rgbaImage.SetPixel(x, y, new SKColor(ContrastCurve(p.Red), ContrastCurve(p.Green), ContrastCurve(p.Blue)));
                     }
                 }
                 for(var x = 0; x < rgbaImage.Width; x++) {
                     for(var y = 0; y < rgbaImage.Height; y++) {
                         if(!IsProximateToBlack(rgbaImage, x, y)) {
-                            rgbaImage[x, y] = new Rgba32(255, 255, 255);
+                            rgbaImage.SetPixel(x, y, new SKColor(255, 255, 255));
                         }
                     }
                 }
@@ -84,53 +81,11 @@ namespace EGG9000.Common.Helpers {
             return (byte)Math.Clamp(b * 3 - 256 * 2, 0, 255);
         }
 
-        public static void WriteText(Image<Rgba32> image, String text, Color color) {
-            FontCollection collection = new();
-            FontFamily family = collection.Add("Fonts/always together.otf");
-            Font font = family.CreateFont(24, FontStyle.Italic);
-
-
-            var options = new TextOptions(font) {
-                Dpi = 72,
-                KerningMode = KerningMode.Standard
-            };
-
-            var rect = TextMeasurer.MeasureBounds(text, options);
-
-            image.Mutate(x => x
-            .Resize(new ResizeOptions {
-                Mode = ResizeMode.BoxPad,
-                Position = AnchorPositionMode.Bottom,
-                PadColor = new Rgba32(255, 255, 255),
-                Size = new Size(image.Width, (int)(image.Height * 1.2)),
-            })
-            .DrawText(
-                text,
-                font,
-                color,
-                new PointF((image.Width - rect.Width) / 2,
-                        5)));
-        }
-
-        public static void WriteText2(Image<Rgba32> image, String text, Color color, int left, int top) {
-            FontCollection collection = new();
-            SystemFonts.TryGet("Arial", out FontFamily family);
-            Font font = family.CreateFont(10, FontStyle.Regular);
-
-
-            var options = new TextOptions(font) {
-                Dpi = 72,
-                KerningMode = KerningMode.Standard
-            };
-
-            var rect = TextMeasurer.MeasureBounds(text, options);
-
-            image.Mutate(x => x
-            .DrawText(
-                text,
-                font,
-                color,
-                new PointF(left, top)));
+        public static void WriteText2(SKBitmap image, String text, SKColor color, int left, int top) {
+            using var typeface = SKTypeface.FromFamilyName("Arial");
+            using var font = new SKFont(typeface, 10);
+            using var canvas = new SKCanvas(image);
+            canvas.DrawTextFromTop(text, left, top, font, color);
         }
 
         public struct ImageRowStats {
@@ -142,14 +97,14 @@ namespace EGG9000.Common.Helpers {
             public int MostlyWhiteRowCount;
         }
 
-        public static bool IsWhite(Rgba32 color) {
-            return color.R >= 240 && color.G >= 240 && color.B >= 240;
+        public static bool IsWhite(SKColor color) {
+            return color.Red >= 240 && color.Green >= 240 && color.Blue >= 240;
         }
-        public static bool IsRed(Rgba32 color) {
-            return color.R >= 200 && color.G <= 75 && color.B <= 75;
+        public static bool IsRed(SKColor color) {
+            return color.Red >= 200 && color.Green <= 75 && color.Blue <= 75;
         }
-        public static bool IsBlack(Rgba32 color) {
-            return color.R < 100 && color.G < 100 && color.B < 100;
+        public static bool IsBlack(SKColor color) {
+            return color.Red < 100 && color.Green < 100 && color.Blue < 100;
         }
 
         public static (int yStart, int yEnd) FindEILocation(ImageRowStats[] rows) {
@@ -167,22 +122,23 @@ namespace EGG9000.Common.Helpers {
             return (0, 0);
         }
 
-        public static bool IsProximateToBlack(Image<Rgba32> image, int x, int y) {
-            if(IsBlack(image[x, y]))
+        public static bool IsProximateToBlack(SKBitmap image, int x, int y) {
+            var pixel = image.GetPixel(x, y);
+            if(IsBlack(pixel))
                 return true;
-            if(IsWhite(image[x, y]))
+            if(IsWhite(pixel))
                 return false;
             // Go out and find the darkest pixel within 5 pixels
             (int x, int y) darkest = (x, y);
             for(var i = 0; i < image.Height / 30; i++) {
                 darkest = FindDarkestNeighbor(image, darkest.x, darkest.y);
-                if(darkest.x > -1 && IsBlack(image[darkest.x, darkest.y]))
+                if(darkest.x > -1 && IsBlack(image.GetPixel(darkest.x, darkest.y)))
                     return true;
             }
             return false;
         }
 
-        public static (int x, int y) FindDarkestNeighbor(Image<Rgba32> image, int x, int y) {
+        public static (int x, int y) FindDarkestNeighbor(SKBitmap image, int x, int y) {
             var darkest = 255;
             var darkestx = -1;
             var darkesty = -1;
@@ -192,8 +148,9 @@ namespace EGG9000.Common.Helpers {
                     if(dx == 0 && dy == 0) continue;
                     if(x + dx < 0 || x + dx >= image.Width || y + dy < 0 || y + dy >= image.Height)
                         continue;
-                    if(image[x + dx, y + dy].R < darkest) {
-                        darkest = image[x + dx, y + dy].R;
+                    var red = image.GetPixel(x + dx, y + dy).Red;
+                    if(red < darkest) {
+                        darkest = red;
                         darkestx = x + dx;
                         darkesty = y + dy;
                     }
@@ -202,11 +159,11 @@ namespace EGG9000.Common.Helpers {
             return (darkestx, darkesty);
         }
 
-        public static List<(Image<Rgba32>, char)> generatedImages = null;
+        public static List<(SKBitmap, char)> generatedImages = null;
         private static readonly Object thisLock = new();
 
 
-        public static string ReadText(Image<Rgba32> image) {
+        public static string ReadText(SKBitmap image) {
             lock(thisLock) {
                 if(generatedImages == null || generatedImages.Count == 0)
                     GenerateImages();
@@ -215,24 +172,24 @@ namespace EGG9000.Common.Helpers {
             var charPositions = FindCharPositions(image);
             var outtext = "";
             foreach(var r in charPositions) {
-                var clone = image.Clone();
-                clone.Mutate(x => x.Crop(r));
+                using var clone = image.Crop(r);
                 outtext += FindMatch(clone);
             }
             return outtext;
         }
 
-        public static Image<Rgba32> SampleLetters(Image<Rgba32> image) {
+        public static SKBitmap SampleLetters(SKBitmap image) {
             lock(thisLock) {
                 if(generatedImages == null || generatedImages.Count == 0)
                     GenerateImages();
             }
 
             var charPositions = FindCharPositions(image);
-            var characters = new List<Image<Rgba32>>();
             foreach(var r in charPositions.Skip(1)) {
 
-                var retImage = new Image<Rgba32>(generatedImages.Sum(x => x.Item1.Width), generatedImages[0].Item1.Height * 2 + 20, new Rgba32(255, 255, 255));
+                var footerTop = generatedImages[0].Item1.Height * 2;
+                var retImage = new SKBitmap(generatedImages.Sum(x => x.Item1.Width), footerTop + 20);
+                retImage.Erase(SKColors.White);
 
                 var currentX = 0;
 
@@ -240,9 +197,8 @@ namespace EGG9000.Common.Helpers {
                 var maxCx1 = 0;
                 var maxCx2 = 0;
                 foreach(var image2 in generatedImages) {
-                    var clone = image.Clone();
-                    clone.Mutate(x => x.Crop(r));
-                    clone.Mutate(x => x.Resize(new ResizeOptions { Mode = ResizeMode.Pad, Size = new Size(0, image2.Item1.Height) }));
+                    using var cropped = image.Crop(r);
+                    using var clone = ResizeToHeight(cropped, image2.Item1.Height);
 
                     var c = CompareImages(clone, image2.Item1, true);
 
@@ -251,35 +207,30 @@ namespace EGG9000.Common.Helpers {
                         maxCx1 = currentX; maxCx2 = currentX + image2.Item1.Width;
                     }
 
-                    retImage.Mutate(x =>
-                        x.DrawImage(clone, new Point(currentX, 0), 1)
-                        .DrawImage(image2.Item1, new Point(currentX, image2.Item1.Height), 1)
-                        .FillPolygon(new Rgba32(255, 255, 255),
-                            new PointF(currentX, generatedImages[0].Item1.Height * 2 + 5),
-                            new PointF(currentX + image2.Item1.Width, generatedImages[0].Item1.Height * 2 + 5),
-                            new PointF(currentX + image2.Item1.Width, generatedImages[0].Item1.Height * 2 + 20),
-                            new PointF(currentX, generatedImages[0].Item1.Height * 2 + 20))
-                    );
+                    using(var canvas = new SKCanvas(retImage)) {
+                        canvas.DrawBitmap(clone, currentX, 0, SKSamplingOptions.Default);
+                        canvas.DrawBitmap(image2.Item1, currentX, image2.Item1.Height, SKSamplingOptions.Default);
+                        using var white = new SKPaint { Color = SKColors.White };
+                        canvas.DrawRect(currentX, footerTop + 5, image2.Item1.Width, 15, white);
+                    }
 
-                    WriteText2(retImage, Math.Round(c, 3).ToString().Replace("0.", "."), new Rgba32(0, 0, 127), currentX, generatedImages[0].Item1.Height * 2 + 5);
+                    WriteText2(retImage, Math.Round(c, 3).ToString().Replace("0.", "."), new SKColor(0, 0, 127), currentX, footerTop + 5);
 
 
                     currentX += image2.Item1.Width;
                 }
 
-                retImage.Mutate(x => x.FillPolygon(new Rgba32(0, 255, 0),
-                    new PointF(maxCx1, generatedImages[0].Item1.Height * 2 + 15),
-                    new PointF(maxCx2, generatedImages[0].Item1.Height * 2 + 15),
-                    new PointF(maxCx2, generatedImages[0].Item1.Height * 2 + 20),
-                    new PointF(maxCx1, generatedImages[0].Item1.Height * 2 + 20)
-                    ));
+                using(var canvas = new SKCanvas(retImage)) {
+                    using var green = new SKPaint { Color = new SKColor(0, 255, 0) };
+                    canvas.DrawRect(maxCx1, footerTop + 15, maxCx2 - maxCx1, 5, green);
+                }
                 return retImage;
             }
             return null;
         }
 
 
-        public static char FindMatch(Image<Rgba32> image, bool showDebug = false) {
+        public static char FindMatch(SKBitmap image, bool showDebug = false) {
 
             var matches = generatedImages.Select(x => {
 
@@ -288,9 +239,8 @@ namespace EGG9000.Common.Helpers {
             return matches.MaxBy(x => x.Item1).Item2;
         }
 
-        public static double CompareImages(Image<Rgba32> image1, Image<Rgba32> image2, bool showDebug = false) {
-            var i1c = image1.Clone();
-            if(!showDebug) i1c.Mutate(x => x.Resize(new ResizeOptions { Mode = ResizeMode.Pad, Size = new Size(0, image2.Height) }));
+        public static double CompareImages(SKBitmap image1, SKBitmap image2, bool showDebug = false) {
+            using var i1c = showDebug ? image1.Copy() : ResizeToHeight(image1, image2.Height);
 
             double matches = 0;
 
@@ -305,19 +255,25 @@ namespace EGG9000.Common.Helpers {
                         break;
                 }
                 for(var y = 0; y < height; y++) {
-                    if(Math.Abs(i1c[x, y].R - image2[x, y].R) < 100) {
-                        if(i1c[x, y].R < 100) {
+                    var red = i1c.GetPixel(x, y).Red;
+                    if(Math.Abs(red - image2.GetPixel(x, y).Red) < 100) {
+                        if(red < 100) {
                             matches += 1;
-                            if(showDebug) image1[x, y] = new Rgba32(255, 0, 255);
+                            if(showDebug) image1.SetPixel(x, y, new SKColor(255, 0, 255));
                         } else {
                             matches++;
-                            if(showDebug) image1[x, y] = new Rgba32(255, 255, 0);
+                            if(showDebug) image1.SetPixel(x, y, new SKColor(255, 255, 0));
                         }
                     }
                 }
             }
 
             return (double)matches / ((width * height));
+        }
+
+        private static SKBitmap ResizeToHeight(SKBitmap image, int height) {
+            var width = Math.Max(1, (int)Math.Round(image.Width * (double)height / image.Height));
+            return image.ResizeTo(width, height);
         }
 
         public static void GenerateImages() {
@@ -330,24 +286,17 @@ namespace EGG9000.Common.Helpers {
             var eiid = "EI" + new String([.. chars]);
 
             generatedImages = [];
-            FontCollection collection = new();
-            FontFamily family = collection.Add("Fonts/always together.otf");
-            Font font = family.CreateFont((float)(100), FontStyle.Italic);
-            var options = new TextOptions(font) {
-                Dpi = 72,
-                KerningMode = KerningMode.Auto
-            };
+            using var typeface = SKTypeface.FromFile("Fonts/always together.otf");
+            using var font = new SKFont(typeface, 100);
             foreach(var r in eiid) {
-                var rect = TextMeasurer.MeasureBounds(r.ToString(), options);
+                font.MeasureText(r.ToString(), out var rect);
 
                 for(var i = -2; i <= 2; i++) {
                     for(var j = -2; j <= 2; j++) {
-                        var image = new Image<Rgba32>((int)rect.Width, (int)rect.Height, new Rgba32(255, 255, 255));
-                        image.Mutate(x => x.DrawText(r.ToString(),
-                        font,
-                        new Color(new Rgba32(20, 20, 20)),
-                        new PointF(
-                            -1 + i * 2, 8 + j * 2)));
+                        var image = new SKBitmap((int)rect.Width, (int)rect.Height);
+                        image.Erase(SKColors.White);
+                        using var canvas = new SKCanvas(image);
+                        canvas.DrawTextFromTop(r.ToString(), -1 + i * 2, 8 + j * 2, font, new SKColor(20, 20, 20));
                         generatedImages.Add((image, r));
                     }
                 }
@@ -357,12 +306,12 @@ namespace EGG9000.Common.Helpers {
         }
 
 
-        public static (int y1, int y2) FindCharacterTopBottom(Image<Rgba32> rgbaImage, int x1, int x2) {
+        public static (int y1, int y2) FindCharacterTopBottom(SKBitmap rgbaImage, int x1, int x2) {
             var y1 = 0;
             for(var y = 0; y < rgbaImage.Height; y++) {
                 var anyBlack = false;
                 for(var x = x1; x <= x2; x++) {
-                    var pixel = rgbaImage[x, y];
+                    var pixel = rgbaImage.GetPixel(x, y);
                     if(IsBlack(pixel)) {
                         anyBlack = true;
                         x = rgbaImage.Width;
@@ -378,12 +327,12 @@ namespace EGG9000.Common.Helpers {
             return (0, 0);
         }
 
-        public static List<Rectangle> FindCharPositions(Image<Rgba32> rgbaImage) {
-            var charPositions = new List<Rectangle>();
+        public static List<SKRectI> FindCharPositions(SKBitmap rgbaImage) {
+            var charPositions = new List<SKRectI>();
             for(var x = 0; x < rgbaImage.Width; x++) {
                 var anyBlack = false;
                 for(var y = 0; y < rgbaImage.Height; y++) {
-                    var pixel = rgbaImage[x, y];
+                    var pixel = rgbaImage.GetPixel(x, y);
                     if(IsBlack(pixel)) {
                         anyBlack = true;
                         y = rgbaImage.Height;
@@ -394,7 +343,7 @@ namespace EGG9000.Common.Helpers {
                     for(; x < rgbaImage.Width; x++) {
                         anyBlack = false;
                         for(var y = 0; y < rgbaImage.Height; y++) {
-                            var pixel = rgbaImage[x, y];
+                            var pixel = rgbaImage.GetPixel(x, y);
                             if(IsBlack(pixel)) {
                                 anyBlack = true;
                                 y = rgbaImage.Height;
@@ -402,7 +351,7 @@ namespace EGG9000.Common.Helpers {
                         }
                         if(!anyBlack) {
                             var charY = FindCharacterTopBottom(rgbaImage, startx, x - 1);
-                            charPositions.Add(new Rectangle(startx, charY.y1, x - startx - 1, charY.y2 - charY.y1));
+                            charPositions.Add(SKRectI.Create(startx, charY.y1, x - startx - 1, charY.y2 - charY.y1));
 
                             break;
                         }

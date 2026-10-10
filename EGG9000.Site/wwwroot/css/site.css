@@ -451,3 +451,13 @@ body {
     flex: 1;
     margin: 0 10px;
 }
+/* Contract Details page overrides for layout elements outside the view, so they cannot go in
+   the view's isolated Details.cshtml.css. */
+body:has(.contract-details) .container {
+    max-width: initial !important;
+}
+
+[data-bs-theme="dark"] body:has(.contract-details) .pb-3,
+[data-bs-theme="dark"] body:has(.contract-details) .py-3 {
+    padding-bottom: 0 !important;
+}

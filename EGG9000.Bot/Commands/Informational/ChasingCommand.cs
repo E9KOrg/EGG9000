@@ -6,6 +6,7 @@ using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
+using EGG9000.Common.Helpers.Discord;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
@@ -52,21 +53,16 @@ namespace EGG9000.Bot.Commands.Informational {
             var originalUserId = ulong.Parse(dataObjs[2]);
 
             if(component.User.Id != originalUserId) {
-                if(component.HasResponded)
-                    await component.ModifyOriginalResponseAsync(x => { x.Content = null; x.Embed = EmbedError("This wasn't yours to run - don't click others' commands!"); x.Components = null; });
-                else
-                    await component.RespondAsync(embed: EmbedError("This wasn't yours to run - don't click others' commands!"), ephemeral: true);
+                await component.RejectAsync("This wasn't yours to run - don't click others' commands!");
                 return;
             }
 
-            if(!component.HasResponded) await component.DeferAsync();
-
-            var dbUser = await Db.DBUsers.FirstAsync(x => x.DiscordId == component.User.Id);
-            if(dbUser is null) return;
-            var account = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
+            var dbUser = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
+            if(dbUser is null) { await component.RejectAsync("Could not find your record. Are you registered?"); return; }
+            var account = dbUser.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]) ?? dbUser.EggIncAccounts.First();
             var parameter = (ChasingParameters)int.Parse(dataObjs[1]);
 
-            var embed = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, dbUser.EggIncAccounts.First(), Db);
+            var embed = await ChasingStringBuilder(_client, parameter, dbUser.GuildId, account, Db);
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = embed; x.Components = null; });
         }
 

@@ -11,13 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using SixLabors.Fonts;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -42,36 +36,22 @@ namespace EGG9000.Site.Controllers {
         private readonly IMemoryCache _cache = cache;
         private readonly LeaderboardService _leaderboards = leaderboards;
 
-        private void DrawArtifactCell(Image<Rgba32> canvas, EggIncArtifactInstance inst, int cellX, int rowY, AfxSetsCreatorConfig config) {
+        private void DrawArtifactCell(SKCanvas canvas, EggIncArtifactInstance inst, int cellX, int rowY, AfxSetsCreatorConfig config) {
             var isFrag = inst.Artifact.ToString().Contains("FRAGMENT", StringComparison.CurrentCultureIgnoreCase);
             var afName = inst.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
             var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? inst.Tier + 1 : inst.Tier);
 
-            var bg = inst.Rarity switch {
-                1 => Color.ParseHex("#383834"),
-                2 => Color.ParseHex("#6cb6d9"),
-                3 => Color.ParseHex("#b72de0"),
-                4 => Color.ParseHex("#f2d61b"),
-                _ => Color.ParseHex("#383834")
-            };
-
             var afImagePath = GetWWWRelativePath(["images/artifacts", afName, $"{afName}_{afTier}.png"]);
             if(afImagePath == null) return;
-            using var afImage = Image.Load(afImagePath);
-            afImage.Mutate(i => i.Resize(new Size(config.AFSize, config.AFSize)));
-
-            using var background = BackgroundImage(bg, config.AFSize, config.AFCornerRadius);
-            background.Mutate(i => i.DrawImage(afImage, new Point(0, 0), 1f));
-            canvas.Mutate(b => b.DrawImage(background, new Point(cellX, rowY), 1f));
+            canvas.DrawRoundedTile(RarityColor(inst.Rarity), cellX, rowY, config.AFSize, config.AFSize, config.AFCornerRadius);
+            canvas.DrawImageFile(afImagePath, cellX, rowY, config.AFSize);
 
             var stoneIndex = 1;
             foreach(var stone in inst.Stones ?? []) {
                 var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
                 var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
                 if(stonePath == null) continue;
-                using var stoneImage = Image.Load(stonePath);
-                stoneImage.Mutate(i => i.Resize(new Size(config.StoneSize, config.StoneSize), true));
-                canvas.Mutate(b => b.DrawImage(stoneImage, new Point(cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5)), 1f));
+                canvas.DrawImageFile(stonePath, cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5), config.StoneSize);
                 stoneIndex++;
             }
         }
@@ -100,7 +80,8 @@ namespace EGG9000.Site.Controllers {
                 return NotFound(new { message = $"Image for event type '{customEvent.Type}' not found." });
             }
 
-            var baseImage = Image.Load(imagePath);
+            using var baseImage = SKImage.FromEncodedData(imagePath);
+            if(baseImage == null) return NotFound(new { message = $"Image for event type '{customEvent.Type}' could not be decoded." });
             var backgroundColor = customEvent.Type.ToLower() switch {
                 "epic-research-sale" => "#ef4444",
                 "piggy-boost" => "#f97316",
@@ -122,38 +103,28 @@ namespace EGG9000.Site.Controllers {
                 _ => "#9ca3af"
             };
 
-            var bgColor = Color.ParseHex(backgroundColor);
-
             var newWidth = (int)(baseImage.Width * 1.1);
             var newHeight = (int)(baseImage.Height * 1.1);
 
-            var newImage = new Image<Rgba32>(newWidth, newHeight);
+            using var surface = SKSurface.Create(new SKImageInfo(newWidth, newHeight));
+            var canvas = surface.Canvas;
 
             // CcOnly events (ULTRA-only) get a gradient background instead of a flat color.
-            if(customEvent.CcOnly) {
-                var leftColor = Color.ParseHex("#f5a709");
-                var rightColor = Color.ParseHex("#900fb1");
-
-                var gradientBrush = new LinearGradientBrush(
-                    new PointF(0, 0),
-                    new PointF(newWidth, 0),
-                    GradientRepetitionMode.None,
-                    new ColorStop(0, leftColor),
-                    new ColorStop(1, rightColor)
-                );
-
-                newImage.Mutate(ctx => ctx.Fill(gradientBrush));
-            } else {
-                newImage.Mutate(ctx => ctx.Fill(bgColor));
+            using(var fill = new SKPaint()) {
+                if(customEvent.CcOnly) {
+                    fill.Shader = SKShader.CreateLinearGradient(
+                        new SKPoint(0, 0),
+                        new SKPoint(newWidth, 0),
+                        [SKColor.Parse("#f5a709"), SKColor.Parse("#900fb1")],
+                        SKShaderTileMode.Clamp);
+                } else {
+                    fill.Color = SKColor.Parse(backgroundColor);
+                }
+                canvas.DrawRect(0, 0, newWidth, newHeight, fill);
             }
 
-            var xPos = (newWidth - baseImage.Width) / 2;
-            var yPos = (newHeight - baseImage.Height) / 2;
-            newImage.Mutate(ctx => ctx.DrawImage(baseImage, new Point(xPos, yPos), 1f));
-
-            using var ms = new MemoryStream();
-            newImage.Save(ms, new PngEncoder());
-            return File(ms.ToArray(), "image/png");
+            canvas.DrawImage(baseImage, (newWidth - baseImage.Width) / 2, (newHeight - baseImage.Height) / 2, SKSamplingOptions.Default);
+            return File(surface.EncodeImage(SKEncodedImageFormat.Png), "image/png");
         }
 
         [AllowAnonymous]
@@ -198,7 +169,8 @@ namespace EGG9000.Site.Controllers {
 
             var fontFilePath = GetWWWRelativePath(["Always Together.otf"]);
             if(fontFilePath == null) return BadRequest(new { message = "`Always Together.otf` could not be found." });
-            var font = new FontCollection().Add(fontFilePath).CreateFont(config.TextFontSize, FontStyle.Bold);
+            using var typeface = SKTypeface.FromFile(fontFilePath);
+            using var font = new SKFont(typeface, config.TextFontSize);
 
             // Render every page, or just the one requested (used for paginated views that show a
             // single page at a time).
@@ -217,18 +189,19 @@ namespace EGG9000.Site.Controllers {
 
                 var width = config.LabelWidth + (config.SlotsPerRow * config.AFSize) + (config.Padding * (config.SlotsPerRow + 1));
                 var height = (rowCount * config.AFSize) + (config.Padding * (rowCount + 1));
-                using var pageImage = new Image<Rgba32>(width, height);
-                pageImage.Mutate(x => x.Fill(Color.ParseHex("#242422")));
+                using var surface = SKSurface.Create(new SKImageInfo(width, height));
+                var pageImage = surface.Canvas;
+                pageImage.Clear(SKColor.Parse("#242422"));
 
                 for(var r = 0; r < rowCount; r++) {
                     var set = pageSets[r];
                     var rowY = config.Padding + r * (config.AFSize + config.Padding);
 
                     var label = $"Set {pageStart + r + 1}";
-                    pageImage.Mutate(x => x.DrawText(label, font, Color.White, new PointF(config.Padding, rowY + config.AFSize / 2f - config.TextFontSize / 2f)));
+                    pageImage.DrawTextFromTop(label, config.Padding, rowY + config.AFSize / 2f - config.TextFontSize / 2f, font, SKColors.White);
 
                     if(set.Count == 0) {
-                        pageImage.Mutate(x => x.DrawText("(empty)", font, Color.ParseHex("#8a8a86"), new PointF(config.LabelWidth + config.Padding, rowY + config.AFSize / 2f - config.TextFontSize / 2f)));
+                        pageImage.DrawTextFromTop("(empty)", config.LabelWidth + config.Padding, rowY + config.AFSize / 2f - config.TextFontSize / 2f, font, SKColor.Parse("#8a8a86"));
                         continue;
                     }
 
@@ -238,9 +211,7 @@ namespace EGG9000.Site.Controllers {
                     }
                 }
 
-                using var ms = new MemoryStream();
-                pageImage.Save(ms, new JpegEncoder());
-                pages.Add(Convert.ToBase64String(ms.ToArray()));
+                pages.Add(Convert.ToBase64String(surface.EncodeImage(SKEncodedImageFormat.Jpeg)));
             }
 
             return Ok(new AfxSetsB64Response { Pages = pages });
@@ -258,22 +229,24 @@ namespace EGG9000.Site.Controllers {
 
             var fontFilePath = GetWWWRelativePath(["Always Together.otf"]);
             if(fontFilePath == null) return BadRequest(new { message = "`Always Together.otf` could not be found." });
-            var font = new FontCollection().Add(fontFilePath).CreateFont(config.TextFontSize, FontStyle.Bold);
+            using var typeface = SKTypeface.FromFile(fontFilePath);
+            using var font = new SKFont(typeface, config.TextFontSize);
 
             var width = config.LabelWidth + (config.SlotsPerRow * config.AFSize) + (config.Padding * (config.SlotsPerRow + 1));
             var height = config.AFSize + config.Padding * 2;
-            using var pageImage = new Image<Rgba32>(width, height);
-            pageImage.Mutate(x => x.Fill(Color.ParseHex("#242422")));
+            using var surface = SKSurface.Create(new SKImageInfo(width, height));
+            var pageImage = surface.Canvas;
+            pageImage.Clear(SKColor.Parse("#242422"));
 
             var rowY = config.Padding;
             var label = request.Label ?? "Best Set";
             var maxLabelPx = config.LabelWidth - config.Padding;
-            if(TextMeasurer.MeasureSize(label, new TextOptions(font)).Width > maxLabelPx) {
-                while(label.Length > 1 && TextMeasurer.MeasureSize(label + "…", new TextOptions(font)).Width > maxLabelPx)
+            if(font.MeasureText(label) > maxLabelPx) {
+                while(label.Length > 1 && font.MeasureText(label + "…") > maxLabelPx)
                     label = label[..^1];
                 label += "…";
             }
-            pageImage.Mutate(x => x.DrawText(label, font, Color.White, new PointF(config.Padding, rowY + config.AFSize / 2f - config.TextFontSize / 2f)));
+            pageImage.DrawTextFromTop(label, config.Padding, rowY + config.AFSize / 2f - config.TextFontSize / 2f, font, SKColors.White);
 
             for(var c = 0; c < request.Artifacts.Count && c < config.SlotsPerRow; c++) {
                 var inst = request.Artifacts[c];
@@ -282,9 +255,7 @@ namespace EGG9000.Site.Controllers {
                 DrawArtifactCell(pageImage, inst, cellX, rowY, config);
             }
 
-            using var ms = new MemoryStream();
-            pageImage.Save(ms, new JpegEncoder());
-            return Ok(new ArtifactSetRenderResponse { Page = Convert.ToBase64String(ms.ToArray()) });
+            return Ok(new ArtifactSetRenderResponse { Page = Convert.ToBase64String(surface.EncodeImage(SKEncodedImageFormat.Jpeg)) });
         }
 
         [Authorize(AuthenticationSchemes = ApiKeyAuthenticationHandler.SchemeName)]

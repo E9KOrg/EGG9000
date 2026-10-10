@@ -180,6 +180,7 @@ namespace EGG9000.Bot.Commands {
         }
 
         [ComponentInteraction("WhatIsRSC", ignoreGroupNames: true)]
+        [NoAutoAck]
         public async Task WhatIsRSC() {
             var component = (SocketMessageComponent)Context.Interaction;
             var rscText = "The Contract Eggspert role is awarded to the top 10 highest scoring players of each scored contract, as well as the top-performers in Grades C, B, and A. The role will be removed after 7 days, and serves only to recognize eggceptional performance.\n\n" +

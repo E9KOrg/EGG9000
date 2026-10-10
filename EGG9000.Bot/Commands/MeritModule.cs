@@ -123,7 +123,7 @@ namespace EGG9000.Bot.Commands {
             if(component.User.Id != invokerId) { await Pager.RejectNonInvokerAsync(component); return; }
 
             var user = await Db.DBUsers.AsQueryable().FirstOrDefaultAsync(x => x.DiscordId == targetDiscordId);
-            if(user is null) return;
+            if(user is null) { await component.RejectAsync("That user no longer exists."); return; }
             var merits = await Db.Merit.AsQueryable().Where(x => x.UserId == user.Id).OrderBy(x => x.When).ToListAsync();
             var pager = new MeritListPager(BuildMeritLines(merits), page, $"<@{targetDiscordId}>", invokerId, targetDiscordId);
             await pager.UpdateComponentAsync(component);
