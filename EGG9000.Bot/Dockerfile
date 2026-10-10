@@ -1,10 +1,9 @@
-# Multi-stage build for .NET 10 worker
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.1 AS base
 WORKDIR /app
 
 USER app
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.1 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["EGG9000.Bot/EGG9000.Bot.csproj", "EGG9000.Bot/"]
