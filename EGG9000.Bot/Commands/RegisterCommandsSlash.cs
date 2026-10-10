@@ -330,7 +330,7 @@ namespace EGG9000.Bot.Commands {
             if(firstContactResponse == null) await channel.SendMessageAsync(compiledMessage);
 
             if(dbuser.EggIncAccounts.Count == 1) {
-                var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
+                var overflowRole = guild.GetRole(KnownRoles.Overflow);
                 if(overflowRole != null) {
                     if(await OverflowSyncing.IsMissingFromAnyOverflowAsync(guildObj, _client, user.Id)) {
                         await socketGuildUser.AddRoleAsync(overflowRole);
@@ -445,7 +445,7 @@ namespace EGG9000.Bot.Commands {
                 var guildUser = guild.Users.First(x => x.Id == Context.User.Id);
                 var dbguild = await Db.Guilds.FirstOrDefaultAsync(x => x.DiscordSeverId == guild.Id);
                 if(dbguild != null && dbguild.OverflowServers.Count > 0) {
-                    var overflowRole = guild.Roles.FirstOrDefault(x => x.Id == 775547850134257675);
+                    var overflowRole = guild.GetRole(KnownRoles.Overflow);
                     if(overflowRole != null) {
                         if(await OverflowSyncing.IsMissingFromAnyOverflowAsync(dbguild, _client, guildUser.Id)) {
                             await guildUser.AddRoleAsync(overflowRole);

@@ -228,6 +228,7 @@ public static class BotHostFactory {
 
             AddGated<MessageHandlerService>();
             AddGated<DiscordUserService>();
+            AddGated<OverflowRoleSyncService>();
             AddGated<UserGrades>();
 
             // Publishes a runtime snapshot over the bus every 15s; the site re-exposes it as bot_*
