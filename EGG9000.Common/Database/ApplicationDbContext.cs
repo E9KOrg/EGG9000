@@ -183,18 +183,18 @@ namespace EGG9000.Common.Database {
         // Drops the contract/season caches in this process, then broadcasts the same expiry to every other
         // process (bot <-> site) so a newly-ingested contract or season is visible everywhere immediately
         // instead of waiting out the 1h TTL.
-        public async Task ExpireCachedEiContractsAsync(MassTransit.IPublishEndpoint publishEndpoint) {
+        public async Task ExpireCachedEiContractsAsync(Bus.IMessageBus bus) {
             ExpireCachedEiContracts();
-            if(publishEndpoint is null)
+            if(bus is null)
                 return;
             foreach(var key in _contractCacheKeys)
-                await publishEndpoint.Publish(new Consumers.ExpireCacheMessage(key));
+                await bus.PublishAsync(new Bus.ExpireCacheMessage(key));
         }
 
         // Registers contract definitions fetched by identifier (get_contracts_info) that the periodicals
         // feed never delivered to us (e.g. single-player contracts), so they exist in the DB and resolve
         // in CachedEiContractsAsync for everyone. Inserts the row only; fires no channel/coop automation.
-        public async Task<int> RegisterMissingContractsAsync(IEnumerable<Ei.Contract> contractDefs, MassTransit.IPublishEndpoint publishEndpoint = null, CancellationToken ct = default) {
+        public async Task<int> RegisterMissingContractsAsync(IEnumerable<Ei.Contract> contractDefs, Bus.IMessageBus bus = null, CancellationToken ct = default) {
             var defs = contractDefs
                 .Where(c => c is not null && !string.IsNullOrEmpty(c.Identifier))
                 .GroupBy(c => c.Identifier)
@@ -216,8 +216,7 @@ namespace EGG9000.Common.Database {
             }
 
             await SaveChangesAsync(ct);
-            if(publishEndpoint is not null) await ExpireCachedEiContractsAsync(publishEndpoint);
-            else ExpireCachedEiContracts();
+            await ExpireCachedEiContractsAsync(bus);
             return missing.Count;
         }
 

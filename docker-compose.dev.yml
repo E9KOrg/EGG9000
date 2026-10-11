@@ -15,14 +15,13 @@ services:
     environment:
       DOTNET_ENVIRONMENT: Development
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__RabbitMQServer: rabbitmq|e9k|devpassword
+      E9K_SITE_BASEURL: http://site:5013
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
     networks:
       - egg9000_dev_network
     depends_on:
-      rabbitmq:
-        condition: service_healthy
+      - site
 
   site:
     image: kendrome/egg9000site:latest
@@ -36,40 +35,18 @@ services:
       DOTNET_ENVIRONMENT: Development
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "5013"
-      ConnectionStrings__RabbitMQServer: rabbitmq|e9k|devpassword
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
     ports:
       - "5013:5013"
     networks:
       - egg9000_dev_network
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5013/health"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 40s
-
-  rabbitmq:
-    image: rabbitmq:3.12-management
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: e9k
-      RABBITMQ_DEFAULT_PASS: devpassword
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    networks:
-      - egg9000_dev_network
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
 
 networks:
   egg9000_dev_network:

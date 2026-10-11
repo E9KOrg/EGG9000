@@ -187,7 +187,7 @@ namespace EGG9000.Bot.Automated {
             await _db.SaveChangesAsyncRetry(cancellationToken: CancellationToken.None, logger: _logger);
 
             if(cachesChanged)
-                await _db.ExpireCachedEiContractsAsync(_provider.GetService<MassTransit.IPublishEndpoint>());
+                await _db.ExpireCachedEiContractsAsync(_provider.GetService<Common.Bus.IMessageBus>());
 
             if(needsUpdate)
                 ContractUpdater.ResetTimeStatic();

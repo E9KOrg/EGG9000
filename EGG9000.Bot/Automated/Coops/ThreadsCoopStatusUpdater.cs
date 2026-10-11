@@ -6,8 +6,6 @@ using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using Ei;
 using Humanizer;
-using MassTransit.Testing;
-using MassTransit.Util;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

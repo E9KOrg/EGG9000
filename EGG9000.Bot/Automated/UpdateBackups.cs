@@ -81,8 +81,7 @@ namespace EGG9000.Bot.Automated {
             }
 
 
-            var publishEndpoint = _provider.GetService<MassTransit.IPublishEndpoint>();
-            var registered = await _db.RegisterMissingContractsAsync(discoveredContractDefs.Values, publishEndpoint, cancellationToken);
+            var registered = await _db.RegisterMissingContractsAsync(discoveredContractDefs.Values, _provider.GetService<Common.Bus.IMessageBus>(), cancellationToken);
             if(registered > 0)
                 _logger.LogInformation("Self-healed {count} contract(s) missing from the DB from player backups", registered);
 
