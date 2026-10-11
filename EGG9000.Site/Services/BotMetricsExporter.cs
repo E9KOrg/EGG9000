@@ -1,4 +1,4 @@
-using EGG9000.Common.Consumers;
+using EGG9000.Common.Bus;
 
 using Prometheus;
 

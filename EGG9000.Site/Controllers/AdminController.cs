@@ -1,7 +1,7 @@
 ﻿using Discord;
 using Discord.Rest;
 using Discord.WebSocket;
-using EGG9000.Common.Consumers;
+using EGG9000.Common.Bus;
 using EGG9000.Common.Contracts;
 using EGG9000.Common.Database;
 using EGG9000.Common.EggIncAPI;
@@ -11,7 +11,6 @@ using EGG9000.Common.Services;
 using EGG9000.Site.Models.Admin;
 using EGG9000.Site.Services;
 using Ei;
-using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -36,7 +35,7 @@ using static Ei.Contract.Types;
 namespace EGG9000.Site.Controllers {
     [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin,GuildReadOnlyAdmin")]
     public partial class AdminController(UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
-        ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IPublishEndpoint publishEndpoint) : E9KControllerBase {
+        ApplicationDbContext db, IMemoryCache cache, ILogger<AdminController> logger, IConfiguration configuration, IMessageBus bus) : E9KControllerBase {
 
         private readonly ApplicationDbContext _db = db;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
@@ -44,7 +43,7 @@ namespace EGG9000.Site.Controllers {
         private readonly IMemoryCache _cache = cache;
         private readonly ILogger<AdminController> _logger = logger;
         private readonly IConfiguration _configuration = configuration;
-        private readonly IPublishEndpoint _publishEndpoint = publishEndpoint;
+        private readonly IMessageBus _bus = bus;
 
         [Authorize(Roles = "Admin,GuildAdmin,GuildLesserAdmin")]
         public async Task<ActionResult> LatestDemerits([FromQuery] int count = 100) {
@@ -69,7 +68,7 @@ namespace EGG9000.Site.Controllers {
 
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> RestartBot() {
-            await _publishEndpoint.Publish(new RestartMessage());
+            await _bus.PublishAsync(new RestartMessage());
             return Content("Bot proccess ended.");
         }
 
@@ -86,7 +85,7 @@ namespace EGG9000.Site.Controllers {
 
             var oldTriple = $"{EggIncApi.ClientVersion} / {EggIncApi.AppVersion} / {EggIncApi.AppBuild}";
             EggIncApi.SetVersions((uint)clientVersion, appVersion, appBuild);
-            await _publishEndpoint.Publish(new UpdateApiVersionsMessage { ClientVersion = (uint)clientVersion, AppVersion = appVersion, AppBuild = appBuild });
+            await _bus.PublishAsync(new UpdateApiVersionsMessage((uint)clientVersion, appVersion, appBuild));
 
             return Content($"API versions updated and applied to all running instances.\nOld: {oldTriple}\nNew: {clientVersion} / {appVersion} / {appBuild}");
         }
@@ -248,7 +247,7 @@ namespace EGG9000.Site.Controllers {
 
             await _db.SaveChangesAsyncRetry(2);
             var guildKey = _db.InvalidateEventCustomizations(guild);
-            await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));
+            await _bus.PublishAsync(new ExpireCacheMessage(guildKey));
             return Json(new { });
         }
 
@@ -315,7 +314,7 @@ namespace EGG9000.Site.Controllers {
             }
 
             var guildKey = _db.InvalidateFAQTopics(guild);
-            await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));
+            await _bus.PublishAsync(new ExpireCacheMessage(guildKey));
             await _db.SaveChangesAsync();
             return Json(new { });
         }
@@ -339,7 +338,7 @@ namespace EGG9000.Site.Controllers {
             }
 
             var guildKey = _db.InvalidateFAQTopics(guild);
-            await _publishEndpoint.Publish(new ExpireCacheMessage(guildKey));
+            await _bus.PublishAsync(new ExpireCacheMessage(guildKey));
             await _db.SaveChangesAsync();
             return Content("Success");
         }
@@ -1099,7 +1098,7 @@ music
             dbGuild.SiloReminderSecondHours = siloSecond;
             if(invalidateApodGuildCache) {
                 var guildNasaKey = _db.InvalidateGuildNASACache(dbGuild);
-                await _publishEndpoint.Publish(new ExpireCacheMessage(guildNasaKey));
+                await _bus.PublishAsync(new ExpireCacheMessage(guildNasaKey));
             }
             await _db.SaveChangesAsync();
 

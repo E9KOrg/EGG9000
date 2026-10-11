@@ -59,7 +59,6 @@
     <PackageReference Include="Bugsnag.AspNet.Core" Version="4.1.1" />
     <PackageReference Include="Docker.DotNet" Version="3.125.15" />
     <PackageReference Include="Humanizer" Version="3.0.10" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="9.2.3" />
     <PackageReference Include="MessagePack" Version="3.1.11" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />

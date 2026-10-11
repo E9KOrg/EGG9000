@@ -2,16 +2,14 @@ using Bugsnag.AspNet.Core;
 
 using Discord;
 using Discord.WebSocket;
-using EGG9000.Common.Consumers;
+using EGG9000.Common.Bus;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.Mocks;
 using EGG9000.Common.Services;
 using EGG9000.Site.Auth;
+using EGG9000.Site.Bus;
 using EGG9000.Site.Data;
 using EGG9000.Site.Services;
-
-using MassTransit;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -155,6 +153,7 @@ app.MapControllerRoute(
 // unauthenticated users hit the Discord login flow, authenticated non-Admins get 403. GuildAdmin /
 // GuildLesserAdmin are intentionally excluded - runtime/host metrics are a global ops concern.
 app.MapMetrics().RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" });
+app.MapHub<BusHub>(BusEnvelope.HubPath);
 
 app.MapRazorPages();
 app.Run();
@@ -305,42 +304,15 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
             }
         }
 
-        services.AddOptions<RabbitMqTransportOptions>().Configure(options => {
-            var host = Configuration.GetConnectionString("RabbitMQServer")?.Split("|");
-            if(host.Length > 1) {
-                options.Host = host[0];
-                options.User = host[1];
-                options.Pass = host[2];
-            }
-        });
-
-        // Re-exposes bot runtime snapshots (received below) as bot_* gauges on /metrics.
-        services.AddSingleton<BotMetricsExporter>();
-
-        services.AddMassTransit(x => {
-            x.AddConsumer<ExpireCacheConsumer>();
-            // Per-instance temporary queue so a version update fans out to every running process
-            // instead of being load-balanced across a shared queue.
-            x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
-            x.AddConsumer<StorageDictionaryAdoptedConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
-            // Same broadcast pattern: every site instance applies every bot metrics snapshot.
-            x.AddConsumer<EGG9000.Site.Consumers.BotMetricsSnapshotConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
-            var host = Configuration.GetConnectionString("RabbitMQServer");
-            if(string.IsNullOrEmpty(host)) {
-                x.UsingInMemory((context, cfg) => {
-                    cfg.ConfigureEndpoints(context);
-                    cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
-                });
-            } else {
-                x.UsingRabbitMq((context, cfg) => {
-                    cfg.ConfigureEndpoints(context);
-                });
-            }
-        });
     } else {
-        services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
         services.AddBugsnag();
     }
+
+    services.AddSignalR();
+    services.AddSingleton<IMessageBus, HubMessageBus>();
+    services.AddSingleton<BotMetricsExporter>();
+    services.AddSharedBusHandlers();
+    services.AddBusHandler<BotMetricsSnapshotMessage, BotMetricsSnapshotHandler>();
 
     services.AddDatabaseDeveloperPageExceptionFilter();
 }
