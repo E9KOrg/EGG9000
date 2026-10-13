@@ -4,6 +4,7 @@
 @using EGG9000.Site.Models.Admin
 @model Admin_InactivePlayersModel
 @{
+	ViewData["BodyClass"] = "full-width";
 	var users = Model.users.Select(u => {
 		return (User: u, Xref: Model.xrefs.FirstOrDefault(x => x.UserId == u.Id), GuildUser: Model.guildUsers.FirstOrDefault(gu => gu.Id == u.DiscordId));
 	});
@@ -73,15 +74,6 @@
 	</tbody>
 </table>
 
-<style>
-	.nowrap {
-		white-space: nowrap;
-	}
-
-	.container {
-		max-width: initial !important;
-	}
-</style>
 
 @section Scripts {
 	<script>

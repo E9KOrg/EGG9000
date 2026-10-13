@@ -1,0 +1,44 @@
+th {
+    position: sticky;
+    top: 0;
+    text-align: center !important;
+}
+
+a img, th img, td img {
+    height: 20px;
+}
+
+table {
+    width: auto !important;
+}
+
+@media (min-width: 1024px) {
+    th, td {
+        padding-left: 10px !important;
+        padding-right:10px  !important;
+    }
+}
+
+.Me td {
+    background-color: #adffaa !important;
+}
+
+[data-bs-theme="dark"] .Me td {
+    background-color: #2c462b !important;
+}
+
+.monospace {
+    font-size: 0;
+    white-space: nowrap;
+}
+
+.monospace span {
+    width: 0.53em;
+    font-size: 1rem;
+    display: inline-block;
+    text-align: center;
+}
+
+.monospace span.period {
+    width: auto;
+}

@@ -1,0 +1,62 @@
+/* Dependent contract-setting fields: indented under the control they depend on. */
+.cs-dependent {
+    margin-top: 8px;
+    margin-left: 16px;
+    padding-left: 12px;
+    border-left: 2px solid #444;
+}
+
+/* A touch more breathing room above each settings checkbox. */
+.contract-settings .form-check.cs-check {
+    margin-top: 10px;
+}
+
+/* Don't let selects stretch the full card width; scale to their content where supported. */
+.contract-settings select.cs-input {
+    width: auto;
+    field-sizing: content;
+    min-width: 160px;
+    max-width: 100%;
+    background-position: left .65rem center;
+    padding-left: 2rem;
+    padding-right: .85rem;
+}
+
+.contract-settings .form-group > label {
+    display: inline-block;
+    margin-bottom: 6px;
+}
+
+/* Humanized CS number inputs: stepper buttons either side, width scales to content. */
+.contract-settings .cs-num-group {
+    display: inline-flex;
+    align-items: stretch;
+    max-width: 100%;
+}
+
+.contract-settings .cs-num {
+    width: auto;
+    field-sizing: content;
+    min-width: 6ch;
+    max-width: 220px;
+    text-align: right;
+    border-radius: 0;
+}
+
+.contract-settings .cs-num-step {
+    flex: 0 0 auto;
+    width: 38px;
+    padding: 0;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.contract-settings .cs-num-group .cs-num-step:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.contract-settings .cs-num-group .cs-num-step:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
