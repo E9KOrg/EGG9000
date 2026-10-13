@@ -6,329 +6,199 @@
       "name": "Quantum Bulb",
       "emoji": "<:Quantum_bulb:724397149118267424>",
       "timeMinutesInt": 10,
-      "value": 0,
-      "costGoldenEggs": 10,
-      "costTokens": 0
+      "value": 0
     },
     {
       "id": "jimbos_blue",
       "typeString": "Earnings",
       "name": "Jimbo's Excellent Bird Feed",
-      "emoji": "<:Jimbos_10min_Bird:751626448644734986>",
-      "timeMinutesInt": 60,
-      "value": 2,
-      "costGoldenEggs": 50,
-      "costTokens": 1
+      "emoji": "<:Jimbos_10min_Bird:751626448644734986>"
     },
     {
       "id": "jimbos_blue_v2",
       "typeString": "Earnings",
       "name": "Jimbo's Excellent Bird Feed",
-      "emoji": "<:Jimbos_10min_Bird:751626448644734986>",
-      "timeMinutesInt": 60,
-      "value": 3,
-      "costGoldenEggs": 50,
-      "costTokens": 1
+      "emoji": "<:Jimbos_10min_Bird:751626448644734986>"
     },
     {
       "id": "jimbos_blue_big",
       "typeString": "Earnings",
       "name": "Jimbo's Excellent Bird Feed",
-      "emoji": "<:Jimbos_10min_Bird:751626448644734986>",
-      "timeMinutesInt": 480,
-      "value": 2,
-      "costGoldenEggs": 0,
-      "costTokens": 1
+      "emoji": "<:Jimbos_10min_Bird:751626448644734986>"
     },
     {
       "id": "jimbos_purple",
       "typeString": "Earnings",
       "name": "Jimbo's Premium Bird Feed",
-      "emoji": "<:Jimbos_10min_Bird:751626448644734986>",
-      "timeMinutesInt": 30,
-      "value": 10,
-      "costGoldenEggs": 250,
-      "costTokens": 2
+      "emoji": "<:Jimbos_10min_Bird:751626448644734986>"
     },
     {
       "id": "jimbos_purple_v2",
       "typeString": "Earnings",
       "name": "Jimbo's Premium Bird Feed",
-      "emoji": "<:Jimbos_10min_Bird:751626448644734986>",
-      "timeMinutesInt": 30,
-      "value": 10,
-      "costGoldenEggs": 250,
-      "costTokens": 2
+      "emoji": "<:Jimbos_10min_Bird:751626448644734986>"
     },
     {
       "id": "jimbos_purple_big",
       "typeString": "Earnings",
       "name": "Jimbo's Premium Bird Feed",
-      "emoji": "<:Jimbos_10min_Bird:751626448644734986>",
-      "timeMinutesInt": 120,
-      "value": 10,
-      "costGoldenEggs": 750,
-      "costTokens": 3
+      "emoji": "<:Jimbos_10min_Bird:751626448644734986>"
     },
     {
       "id": "jimbos_orange",
       "typeString": "Earnings",
       "name": "Jimbo's Best Bird Feed",
-      "emoji": "<:Jimbos_10min_Bird:751626448644734986>",
-      "timeMinutesInt": 10,
-      "value": 50,
-      "costGoldenEggs": 2500,
-      "costTokens": 3
+      "emoji": "<:Jimbos_10min_Bird:751626448644734986>"
     },
     {
       "id": "jimbos_orange_big",
       "typeString": "Earnings",
       "name": "Jimbo's Best Bird Feed",
-      "emoji": "<:Jimbos_60min_Bird:751625095230914662>",
-      "timeMinutesInt": 120,
-      "value": 50,
-      "costGoldenEggs": 7500,
-      "costTokens": 5
+      "emoji": "<:Jimbos_60min_Bird:751625095230914662>"
     },
     {
       "id": "tachyon_prism_blue",
       "typeString": "InternalHatchery",
       "name": "Tachyon Prism",
-      "emoji": "<:Legendary_tachyon_prism:724391780598153236>",
-      "timeMinutesInt": 30,
-      "value": 10,
-      "costGoldenEggs": 100,
-      "costTokens": 1
+      "emoji": "<:Legendary_tachyon_prism:724391780598153236>"
     },
     {
       "id": "tachyon_prism_blue_v2",
       "typeString": "InternalHatchery",
       "name": "Tachyon Prism",
-      "emoji": "<:Legendary_tachyon_prism:724391780598153236>",
-      "timeMinutesInt": 30,
-      "value": 10,
-      "costGoldenEggs": 100,
-      "costTokens": 1
+      "emoji": "<:Legendary_tachyon_prism:724391780598153236>"
     },
     {
       "id": "tachyon_prism_blue_big",
       "typeString": "InternalHatchery",
       "name": "Large Tachyon Prism",
-      "emoji": "<:Legendary_tachyon_prism:724391780598153236>",
-      "timeMinutesInt": 240,
-      "value": 10,
-      "costGoldenEggs": 600,
-      "costTokens": 3
+      "emoji": "<:Legendary_tachyon_prism:724391780598153236>"
     },
     {
       "id": "tachyon_prism_purple",
       "typeString": "InternalHatchery",
       "name": "Powerful Tachyon Prism",
-      "emoji": "<:Legendary_tachyon_prism:724391780598153236>",
-      "timeMinutesInt": 20,
-      "value": 100,
-      "costGoldenEggs": 750,
-      "costTokens": 3
+      "emoji": "<:Legendary_tachyon_prism:724391780598153236>"
     },
     {
       "id": "tachyon_prism_purple_v2",
       "typeString": "InternalHatchery",
       "name": "Powerful Tachyon Prism",
-      "emoji": "<:Legendary_tachyon_prism:724391780598153236>",
-      "timeMinutesInt": 20,
-      "value": 100,
-      "costGoldenEggs": 750,
-      "costTokens": 3
+      "emoji": "<:Legendary_tachyon_prism:724391780598153236>"
     },
     {
       "id": "tachyon_prism_purple_big",
       "typeString": "InternalHatchery",
       "name": "Epic Tachyon Prism",
-      "emoji": "<:Legendary_tachyon_prism:724391780598153236>",
-      "timeMinutesInt": 120,
-      "value": 100,
-      "costGoldenEggs": 4000,
-      "costTokens": 5
+      "emoji": "<:Legendary_tachyon_prism:724391780598153236>"
     },
     {
       "id": "tachyon_prism_orange",
       "typeString": "InternalHatchery",
       "name": "Legendary Tachyon Prism",
-      "emoji": "<:Legendary_tachyon_prism:724391780598153236>",
-      "timeMinutesInt": 10,
-      "value": 1000,
-      "costGoldenEggs": 15000,
-      "costTokens": 8
+      "emoji": "<:Legendary_tachyon_prism:724391780598153236>"
     },
     {
       "id": "tachyon_prism_orange_big",
       "typeString": "InternalHatchery",
       "name": "Supreme Tachyon Prism",
-      "emoji": "<:Legendary_tachyon_prism:724391780598153236>",
-      "timeMinutesInt": 60,
-      "value": 1000,
-      "costGoldenEggs": 25000,
-      "costTokens": 20
+      "emoji": "<:Legendary_tachyon_prism:724391780598153236>"
     },
     {
       "id": "boost_beacon_blue",
       "typeString": "BoostBeacon",
       "name": "Boost Beacon",
-      "emoji": "<:Legendary_boost:748221091809591307>",
-      "timeMinutesInt": 30,
-      "value": 2,
-      "costGoldenEggs": 1000,
-      "costTokens": 5
+      "emoji": "<:Legendary_boost:748221091809591307>"
     },
     {
       "id": "boost_beacon_purple",
       "typeString": "BoostBeacon",
       "name": "Epic Boost Beacon",
-      "emoji": "<:Epic_Boost_Beacon:748220232971059291>",
-      "timeMinutesInt": 10,
-      "value": 10,
-      "costGoldenEggs": 5000,
-      "costTokens": 10
+      "emoji": "<:Epic_Boost_Beacon:748220232971059291>"
     },
     {
       "id": "boost_beacon_blue_big",
       "typeString": "BoostBeacon",
       "name": "Large Boost Beacon",
-      "emoji": "<:Boost_Beacon5x:761737943152459778>",
-      "timeMinutesInt": 60,
-      "value": 5,
-      "costGoldenEggs": 75000,
-      "costTokens": 15
+      "emoji": "<:Boost_Beacon5x:761737943152459778>"
     },
     {
       "id": "boost_beacon_orange",
       "typeString": "BoostBeacon",
       "name": "Legendary Boost Beacon",
-      "emoji": "<:Legendary_boost:748221091809591307>",
-      "timeMinutesInt": 10,
-      "value": 50,
-      "costGoldenEggs": 30000,
-      "costTokens": 50
+      "emoji": "<:Legendary_boost:748221091809591307>"
     },
     {
       "id": "soul_beacon_blue",
       "typeString": "SoulEggs",
       "name": "Soul Beacon",
-      "emoji": "<:Soul_beacon500x:724391496240988192>",
-      "timeMinutesInt": 60,
-      "value": 5,
-      "costGoldenEggs": 250,
-      "costTokens": 0
+      "emoji": "<:Soul_beacon500x:724391496240988192>"
     },
     {
       "id": "soul_beacon_blue_v2",
       "typeString": "SoulEggs",
       "name": "Soul Beacon",
-      "emoji": "<:Soul_beacon500x:724391496240988192>",
-      "timeMinutesInt": 60,
-      "value": 5,
-      "costGoldenEggs": 250,
-      "costTokens": 0
+      "emoji": "<:Soul_beacon500x:724391496240988192>"
     },
     {
       "id": "soul_beacon_purple",
       "typeString": "SoulEggs",
       "name": "Epic Soul Beacon",
-      "emoji": "<:Soul_beacon500x:724391496240988192>",
-      "timeMinutesInt": 30,
-      "value": 50,
-      "costGoldenEggs": 2500,
-      "costTokens": 0
+      "emoji": "<:Soul_beacon500x:724391496240988192>"
     },
     {
       "id": "soul_beacon_purple_v2",
       "typeString": "SoulEggs",
       "name": "Epic Soul Beacon",
-      "emoji": "<:Soul_beacon500x:724391496240988192>",
-      "timeMinutesInt": 30,
-      "value": 50,
-      "costGoldenEggs": 2500,
-      "costTokens": 0
+      "emoji": "<:Soul_beacon500x:724391496240988192>"
     },
     {
       "id": "soul_beacon_orange",
       "typeString": "SoulEggs",
       "name": "Legendary Soul Beacon",
-      "emoji": "<:Soul_beacon500x:724391496240988192>",
-      "timeMinutesInt": 10,
-      "value": 500,
-      "costGoldenEggs": 15000,
-      "costTokens": 0
+      "emoji": "<:Soul_beacon500x:724391496240988192>"
     },
     {
       "id": "subsidy_application",
       "typeString": "FarmValue",
       "name": "Subsidy Application",
-      "emoji": "<:B_money_printer:730145142467723367>",
-      "timeMinutesInt": 0,
-      "value": 10,
-      "costGoldenEggs": 150,
-      "costTokens": 1
+      "emoji": "<:B_money_printer:730145142467723367>"
     },
     {
       "id": "blank_check",
       "typeString": "FarmValue",
       "name": "Blank Check",
-      "emoji": "<:B_money_printer:730145142467723367>",
-      "timeMinutesInt": 0,
-      "value": 100,
-      "costGoldenEggs": 500,
-      "costTokens": 2
+      "emoji": "<:B_money_printer:730145142467723367>"
     },
     {
       "id": "money_printer",
       "typeString": "FarmValue",
       "name": "Money Printer",
-      "emoji": "<:B_money_printer:730145142467723367>",
-      "timeMinutesInt": 0,
-      "value": 500,
-      "costGoldenEggs": 2000,
-      "costTokens": 3
+      "emoji": "<:B_money_printer:730145142467723367>"
     },
     {
       "id": "soul_mirror_blue",
       "typeString": "SoulMirror",
       "name": "Soul Mirror",
-      "emoji": "<:Soul_Mirror:798884954670891059>",
-      "timeMinutesInt": 10,
-      "value": 0,
-      "costGoldenEggs": 100,
-      "costTokens": 5
+      "emoji": "<:Soul_Mirror:798884954670891059>"
     },
     {
       "id": "soul_mirror_purple",
       "typeString": "SoulMirror",
       "name": "Epic Soul Mirror",
-      "emoji": "<:Soul_Mirror:798884954670891059>",
-      "timeMinutesInt": 60,
-      "value": 0,
-      "costGoldenEggs": 500,
-      "costTokens": 25
+      "emoji": "<:Soul_Mirror:798884954670891059>"
     },
     {
       "id": "soul_mirror_orange",
       "typeString": "SoulMirror",
       "name": "Legendary Soul Mirror",
-      "emoji": "<:Soul_Mirror:798884954670891059>",
-      "timeMinutesInt": 1440,
-      "value": 0,
-      "costGoldenEggs": 2000,
-      "costTokens": 50
+      "emoji": "<:Soul_Mirror:798884954670891059>"
     },
     {
       "id": "dilithium_bulb",
       "typeString": "UnlimitedHatchery",
       "name": "Dilithium Warming Bulb",
-      "emoji": "<:dili_bulb:1116601590003023882>",
-      "timeMinutesInt": 10,
-      "value": 0,
-      "costGoldenEggs": 1000,
-      "costTokens": 0
+      "emoji": "<:dili_bulb:1116601590003023882>"
     }
   ],
   "eggIncEggs": [
@@ -337,7 +207,6 @@
       "imageUrlEnder": "e/e6/Egg_1.png",
       "emoji": "<:Egg_1:712424206276755516>",
       "name": "Edible",
-      "value": 0.25,
       "requiredFarmValue": 0
     },
     {
@@ -345,7 +214,6 @@
       "imageUrlEnder": "9/9f/Egg_2.png",
       "emoji": "<:Egg_12:712424230502793296>",
       "name": "Superfood",
-      "value": 1.25,
       "requiredFarmValue": 67000000
     },
     {
@@ -353,7 +221,6 @@
       "imageUrlEnder": "5/54/Egg_3.png",
       "emoji": "<:Egg_13:712424393908813924>",
       "name": "Medical",
-      "value": 6.25,
       "requiredFarmValue": 5100000000
     },
     {
@@ -361,7 +228,6 @@
       "imageUrlEnder": "e/ea/Egg_4.png",
       "emoji": "<:Egg_14:724340749289652317>",
       "name": "Rocket Fuel",
-      "value": 30,
       "requiredFarmValue": 230000000000
     },
     {
@@ -369,7 +235,6 @@
       "imageUrlEnder": "a/a8/Egg_5.png",
       "emoji": "<:Egg_15:712424174496514069>",
       "name": "Super Material",
-      "value": 150,
       "requiredFarmValue": 150000000000000
     },
     {
@@ -377,7 +242,6 @@
       "imageUrlEnder": "7/7f/Egg_6.png",
       "emoji": "<:Egg_16:711948447254577192>",
       "name": "Fusion",
-      "value": 700,
       "requiredFarmValue": 4.5E+16
     },
     {
@@ -385,7 +249,6 @@
       "imageUrlEnder": "2/29/Egg_7.png",
       "emoji": "<:Egg_17:712423375552643183>",
       "name": "Quantum",
-      "value": 3000,
       "requiredFarmValue": 2E+19
     },
     {
@@ -393,7 +256,6 @@
       "imageUrlEnder": "e/eb/Egg_8_New.png",
       "emoji": "<:CRISPR_Egg:1255740319828545567>",
       "name": "CRISPR",
-      "value": 12500,
       "requiredFarmValue": 9.4E+22
     },
     {
@@ -401,7 +263,6 @@
       "imageUrlEnder": "a/ac/Egg_9.png",
       "emoji": "<:Egg_19:712423407979069531>",
       "name": "Tachyon",
-      "value": 50000,
       "requiredFarmValue": 1.7E+26
     },
     {
@@ -409,7 +270,6 @@
       "imageUrlEnder": "a/a4/Egg_10.png",
       "emoji": "<:Egg_20:712423896481005569>",
       "name": "Graviton",
-      "value": 175000,
       "requiredFarmValue": 9.8E+29
     },
     {
@@ -417,7 +277,6 @@
       "imageUrlEnder": "9/9e/Egg_11.png",
       "emoji": "<:Egg_21:724337981791666247>",
       "name": "Dilithium",
-      "value": 525000,
       "requiredFarmValue": 4.8E+33
     },
     {
@@ -425,7 +284,6 @@
       "imageUrlEnder": "e/ee/Egg_12.png",
       "emoji": "<:Egg_22:720623498506272830>",
       "name": "Prodigy",
-      "value": 1500000,
       "requiredFarmValue": 1.6E+37
     },
     {
@@ -433,7 +291,6 @@
       "imageUrlEnder": "a/af/Egg_13.png",
       "emoji": "<:Egg_23:712422694368575498>",
       "name": "Terraform",
-      "value": 10000000,
       "requiredFarmValue": 2E+40
     },
     {
@@ -441,7 +298,6 @@
       "imageUrlEnder": "e/eb/Egg_14.png",
       "emoji": "<:Egg_24:724340137076588625>",
       "name": "Antimatter",
-      "value": 1.00E+09,
       "requiredFarmValue": 1.3E+44
     },
     {
@@ -449,7 +305,6 @@
       "imageUrlEnder": "a/a2/Egg_15.png",
       "emoji": "<:Egg_25:694347461581602827>",
       "name": "Dark Matter",
-      "value": 1.00E+11,
       "requiredFarmValue": 1.2E+48
     },
     {
@@ -457,7 +312,6 @@
       "imageUrlEnder": "a/ae/Egg_16.png",
       "emoji": "<:Egg_26:720623932427862087>",
       "name": "AI",
-      "value": 1.00E+12,
       "requiredFarmValue": 3.2E+52
     },
     {
@@ -465,7 +319,6 @@
       "imageUrlEnder": "2/21/Egg_17.png",
       "emoji": "<:Egg_27:724339043772661791>",
       "name": "Nebula",
-      "value": 1.50E+13,
       "requiredFarmValue": 2E+56
     },
     {
@@ -473,7 +326,6 @@
       "imageUrlEnder": "c/cd/Egg_18.png",
       "emoji": "<:Egg_28:724341409288814654>",
       "name": "Universe",
-      "value": 1.00E+14,
       "requiredFarmValue": 4E+60
     },
     {
@@ -481,7 +333,6 @@
       "imageUrlEnder": "a/ab/Egg_19.png",
       "emoji": "<:Egg_29:694345628486074409>",
       "name": "Enlightenment",
-      "value": 0.0000001,
       "requiredFarmValue": 3.6E+65
     },
     {
@@ -489,7 +340,6 @@
       "imageUrlEnder": "a/ab/egg_curiosity.png",
       "emoji": "<:Curiosity_Egg:1418052453152329809>",
       "name": "Curiosity",
-      "value": 0.0000001,
       "requiredFarmValue": 3.6E+65
     },
     {
@@ -497,7 +347,6 @@
       "imageUrlEnder": "a/ab/egg_integrity.png",
       "emoji": "<:Integrity_Egg:1418052516595241010>",
       "name": "Integrity",
-      "value": 0.0000001,
       "requiredFarmValue": 3.6E+65
     },
     {
@@ -505,7 +354,6 @@
       "imageUrlEnder": "a/ab/egg_humility.png",
       "emoji": "<:Humility_Egg:1418052494197526609>",
       "name": "Humility",
-      "value": 0.0000001,
       "requiredFarmValue": 3.6E+65
     },
     {
@@ -513,7 +361,6 @@
       "imageUrlEnder": "a/ab/egg_resilience.png",
       "emoji": "<:Resilience_Egg:1418053160660107264>",
       "name": "Resilience",
-      "value": 0.0000001,
       "requiredFarmValue": 3.6E+65
     },
     {
@@ -521,43 +368,37 @@
       "imageUrlEnder": "a/ab/Egg_19.png",
       "emoji": "<:Kindness_Egg:1418052533355679866>",
       "name": "Kindness",
-      "value": 0.0000001,
       "requiredFarmValue": 3.6E+65
     },
     {
       "id": 100,
       "imageUrlEnder": "a/ac/Egg_chocolate.png",
       "emoji": "<:Egg_chocolate:724341622929883217>",
-      "name": "Chocolate",
-      "value": 5
+      "name": "Chocolate"
     },
     {
       "id": 101,
       "imageUrlEnder": "2/28/Egg_easter.png",
       "emoji": "<:Egg_easter:712423919436562494>",
-      "name": "Easter",
-      "value": 0.05
+      "name": "Easter"
     },
     {
       "id": 102,
       "imageUrlEnder": "9/99/Egg_waterballoon.png",
       "emoji": "<:Egg_waterballoon:727297253685067816>",
-      "name": "Waterballoon",
-      "value": 0.1
+      "name": "Waterballoon"
     },
     {
       "id": 103,
       "imageUrlEnder": "5/5e/Egg_firework.png",
       "emoji": "<:Egg_firework:724667535588327526>",
-      "name": "Firework",
-      "value": 4.99
+      "name": "Firework"
     },
     {
       "id": 104,
       "imageUrlEnder": "1/11/Egg_pumpkin.png",
       "emoji": "<:Egg_pumpkin:730169310646894752>",
-      "name": "Pumpkin",
-      "value": 0.99
+      "name": "Pumpkin"
     },
     {
       "id": 200,

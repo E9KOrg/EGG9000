@@ -1,4 +1,5 @@
 ﻿using EGG9000.Common.Database;
+using EGG9000.Common.Helpers;
 
 using System.Collections.Generic;
 
@@ -38,7 +39,23 @@ namespace EGG9000.Common.JsonData {
         public List<EpicResearchItem> epicResearchItems { get; set; }
 
         private static readonly EmbeddedResource<EiEpicResearch> _res =
-            EmbeddedResource.Json<EiEpicResearch>("ei-epic-research.json");
+            EmbeddedResource.Json<EiEpicResearch>("ei-epic-research.json", ApplyGameData);
         public static EiEpicResearch Get() => _res.Value;
+
+        private static EiEpicResearch ApplyGameData(EiEpicResearch data) {
+            foreach(var item in data.epicResearchItems) {
+                var effect = Research.FindGameData(item.id);
+                if(effect is null || !effect.MetaBool("epic"))
+                    continue;
+                item._firstCost = (int)effect.MetaDouble("epicPriceStart");
+                item._lastCost = (int)effect.MetaDouble("epicPriceEnd");
+                item._numLevels = effect.MaxLevel ?? item._numLevels;
+                if(effect.TryMeta("name", out var name))
+                    item.title = (string)name;
+                if(effect.TryMeta("description", out var description) && ((string)description).Length > 2)
+                    item.description = (string)description;
+            }
+            return data;
+        }
     }
 }

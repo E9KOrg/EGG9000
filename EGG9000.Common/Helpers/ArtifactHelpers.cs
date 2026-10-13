@@ -1,6 +1,5 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.JsonData.EiAfxConfig;
 using Ei;
 using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
@@ -64,7 +63,7 @@ namespace EGG9000.Common.Helpers {
 
         public static uint GetCraftingLevel(double CraftingXP) {
             uint currentLevel = 1;
-            var xpThresholds = Root.Get().craftingLevelXpThresholds;
+            var xpThresholds = ArtifactCrafting.CraftingLevelXpThresholds;
             for(var i = xpThresholds.Count - 1; i >= 0; i--) {
                 if(CraftingXP >= xpThresholds[i]) {
                     currentLevel = (uint)i + 1;
@@ -168,7 +167,7 @@ namespace EGG9000.Common.Helpers {
         // craft). LLC = owned - expected; large positive LLC without a matching launch/craft history is
         // the cheat signal, unlike the raw fairness score which just measures rare-artifact ownership.
         public static LegendaryLuckResult GetLegendaryLuckCoefficient(EggIncAccount account, Backup freshBackup, List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> shipCoefficientTable) {
-            var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
+            var baseCraftingCoefficients = ArtifactCrafting.BaseCraftingCoefficients;
             var shipsSent = new ShipsSentByLevel(freshBackup);
 
             var sumOfRatios = 0.0;
@@ -202,7 +201,7 @@ namespace EGG9000.Common.Helpers {
                     var baseLegRate = craftType.Value[2];
 
                     var simulatedCraftingLevel = GetCraftingLevel(assumedXpPerCraft * i);
-                    var simulatedMultiplier = Root.Get().craftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
+                    var simulatedMultiplier = ArtifactCrafting.CraftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
 
                     var simulatedRate = Math.Max(10.0, baseLegRate / simulatedMultiplier);
                     var simulatedRatio = 1.0 / simulatedRate;

@@ -122,7 +122,7 @@ namespace EGG9000.Site.Services {
             var afName = artifact.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
             var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? artifact.Tier + 1 : artifact.Tier);
 
-            var afImagePath = WWWPath("images", "artifacts", afName, $"{afName}_{afTier}.png");
+            var afImagePath = ArtifactImagePath(afName, afTier);
             if(afImagePath is null) return false;
 
             // One hotspot per cell. Its tooltip lists the artifact and any slotted stones, so the small
@@ -136,7 +136,7 @@ namespace EGG9000.Site.Services {
                 var stoneIndex = 1;
                 foreach(var stone in artifact.Stones ?? []) {
                     var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
-                    var stonePath = WWWPath("images", "artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png");
+                    var stonePath = ArtifactImagePath(stoneName, stone.Tier + 1);
                     if(stonePath is null) continue;
                     var sx = x + afSize - (int)(padding * 0.5) - (stoneSize * stoneIndex);
                     var sy = (int)(y + afSize - (padding * 1.5));
@@ -178,6 +178,11 @@ namespace EGG9000.Site.Services {
             var path = _env.WebRootPath;
             if(parts is { Length: > 0 }) path = Path.Combine(path, Path.Combine(parts));
             return File.Exists(path) ? path : null;
+        }
+
+        private string ArtifactImagePath(string name, int tier) {
+            var file = _env.WebRootFileProvider.GetFileInfo(EggSharp.GameData.Artifacts.ArtifactAssets.IconPath(EggSharp.GameData.Artifacts.ArtifactAssets.KeyFor(name), tier));
+            return file.Exists ? file.PhysicalPath : null;
         }
     }
 }
