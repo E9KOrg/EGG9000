@@ -116,7 +116,7 @@ namespace EGG9000.Test {
             Assert.IsTrue(bytes.Length >= 3);
             Assert.AreEqual(StorageCompression.Marker, bytes[0]);
             Assert.AreEqual((byte)StorageCompressionAlgorithm.Zstd, bytes[1]);
-            Assert.AreEqual(StorageDictionary.Accounts1.Id, bytes[2]);
+            Assert.AreEqual(StorageCompressionStrategy.AccountGraph.DictionaryId, bytes[2]);
         }
 
         private static byte[] GzipStoredFixture(List<EggIncAccount> accounts) {
