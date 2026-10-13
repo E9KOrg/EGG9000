@@ -3,13 +3,11 @@ using Discord.Interactions;
 using EGG9000.Bot.Automated;
 using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Services;
-using EGG9000.Common.Consumers;
+using EGG9000.Common.Bus;
 using EGG9000.Common.Database;
 using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
-using EGG9000.Common.Mocks;
 using EGG9000.Common.Services;
-using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -129,42 +127,6 @@ public static class BotHostFactory {
                     bs.Notify(new Exception("ApiSalt not found in secrets or configuration"));
                 }
                 logger.Log(NLog.LogLevel.Info, String.IsNullOrEmpty(salt) ? "ApiSalt not found" : "ApiSalt found");
-                
-                //var rabbitmqConn = SecretsHelper.GetConfigOrSecret(
-                //    hostContext.Configuration,
-                //    "ConnectionStrings:RabbitMQServer",
-                //    "rabbitmq_connection");
-
-                //services.AddOptions<RabbitMqTransportOptions>().Configure(options => {
-                //    var host = rabbitmqConn?.Split("|");
-                //    if(host?.Length > 1) {
-                //        options.Host = host[0];
-                //        options.User = host[1];
-                //        options.Pass = host[2];
-                //    }
-                //});
-
-                services.AddMassTransit(x => {
-                    x.AddConsumer<ShutdownConsumer>();
-                    x.AddConsumer<ExpireCacheConsumer>();
-                    x.AddConsumer<RestartConsumer>();
-                    // Per-instance temporary queue so a version update fans out to every running process
-                    // instead of being load-balanced across a shared queue.
-                    x.AddConsumer<UpdateApiVersionsConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
-                    x.AddConsumer<StorageDictionaryAdoptedConsumer>().Endpoint(e => { e.InstanceId = Guid.NewGuid().ToString("N"); e.Temporary = true; });
-                    //if(string.IsNullOrEmpty(rabbitmqConn)) {
-                        logger.Log(NLog.LogLevel.Info, "Using RabbitMQ In Memory");
-                        x.UsingInMemory((context, cfg) => {
-                            cfg.ConfigureEndpoints(context);
-                            cfg.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
-                        });
-                    //} else {
-                    //    logger.Log(NLog.LogLevel.Info, "Using RabbitMQ Server");
-                    //    x.UsingRabbitMq((context, cfg) => {
-                    //        cfg.ConfigureEndpoints(context);
-                    //    });
-                    //}
-                });
             } else {
                 logger.Log(NLog.LogLevel.Info, "RUNNING IN DEBUG");
                 services.AddBugsnag();
@@ -176,8 +138,13 @@ public static class BotHostFactory {
                     ReleaseStage = "development",
                     NotifyReleaseStages = ["production"],
                 }));
-                services.AddSingleton<IPublishEndpoint>(new PublishEndpointMock());
             }
+
+            services.AddSharedBusHandlers();
+            services.AddBusHandler<RestartMessage, RestartHandler>();
+            services.AddSingleton<SignalRMessageBus>();
+            services.AddSingleton<IMessageBus>(provider => provider.GetRequiredService<SignalRMessageBus>());
+            services.AddHostedService(provider => provider.GetRequiredService<SignalRMessageBus>());
 
             services.AddSingleton<DiscordHostedService>();
             services.AddSingleton(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
