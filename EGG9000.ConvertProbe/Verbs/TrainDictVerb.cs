@@ -84,9 +84,9 @@ namespace EGG9000.ConvertProbe.Verbs {
             rows.Add(Format("brotli q6 envelope (T1 stored format)", brotliRow, plainTotal, brotliRow.Total));
             try {
                 var current = Measure(corpus.Eval, p => StorageCompression.Compress(p, corpus.Current), StorageCompression.Decompress);
-                rows.Add(Format($"current strategy ({corpus.Current.Algorithm} L{level}, embedded dictionary {corpus.Current.DictionaryId})", current, plainTotal, brotliRow.Total));
+                rows.Add(Format($"current strategy ({corpus.Current.Algorithm} L{level}, dictionary {corpus.Current.DictionaryId})", current, plainTotal, brotliRow.Total));
             } catch(InvalidOperationException e) {
-                rows.Add([$"current strategy ({corpus.Current.Algorithm} L{level}, embedded dictionary {corpus.Current.DictionaryId})", "unavailable: " + e.Message, "", "", "", "", "", "", ""]);
+                rows.Add([$"current strategy ({corpus.Current.Algorithm} L{level}, dictionary {corpus.Current.DictionaryId})", "unavailable: " + e.Message, "", "", "", "", "", "", ""]);
             }
             var noDict = Measure(corpus.Eval, p => plainNoDict.Wrap(p).ToArray(), c => plainNoDictDecoder.Unwrap(c).ToArray());
             rows.Add(Format($"zstd L{level} no dictionary", noDict, plainTotal, brotliRow.Total));

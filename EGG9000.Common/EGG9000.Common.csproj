@@ -73,10 +73,6 @@
     <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="Database\Dictionaries\*.zdict" />
-    <EmbeddedResource Include="Database\Dictionaries\*.zdict" />
-  </ItemGroup>
-  <ItemGroup>
     <None Update="Proto\common.proto">
       <GrpcServices>Client</GrpcServices>
     </None>
