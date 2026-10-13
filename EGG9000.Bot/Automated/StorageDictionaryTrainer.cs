@@ -1,11 +1,9 @@
-using EGG9000.Common.Consumers;
+using EGG9000.Common.Bus;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Services;
 
 using Google.Protobuf;
-
-using MassTransit;
 
 using MessagePack;
 
@@ -23,7 +21,7 @@ using System.Threading.Tasks;
 using ZstdSharp;
 
 namespace EGG9000.Bot.Automated {
-    public sealed class StorageDictionaryTrainer(IServiceScopeFactory scopeFactory, IPublishEndpoint publish, ILogger<StorageDictionaryTrainer> logger)
+    public sealed class StorageDictionaryTrainer(IServiceScopeFactory scopeFactory, IMessageBus bus, ILogger<StorageDictionaryTrainer> logger)
         : PeriodicBackgroundService(TimeSpan.FromHours(24), TimeSpan.FromMinutes(15), logger) {
         public const string AutomationLogType = "StorageDictionaryTrainer";
         public const int AccountsTrain = 3000;
@@ -134,7 +132,7 @@ namespace EGG9000.Bot.Automated {
                 await transaction.CommitAsync(token);
             }
             StorageDictionaryLoader.Apply(row);
-            await publish.Publish(new StorageDictionaryAdoptedMessage { Id = id, Corpus = spec.Name }, token);
+            await bus.PublishAsync(new StorageDictionaryAdoptedMessage(id, spec.Name), token);
             _logger.LogInformation("storage dictionary trainer: {Corpus} adopted dictionary {Id}; run the storage sweep CLI to converge existing rows", spec.Name, id);
         }
 
