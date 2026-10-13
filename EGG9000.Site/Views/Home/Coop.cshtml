@@ -1,6 +1,7 @@
 ﻿@using EGG9000.Site.Models.Home
 @model Home_CoopModel
 @{
+	ViewData["BodyClass"] = "coop-page";
 	ViewData["Title"] = "Co-op";
 	bool inDb = Model.UserInfos.Any(x => x.Xref != null);
 	var ebrgx = new Regex(@"\(\d+.?\d*\w?\)");
@@ -243,116 +244,6 @@
 }
 
 @section Scripts {
-	<style>
-		td {
-			white-space: nowrap;
-			text-overflow: ellipsis;
-			max-width: 100px;
-			overflow: hidden;
-		}
-
-		.progress-bar span {
-			mix-blend-mode: darken;
-			color: #555;
-			font-weight: bold;
-			font-size: 110%;
-			line-height: .8em;
-			text-align: right;
-		}
-
-		.progress-bar {
-			overflow: visible !important;
-		}
-
-		.ProgressTop {
-			position: relative;
-		}
-
-		.ProgressLine {
-			position: absolute;
-			width: 2px;
-			background-color: #616161;
-			height: 30px;
-		}
-
-		[data-bs-theme="dark"] .progress-bar span {
-			color: #1e1e1e;
-		}
-
-		.progress > span {
-			position: absolute;
-			right: 4px;
-			top: 3px;
-		}
-
-		.progress {
-			position: relative;
-		}
-
-		th.right, .right {
-			text-align: right;
-		}
-
-		.EggThumb {
-			height: 1.5em;
-			vertical-align: text-bottom;
-		}
-
-		.Emoji {
-			height: 1.3em;
-			vertical-align: text-bottom;
-			position: relative;
-			top: 0;
-		}
-
-		.card .table {
-			margin-bottom: 0;
-		}
-
-		.grid-inline {
-			display: inline-grid;
-		}
-
-		.goal {
-			max-width: 500px;
-		}
-
-		.Goals {
-			display: flex;
-		}
-
-			.Goals .Goal {
-				text-align: right;
-				position: relative;
-				margin-top: 5px;
-				white-space: nowrap;
-			}
-
-				.Goals .Goal .ProgressLine {
-					right: 0;
-					top: -5px;
-					height: 10px;
-				}
-
-		.GoalTextMiddle {
-			left: 100%;
-			position: relative;
-			text-align: left;
-		}
-
-		@@media only screen and (max-width: 1200px) {
-			body > .container {
-				margin: 0 !important;
-				max-width: initial !important;
-			}
-		}
-
-		@@media only screen and (max-width: 1080px) {
-			.table td, .table th {
-				padding: 0.5rem 0.25rem !important;
-			}
-		}
-	</style>
 	<script src="~/js/jquery.jsonview.js"></script>
 	<link href="~/css/jquery.jsonview.css" rel="stylesheet" />
 	<script>

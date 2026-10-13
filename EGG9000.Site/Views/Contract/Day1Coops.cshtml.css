@@ -1,0 +1,11 @@
+.card {
+    margin-bottom: 50px;
+}
+
+h2 span {
+    font-size: 12pt;
+}
+
+.modal {
+    overflow: scroll !important;
+}
