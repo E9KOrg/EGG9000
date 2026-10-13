@@ -9,7 +9,7 @@ namespace EGG9000.Test.Integration;
 public class ApiBackupGradeTests {
 
     private static string Eid => EggIncApi.UserId;
-    private static readonly IEggIncApi Api = TestEggIncApi.Create();
+    private static IEggIncApi Api => field ??= TestEggIncApi.Create();
 
     [ClassInitialize]
     public static void InitSalt(TestContext _) {

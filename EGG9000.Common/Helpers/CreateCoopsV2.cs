@@ -131,7 +131,7 @@ namespace EGG9000.Common.Helpers {
 
 
             var statusResult = await api.PostResult<Ei.ContractCoopStatusUpdateResponse, Ei.ContractCoopStatusUpdateRequest>(res, res.UserId, false);
-            if(statusResult.Failed) {
+            if(!statusResult.Success) {
                 logger?.LogWarning("CoopStatusUpdate failed for {CoopName} (user {UserId}): {Error}", coopName, userId, statusResult.Error);
             } else if(!statusResult.Value.Exists) {
                 logger?.LogWarning("CoopStatusUpdate returned invalid status for {CoopName} (user {UserId}): {Status}", coopName, userId, JsonConvert.SerializeObject(statusResult.Value));

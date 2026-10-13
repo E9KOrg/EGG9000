@@ -8,6 +8,7 @@ on:
     paths:
       - 'EGG9000.Common/EggIncAPI/**'
       - 'EGG9000.Common/Proto/**'
+      - 'EGG9000.Common/EGG9000.Common.csproj'
 
 permissions:
   contents: read

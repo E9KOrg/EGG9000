@@ -36,11 +36,11 @@
   <ItemGroup>
     <PackageReference Include="Bugsnag.AspNet.Core" Version="4.1.1" />
     <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.36.2" />
-    <PackageReference Include="Grpc.Tools" Version="2.84.0">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <PackageReference Include="EggSharp.Api" Version="1.0.0" />
+    <PackageReference Include="EggSharp.Core" Version="1.0.0" />
+    <PackageReference Include="EggSharp.Ei.Google" Version="1.0.0" />
+    <PackageReference Include="EggSharp.Protos" Version="1.0.0" />
+    <PackageReference Include="EggSharp.Storage" Version="1.0.0" />
     <PackageReference Include="Humanizer" Version="3.0.10" />
     <PackageReference Include="MassTransit" Version="9.2.3" />
     <PackageReference Include="MessagePack" Version="3.1.11" />
@@ -75,18 +75,7 @@
     <PackageReference Include="ZstdSharp.Port" Version="0.8.8" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="Database\Dictionaries\*.zdict" />
-    <EmbeddedResource Include="Database\Dictionaries\*.zdict" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="Proto\common.proto">
-      <GrpcServices>Client</GrpcServices>
-    </None>
-    <None Update="Proto\ei.proto">
-      <GrpcServices>Client</GrpcServices>
-    </None>
-    <Protobuf Include="Proto\ei.proto" GrpcServices="Client" />
-    <Protobuf Include="Proto\common.proto" GrpcServices="Client" />
+    <Protobuf Include="$(EggSharpCommonProtoPath)" GrpcServices="None" ProtoRoot="$([System.IO.Path]::GetDirectoryName('$(EggSharpCommonProtoPath)'))" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="JsonData\ArtifactEmoji.json" />

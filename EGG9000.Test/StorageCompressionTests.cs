@@ -68,7 +68,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void IsEnveloped_RejectsForeignFormats() {
-            Assert.IsFalse(StorageCompression.IsEnveloped(null));
+            Assert.IsFalse(StorageCompression.IsEnveloped(null!));
             Assert.IsFalse(StorageCompression.IsEnveloped([]));
             Assert.IsFalse(StorageCompression.IsEnveloped([0xEB]));
             Assert.IsFalse(StorageCompression.IsEnveloped([0x1F, 0x8B, 0x00]));
