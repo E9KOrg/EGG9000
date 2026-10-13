@@ -17,7 +17,7 @@ namespace EGG9000.Common.Database {
             try {
                 rows = db.StorageDictionaries.AsNoTracking().OrderBy(r => r.Id).ToList();
             } catch(Exception e) {
-                Logger.Error(e, "Storage dictionaries could not be read; continuing with the embedded dictionaries only.");
+                Logger.Error(e, "Storage dictionaries could not be read; zstd blobs that use a dictionary cannot be decoded until they are.");
                 return -1;
             }
             var applied = 0;

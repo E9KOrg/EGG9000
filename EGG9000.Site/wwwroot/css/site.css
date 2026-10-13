@@ -451,13 +451,69 @@ body {
     flex: 1;
     margin: 0 10px;
 }
-/* Contract Details page overrides for layout elements outside the view, so they cannot go in
-   the view's isolated Details.cshtml.css. */
-body:has(.contract-details) .container {
+/* Page-level overrides for layout elements, which a view's isolated .cshtml.css cannot reach.
+   A view opts in with ViewData["BodyClass"], rendered on <body> by _Layout.cshtml. */
+body {
+    height: auto !important;
+}
+
+body.full-width .container {
     max-width: initial !important;
 }
 
-[data-bs-theme="dark"] body:has(.contract-details) .pb-3,
-[data-bs-theme="dark"] body:has(.contract-details) .py-3 {
+[data-bs-theme="dark"] body.contract-details .pb-3,
+[data-bs-theme="dark"] body.contract-details .py-3 {
     padding-bottom: 0 !important;
+}
+
+@media only screen and (max-width: 1200px) {
+    body.coop-page > .container {
+        margin: 0 !important;
+        max-width: initial !important;
+    }
+}
+
+/* MyFarms rules that style every tab partial on the page, not one component. :where() keeps the
+   specificity of the original bare selectors, so Bootstrap's .form-select etc. still win where they did. */
+:where(#myfarms-content) .card {
+    margin-bottom: 15px;
+}
+
+:where(#myfarms-content) .card-body {
+    transition: height 0.5s;
+}
+
+:where(#myfarms-content) select,
+:where(#myfarms-content) option {
+    border: 1px solid #ccc;
+}
+
+[data-bs-theme="dark"] :where(#myfarms-content) select,
+[data-bs-theme="dark"] :where(#myfarms-content) option {
+    border: 1px solid #222;
+    background-color: #333;
+}
+
+:where(#myfarms-content) select {
+    border-radius: 7px;
+}
+
+:where(#myfarms-content) option {
+    border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+    :where(#myfarms-content) .card {
+        margin-left: -15px;
+        margin-right: -15px;
+    }
+}
+
+/* Markdown editor (trix) DOM is built by the library, so it carries no view scope attribute. */
+.md-errors-spacer {
+    display: none;
+}
+
+trix-editor.form-control {
+    height: auto;
 }
