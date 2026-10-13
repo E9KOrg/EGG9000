@@ -24,8 +24,8 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void PinnedIds_NeverChange() {
-            Assert.AreEqual(1, StorageDictionary.Accounts1Id);
-            Assert.AreEqual(2, StorageDictionary.CoopStatus1Id);
+            byte[] pinned = [StorageDictionary.Accounts1Id, StorageDictionary.CoopStatus1Id];
+            CollectionAssert.AreEqual(new byte[] { 1, 2 }, pinned);
         }
 
         [TestMethod]
