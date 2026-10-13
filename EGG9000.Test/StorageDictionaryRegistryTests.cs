@@ -20,6 +20,9 @@ namespace EGG9000.Test {
 
         private static readonly MessagePackSerializerOptions Plain = StorageMessagePack.Options.WithCompression(MessagePackCompression.None);
 
+        private static readonly byte[] TrainedA = DictBuilder.TrainFromBuffer([.. Enumerable.Range(0, 200).Select(Sample)], 16384);
+        private static readonly byte[] TrainedB = DictBuilder.TrainFromBuffer([.. Enumerable.Range(500, 200).Select(Sample)], 8192);
+
         private static byte[] Sample(int i) {
             return MessagePackSerializer.Serialize(new List<EggIncAccount> {
                 new() { Id = $"EI{i:D16}", Name = $"Farmer {i % 17}", Group = (byte)(i % 5), Active = i % 2 == 0, Guild = "palace", LastEB = i * 1.5e12 }
@@ -28,7 +31,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Register_NewId_TryGetFinds_AndRoundTrips() {
-            var registered = StorageDictionary.Register(ReusedId, "accounts-reuse.db", StorageDictionary.Accounts1.Bytes);
+            var registered = StorageDictionary.Register(ReusedId, "accounts-reuse.db", TrainedA);
 
             Assert.IsTrue(StorageDictionary.TryGet(ReusedId, out var found));
             Assert.AreSame(registered, found);
@@ -43,20 +46,20 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void Register_SameIdSameBytes_IsIdempotent() {
-            var first = StorageDictionary.Register(ReusedId, "accounts-reuse.db", StorageDictionary.Accounts1.Bytes);
-            var second = StorageDictionary.Register(ReusedId, "other-name.db", [.. StorageDictionary.Accounts1.Bytes]);
+            var first = StorageDictionary.Register(ReusedId, "accounts-reuse.db", TrainedA);
+            var second = StorageDictionary.Register(ReusedId, "other-name.db", [.. TrainedA]);
             Assert.AreSame(first, second);
         }
 
         [TestMethod]
         public void Register_SameIdDifferentBytes_Throws() {
-            StorageDictionary.Register(ReusedId, "accounts-reuse.db", StorageDictionary.Accounts1.Bytes);
-            Assert.ThrowsExactly<InvalidOperationException>(() => StorageDictionary.Register(ReusedId, "clash.db", StorageDictionary.CoopStatus1.Bytes));
+            StorageDictionary.Register(ReusedId, "accounts-reuse.db", TrainedA);
+            Assert.ThrowsExactly<InvalidOperationException>(() => StorageDictionary.Register(ReusedId, "clash.db", TrainedB));
         }
 
         [TestMethod]
         public void Register_ZeroId_Throws() {
-            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => StorageDictionary.Register(StorageDictionary.None, "none.db", StorageDictionary.Accounts1.Bytes));
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => StorageDictionary.Register(StorageDictionary.None, "none.db", TrainedA));
         }
 
         [TestMethod]
@@ -68,8 +71,7 @@ namespace EGG9000.Test {
         [TestMethod]
         public void TrainedDictionary_RegisteredUnderNewId_RoundTripsThroughEnvelope() {
             var samples = Enumerable.Range(0, 200).Select(Sample).ToList();
-            var trained = DictBuilder.TrainFromBuffer(samples, 16384);
-            var dictionary = StorageDictionary.Register(TrainedId, "accounts-trained.db", trained);
+            var dictionary = StorageDictionary.Register(TrainedId, "accounts-trained.db", TrainedA);
             var strategy = new StorageCompressionStrategy(StorageCompressionAlgorithm.Zstd, rawThreshold: 0, dictionary: dictionary);
 
             foreach(var plain in samples.Take(20)) {

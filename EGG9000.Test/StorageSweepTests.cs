@@ -111,7 +111,7 @@ namespace EGG9000.Test {
 
         [TestMethod]
         public void StalePredicate_Zstd_ChecksMarkerAlgorithmAndDictionary() {
-            var predicate = StorageSweep.StalePredicate("\"col\"", new StorageCompressionStrategy(StorageCompressionAlgorithm.Zstd, dictionary: StorageDictionary.Accounts1));
+            var predicate = StorageSweep.StalePredicate("\"col\"", new StorageCompressionStrategy(StorageCompressionAlgorithm.Zstd, dictionary: TestDictionaries.Accounts));
 
             StringAssert.Contains(predicate, "@marker");
             StringAssert.Contains(predicate, "@algo");

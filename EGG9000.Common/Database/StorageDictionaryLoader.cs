@@ -12,7 +12,26 @@ namespace EGG9000.Common.Database {
         private static readonly object Gate = new();
         private static bool _loaded;
 
+        public static void PersistEmbedded(ApplicationDbContext db) {
+            foreach(var (dictionary, corpus) in new[] { (StorageDictionary.Accounts1, StorageDictionaryRow.AccountsCorpus), (StorageDictionary.CoopStatus1, StorageDictionaryRow.CoopStatusCorpus) }) {
+                try {
+                    int id = dictionary.Id;
+                    var bytes = dictionary.Bytes;
+                    var inserted = db.Database.ExecuteSql($"""
+                        INSERT INTO "StorageDictionaries" ("Id", "Corpus", "Fingerprint", "TrainedAt", "EvaluatedAt", "SampleCount", "HoldoutBytesPlain", "HoldoutBytesActive", "HoldoutBytesCandidate", "Bytes", "Active")
+                        SELECT {id}, {corpus}, 'embedded', now(), now(), 0, 0, 0, 0, {bytes}, NOT EXISTS (SELECT 1 FROM "StorageDictionaries" WHERE "Corpus" = {corpus} AND "Active")
+                        ON CONFLICT ("Id") DO NOTHING
+                        """);
+                    if(inserted > 0)
+                        Logger.Info("Embedded storage dictionary {Id} persisted to StorageDictionaries.", id);
+                } catch(Exception e) {
+                    Logger.Error(e, "Embedded storage dictionary {Id} could not be persisted.", dictionary.Id);
+                }
+            }
+        }
+
         public static int Load(ApplicationDbContext db) {
+            PersistEmbedded(db);
             List<StorageDictionaryRow> rows;
             try {
                 rows = db.StorageDictionaries.AsNoTracking().OrderBy(r => r.Id).ToList();
