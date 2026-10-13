@@ -12,6 +12,7 @@ namespace EGG9000.Test {
     [TestClass]
     [TestCategory("Unit")]
     public class StorageCompressionTests {
+        private static readonly StorageCompressionStrategy AccountsStrategy = TestDictionaries.Strategy(TestDictionaries.Accounts);
 
         private static byte[] CompressiblePayload(int length)
             => Encoding.UTF8.GetBytes(string.Concat(Enumerable.Repeat("egg-inc-coop-contract-", length / 22 + 1)))[..length];
@@ -109,10 +110,10 @@ namespace EGG9000.Test {
         [TestMethod]
         public void Zstd_WithDictionary_RoundTrips_AndStampsDictionaryId() {
             var plain = CompressiblePayload(4096);
-            var stored = StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph);
+            var stored = StorageCompression.Compress(plain, AccountsStrategy);
 
             Assert.AreEqual((byte)StorageCompressionAlgorithm.Zstd, stored[1]);
-            Assert.AreEqual(StorageDictionary.Accounts1.Id, stored[2]);
+            Assert.AreEqual(TestDictionaries.AccountsId, stored[2]);
             Assert.IsTrue(stored.Length < plain.Length);
             CollectionAssert.AreEqual(plain, StorageCompression.Decompress(stored));
         }
@@ -130,8 +131,8 @@ namespace EGG9000.Test {
         [TestMethod]
         public void Zstd_WrongDictionaryId_Throws() {
             var plain = CompressiblePayload(4096);
-            var stored = StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph);
-            stored[2] = StorageDictionary.CoopStatus1.Id;
+            var stored = StorageCompression.Compress(plain, AccountsStrategy);
+            stored[2] = TestDictionaries.CoopStatusId;
 
             Assert.ThrowsExactly<InvalidDataException>(() => StorageCompression.Decompress(stored));
         }
@@ -139,7 +140,7 @@ namespace EGG9000.Test {
         [TestMethod]
         public void Zstd_UnknownDictionaryId_Throws() {
             var plain = CompressiblePayload(4096);
-            var stored = StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph);
+            var stored = StorageCompression.Compress(plain, AccountsStrategy);
             stored[2] = 200;
 
             Assert.ThrowsExactly<InvalidDataException>(() => StorageCompression.Decompress(stored));
@@ -153,7 +154,7 @@ namespace EGG9000.Test {
         [TestMethod]
         public void Zstd_TruncatedFrame_Throws() {
             var plain = CompressiblePayload(4096);
-            var stored = StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph);
+            var stored = StorageCompression.Compress(plain, AccountsStrategy);
 
             Assert.ThrowsExactly<InvalidDataException>(() => StorageCompression.Decompress(stored[..(stored.Length / 2)]));
         }
@@ -162,13 +163,13 @@ namespace EGG9000.Test {
         public void Zstd_Compress_IsDeterministic() {
             var plain = CompressiblePayload(4096);
 
-            CollectionAssert.AreEqual(StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph), StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph));
+            CollectionAssert.AreEqual(StorageCompression.Compress(plain, AccountsStrategy), StorageCompression.Compress(plain, AccountsStrategy));
         }
 
         [TestMethod]
         public void Zstd_UnderThreshold_StoresRaw() {
             var plain = CompressiblePayload(32);
-            var stored = StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph);
+            var stored = StorageCompression.Compress(plain, AccountsStrategy);
 
             Assert.AreEqual((byte)StorageCompressionAlgorithm.Raw, stored[1]);
             Assert.AreEqual(plain.Length + 2, stored.Length);
@@ -180,7 +181,7 @@ namespace EGG9000.Test {
             var random = new Random(9001);
             var plain = new byte[512];
             random.NextBytes(plain);
-            var stored = StorageCompression.Compress(plain, StorageCompressionStrategy.AccountGraph);
+            var stored = StorageCompression.Compress(plain, AccountsStrategy);
 
             Assert.AreEqual((byte)StorageCompressionAlgorithm.Raw, stored[1]);
             CollectionAssert.AreEqual(plain, StorageCompression.Decompress(stored));
@@ -192,7 +193,7 @@ namespace EGG9000.Test {
 
             Parallel.For(0, payloads.Length * 8, new ParallelOptions { MaxDegreeOfParallelism = 16 }, i => {
                 var plain = payloads[i % payloads.Length];
-                var strategy = i % 2 == 0 ? StorageCompressionStrategy.AccountGraph : StorageCompressionStrategy.CoopStatus;
+                var strategy = i % 2 == 0 ? AccountsStrategy : TestDictionaries.Strategy(TestDictionaries.CoopStatus);
                 CollectionAssert.AreEqual(plain, StorageCompression.Decompress(StorageCompression.Compress(plain, strategy)));
             });
         }

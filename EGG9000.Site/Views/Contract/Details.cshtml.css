@@ -1,5 +1,5 @@
 /* Scoped to Details.cshtml via Razor CSS isolation. Page-wide overrides that hit layout
-   elements (.container, main padding) live in wwwroot/css/site.css under .contract-details. */
+   elements (.container, main padding) live in wwwroot/css/site.css under body.contract-details. */
 
 #CurrentCoop {
     border-color: #00ff90;

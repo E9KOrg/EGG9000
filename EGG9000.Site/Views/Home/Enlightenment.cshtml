@@ -2,6 +2,7 @@
 @model Home_EnlightenmentModel
 @inject Discord.WebSocket.DiscordSocketClient discord
 @{
+    ViewData["BodyClass"] = "full-width";
     ViewData["Title"] = "Enlightenment";
 
     var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
@@ -21,13 +22,6 @@
     }).Where(x => x != null).OrderBy(x => x.TimeToComplete);
 }
 
-<style>
-        .container
-
-    {
-        max-width: initial !important;
-    }
-</style>
 <div>
     <h2>Enlightenment Progress</h2>
     <table class="table table-striped">

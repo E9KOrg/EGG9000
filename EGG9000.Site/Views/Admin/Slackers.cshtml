@@ -3,6 +3,7 @@
 @model List<Admin_Slacker>
 
 @{
+	ViewData["BodyClass"] = "full-width";
 	List<DBContract> contracts = ViewBag.Contracts;
 
 	var contractIDs = contracts.OrderByDescending(x => x.GoodUntil).Select(x => x.ID);
@@ -102,14 +103,3 @@
 		}
 	</tbody>
 </table>
-
-<style>
-	.container {
-		max-width:unset !important;
-
-	}
-
-	[data-bs-theme="dark"] .bg-warning {
-		color: #333;
-	}
-</style>

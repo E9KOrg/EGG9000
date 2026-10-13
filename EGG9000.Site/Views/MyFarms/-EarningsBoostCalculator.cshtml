@@ -4,11 +4,6 @@
     ViewData["Title"] = "Home Page";
 
 }
-<style>
-    .thumb {
-        max-height: 20px;
-    }
-</style>
 <div x-data="earningsBoostCalc()" data-earnings-boost-config="@Html.Raw(System.Net.WebUtility.HtmlEncode(Json.Serialize(new {
     boostValue = Model.Event?.Multiplier ?? 1,
     farms = Model.Backup.Farms.Where(x => x.FarmType != Ei.FarmType.Empty).Select(x => {
