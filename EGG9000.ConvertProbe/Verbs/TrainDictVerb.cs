@@ -36,8 +36,8 @@ namespace EGG9000.ConvertProbe.Verbs {
                 coopBlobs = await ReadBlobsAsync(connection, Sql.RandomCoopBlobs, coopsTrain + Holdout);
             }
 
-            var accountPlains = accountBlobs.Select(AccountPlain).Where(p => p is not null).ToList();
-            var coopPlains = coopBlobs.Select(CoopPlain).Where(p => p is not null).ToList();
+            var accountPlains = accountBlobs.Select(AccountPlain).Where(p => p is not null).Select(StorageDictionaryScrub.Scrub).ToList();
+            var coopPlains = coopBlobs.Select(CoopPlain).Where(p => p is not null).Select(StorageDictionaryScrub.Scrub).ToList();
             var corpora = new[] {
                 new Corpus("accounts", "accounts.zdict", accountPlains.Skip(Holdout).ToList(), accountPlains.Take(Holdout).ToList(), StorageCompressionStrategy.AccountGraph),
                 new Corpus("coop status", "coopstatus.zdict", coopPlains.Skip(Holdout).ToList(), coopPlains.Take(Holdout).ToList(), StorageCompressionStrategy.CoopStatus)
@@ -51,6 +51,8 @@ namespace EGG9000.ConvertProbe.Verbs {
                 var timer = Stopwatch.StartNew();
                 var dictionary = DictBuilder.TrainFromBuffer(corpus.Train, DictionaryCapacity);
                 timer.Stop();
+                if(StorageDictionaryScrub.ContainsIdentifier(dictionary))
+                    throw new InvalidDataException($"{corpus.Name} dictionary still contains an identifier after scrubbing; not writing it.");
                 var path = Path.Combine(outDir, corpus.File);
                 await File.WriteAllBytesAsync(path, dictionary);
                 report.Append(Markdown.Heading(2, corpus.Name));

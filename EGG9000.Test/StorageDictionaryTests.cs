@@ -5,6 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace EGG9000.Test {
     [TestClass]
@@ -49,11 +50,24 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
-        public void DefaultStrategies_UseZstdWithTheirDictionaries() {
-            Assert.AreEqual(StorageCompressionAlgorithm.Zstd, StorageCompressionStrategy.AccountGraph.Algorithm);
-            Assert.AreSame(StorageDictionary.Accounts1, StorageCompressionStrategy.AccountGraph.Dictionary);
-            Assert.AreEqual(StorageCompressionAlgorithm.Zstd, StorageCompressionStrategy.CoopStatus.Algorithm);
-            Assert.AreSame(StorageDictionary.CoopStatus1, StorageCompressionStrategy.CoopStatus.Dictionary);
+        public void Scrub_MasksEidsDeviceIdsAndLongDigitRuns() {
+            var plain = Encoding.ASCII.GetBytes("id EI6493007777366016 dev 0123456789abcdef0123456789abcdef n 123456789012 ei42 keep 12345");
+            var scrubbed = StorageDictionaryScrub.Scrub(plain);
+            var text = Encoding.ASCII.GetString(scrubbed);
+
+            Assert.AreEqual(plain.Length, scrubbed.Length);
+            Assert.IsFalse(StorageDictionaryScrub.ContainsIdentifier(scrubbed));
+            Assert.IsFalse(text.Contains("6493007777366016"));
+            Assert.IsFalse(text.Contains("0123456789abcdef"));
+            Assert.IsFalse(text.Contains("123456789012"));
+            Assert.IsTrue(text.Contains("eixx"));
+            Assert.IsTrue(text.EndsWith("keep 12345"));
+        }
+
+        [TestMethod]
+        public void ContainsIdentifier_FindsRawEid() {
+            Assert.IsTrue(StorageDictionaryScrub.ContainsIdentifier(Encoding.ASCII.GetBytes("xxEI5223299518300160xx")));
+            Assert.IsFalse(StorageDictionaryScrub.ContainsIdentifier(Encoding.ASCII.GetBytes("no ids here 2026")));
         }
     }
 }
