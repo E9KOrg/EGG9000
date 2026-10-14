@@ -23,7 +23,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 using static Ei.ArtifactSpec.Types;
 
 namespace EGG9000.Bot.Commands.Informational {
-    public class CraftModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
+    public class CraftModule(IDbContextFactory<ApplicationDbContext> dbFactory, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
 
         [SlashCommand("craftedcount", "Show you how many times you have crafted the requested artifact.")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
@@ -81,14 +81,14 @@ namespace EGG9000.Bot.Commands.Informational {
             await component.ModifyOriginalResponseAsync(x => { x.Components = null; x.Embed = embed; x.Content = null; });
         }
 
-        private static async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
+        private async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
             if(backup == null) {
                 return null;
             }
 
-            backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, cachedContracts, backup);
+            backup = new CustomBackup((await eggIncApi.FirstContact(account.Id)).Backup, cachedContracts, backup);
 
             var artifacts = backup.ArtifactHall.Where(x => requestedArtifact.child_afx_ids.Contains(x.Artifact.Id));
 
@@ -174,7 +174,7 @@ namespace EGG9000.Bot.Commands.Informational {
             await component.ModifyOriginalResponseAsync(x => { x.Components = null; x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
-        private static async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
+        private async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
             var embeds = new List<Embed>();
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
@@ -182,7 +182,7 @@ namespace EGG9000.Bot.Commands.Informational {
                 return null;
             }
 
-            backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, cachedContracts, backup);
+            backup = new CustomBackup((await eggIncApi.FirstContact(account.Id)).Backup, cachedContracts, backup);
             stringBuilder.Append($"For **{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
             stringBuilder.AppendLine();
 

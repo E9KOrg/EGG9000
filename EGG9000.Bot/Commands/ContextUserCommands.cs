@@ -2,6 +2,7 @@ using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Bot.Interactions;
 using EGG9000.Common.Database;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -11,7 +12,7 @@ using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public class ContextUserModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<ContextUserModule> logger) : E9KModuleBase(dbFactory) {
+    public class ContextUserModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<ContextUserModule> logger, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
         private readonly ILogger<ContextUserModule> _logger = logger;
 
@@ -19,7 +20,7 @@ namespace EGG9000.Bot.Commands {
         [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
         [StaffOnly(StaffTier.FarmHand)]
         public async Task Userstatus(SocketGuildUser target) {
-            await UserStatusCommands._userstatus(Context.Interaction, Db, _client, _logger, target, true, false);
+            await UserStatusCommands._userstatus(Context.Interaction, Db, _client, eggIncApi, _logger, target, true, false);
         }
 
         [UserCommand("Contract Settings")]
