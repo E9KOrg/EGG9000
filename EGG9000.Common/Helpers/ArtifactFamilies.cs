@@ -33,13 +33,14 @@ namespace EGG9000.Common.Helpers {
         private const int SoulEggBonusDimension = 12;
         private const int CountDimension = 20;
         private const int RunningChickenDimension = 24;
+        private const int ProphecyBonusDimension = 26;
         private const int EnlightenmentHostDimension = 29;
 
         private static readonly (int AfxId, string Id, string Name, string Target)[] Table = [
             (23, "puzzle-cube", "Puzzle cube", null),
             (0, "lunar-totem", "Lunar totem", null),
             (6, "demeters-necklace", "Demeters necklace", null),
-            (7, "vial-of-martian-dust", "Vial of Martian dust", null),
+            (7, "vial-of-martian-dust", "Vial of Martian dust", "max running chicken bonus"),
             (21, "aurelian-brooch", "Aurelian brooch", null),
             (12, "tungsten-ankh", "Tungsten ankh", null),
             (8, "gusset", "Gusset", null),
@@ -56,34 +57,21 @@ namespace EGG9000.Common.Helpers {
             (25, "ship-in-a-bottle", "Ship in a bottle", null),
             (26, "tachyon-deflector", "Tachyon deflector", null),
             (10, "book-of-basan", "Book of Basan", "Egg of Prophecy bonus"),
-            (5, "light-of-eggendil", "Light of Eggendil", "enlightenment egg value"),
+            (5, "light-of-eggendil", "Light of Eggendil", null),
             (33, "lunar-stone", "Lunar stone", null),
             (32, "shell-stone", "Shell stone", null),
             (1, "tachyon-stone", "Tachyon stone", null),
-            (37, "terra-stone", "Terra stone", null),
+            (37, "terra-stone", "Terra stone", "max running chicken bonus"),
             (34, "soul-stone", "Soul stone", null),
             (31, "dilithium-stone", "Dilithium stone", null),
             (36, "quantum-stone", "Quantum stone", null),
             (38, "life-stone", "Life stone", null),
-            (40, "clarity-stone", "Clarity stone", "effect of host artifact on enlightenment egg farms"),
+            (40, "clarity-stone", "Clarity stone", null),
             (39, "prophecy-stone", "Prophecy stone", "Egg of Prophecy bonus"),
             (17, "gold-meteorite", "Gold meteorite", null),
             (18, "tau-ceti-geode", "Tau Ceti geode", null),
             (43, "solar-titanium", "Solar titanium", null),
         ];
-
-        private static readonly Dictionary<(int AfxId, int Level, int Rarity), double> ProphecyDeltas = new() {
-            [(10, 0, 0)] = 0.0025,
-            [(10, 1, 0)] = 0.005,
-            [(10, 2, 0)] = 0.0075,
-            [(10, 2, 2)] = 0.008,
-            [(10, 3, 0)] = 0.01,
-            [(10, 3, 2)] = 0.011,
-            [(10, 3, 3)] = 0.012,
-            [(39, 0, 0)] = 0.0005,
-            [(39, 1, 0)] = 0.001,
-            [(39, 2, 0)] = 0.0015,
-        };
 
         private static readonly Lazy<Snapshot> _snapshot = new(Build);
 
@@ -114,7 +102,7 @@ namespace EGG9000.Common.Helpers {
         private static ArtifactFamilyEntry BuildFamily((int AfxId, string Id, string Name, string Target) row, Dictionary<(string, int, int), int> caps, Dictionary<(int, int), double> prices) {
             var definition = ArtifactDefinitions.Find(row.AfxId) ?? throw new InvalidOperationException($"EggSharp has no artifact family {row.AfxId}");
             var hasEffects = definition.Kind is ArtifactKind.Artifact or ArtifactKind.Stone;
-            var target = row.Target ?? (hasEffects ? ArtifactDefinitions.DimensionLabel(definition.Dimension)?.Replace("{currency}", "cash") ?? "" : "");
+            var target = hasEffects ? (row.Target ?? ArtifactDefinitions.Label(definition.Name))?.Replace("{currency}", "cash") ?? "" : "";
             var family = new ArtifactFamilyEntry(row.Id, row.Name, row.AfxId, definition.Kind, target);
 
             if(definition.Kind == ArtifactKind.Stone) {
@@ -131,22 +119,20 @@ namespace EGG9000.Common.Helpers {
 
         private static ArtifactTierEntry BuildTier(ArtifactFamilyEntry family, ArtifactFamily definition, ArtifactTier tier, int tierNumber, bool hasEffects, Dictionary<(string, int, int), int> caps, Dictionary<(int, int), double> prices) {
             IReadOnlyList<ArtifactEffectEntry> effects = hasEffects
-                ? [.. tier.Effects.Select(e => BuildEffect(definition, tier.Level, e, caps.GetValueOrDefault((definition.BinaryId, tier.Level, e.Rarity))))]
+                ? [.. tier.Effects.Select(e => BuildEffect(definition, e, caps.GetValueOrDefault((definition.BinaryId, tier.Level, e.Rarity))))]
                 : [];
             double? initial = tier.Recipe.Count > 0 && prices.TryGetValue((definition.AfxId, tier.Level), out var price) ? price : null;
             return new ArtifactTierEntry(family, definition.AfxId, tier.Level, tierNumber, SentenceCase(tier.Name), effects, tier.Recipe, initial);
         }
 
-        private static ArtifactEffectEntry BuildEffect(ArtifactFamily definition, int level, ArtifactEffect effect, int stoneCap) {
+        private static ArtifactEffectEntry BuildEffect(ArtifactFamily definition, ArtifactEffect effect, int stoneCap) {
             var guaranteed = effect.Magnitude == 0 && effect.Template.Contains("guaranteed", StringComparison.OrdinalIgnoreCase);
-            var value = EffectValue(definition, level, effect);
+            var value = EffectValue(definition, effect);
             return new ArtifactEffectEntry(effect.Rarity, value, guaranteed, stoneCap, SizeText(definition.Dimension, value, guaranteed));
         }
 
-        private static double EffectValue(ArtifactFamily definition, int level, ArtifactEffect effect) {
-            if(ProphecyDeltas.TryGetValue((definition.AfxId, level, effect.Rarity), out var delta)) return 1 + delta;
-            return definition.Dimension == SoulEggBonusDimension ? 1 + effect.Magnitude : effect.Magnitude;
-        }
+        private static double EffectValue(ArtifactFamily definition, ArtifactEffect effect) =>
+            definition.Dimension is SoulEggBonusDimension or ProphecyBonusDimension ? 1 + effect.Magnitude : effect.Magnitude;
 
         private static string SizeText(int dimension, double value, bool guaranteed) => guaranteed ? "Guaranteed" : dimension switch {
             CountDimension or RunningChickenDimension => $"+{Format(value)}",

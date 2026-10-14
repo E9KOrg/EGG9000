@@ -52,7 +52,7 @@ namespace EGG9000.Common.JsonData {
                 item._numLevels = effect.MaxLevel ?? item._numLevels;
                 if(effect.TryMeta("name", out var name))
                     item.title = (string)name;
-                if(effect.TryMeta("description", out var description) && ((string)description).Length > 2)
+                if(effect.TryMeta("description", out var description))
                     item.description = (string)description;
             }
             return data;

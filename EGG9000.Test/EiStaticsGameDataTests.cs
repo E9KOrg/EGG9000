@@ -41,7 +41,7 @@ namespace EGG9000.Test {
         ];
 
         private static IEnumerable<object[]> Boosts => [
-            ["quantum_bulb", 10, 0, 10, 0],
+            ["quantum_bulb", 10, 1, 10, 0],
             ["jimbos_blue", 60, 2, 50, 1],
             ["jimbos_blue_v2", 20, 3, 50, 0],
             ["jimbos_blue_big", 240, 3, 100, 1],

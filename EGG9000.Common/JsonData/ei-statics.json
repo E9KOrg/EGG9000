@@ -4,9 +4,7 @@
       "id": "quantum_bulb",
       "typeString": "UnlimitedHatchery",
       "name": "Quantum Bulb",
-      "emoji": "<:Quantum_bulb:724397149118267424>",
-      "timeMinutesInt": 10,
-      "value": 0
+      "emoji": "<:Quantum_bulb:724397149118267424>"
     },
     {
       "id": "jimbos_blue",

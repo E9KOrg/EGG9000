@@ -135,6 +135,24 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
+        public void EpicMultiplierDescriptionComesFromEggSharp() {
+            var item = EiEpicResearch.Get().epicResearchItems.Single(x => x.id == "epic_multiplier");
+            Assert.AreEqual("Increase max running chicken bonus by 2.0×!", item.description);
+        }
+
+        [TestMethod]
+        public void ResearchJsonTakesEggSharpPrices() {
+            var data = EiResearch.Get();
+            var comfy = data.Single(x => x.Id == "comfy_nests").Prices;
+            Assert.HasCount(50, comfy);
+            Assert.AreEqual(0.5026054676849727, comfy[0], 1e-12);
+            Assert.AreEqual(3.258392418003952, comfy[1], 1e-12);
+            Assert.AreEqual(1534724.5983781614, comfy[^1], 1e-6);
+            foreach(var item in data.Where(x => x.Type == "common"))
+                Assert.HasCount(item.Levels, item.Prices, item.Id);
+        }
+
+        [TestMethod]
         public void EpicResearchCostsMatchEggSharp() {
             var items = EiEpicResearch.Get().epicResearchItems;
             foreach(var (id, first, last, levels) in EpicCosts) {

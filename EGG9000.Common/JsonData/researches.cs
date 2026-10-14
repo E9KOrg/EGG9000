@@ -35,6 +35,8 @@ namespace EGG9000.Common.JsonData {
                 };
                 if(!effect.MetaBool("epic") && effect.TryMeta("tier", out var tier))
                     item.Tier = Convert.ToInt32(tier) + 1;
+                if(effect.TryMeta("prices", out _))
+                    item.Prices = [.. effect.MetaDoubles("prices")];
             }
             return data;
         }
