@@ -275,6 +275,15 @@ namespace EGG9000.Test {
         }
 
         [TestMethod]
+        [DataRow(10, 0L, 114405L, 360472L, 934701L)]
+        [DataRow(0, 0L, 553L, 12234L, 91819L)]
+        [DataRow(33, 0L, 774L, 22587L, 203548L)]
+        [DataRow(8, 0L, 5167L, 28986L, 163774L)]
+        public void Fairness_uses_eggsharp_crafting_prices(int afxId, long t1, long t2, long t3, long t4) {
+            CollectionAssert.AreEqual(new[] { t1, t2, t3, t4 }, ArtifactHelpers.GetFairness(new EggIncArtifactInstance { Id = (byte)afxId, Tier = 1 }));
+        }
+
+        [TestMethod]
         [DataRow(40, 1, "25%", "effect of host artifact on enlightenment egg farms")]
         [DataRow(39, 3, "+0.15%", "Egg of Prophecy bonus")]
         [DataRow(37, 3, "+100", "max running chicken bonus")]
