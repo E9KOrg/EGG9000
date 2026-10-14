@@ -127,17 +127,24 @@ namespace EGG9000.Common.EggIncAPI {
         // command handling. Cap it well above the <2s a healthy call takes so real calls are unaffected.
         private const int DefaultApiTimeoutSeconds = 30;
 
-        private static HttpClient NewClient(bool http2 = false) {
-            var handler = new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate };
-            var client = new HttpClient(handler) {
-                BaseAddress = new Uri(BaseAddressNew),
-                Timeout = TimeSpan.FromSeconds(DefaultApiTimeoutSeconds)
-            };
-            if(http2) {
-                client.DefaultRequestVersion = HttpVersion.Version20;
-            }
-            return client;
-        }
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(HeaderProfile Profile, bool Http2), HttpClient> _clients = new();
+
+        private static HttpClient ClientFor(HeaderProfile profile, bool http2 = false) =>
+            _clients.GetOrAdd((profile, http2), key => {
+                var handler = new SocketsHttpHandler {
+                    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+                    PooledConnectionLifetime = TimeSpan.FromMinutes(2)
+                };
+                var client = new HttpClient(handler) {
+                    BaseAddress = new Uri(BaseAddressNew),
+                    Timeout = TimeSpan.FromSeconds(DefaultApiTimeoutSeconds)
+                };
+                if(key.Http2) {
+                    client.DefaultRequestVersion = HttpVersion.Version20;
+                }
+                ApplyHeaders(client, key.Profile);
+                return client;
+            });
 
         private static void ApplyHeaders(HttpClient client, HeaderProfile profile) {
             switch(profile) {
@@ -174,9 +181,7 @@ namespace EGG9000.Common.EggIncAPI {
         // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
         // base64-decode the body. Returns null on a non-success status. body may be null.
         private static async Task<byte[]> PostRaw(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
-            using var client = NewClient(http2);
-            ApplyHeaders(client, profile);
-            var response = await client.PostCounted(path, body, cancellationToken);
+            using var response = await ClientFor(profile, http2).PostCounted(path, body, cancellationToken);
             if(!response.IsSuccessStatusCode) {
                 return null;
             }
@@ -186,9 +191,7 @@ namespace EGG9000.Common.EggIncAPI {
         // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
         // base64-decode the body. Returns null on a non-success status. body may be null.
         private static async Task<(byte[], string Error)> PostRawWithError(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
-            using var client = NewClient(http2);
-            ApplyHeaders(client, profile);
-            var response = await client.PostCounted(path, body, cancellationToken);
+            using var response = await ClientFor(profile, http2).PostCounted(path, body, cancellationToken);
             if(!response.IsSuccessStatusCode) {
                 return (null, $"HTTP Error: {response.StatusCode}");
             }
@@ -222,9 +225,7 @@ namespace EGG9000.Common.EggIncAPI {
             }
             try {
                 var bac = await GetBAC(BuildPayload(data, UserId, descriptor));
-                using var client = NewClient();
-                ApplyHeaders(client, descriptor.Headers);
-                var response = await client.PostCounted(descriptor.Path, bac);
+                using var response = await ClientFor(descriptor.Headers).PostCounted(descriptor.Path, bac);
                 return response.IsSuccessStatusCode;
             } catch(Exception) {
                 return false;
