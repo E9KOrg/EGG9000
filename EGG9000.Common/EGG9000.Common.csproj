@@ -27,8 +27,6 @@
     <None Remove="JsonData\ArtifactEmoji.json" />
     <None Remove="JsonData\farmer-ranks.json" />
     <None Remove="JsonData\ei-epic-research.json" />
-    <None Remove="JsonData\eiafx-config.json" />
-    <None Remove="JsonData\eiafx-data.json" />
     <None Remove="JsonData\ei-statics.json" />
     <None Remove="JsonData\researches.json" />
     <None Remove="JsonData\coop-words.json" />
@@ -36,11 +34,12 @@
   <ItemGroup>
     <PackageReference Include="Bugsnag.AspNet.Core" Version="4.1.1" />
     <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="EggSharp.Api" Version="13.0.0" />
-    <PackageReference Include="EggSharp.Core" Version="13.0.0" />
-    <PackageReference Include="EggSharp.Ei.Google" Version="13.0.0" />
-    <PackageReference Include="EggSharp.Protos" Version="13.0.0" />
-    <PackageReference Include="EggSharp.Storage" Version="13.0.0" />
+    <PackageReference Include="EggSharp.Api" Version="18.0.0" />
+    <PackageReference Include="EggSharp.Core" Version="18.0.0" />
+    <PackageReference Include="EggSharp.Ei.Google" Version="18.0.0" />
+    <PackageReference Include="EggSharp.GameData" Version="18.0.0" />
+    <PackageReference Include="EggSharp.Protos" Version="18.0.0" />
+    <PackageReference Include="EggSharp.Storage" Version="18.0.0" />
     <PackageReference Include="Humanizer" Version="3.0.10" />
     <PackageReference Include="MessagePack" Version="3.1.11" />
     <PackageReference Include="MessagePackAnalyzer" Version="3.1.11">
@@ -80,10 +79,6 @@
     <EmbeddedResource Include="JsonData\ArtifactEmoji.json" />
     <EmbeddedResource Include="JsonData\farmer-ranks.json" />
     <EmbeddedResource Include="JsonData\curiosity_research.csv" />
-    <EmbeddedResource Include="JsonData\eiafx-config.json" />
-    <EmbeddedResource Include="JsonData\eiafx-data.json">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
     <EmbeddedResource Include="JsonData\ei-statics.json" />
     <EmbeddedResource Include="JsonData\ei-epic-research.json" />
     <EmbeddedResource Include="JsonData\researches.json" />
