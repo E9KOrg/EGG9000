@@ -1,5 +1,6 @@
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EggSharp.Core;
 using Ei;
 using Google.Protobuf;
 using Microsoft.Extensions.Logging;
@@ -10,9 +11,9 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.EggIncAPI {
     public interface IEggIncApi {
-        Task<bool> Send<TRequest>(TRequest data, string userId) where TRequest : IMessage;
-        Task<TResponse> Post<TResponse, TRequest>(TRequest data, string userId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage;
-        Task<ApiResult<TResponse>> PostResult<TResponse, TRequest>(TRequest data, string userId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage;
+        Task<bool> Send<TRequest>(TRequest data, string userId) where TRequest : class, IMessage;
+        Task<TResponse> Post<TResponse, TRequest>(TRequest data, string userId, bool authenticated = false) where TResponse : class, IMessage<TResponse>, new() where TRequest : class, IMessage;
+        Task<ApiResult<TResponse>> PostResult<TResponse, TRequest>(TRequest data, string userId, bool authenticated = false) where TResponse : class, IMessage<TResponse>, new() where TRequest : class, IMessage;
 
         Task<PeriodicalsResponse> GetPeriodicalsAsync(string userId = EggIncApi.PeriodicalsReferenceUserId);
         Task<bool> ValidateVersionsAsync(uint clientVersion, string appVersion, string appBuild, string userId = EggIncApi.PeriodicalsReferenceUserId);
