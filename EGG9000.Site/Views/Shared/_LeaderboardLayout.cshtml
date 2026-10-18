@@ -11,12 +11,7 @@
 
 <div class="card lb-card">
 	<div class="card-header lb-toolbar">
-		<div>
-			<h4 class="lb-title">@header.Title</h4>
-			@if (!string.IsNullOrEmpty(header.Subtitle)) {
-				<div class="lb-subtitle">@header.Subtitle</div>
-			}
-		</div>
+		<h4 class="lb-title">@header.Title</h4>
 		<div class="lb-controls">
 			@foreach (var menu in header.Menus) {
 				var active = menu.Choices.FirstOrDefault(x => x.Active);
@@ -27,12 +22,7 @@
 					<ul class="dropdown-menu dropdown-menu-end">
 						@foreach (var choice in menu.Choices) {
 							<li>
-								<a class="dropdown-item @(choice.Active ? "active" : "")" href="@choice.Href" style="@(choice.Color is null ? "" : $"border-left:4px solid {choice.Color};")">
-									@if (choice.Icon is not null) {
-										<img class="lb-icon" src="@choice.Icon" alt="" />
-									}
-									<span style="@(choice.Color is null ? "" : $"color:{choice.Color};")">@choice.Label</span>
-								</a>
+								<a class="dropdown-item @(choice.Active ? "active" : "")" href="@choice.Href" style="@(choice.Color is null ? "" : $"border-left:4px solid {choice.Color};color:{choice.Color};")">@choice.Label</a>
 							</li>
 						}
 					</ul>

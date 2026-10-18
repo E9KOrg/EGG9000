@@ -77,11 +77,6 @@ body.lb-page > footer {
     font-weight: 600;
 }
 
-.lb-subtitle {
-    color: var(--bs-secondary-color);
-    font-size: 0.875rem;
-}
-
 .lb-controls {
     display: flex;
     flex-wrap: wrap;
@@ -92,12 +87,6 @@ body.lb-page > footer {
 .lb-controls .dropdown-menu {
     max-height: 60vh;
     overflow-y: auto;
-}
-
-.lb-controls .dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
 }
 
 .lb-scroll {
@@ -160,16 +149,6 @@ body.lb-page > footer {
     --bs-table-bg-state: var(--lb-me-bg);
 }
 
-.lb-table > tbody > tr:target > * {
-    animation: lb-flash 1.6s ease-out;
-}
-
-@keyframes lb-flash {
-    from {
-        box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, 0.45);
-    }
-}
-
 .lb-table .lb-rank {
     width: 3.5rem;
     text-align: center;
@@ -227,10 +206,6 @@ body.lb-page > footer {
     display: inline-flex;
     gap: 0.35rem;
     align-items: center;
-}
-
-.lb-muted {
-    color: var(--bs-secondary-color);
 }
 
 .lb-empty {

@@ -223,7 +223,9 @@ namespace EGG9000.Site.Controllers {
                         break;
                     case "start":
                         var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
-                        leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
+                        leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms ?? []).Where(y => y.Started > firstContract).Select(y => y.Started)
+                            .Concat((x.Backup.Farms ?? []).Select(y => y.Started))
+                            .DefaultIfEmpty(DateTimeOffset.MaxValue).Min());
                         leaderboard = [.. leaderboard.OrderBy(x => x.Started)];
                         break;
                     case "permit":
@@ -475,7 +477,6 @@ namespace EGG9000.Site.Controllers {
         }
 
         private const string NoLinkedGuildMessage = "Your account is not linked to a Discord server this site knows about.";
-
         private async Task<(DBUser User, ulong Guildid, List<LeaderboardUser> Board)> ResolveGuildLeaderboardAsync(ulong guildid) {
             var user = await GetCurrentDbUserAsync();
             if(guildid == 0 || !User.IsInRole("Admin")) {
@@ -515,7 +516,6 @@ namespace EGG9000.Site.Controllers {
                 u.Backup.EarningsBonus,
                 SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank));
             if(all is null) return View("Message", NoLinkedGuildMessage);
-
             ViewBag.ListOfEb = all;
             ViewBag.MyEbs = mine;
             ViewBag.MyNames = myNames;
@@ -530,7 +530,6 @@ namespace EGG9000.Site.Controllers {
                 (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
                 u?.Backup?.TotalCS ?? 0));
             if(all is null) return View("Message", NoLinkedGuildMessage);
-
             ViewBag.MyGradeData = mine;
             ViewBag.MyNames = myNames;
             ViewBag.AllGradeData = all;
@@ -542,11 +541,10 @@ namespace EGG9000.Site.Controllers {
         [Authorize]
         public async Task<IActionResult> CraftingLevelComparison() {
             var (all, mine, myNames) = await BuildComparison(u => new Tuple<int, double>(
-                (int)u?.Account?.Backup.GetCraftingLevel(),
-                (double)(u?.Account?.Backup?.CraftingXP)),
+                (int)(u.Account?.Backup?.GetCraftingLevel() ?? 0),
+                u.Account?.Backup?.CraftingXP ?? 0),
                 leaderboard => leaderboard.Where(x => x.TotalCraftingXP > 0));
             if(all is null) return View("Message", NoLinkedGuildMessage);
-
             ViewBag.MyCraftingData = mine;
             ViewBag.MyNames = myNames;
             ViewBag.AllCraftingData = all;

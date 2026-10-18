@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace EGG9000.Site.Models;
 
-public record LeaderboardChoice(string Label, string Href, bool Active, string Color = null, string Icon = null);
+public record LeaderboardChoice(string Label, string Href, bool Active, string Color = null);
 
 public record LeaderboardMenu(string Caption, IReadOnlyList<LeaderboardChoice> Choices);
 
@@ -14,7 +14,7 @@ public record LeaderboardJump(string Anchor, string Label);
 
 public record LeaderboardLead(int Rank, string Name, string Href = null);
 
-public record LeaderboardHeader(string Title, string Subtitle = null) {
+public record LeaderboardHeader(string Title) {
     public List<LeaderboardMenu> Menus { get; } = [];
     public List<LeaderboardJump> Jumps { get; } = [];
 

@@ -7,7 +7,7 @@
 	var isAdmin = User.IsStaff();
 	var mine = Model.Where(x => x.DisplayDiscordId.ToString() == discordId);
 
-	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("Crafting XP Leaderboard", $"{Model.Count} accounts")
+	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("Crafting XP Leaderboard")
 		.Jump(mine.Select(x => new LeaderboardJump(x.Backup.EggIncId, x.Backup.UserName)));
 }
 

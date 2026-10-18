@@ -14,7 +14,7 @@
 	var rows = Model.Where(x => x.EBGain > 0 && x.PrestigeCount > 0).ToList();
 	var mine = rows.Where(x => x.UserAccount.User.DiscordId.ToString() == discordId);
 
-	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader($"Egg Day Leaderboard {year}", $"{rows.Count} players")
+	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader($"Egg Day Leaderboard {year}")
 		.Menu("Year", ((List<int>)ViewBag.Years).Select(y => new LeaderboardChoice(y.ToString(), q("year", y), y == year)))
 		.Menu("Sort",
 			new LeaderboardChoice("EB Gain", q("sortby", "eb"), sortby == "eb"),

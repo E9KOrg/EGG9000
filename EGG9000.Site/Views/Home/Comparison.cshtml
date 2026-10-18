@@ -41,13 +41,13 @@
                     <tbody>
                         <tr>
                             <td>Highest Eb:</td>
-                            <td>@ArgumentsHelper.NumberToString((listOfEb.Select(o => o.Item1).Max()),true,2)</td>
-                            <td>@SIPrefix.GetPrefixFromEB(listOfEb.Select(o => o.Item1).Max()).RankWithSubRank</td>
+                            <td>@ArgumentsHelper.NumberToString((listOfEb.Select(o => o.Item1).DefaultIfEmpty().Max()),true,2)</td>
+                            <td>@SIPrefix.GetPrefixFromEB(listOfEb.Select(o => o.Item1).DefaultIfEmpty().Max()).RankWithSubRank</td>
                         </tr>
                         <tr>
                             <td>Average Eb:</td>
-                            <td>@ArgumentsHelper.NumberToString(listOfEb.Select(o => o.Item1).Average(),true,2)</td>
-                            <td>@SIPrefix.GetPrefixFromEB(listOfEb.Select(o => o.Item1).Average()).RankWithSubRank</td>
+                            <td>@ArgumentsHelper.NumberToString(listOfEb.Select(o => o.Item1).DefaultIfEmpty().Average(),true,2)</td>
+                            <td>@SIPrefix.GetPrefixFromEB(listOfEb.Select(o => o.Item1).DefaultIfEmpty().Average()).RankWithSubRank</td>
                         </tr>
                         <tr>
                             <td>Median Eb:</td>

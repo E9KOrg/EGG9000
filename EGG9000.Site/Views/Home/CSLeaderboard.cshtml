@@ -11,7 +11,7 @@
 
 	var mine = Model.Where(x => x.DisplayDiscordId.ToString() == discordId);
 
-	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("CS Leaderboard", $"{Model.Count} accounts")
+	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("CS Leaderboard")
 		.Menu("Sort",
 			new LeaderboardChoice("Total CS", q("total"), cstype == "total"),
 			new LeaderboardChoice("Season CS", q("season"), cstype == "season"))
@@ -36,7 +36,7 @@
 		@foreach (var (account, i) in Model.Select((x, i) => (x, i))) {
 			var isMe = account.DisplayDiscordId.ToString() == discordId;
 			var href = isAdmin ? $"/Home/ViewUser/{account.User.Id}" : isMe ? "/MyFarms" : null;
-			var totalCoops = (account.Backup.ArchivedFarms?.Count ?? 0) + account.Backup.Farms.Count(x => !string.IsNullOrEmpty(x.ContractId));
+			var totalCoops = (account.Backup.ArchivedFarms?.Count ?? 0) + (account.Backup.Farms?.Count(x => !string.IsNullOrEmpty(x.ContractId)) ?? 0);
 			<tr id="@account.Backup.EggIncId" class="@(isMe ? "lb-me" : "")">
 				<partial name="_LeaderboardLead" model="new LeaderboardLead(i + 1, account.DisplayName, href)" />
 				<td class="@sorted("total")">@account.TotalCS.ToString("N0")</td>
