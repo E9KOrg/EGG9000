@@ -1,94 +1,34 @@
-﻿@using static EGG9000.Common.Helpers.Prefarm;
-@model List<LeaderboardUser>
-@inject Discord.WebSocket.DiscordSocketClient discord
+﻿@model List<LeaderboardUser>
 @{
-    ViewData["Title"] = "Crafting XP Leaderboard";
+	Layout = "_LeaderboardLayout";
+	ViewData["Title"] = "Crafting XP Leaderboard";
 
-    var discordId = User.DiscordId();
+	var discordId = User.DiscordId();
+	var isAdmin = User.IsStaff();
+	var mine = Model.Where(x => x.DisplayDiscordId.ToString() == discordId);
 
-    var myAccounts = Model.Where(x => x.DisplayDiscordId.ToString() == discordId);
-    // Read/staff tier - gates only the clickable player-name link to MyFarms on this read-only page.
-    var isAdmin = User.IsStaff();
+	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("Crafting XP Leaderboard", $"{Model.Count} accounts")
+		.Jump(mine.Select(x => new LeaderboardJump(x.Backup.EggIncId, x.Backup.UserName)));
 }
 
-@if (myAccounts.Count() == 1)
-{
-    <a class="btn btn-secondary" href="#@myAccounts.First().Backup.EggIncId">Jump to me</a>
-}
-else if (myAccounts.Count() > 1)
-{
-    foreach (var account in myAccounts)
-    {
-        <a class="btn btn-secondary" href="#@account.Backup.EggIncId">Jump to @account.Backup.UserName</a>
-    }
-}
-<div class="row">
-    <div class="col">
-        <table class="table table-striped table-sm">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th style="text-align: left;">Name</th>
-                    <th>Crafting Level</th>
-                    <th>Crafting XP</th>
-                </tr>
-            </thead>
-            <tbody>
-                @{
-                    var i = 0;
-                    foreach (var account in Model)
-                    {
-                        i++;
-                        RowTemplate(account, i);
-                    }
-                }
-            </tbody>
-        </table>
-
-    </div>
-</div>
-
-@{
-    string CommaSeparate(double score)
-    {
-        return string.Format("{0:N0}", score);
-    }
-    void RowTemplate(LeaderboardUser account, int i)
-    {
-        var isMe = account.DisplayDiscordId.ToString() == discordId;
-        <tr id="@account.User.DiscordId" class="@(isMe ? "Me" : "")">
-
-            <td align="right"> @i </td>
-
-            <td class="lb-name-cell">
-                @if (isMe)
-                {
-                    <div id="@account.Backup.EggIncId" class="lb-anchor-offset"></div>
-                }
-                @if (isAdmin)
-                {
-                    <a href="/Home/ViewUser/@(account.User.Id)">
-                        @account.DisplayName
-                    </a>
-                }
-                else if (isMe)
-                {
-                    <a href="/MyFarms">
-                        @account.DisplayName
-                    </a>
-                }
-                else
-                {
-                    @account.DisplayName
-                }
-            </td>
-
-            <td align="right" style="padding-left: 20px; padding-right: 10px;">
-                @CommaSeparate(account.Backup.GetCraftingLevel())
-            </td>
-            <td align="right" style="padding-right: 20px; padding-left: 10px;">
-                @CommaSeparate(account.Backup.CraftingXP)
-            </td>
-        </tr>
-    }
-}
+<table class="table table-striped table-hover lb-table">
+	<thead>
+		<tr>
+			<th class="lb-rank">#</th>
+			<th class="lb-left">Name</th>
+			<th>Crafting Level</th>
+			<th class="lb-sorted">Crafting XP</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var (account, i) in Model.Select((x, i) => (x, i))) {
+			var isMe = account.DisplayDiscordId.ToString() == discordId;
+			var href = isAdmin ? $"/Home/ViewUser/{account.User.Id}" : isMe ? "/MyFarms" : null;
+			<tr id="@account.Backup.EggIncId" class="@(isMe ? "lb-me" : "")">
+				<partial name="_LeaderboardLead" model="new LeaderboardLead(i + 1, account.DisplayName, href)" />
+				<td>@account.Backup.GetCraftingLevel().ToString("N0")</td>
+				<td class="lb-sorted">@account.Backup.CraftingXP.ToString("N0")</td>
+			</tr>
+		}
+	</tbody>
+</table>

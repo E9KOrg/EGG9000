@@ -6,6 +6,7 @@ using EGG9000.Common.Bus;
 using EGG9000.Common.Database;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
+using EGG9000.Site;
 using EGG9000.Site.Auth;
 using EGG9000.Site.Bus;
 using EGG9000.Site.Data;
@@ -104,11 +105,12 @@ app.Use(async (context, next) => {
         "default-src 'self'; " +
         "script-src 'self' 'unsafe-inline' https://js.stripe.com https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; " +
         "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; " +
-        "img-src 'self' data: https:; " +
+        "img-src 'self' data: blob: https:; " +
         "font-src 'self' data:; " +
         "frame-src https://js.stripe.com https://hooks.stripe.com; " +
         (BuildConfig.IsRelease ? "connect-src 'self' https://api.stripe.com; " : "connect-src *;") +
-        "frame-ancestors 'none'";
+        "frame-ancestors 'none'; " +
+        $"report-uri {CspReports.Path}";
     await next();
 });
 
@@ -154,6 +156,7 @@ app.MapControllerRoute(
 // GuildLesserAdmin are intentionally excluded - runtime/host metrics are a global ops concern.
 app.MapMetrics().RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" });
 app.MapHub<BusHub>(BusEnvelope.HubPath);
+app.MapCspReports();
 
 app.MapRazorPages();
 app.Run();
