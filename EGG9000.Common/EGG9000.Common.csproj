@@ -34,12 +34,12 @@
   <ItemGroup>
     <PackageReference Include="Bugsnag.AspNet.Core" Version="4.1.1" />
     <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="EggSharp.Api" Version="18.0.0" />
-    <PackageReference Include="EggSharp.Core" Version="18.0.0" />
-    <PackageReference Include="EggSharp.Ei.Google" Version="18.0.0" />
-    <PackageReference Include="EggSharp.GameData" Version="18.0.0" />
-    <PackageReference Include="EggSharp.Protos" Version="18.0.0" />
-    <PackageReference Include="EggSharp.Storage" Version="18.0.0" />
+    <PackageReference Include="EggSharp.Api" Version="35.0.0" />
+    <PackageReference Include="EggSharp.Core" Version="35.0.0" />
+    <PackageReference Include="EggSharp.Ei.Google" Version="35.0.0" />
+    <PackageReference Include="EggSharp.GameData" Version="35.0.0" />
+    <PackageReference Include="EggSharp.Protos" Version="35.0.0" />
+    <PackageReference Include="EggSharp.Storage" Version="35.0.0" />
     <PackageReference Include="Humanizer" Version="3.0.10" />
     <PackageReference Include="MessagePack" Version="3.1.12" />
     <PackageReference Include="MessagePackAnalyzer" Version="3.1.12">
