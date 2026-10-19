@@ -49,6 +49,9 @@
 	<ContainerDevelopmentMode>Fast</ContainerDevelopmentMode>
   </PropertyGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="EGG9000.Test" />
+  </ItemGroup>
+  <ItemGroup>
     <None Remove="version.txt" />
   </ItemGroup>
   <ItemGroup>

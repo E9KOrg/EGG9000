@@ -32,7 +32,7 @@ namespace EGG9000.Bot.Automated {
             public ulong? LastGuild { get; set; }
         }
 
-        private async Task HandleMemberTracking(ApplicationDbContext db, List<Guild> guilds, CancellationToken cancellationToken) {
+        internal async Task HandleMemberTracking(ApplicationDbContext db, List<Guild> guilds, CancellationToken cancellationToken) {
             var users = await db.DBUsers.Select(x => new BasicUserInfo { DiscordId = x.DiscordId, GuildId = x.GuildId, Id = x.Id, LastGuild = x.LastGuild }).ToListAsync(CancellationToken.None);
 
             foreach(var guild in guilds) {
@@ -148,7 +148,7 @@ namespace EGG9000.Bot.Automated {
             StillAlive();
         }
 
-        private async Task ManageOverflowRoles(SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+        internal async Task ManageOverflowRoles(SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
             var role = mainServer.GetRole(KnownRoles.Overflow);
             if(role is null) {
                 _logger.LogWarning("Unable to find overflow role in {ServerName}", mainServer.Name);
@@ -182,7 +182,7 @@ namespace EGG9000.Bot.Automated {
             }
         }
 
-        private async Task ManageOverflowMembers(SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
+        internal async Task ManageOverflowMembers(SocketGuild mainServer, List<SocketGuild> overflowServers, CancellationToken cancellationToken) {
             foreach(var overflowServer in overflowServers) {
                 if(cancellationToken.IsCancellationRequested)
                     break;
