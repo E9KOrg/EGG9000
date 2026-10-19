@@ -33,7 +33,7 @@ $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
 # Real git metadata baked into the bot's /ping version.txt. Falls back to placeholders off a git checkout.
 $gitMessage = (git log -1 --format=%s 2>$null); if (-not $gitMessage) { $gitMessage = "Docker build" }
 $gitHash = (git rev-parse --short HEAD 2>$null); if (-not $gitHash) { $gitHash = "unknown" }
-$gitAuthor = (git log -1 --format=%an 2>$null); if (-not $gitAuthor) { $gitAuthor = "Docker" }
+$gitAuthor = (git log -1 "--format=%an <%ae>" 2>$null); if (-not $gitAuthor) { $gitAuthor = "Docker" }
 $gitTimestamp = (git log -1 --format=%ct 2>$null); if (-not $gitTimestamp) { $gitTimestamp = "0" }
 $gitBranch = (git rev-parse --abbrev-ref HEAD 2>$null); if (-not $gitBranch) { $gitBranch = "" }
 $gitRemote = (git config --get remote.origin.url 2>$null); if (-not $gitRemote) { $gitRemote = "" }
