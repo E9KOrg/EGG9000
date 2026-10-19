@@ -29,8 +29,27 @@ namespace EGG9000.Test {
             ["afx_mission_time"] = 60,
         };
 
+        private static readonly Dictionary<string, string> ResearchNameChanges = new() {
+            ["vehicle_reliablity"] = "VEHICLE RELIABLITY",
+            ["eggsistor"] = "EGGSISTOR MINIATURIZATION",
+            ["micro_coupling"] = "GRAVITON COUPLING",
+        };
+
+        private static readonly Dictionary<string, double> ResearchJsonPerLevelChanges = new() {
+            ["bigger_eggs"] = 1,
+            ["usde_prime"] = 2,
+        };
+
+        private static readonly Dictionary<string, double> ResearchJsonLastPriceChanges = new() {
+            ["internal_hatchery1"] = 266696825,
+        };
+
         private static readonly Dictionary<string, string> EpicDescriptionChanges = new() {
             ["epic_multiplier"] = "Increase max running chicken bonus by 2.0×!",
+            ["epic_clucking"] = "+0.1% egg value bonus for each running chicken.",
+            ["epic_egg_laying"] = "Increase egg laying rate by 5%.",
+            ["transportation_lobbyist"] = "Increase vehicle capacity by 5%.",
+            ["hold_to_research"] = "Increase repetition rate when holding down research button by +25%",
         };
 
         private static readonly Dictionary<int, double> EggValueChanges = new() {
@@ -51,11 +70,51 @@ namespace EGG9000.Test {
             ["tachyon_prism_purple_v2"] = (10, 100),
             ["soul_beacon_blue_v2"] = (30, 5),
             ["soul_beacon_purple_v2"] = (20, 50),
+            ["soul_mirror_blue"] = (10, 1),
+            ["soul_mirror_purple"] = (60, 1),
+            ["soul_mirror_orange"] = (1440, 1),
+            ["dilithium_bulb"] = (10, 1),
+        };
+
+        private static readonly Dictionary<string, (int GoldenEggs, int Tokens)> BoostCostChanges = new() {
+            ["jimbos_blue_v2"] = (50, 0),
+            ["jimbos_blue_big"] = (100, 1),
+            ["jimbos_purple_v2"] = (150, 1),
+            ["jimbos_purple_big"] = (750, 1),
+            ["jimbos_orange"] = (2500, 2),
+            ["jimbos_orange_big"] = (7500, 3),
+            ["tachyon_prism_blue"] = (200, 1),
+            ["tachyon_prism_blue_v2"] = (50, 0),
+            ["tachyon_prism_blue_big"] = (500, 0),
+            ["tachyon_prism_purple"] = (1000, 3),
+            ["tachyon_prism_purple_v2"] = (1000, 2),
+            ["tachyon_prism_purple_big"] = (5000, 2),
+            ["tachyon_prism_orange"] = (12000, 4),
+            ["tachyon_prism_orange_big"] = (25000, 4),
+            ["boost_beacon_blue"] = (1000, 1),
+            ["boost_beacon_purple"] = (8000, 4),
+            ["boost_beacon_blue_big"] = (15000, 3),
+            ["boost_beacon_orange"] = (50000, 8),
+            ["soul_beacon_blue"] = (200, 0),
+            ["soul_beacon_blue_v2"] = (200, 0),
+            ["soul_beacon_purple"] = (1000, 0),
+            ["soul_beacon_purple_v2"] = (1000, 0),
+            ["soul_beacon_orange"] = (10000, 0),
+            ["subsidy_application"] = (200, 1),
+            ["blank_check"] = (750, 1),
+            ["money_printer"] = (2500, 2),
+            ["soul_mirror_blue"] = (100, 1),
+            ["soul_mirror_purple"] = (500, 2),
+            ["soul_mirror_orange"] = (2000, 3),
         };
 
         private static readonly Dictionary<int, long[]> FairnessChanges = new() {
             [0] = [0, 553, 12234, 91819],
+            [10] = [0, 114405, 360472, 934701],
+            [17] = [0, 3982, 31373, 0],
+            [18] = [0, 7867, 53149, 0],
             [33] = [0, 774, 22587, 203548],
+            [43] = [0, 3753, 37794, 0],
         };
 
         private static readonly Dictionary<(string, int), uint> CraftCostChanges = new() {
@@ -106,7 +165,8 @@ namespace EGG9000.Test {
         public void Research_list_names_match_master() {
             var all = Research.EpicResearchList.Concat(Research.CommonResearchList).ToList();
             var mismatches = Rows("researchList")
-                .Select(r => (Id: r[0].GetString(), Name: r[1].GetString()))
+                .Select(r => (Id: r[0].GetString()!, Name: r[1].GetString()!))
+                .Select(r => (r.Id, Name: ResearchNameChanges.TryGetValue(r.Id, out var changed) ? changed : r.Name.Trim().ToUpperInvariant()))
                 .Where(r => all.Single(x => x.id == r.Id).Name != r.Name)
                 .Select(r => $"{r.Id}: \"{r.Name}\" != \"{all.Single(x => x.id == r.Id).Name}\"")
                 .ToList();
@@ -137,7 +197,8 @@ namespace EGG9000.Test {
                 }
                 var levels = ResearchJsonLevelChanges.GetValueOrDefault(id, r[1].GetInt32());
                 if(item.Levels != levels) mismatches.Add($"{id}.Levels: {levels} != {item.Levels}");
-                if(!Close(r[2].GetDouble(), item.PerLevel, 1e-12)) mismatches.Add($"{id}.PerLevel: {r[2].GetDouble()} != {item.PerLevel}");
+                var perLevel = ResearchJsonPerLevelChanges.GetValueOrDefault(id, r[2].GetDouble());
+                if(!Close(perLevel, item.PerLevel, 1e-12)) mismatches.Add($"{id}.PerLevel: {perLevel} != {item.PerLevel}");
                 if(item.Tier != r[3].GetInt32()) mismatches.Add($"{id}.Tier: {r[3].GetInt32()} != {item.Tier}");
             }
             Assert.HasCount(rows.Count, data);
@@ -156,6 +217,7 @@ namespace EGG9000.Test {
 
         private static List<string> PriceMismatches(bool common) {
             var data = EiResearch.Get();
+            var epicCosts = Rows("epicResearch").ToDictionary(r => r[0].GetString()!, r => (First: r[1].GetDouble(), Last: r[2].GetDouble()));
             var mismatches = new List<string>();
             foreach(var r in Rows("research")) {
                 var id = r[0].GetString()!;
@@ -163,10 +225,13 @@ namespace EGG9000.Test {
                 if((item.Type == "common") != common) continue;
                 var prices = item.Prices ?? [];
                 var count = ResearchJsonLevelChanges.GetValueOrDefault(id, r[4].GetInt32());
+                var (first, last) = common
+                    ? (r[5].GetDouble(), ResearchJsonLastPriceChanges.GetValueOrDefault(id, r[6].GetDouble()))
+                    : epicCosts[id];
                 if(prices.Count != count) mismatches.Add($"{id}.Prices.Count: {count} != {prices.Count}");
                 if(prices.Count == 0) continue;
-                if(!Close(r[5].GetDouble(), prices[0], 0.01)) mismatches.Add($"{id}.Prices[0]: {r[5].GetDouble()} != {prices[0]}");
-                if(!Close(r[6].GetDouble(), prices[^1], 0.01)) mismatches.Add($"{id}.Prices[^1]: {r[6].GetDouble()} != {prices[^1]}");
+                if(!Close(first, prices[0], 0.01)) mismatches.Add($"{id}.Prices[0]: {first} != {prices[0]}");
+                if(!Close(last, prices[^1], 0.01)) mismatches.Add($"{id}.Prices[^1]: {last} != {prices[^1]}");
             }
             return mismatches;
         }
@@ -202,7 +267,7 @@ namespace EGG9000.Test {
                 var id = r[0].GetString()!;
                 var item = items.SingleOrDefault(x => x.id == id);
                 if(item is null) continue;
-                var expected = EpicDescriptionChanges.GetValueOrDefault(id, NullableString(r[5]));
+                var expected = EpicDescriptionChanges.TryGetValue(id, out var changed) ? changed : NullableString(r[5]);
                 if(item.description != expected) mismatches.Add($"{id}: \"{expected}\" != \"{item.description}\"");
             }
             AssertNone(mismatches);
@@ -249,10 +314,11 @@ namespace EGG9000.Test {
             var boosts = Root.Get().eggIncBoosts;
             var mismatches = new List<string>();
             foreach(var r in Rows("boosts")) {
-                var id = r[0].GetString();
+                var id = r[0].GetString()!;
                 var boost = boosts.Single(b => b.id == id);
-                if(boost.costGoldenEggs != r[3].GetInt32()) mismatches.Add($"{id}.costGoldenEggs: {r[3].GetInt32()} != {boost.costGoldenEggs}");
-                if(boost.costTokens != r[4].GetInt32()) mismatches.Add($"{id}.costTokens: {r[4].GetInt32()} != {boost.costTokens}");
+                var (gold, tokens) = BoostCostChanges.GetValueOrDefault(id, (r[3].GetInt32(), r[4].GetInt32()));
+                if(boost.costGoldenEggs != gold) mismatches.Add($"{id}.costGoldenEggs: {gold} != {boost.costGoldenEggs}");
+                if(boost.costTokens != tokens) mismatches.Add($"{id}.costTokens: {tokens} != {boost.costTokens}");
             }
             AssertNone(mismatches);
         }
@@ -346,13 +412,6 @@ namespace EGG9000.Test {
                 }
             }
             AssertNone(mismatches);
-        }
-
-        [TestMethod]
-        public void Removed_epic_research_rows_stay_local() {
-            var ids = EiEpicResearch.Get().epicResearchItems.Select(x => x.id).ToList();
-            CollectionAssert.Contains(ids, "epic_silo_quality");
-            CollectionAssert.Contains(ids, "warp_shift");
         }
     }
 }

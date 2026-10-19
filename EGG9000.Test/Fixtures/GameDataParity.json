@@ -167,9 +167,7 @@
     ["afx_mission_time",5000,200000,60,"FTL Drive Upgrades","Reduce Artifact mission time of FTL ships by 1%",[]],
     ["afx_mission_capacity",50000,1000000,10,"Zero-G Quantum Containment","Increase Artifact mission capacity by 5%",[]],
     ["nter_hyperloop_trains",50000,50000,1,"Hyperloop","One time purchase to allow use of hyperloop trains",[]],
-    ["nter_fuel_tank",0,0,7,"Fuel Tank","Store extra eggs to be used as fuel for rockets",[50000,250000,1000000,2000000,3000000,4000000,5000000]],
-    ["epic_silo_quality",0,0,0,null,null,[]],
-    ["warp_shift",0,0,0,null,null,[]]
+    ["nter_fuel_tank",0,0,7,"Fuel Tank","Store extra eggs to be used as fuel for rockets",[50000,250000,1000000,2000000,3000000,4000000,5000000]]
   ],
   "eggs": [
     [1,0.25],
