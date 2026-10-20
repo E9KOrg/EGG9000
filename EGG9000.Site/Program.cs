@@ -104,7 +104,7 @@ app.Use(async (context, next) => {
         "default-src 'self'; " +
         "script-src 'self' 'unsafe-inline' https://js.stripe.com https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; " +
         "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; " +
-        "img-src 'self' data: blob: https:; " +
+        "img-src 'self' data: https:; " +
         "font-src 'self' data:; " +
         "frame-src https://js.stripe.com https://hooks.stripe.com; " +
         (BuildConfig.IsRelease ? "connect-src 'self' https://api.stripe.com; " : "connect-src *;") +

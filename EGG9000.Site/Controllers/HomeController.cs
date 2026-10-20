@@ -223,8 +223,9 @@ namespace EGG9000.Site.Controllers {
                         break;
                     case "start":
                         var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
-                        leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms ?? []).Where(y => y.Started > firstContract).Select(y => y.Started)
+                        leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms ?? []).Select(y => y.Started)
                             .Concat((x.Backup.Farms ?? []).Select(y => y.Started))
+                            .Where(y => y > firstContract)
                             .DefaultIfEmpty(DateTimeOffset.MaxValue).Min());
                         leaderboard = [.. leaderboard.OrderBy(x => x.Started)];
                         break;

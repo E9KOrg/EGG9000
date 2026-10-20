@@ -8,7 +8,7 @@
 	bool oldest = ViewBag.Oldest ?? false;
 	string sortby = ViewBag.SortBy ?? "";
 	var showVirtue = sortby is "eott" or "eov" or "tepershift";
-	string q(string value) => Context.Request.WithQuery("sortby", value);
+	string q(string value) => Context.Request.WithQuery("sortby", value, "oldest");
 
 	const string soulIcon = "/images/Egg_soul.png";
 	const string prophecyIcon = "/images/Egg_of_Prophecy.png";
