@@ -29,13 +29,13 @@
 				</div>
 			}
 			@if (header.Jumps.Count == 1) {
-				<a class="btn btn-sm btn-secondary" href="#@header.Jumps[0].Anchor">Jump to me</a>
+				<a class="btn btn-sm btn-secondary" href="#@LeaderboardHeader.MeAnchor(0)">Jump to me</a>
 			} else if (header.Jumps.Count > 1) {
 				<div class="dropdown">
 					<button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Jump to me</button>
 					<ul class="dropdown-menu dropdown-menu-end">
-						@foreach (var jump in header.Jumps) {
-							<li><a class="dropdown-item" href="#@jump.Anchor">@jump.Label</a></li>
+						@for (var n = 0; n < header.Jumps.Count; n++) {
+							<li><a class="dropdown-item" href="#@LeaderboardHeader.MeAnchor(n)">@header.Jumps[n]</a></li>
 						}
 					</ul>
 				</div>

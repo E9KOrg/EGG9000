@@ -29,7 +29,8 @@
 			new LeaderboardChoice("MER", q("mer"), sortby == "mer"),
 			new LeaderboardChoice("Permit", q("permit"), sortby == "permit"),
 			new LeaderboardChoice("First Contract", q("start"), sortby == "start"))
-		.Jump(mine.Select(x => new LeaderboardJump(x.Backup.EggIncId, x.Backup.UserName)));
+		.Jump(mine.Select(x => x.Backup.UserName));
+	var meIndex = 0;
 
 	string sorted(string key) => sortby == key ? "lb-sorted" : "";
 }
@@ -65,7 +66,7 @@
 		@foreach (var (account, i) in Model.Select((x, i) => (x, i))) {
 			var isMe = account.DisplayDiscordId.ToString() == discordId;
 			var href = isAdmin ? $"/Home/ViewUser/{account.User.Id}" : isMe ? "/MyFarms" : null;
-			<tr id="@account.Backup.EggIncId" class="@(isMe ? "lb-me" : "")">
+			<tr id="@(isMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(isMe ? "lb-me" : "")">
 				<partial name="_LeaderboardLead" model="new LeaderboardLead(i + 1, account.DisplayName, href)" />
 				@if (sortby == "mer") {
 					<td class="lb-sorted">@account.Backup.MER</td>

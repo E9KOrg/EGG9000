@@ -21,7 +21,8 @@
 	}).OrderBy(x => x.TimeToComplete).ToList();
 
 	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("Enlightenment Progress")
-		.Jump(accounts.Where(x => x.IsMe).Select(x => new LeaderboardJump(x.Backup.EggIncId, x.Backup.UserName)));
+		.Jump(accounts.Where(x => x.IsMe).Select(x => x.Backup.UserName));
+	var meIndex = 0;
 }
 
 <table class="table table-striped table-hover lb-table">
@@ -39,7 +40,7 @@
 	<tbody>
 		@foreach (var (account, i) in accounts.Select((x, i) => (x, i))) {
 			var href = isAdmin ? $"/Home/ViewUser/{account.User.Id}" : account.IsMe ? "/MyFarms" : null;
-			<tr id="@account.Backup.EggIncId" class="@(account.IsMe ? "lb-me" : "")">
+			<tr id="@(account.IsMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(account.IsMe ? "lb-me" : "")">
 				<partial name="_LeaderboardLead" model="new LeaderboardLead(i + 1, account.DisplayName, href)" />
 				<td>@account.Backup.EarningsBonus.ToEggString()</td>
 				<td>@account.Farm.NumChickens.ToEggString()</td>

@@ -10,23 +10,23 @@ public record LeaderboardChoice(string Label, string Href, bool Active, string C
 
 public record LeaderboardMenu(string Caption, IReadOnlyList<LeaderboardChoice> Choices);
 
-public record LeaderboardJump(string Anchor, string Label);
-
 public record LeaderboardLead(int Rank, string Name, string Href = null);
 
 public record LeaderboardHeader(string Title) {
     public List<LeaderboardMenu> Menus { get; } = [];
-    public List<LeaderboardJump> Jumps { get; } = [];
+    public List<string> Jumps { get; } = [];
 
     public LeaderboardHeader Menu(string caption, params IEnumerable<LeaderboardChoice> choices) {
         Menus.Add(new(caption, [.. choices]));
         return this;
     }
 
-    public LeaderboardHeader Jump(IEnumerable<LeaderboardJump> jumps) {
-        Jumps.AddRange(jumps);
+    public LeaderboardHeader Jump(IEnumerable<string> labels) {
+        Jumps.AddRange(labels);
         return this;
     }
+
+    public static string MeAnchor(int n) => $"me{n}";
 }
 
 public static class LeaderboardQuery {

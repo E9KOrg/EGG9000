@@ -15,7 +15,8 @@
 		.Menu("Sort",
 			new LeaderboardChoice("Total CS", q("total"), cstype == "total"),
 			new LeaderboardChoice("Season CS", q("season"), cstype == "season"))
-		.Jump(mine.Select(x => new LeaderboardJump(x.Backup.EggIncId, x.Backup.UserName)));
+		.Jump(mine.Select(x => x.Backup.UserName));
+	var meIndex = 0;
 
 	string sorted(string key) => cstype == key ? "lb-sorted" : "";
 }
@@ -37,7 +38,7 @@
 			var isMe = account.DisplayDiscordId.ToString() == discordId;
 			var href = isAdmin ? $"/Home/ViewUser/{account.User.Id}" : isMe ? "/MyFarms" : null;
 			var totalCoops = (account.Backup.ArchivedFarms?.Count ?? 0) + (account.Backup.Farms?.Count(x => !string.IsNullOrEmpty(x.ContractId)) ?? 0);
-			<tr id="@account.Backup.EggIncId" class="@(isMe ? "lb-me" : "")">
+			<tr id="@(isMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(isMe ? "lb-me" : "")">
 				<partial name="_LeaderboardLead" model="new LeaderboardLead(i + 1, account.DisplayName, href)" />
 				<td class="@sorted("total")">@account.TotalCS.ToString("N0")</td>
 				<td class="@sorted("season")">@account.SeasonCS.ToString("N0")</td>

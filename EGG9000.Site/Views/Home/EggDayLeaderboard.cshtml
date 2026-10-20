@@ -26,7 +26,8 @@
 			.. SIPrefix.Prefixes.Where(x => !string.IsNullOrEmpty(x.Name))
 				.Select(p => new LeaderboardChoice(p.Rank, q("prefix", p.Base), prefix == p.Base, "#" + RankRegistry.ForOom(p.Base).ColorHex.TrimStart('#')))
 		])
-		.Jump(mine.Select(x => new LeaderboardJump(x.UserAccount.Account.Id, x.UserAccount.Account.Backup?.UserName ?? x.UserAccount.Account.Name)));
+		.Jump(mine.Select(x => x.UserAccount.Account.Backup?.UserName ?? x.UserAccount.Account.Name));
+	var meIndex = 0;
 
 	string sorted(string key) => sortby == key ? "lb-sorted" : "";
 }
@@ -49,7 +50,7 @@
 			@foreach (var (account, i) in rows.Select((x, i) => (x, i))) {
 				var isMe = account.UserAccount.User.DiscordId.ToString() == discordId;
 				var lead = new LeaderboardLead(i + 1, Regex.Replace(account.UserAccount.User.DiscordUsername, @"\(.+?\)", "").Trim());
-				<tr id="@account.UserAccount.Account.Id" class="@(isMe ? "lb-me" : "")">
+				<tr id="@(isMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(isMe ? "lb-me" : "")">
 					<partial name="_LeaderboardLead" model="lead" />
 					<td class="@sorted("eb")">@account.EBGain.ToEggString()</td>
 					<td class="@sorted("se")">@account.SEGain.ToEggString()</td>
