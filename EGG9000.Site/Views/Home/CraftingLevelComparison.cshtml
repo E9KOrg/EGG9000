@@ -40,15 +40,15 @@
                     <tbody>
                         <tr>
                             <td>Highest Total Crafting XP:</td>
-                            <td>@($"{allCraftingData.Select(o => o.Item2).Max():n0}")</td>
+                            <td>@($"{allCraftingData.Select(o => o.Item2).DefaultIfEmpty().Max():n0}")</td>
                         </tr>
                         <tr>
                             <td>Average Total Crafting XP:</td>
-                            <td>@($"{allCraftingData.Select(o => o.Item2).Average():n0}")</td>
+                            <td>@($"{allCraftingData.Select(o => o.Item2).DefaultIfEmpty().Average():n0}")</td>
                         </tr>
                         <tr>
                             <td>Median Total Crafting XP:</td>
-                            <td>@($"{ArgumentsHelper.Median(allCraftingData.Select(o => o.Item2)):n0}")</td>
+                            <td>@($"{ArgumentsHelper.Median(allCraftingData.Select(o => o.Item2).DefaultIfEmpty()):n0}")</td>
                         </tr>
                         <tr>
                             <td>Combined Server Total Crafting XP:</td>
