@@ -1,6 +1,8 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
 
+using EggSharp.GameData;
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -237,104 +239,133 @@ namespace EGG9000.Common.Helpers {
             if(item != null) {
                 var current = epic.First(x => x.Id == item.id);
                 var r = current.Level * (double)item.Increase;
-                if(r > 0) costMult *= 1 - r;
+                if(r < 0) costMult *= 1 + r;
             }
             return costMult;
         }
 
-        public static readonly Dictionary<uint, uint> Vehicles = new() {
-            {0, 5000 },
-            {1, 15000},
-            {2, 50000},
-            {3, 100000},
-            {4, 250000},
-            {5, 500000},
-            {6, 1000000},
-            {7, 5000000},
-            {8, 15000000},
-            {9, 30000000}, //Hover
-            {10, 50000000},
-            {11, 50000000},
+        public static readonly Dictionary<uint, uint> Vehicles = GameDataSource.Provider.Vehicles.Vehicles.ToDictionary(v => (uint)v.Index, v => (uint)v.Capacity);
+
+        public static Effect FindGameData(string id, EffectTarget? preferred = null) {
+            var rows = GameDataSource.Provider.All(Families.Research)
+                .Where(e => e.Id == id || e.Id.StartsWith(id + ":", StringComparison.Ordinal))
+                .ToList();
+            return rows.FirstOrDefault(e => e.Id == id)
+                ?? rows.FirstOrDefault(e => e.Target == preferred)
+                ?? rows.FirstOrDefault();
+        }
+
+        public static EffectTarget? TargetOf(ResearchEffect type) => type switch {
+            ResearchEffect.EggLayingRate => EffectTarget.EggLayingRate,
+            ResearchEffect.EggLayingAndValue => EffectTarget.EggLayingRate,
+            ResearchEffect.EggValue => EffectTarget.EggValue,
+            ResearchEffect.EggValueMultiply => EffectTarget.EggValue,
+            ResearchEffect.HabCapacity => EffectTarget.HabCapacity,
+            ResearchEffect.InternalHatchery => EffectTarget.IHRBase,
+            ResearchEffect.InternalHatcheryOffline => EffectTarget.IHROffline,
+            ResearchEffect.VehicleCapacity => EffectTarget.VehicleCapacity,
+            ResearchEffect.HoverVehicleCapacity => EffectTarget.HoverVehicleCapacity,
+            ResearchEffect.FleetSize => EffectTarget.FleetSize,
+            ResearchEffect.RunningBonus => EffectTarget.RunningChickenBonus,
+            ResearchEffect.MaxRunningBonus => EffectTarget.RunningChickenBonusCap,
+            ResearchEffect.HyperloopLength => EffectTarget.HyperloopTrainLength,
+            ResearchEffect.HyperloopCapacity => EffectTarget.HyperloopCarCapacity,
+            ResearchEffect.ResearchCost => EffectTarget.ResearchCost,
+            _ => null
         };
 
+        private static ResearchItem FromGameData(string id, ResearchEffect type, bool epic) {
+            var effect = FindGameData(id, TargetOf(type))
+                ?? throw new InvalidOperationException($"Research '{id}' missing from EggSharp game data.");
+            var magnitude = effect.Target == EffectTarget.SiloTime ? effect.Magnitude / 60 : effect.Magnitude;
+            return new ResearchItem {
+                id = id,
+                Name = effect.TryMeta("name", out var name) ? (string)name : id,
+                Levels = effect.MaxLevel ?? 0,
+                Increase = (decimal)magnitude,
+                Type = type,
+                Epic = epic
+            };
+        }
+
         public static readonly List<ResearchItem> EpicResearchList = [
-            new ResearchItem { id = "epic_internal_incubators", Name = "Epic Int. Hatcheries", Levels = 20, Increase = 0.05M, Type = ResearchEffect.InternalHatchery, Epic = true },
-            new ResearchItem { id = "epic_clucking", Name = "Epic Clucking", Levels = 20, Increase = 0.001M, Type = ResearchEffect.RunningBonus, Epic = true },
-            new ResearchItem { id = "epic_multiplier", Name = "Epic Multiplier", Levels = 100, Increase = 2, Type = ResearchEffect.MaxRunningBonus, Epic = true },
-            new ResearchItem { id = "cheaper_research", Name = "Lab Upgrade", Levels = 10, Increase = 0.05M, Type = ResearchEffect.ResearchCost, Epic = true },
-            new ResearchItem { id = "silo_capacity", Name = "Silo Capacity", Levels = 20, Increase = 6M, Type = ResearchEffect.Other, Epic = true },
-            new ResearchItem { id = "int_hatch_sharing", Name = "Internal Hatchery Sharing", Levels = 10, Increase = 0.1M, Type = ResearchEffect.Other, Epic = true },
-            new ResearchItem { id = "int_hatch_calm", Name = "Internal Hatchery Calm", Levels = 20, Increase = 0.1M, Type = ResearchEffect.InternalHatcheryOffline, Epic = true },
-            new ResearchItem { id = "soul_eggs", Name = "Soul Food", Levels = 140, Increase = 0.01M, Type = ResearchEffect.Other, Epic = true },
-            new ResearchItem { id = "epic_egg_laying", Name = "Epic Comfy Nests", Levels = 20, Increase = 0.05M, Type = ResearchEffect.EggLayingRate, Epic = true },
-            new ResearchItem { id = "transportation_lobbyist", Name = "Transportation Lobbyists", Levels = 30, Increase = 0.05M, Type = ResearchEffect.VehicleCapacity , Epic = true},
-            new ResearchItem { id = "prophecy_bonus", Name = "Prophecy Bonus", Levels = 5, Increase = .01M, Type = ResearchEffect.Other, Epic = true },
+            FromGameData("epic_internal_incubators", ResearchEffect.InternalHatchery, true),
+            FromGameData("epic_clucking", ResearchEffect.RunningBonus, true),
+            FromGameData("epic_multiplier", ResearchEffect.MaxRunningBonus, true),
+            FromGameData("cheaper_research", ResearchEffect.ResearchCost, true),
+            FromGameData("silo_capacity", ResearchEffect.Other, true),
+            FromGameData("int_hatch_sharing", ResearchEffect.Other, true),
+            FromGameData("int_hatch_calm", ResearchEffect.InternalHatcheryOffline, true),
+            FromGameData("soul_eggs", ResearchEffect.Other, true),
+            FromGameData("epic_egg_laying", ResearchEffect.EggLayingRate, true),
+            FromGameData("transportation_lobbyist", ResearchEffect.VehicleCapacity, true),
+            FromGameData("prophecy_bonus", ResearchEffect.Other, true),
         ];
 
         public static readonly List<ResearchItem> CommonResearchList = [
-            new ResearchItem { id = "comfy_nests", Name = "Comfortable Nests", Levels = 50, Increase = 0.1M, Type = ResearchEffect.EggLayingRate },
-            new ResearchItem { id = "nutritional_sup", Name = "Nutritional Supplements", Levels = 40, Increase = 0.25M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "excitable_chickens", Name = "Excitable Chickens", Levels = 25, Increase = 0.001M, Type = ResearchEffect.RunningBonus },
+            FromGameData("comfy_nests", ResearchEffect.EggLayingRate, false),
+            FromGameData("nutritional_sup", ResearchEffect.EggValue, false),
+            FromGameData("excitable_chickens", ResearchEffect.RunningBonus, false),
 
-            new ResearchItem { id = "hab_capacity1", Name = "Hen House Remodel", Levels = 8, Increase = 0.05M, Type = ResearchEffect.HabCapacity },
-            new ResearchItem { id = "internal_hatchery1", Name = "Internal Hatcheries", Levels = 10, Increase = 2M, Type = ResearchEffect.InternalHatchery },
-            new ResearchItem { id = "padded_packaging", Name = "Padded Packaging	", Levels = 30, Increase = 0.25M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "bigger_eggs", Name = "Bigger Eggs	", Levels = 1, Increase = 1M, Type = ResearchEffect.EggValue },
+            FromGameData("hab_capacity1", ResearchEffect.HabCapacity, false),
+            FromGameData("internal_hatchery1", ResearchEffect.InternalHatchery, false),
+            FromGameData("padded_packaging", ResearchEffect.EggValue, false),
+            FromGameData("bigger_eggs", ResearchEffect.EggValue, false),
 
-            new ResearchItem { id = "internal_hatchery2", Name = "Internal Hatchery Upgrades", Levels = 10, Increase = 5M, Type = ResearchEffect.InternalHatchery },
-            new ResearchItem { id = "leafsprings", Name = "Improved Leafsprings", Levels = 30, Increase = 0.05M, Type = ResearchEffect.VehicleCapacity },
-            new ResearchItem { id = "vehicle_reliablity", Name = "Vehicle Reliability", Levels = 2, Increase = 1M, Type = ResearchEffect.FleetSize },
-            new ResearchItem { id = "coordinated_clucking", Name = "Coordinated Clucking", Levels = 50, Increase = 0.2M, Type = ResearchEffect.MaxRunningBonus },
+            FromGameData("internal_hatchery2", ResearchEffect.InternalHatchery, false),
+            FromGameData("leafsprings", ResearchEffect.VehicleCapacity, false),
+            FromGameData("vehicle_reliablity", ResearchEffect.FleetSize, false),
+            FromGameData("coordinated_clucking", ResearchEffect.MaxRunningBonus, false),
 
-            new ResearchItem { id = "usde_prime", Name = "USDE Prime Certification", Levels = 1, Increase = 2M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "hen_house_ac", Name = "Hen House A/C", Levels = 50, Increase = 0.05M, Type = ResearchEffect.EggLayingRate },
-            new ResearchItem { id = "superfeed", Name = "Super-Feed™ Diet", Levels = 35, Increase = 0.25M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "microlux", Name = "Microlux™ Chicken Suites", Levels = 10, Increase = 0.05M, Type = ResearchEffect.HabCapacity },
+            FromGameData("usde_prime", ResearchEffect.EggValue, false),
+            FromGameData("hen_house_ac", ResearchEffect.EggLayingRate, false),
+            FromGameData("superfeed", ResearchEffect.EggValue, false),
+            FromGameData("microlux", ResearchEffect.HabCapacity, false),
 
-            new ResearchItem { id = "lightweight_boxes", Name = "Lightweight Boxes", Levels = 40, Increase = 0.1M, Type = ResearchEffect.VehicleCapacity },
-            new ResearchItem { id = "excoskeletons", Name = "Depot Worker Exoskeletons", Levels = 2, Increase = 1M, Type = ResearchEffect.FleetSize },
-            new ResearchItem { id = "internal_hatchery3", Name = "Internal Hatchery Expansion", Levels = 15, Increase = 10M, Type = ResearchEffect.InternalHatchery },
-            new ResearchItem { id = "improved_genetics", Name = "Improved Genetics", Levels = 30, Increase = 0.15M, Type = ResearchEffect.EggLayingAndValue },
+            FromGameData("lightweight_boxes", ResearchEffect.VehicleCapacity, false),
+            FromGameData("excoskeletons", ResearchEffect.FleetSize, false),
+            FromGameData("internal_hatchery3", ResearchEffect.InternalHatchery, false),
+            FromGameData("improved_genetics", ResearchEffect.EggLayingAndValue, false),
 
-            new ResearchItem { id = "traffic_management", Name = "Traffic Management", Levels = 2, Increase = 1M, Type = ResearchEffect.FleetSize },
-            new ResearchItem { id = "motivational_clucking", Name = "Motivational Clucking", Levels = 80, Increase = 0.5M, Type = ResearchEffect.MaxRunningBonus },
-            new ResearchItem { id = "driver_training", Name = "Driver Training", Levels = 30, Increase = 0.05M, Type = ResearchEffect.VehicleCapacity },
-            new ResearchItem { id = "shell_fortification", Name = "Shell Fortification", Levels = 60, Increase = 0.15M, Type = ResearchEffect.EggValue },
+            FromGameData("traffic_management", ResearchEffect.FleetSize, false),
+            FromGameData("motivational_clucking", ResearchEffect.MaxRunningBonus, false),
+            FromGameData("driver_training", ResearchEffect.VehicleCapacity, false),
+            FromGameData("shell_fortification", ResearchEffect.EggValue, false),
 
-            new ResearchItem { id = "egg_loading_bots", Name = "Egg Loading Bots", Levels = 2, Increase = 1M, Type = ResearchEffect.FleetSize },
-            new ResearchItem { id = "super_alloy", Name = "Super Alloy Frames", Levels = 50, Increase = 0.05M, Type = ResearchEffect.VehicleCapacity },
-            new ResearchItem { id = "even_bigger_eggs", Name = "Even Bigger Eggs", Levels = 5, Increase = 2M, Type = ResearchEffect.EggValueMultiply },
-            new ResearchItem { id = "internal_hatchery4", Name = "Internal Hatchery Expansion", Levels = 30, Increase = 25M, Type = ResearchEffect.InternalHatchery },
+            FromGameData("egg_loading_bots", ResearchEffect.FleetSize, false),
+            FromGameData("super_alloy", ResearchEffect.VehicleCapacity, false),
+            FromGameData("even_bigger_eggs", ResearchEffect.EggValueMultiply, false),
+            FromGameData("internal_hatchery4", ResearchEffect.InternalHatchery, false),
 
-            new ResearchItem { id = "quantum_storage", Name = "Quantum Egg Storage", Levels = 20, Increase = 0.05M, Type = ResearchEffect.VehicleCapacity },
-            new ResearchItem { id = "genetic_purification", Name = "Genetic Purification", Levels = 100, Increase = 0.1M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "internal_hatchery5", Name = "Machine Learning Incubators", Levels = 250, Increase = 5M, Type = ResearchEffect.InternalHatchery },
-            new ResearchItem { id = "time_compress", Name = "Time Compression", Levels = 20, Increase = 0.1M, Type = ResearchEffect.EggLayingRate },
+            FromGameData("quantum_storage", ResearchEffect.VehicleCapacity, false),
+            FromGameData("genetic_purification", ResearchEffect.EggValue, false),
+            FromGameData("internal_hatchery5", ResearchEffect.InternalHatchery, false),
+            FromGameData("time_compress", ResearchEffect.EggLayingRate, false),
 
-            new ResearchItem { id = "hover_upgrades", Name = "Hover Upgrades", Levels = 25, Increase = 0.05M, Type = ResearchEffect.HoverVehicleCapacity },
-            new ResearchItem { id = "graviton_coating", Name = "Graviton Coating", Levels = 7, Increase = 2M, Type = ResearchEffect.EggValueMultiply },
-            new ResearchItem { id = "grav_plating", Name = "Grav Plating", Levels = 25, Increase = 0.02M, Type = ResearchEffect.HabCapacity },
-            new ResearchItem { id = "chrystal_shells", Name = "Crystalline Shelling", Levels = 100, Increase = 0.25M, Type = ResearchEffect.EggValue },
+            FromGameData("hover_upgrades", ResearchEffect.HoverVehicleCapacity, false),
+            FromGameData("graviton_coating", ResearchEffect.EggValueMultiply, false),
+            FromGameData("grav_plating", ResearchEffect.HabCapacity, false),
+            FromGameData("chrystal_shells", ResearchEffect.EggValue, false),
 
-            new ResearchItem { id = "autonomous_vehicles", Name = "Autonomous Vehicles", Levels = 5, Increase = 1M, Type = ResearchEffect.FleetSize },
-            new ResearchItem { id = "neural_linking", Name = "Neural Linking", Levels = 30, Increase = 50M, Type = ResearchEffect.InternalHatchery },
-            new ResearchItem { id = "telepathic_will", Name = "Telepathic Will", Levels = 50, Increase = 0.25M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "enlightened_chickens", Name = "Enlightened Chickens", Levels = 150, Increase = 2M, Type = ResearchEffect.MaxRunningBonus },
+            FromGameData("autonomous_vehicles", ResearchEffect.FleetSize, false),
+            FromGameData("neural_linking", ResearchEffect.InternalHatchery, false),
+            FromGameData("telepathic_will", ResearchEffect.EggValue, false),
+            FromGameData("enlightened_chickens", ResearchEffect.MaxRunningBonus, false),
 
-            new ResearchItem { id = "dark_containment", Name = "Dark Containment	", Levels = 25, Increase = 0.05M, Type = ResearchEffect.VehicleCapacity },
-            new ResearchItem { id = "atomic_purification", Name = "Atomic Purification", Levels = 50, Increase = 0.1M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "multi_layering", Name = "Multiversal Layering", Levels = 3, Increase = 10M, Type = ResearchEffect.EggValueMultiply },
-            new ResearchItem { id = "timeline_diversion", Name = "Timeline Diversion", Levels = 50, Increase = 0.02M, Type = ResearchEffect.EggLayingRate },
+            FromGameData("dark_containment", ResearchEffect.VehicleCapacity, false),
+            FromGameData("atomic_purification", ResearchEffect.EggValue, false),
+            FromGameData("multi_layering", ResearchEffect.EggValueMultiply, false),
+            FromGameData("timeline_diversion", ResearchEffect.EggLayingRate, false),
 
-            new ResearchItem { id = "wormhole_dampening", Name = "Wormhole Dampening", Levels = 25, Increase = 0.02M, Type = ResearchEffect.HabCapacity },
-            new ResearchItem { id = "eggsistor", Name = "Eggsistor Miniturization", Levels = 100, Increase = 0.05M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "micro_coupling", Name = "Gravitron Coupling", Levels = 5, Increase = 1M, Type = ResearchEffect.HyperloopLength },
-            new ResearchItem { id = "neural_net_refine", Name = "Neural Net Refinement", Levels = 25, Increase = 0.05M, Type = ResearchEffect.VehicleCapacity },
+            FromGameData("wormhole_dampening", ResearchEffect.HabCapacity, false),
+            FromGameData("eggsistor", ResearchEffect.EggValue, false),
+            FromGameData("micro_coupling", ResearchEffect.HyperloopLength, false),
+            FromGameData("neural_net_refine", ResearchEffect.VehicleCapacity, false),
 
-            new ResearchItem { id = "matter_reconfig", Name = "Matter Reconfiguration", Levels = 500, Increase = 0.01M, Type = ResearchEffect.EggValue },
-            new ResearchItem { id = "timeline_splicing", Name = "Timeline Splicing", Levels = 1, Increase = 10M, Type = ResearchEffect.EggValueMultiply },
-            new ResearchItem { id = "hyper_portalling", Name = "Hyper Portalling", Levels = 25, Increase = 0.05M, Type = ResearchEffect.HyperloopCapacity },
-            new ResearchItem { id = "relativity_optimization", Name = "Relativity Optimization", Levels = 10, Increase = 0.1M, Type = ResearchEffect.EggLayingRate },
+            FromGameData("matter_reconfig", ResearchEffect.EggValue, false),
+            FromGameData("timeline_splicing", ResearchEffect.EggValueMultiply, false),
+            FromGameData("hyper_portalling", ResearchEffect.HyperloopCapacity, false),
+            FromGameData("relativity_optimization", ResearchEffect.EggLayingRate, false),
         ];
 
         public enum ResearchEffect {

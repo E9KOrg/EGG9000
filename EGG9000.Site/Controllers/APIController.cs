@@ -41,7 +41,7 @@ namespace EGG9000.Site.Controllers {
             var afName = inst.Artifact.ToString().ToUpper().Replace(" ", "_").Replace("'", "").Replace("_FRAGMENT", "");
             var afTier = isFrag ? 1 : (afName.Contains("_STONE") ? inst.Tier + 1 : inst.Tier);
 
-            var afImagePath = GetWWWRelativePath(["images/artifacts", afName, $"{afName}_{afTier}.png"]);
+            var afImagePath = ArtifactImagePath(afName, afTier);
             if(afImagePath == null) return;
             canvas.DrawRoundedTile(RarityColor(inst.Rarity), cellX, rowY, config.AFSize, config.AFSize, config.AFCornerRadius);
             canvas.DrawImageFile(afImagePath, cellX, rowY, config.AFSize);
@@ -49,7 +49,7 @@ namespace EGG9000.Site.Controllers {
             var stoneIndex = 1;
             foreach(var stone in inst.Stones ?? []) {
                 var stoneName = stone.Artifact.ToString().ToUpper().Replace(" ", "_");
-                var stonePath = GetWWWRelativePath(["images/artifacts", stoneName, $"{stoneName}_{stone.Tier + 1}.png"]);
+                var stonePath = ArtifactImagePath(stoneName, stone.Tier + 1);
                 if(stonePath == null) continue;
                 canvas.DrawImageFile(stonePath, cellX + config.AFSize - (int)(config.Padding * 0.5) - (config.StoneSize * stoneIndex), rowY + config.AFSize - (int)(config.Padding * 1.5), config.StoneSize);
                 stoneIndex++;
@@ -62,6 +62,11 @@ namespace EGG9000.Site.Controllers {
                 imageDur = Path.Combine(imageDur, Path.Combine([.. relativePathJoins]));
             }
             return System.IO.File.Exists(imageDur) ? imageDur : null;
+        }
+
+        private string ArtifactImagePath(string name, int tier) {
+            var file = _env.WebRootFileProvider.GetFileInfo(EggSharp.GameData.Artifacts.ArtifactAssets.IconPath(EggSharp.GameData.Artifacts.ArtifactAssets.KeyFor(name), tier));
+            return file.Exists ? file.PhysicalPath : null;
         }
 
         [AllowAnonymous]

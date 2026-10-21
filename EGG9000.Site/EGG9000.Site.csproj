@@ -58,6 +58,7 @@
     <PackageReference Include="AspNet.Security.OAuth.Discord" Version="10.0.0" />
     <PackageReference Include="Bugsnag.AspNet.Core" Version="4.1.1" />
     <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+    <PackageReference Include="EggSharp.GameData.Assets" Version="18.0.0" />
     <PackageReference Include="Humanizer" Version="3.0.10" />
     <PackageReference Include="MessagePack" Version="3.1.12" />
     <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="10.0.13" />

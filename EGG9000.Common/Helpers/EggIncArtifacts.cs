@@ -1,7 +1,6 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Extensions;
 using EGG9000.Common.JsonData;
-
 using MessagePack;
 using System;
 using System.Collections.Generic;
@@ -56,12 +55,8 @@ namespace EGG9000.Common.Helpers {
             return GetMultiple(EggIncBoostTypeEnum.EggValue, farm);
         }
 
-        // Delegates to the shared JsonData loader so eiafx-data.json is parsed and cached once. Kept as a
-        // helper because several callers reference it; new code can call EiAfxDataRoot.Get() directly.
-        public static EiAfxDataRoot GetEiAfxData() => EiAfxDataRoot.Get();
-
-        public static string GetFamilyShorthand(Family family) {
-            return family.id switch {
+        public static string GetFamilyShorthand(ArtifactFamilyEntry family) {
+            return family.Id switch {
                 "puzzle-cube" => "cube",
                 "lunar-totem" => "totem",
                 "demeters-necklace" => "necklace",
@@ -86,139 +81,93 @@ namespace EGG9000.Common.Helpers {
                 "gold-meteorite" => "meteorite",
                 "tau-ceti-geode" => "geode",
                 "solar-titanium" => "titanium",
-                _ => family.name
+                _ => family.Name
             };
         }
 
-        public static Tier GetTier(int afxId, int tierNumber) {
-            var data = GetEiAfxData();
-            // Match via tiers.Any because stone fragment tiers use a different afx_id than their base stone.
-            var artifact = data.artifact_families.FirstOrDefault(x => x.tiers.Any(y => y.afx_id == afxId))
+        public static ArtifactTierEntry GetTier(int afxId, int tierNumber) {
+            var artifact = ArtifactFamilies.Containing(afxId)
                 ?? throw new Exception("Unable to locate artifact family with afx_id: " + afxId);
 
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == tierNumber)
-                ?? throw new Exception($"Unable to locate tier {tierNumber} for {artifact.name}");
-
-            return tier;
+            return artifact.Tiers.FirstOrDefault(x => x.TierNumber == tierNumber)
+                ?? throw new Exception($"Unable to locate tier {tierNumber} for {artifact.Name}");
         }
 
         public static int SlotCount(EggIncArtifactInstance instance) {
-            var data = GetEiAfxData();
-            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase))
+            var artifact = FamilyByName(instance.Artifact)
                 ?? throw new Exception("Unable to locate artifact family: " + instance.Artifact);
 
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier)
+            var tier = artifact.Tiers.FirstOrDefault(x => x.TierNumber == instance.Tier)
                 ?? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}");
 
-            if(!tier.has_rarities) return 0;
-            var rarity = tier.effects.FirstOrDefault(x => x.afx_rarity == instance.Rarity - 1);
-            return rarity is null
-                ? throw new Exception($"Unable to locate rarity {instance.Rarity} for {instance.Artifact} with tier {instance.Tier}")
-                : rarity.slots ?? 0;
+            if(!artifact.HasRarities) return 0;
+            var rarity = tier.Effects.FirstOrDefault(x => x.Rarity == instance.Rarity - 1)
+                ?? throw new Exception($"Unable to locate rarity {instance.Rarity} for {instance.Artifact} with tier {instance.Tier}");
+            return rarity.StoneCap;
         }
 
         public static string GetProperNameFromJson(EggIncArtifactInstance instance) {
-            var data = GetEiAfxData();
-            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase)) ?? throw new Exception("Unable to locate artifact family: " + instance.Artifact);
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier);
-            return tier is null ? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}") : tier.name;
+            var artifact = FamilyByName(instance.Artifact) ?? throw new Exception("Unable to locate artifact family: " + instance.Artifact);
+            var tier = artifact.Tiers.FirstOrDefault(x => x.TierNumber == instance.Tier);
+            return tier is null ? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}") : tier.Name;
         }
 
         public static string GetTierName(EggIncArtifactInstance instance) {
-            var data = GetEiAfxData();
-            var isFragment = instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase);
-            ArtifactFamily artifact;
-            if(instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase)) {
-                artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact.Replace("Fragment", string.Empty, StringComparison.OrdinalIgnoreCase).TrimEnd(), StringComparison.OrdinalIgnoreCase));
-            } else {
-                artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
-            }
+            var isFragment = IsFragment(instance);
+            var artifact = ResolveFamily(instance, isFragment)
+                ?? throw new Exception("Unable to locate artifact family: " + instance.Artifact);
 
-            if(artifact is null) {
-                throw new Exception("Unable to locate artifact family: " + instance.Artifact);
-            }
-
-            var tier = artifact.tiers.FirstOrDefault(x => x.tier_number == instance.Tier + (artifact.type.Equals("Stone", StringComparison.OrdinalIgnoreCase) && !isFragment ? 1 : 0));
-            return tier is null ? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}") : tier.name;
+            var tier = artifact.Tiers.FirstOrDefault(x => x.TierNumber == instance.Tier + (artifact.IsStone && !isFragment ? 1 : 0));
+            return tier is null ? throw new Exception($"Unable to locate tier {instance.Tier} for {instance.Artifact}") : tier.Name;
         }
 
         public static string GetNameFromJson(EggIncArtifactInstance instance) {
-            var data = GetEiAfxData();
-            var artifact = data.artifact_families.FirstOrDefault(x => x.name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
-            return artifact is null ? throw new Exception("Unable to locate artifact family: " + instance.Artifact) : artifact.id;
+            var artifact = FamilyByName(instance.Artifact);
+            return artifact is null ? throw new Exception("Unable to locate artifact family: " + instance.Artifact) : artifact.Id;
         }
 
-        // The tier number we show to players: 1-4 for artifacts, 2-4 for stones (a stone's stored Tier is
-        // zero-based and one behind its displayed tier), and 1 for fragments. Mirrors the tier offset
-        // logic in GetTierName so the "(T#)" label matches the resolved tier name.
         public static int GetDisplayTier(EggIncArtifactInstance instance) {
-            var isFragment = instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase);
+            var isFragment = IsFragment(instance);
             var family = ResolveFamily(instance, isFragment);
-            var isStone = family is not null && family.type.Equals("Stone", StringComparison.OrdinalIgnoreCase);
-            return instance.Tier + (isStone && !isFragment ? 1 : 0);
+            return instance.Tier + (family is not null && family.IsStone && !isFragment ? 1 : 0);
         }
 
-        // The artifact's in-game effect for its exact tier and rarity, as the game presents it: a value
-        // string ("+20%", "+1000%", "Guaranteed") and the thing it affects ("internal hatchery rate").
-        // Both come straight from eiafx-data.json, so they read exactly like the in-game artifact card.
-        // Returns null for fragments and anything without a matching effect row.
         public static (string Size, string Target)? GetEffectDisplay(EggIncArtifactInstance instance) {
-            var effect = ResolveEffect(instance);
-            if(effect is null || string.IsNullOrWhiteSpace(effect.effect_target)) return null;
-            return (effect.effect_size, effect.effect_target);
+            var resolved = ResolveEffect(instance);
+            if(resolved is null || string.IsNullOrWhiteSpace(resolved.Value.Family.EffectTarget)) return null;
+            return (resolved.Value.Effect.Size, resolved.Value.Family.EffectTarget);
         }
 
-        // The raw bonus fraction the game applies for this instance's exact tier and rarity (e.g. 1.3 for a
-        // +130% medallion, 500 for a +500 vial). Read straight from eiafx-data so artifact Values stay in
-        // sync with the game instead of being hand-typed. Null when the instance can't be resolved.
-        public static double? GetEffectDelta(EggIncArtifactInstance instance) {
-            var effect = ResolveEffect(instance);
-            return effect?.effect_delta;
-        }
+        public const double GuaranteedSentinel = 9999;
 
-        // Resolves the single effect row (tier + rarity) for an instance, shared by the display and value
-        // lookups so there is one tier/rarity resolution path. Stored rarity is 1-based (1 = Common); the
-        // data file is 0-based. Falls back to the base (afx_rarity 0) row, then to whatever the tier offers.
-        private static Effect ResolveEffect(EggIncArtifactInstance instance) {
-            var isFragment = instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase);
-            if(isFragment) return null;
+        private static (ArtifactFamilyEntry Family, ArtifactEffectEntry Effect)? ResolveEffect(EggIncArtifactInstance instance) {
+            if(IsFragment(instance)) return null;
 
-            var family = ResolveFamily(instance, isFragment);
+            var family = ResolveFamily(instance, false);
             if(family is null) return null;
 
             var tierNumber = GetDisplayTier(instance);
-            var tier = family.tiers.FirstOrDefault(x => x.tier_number == tierNumber);
-            if(tier?.effects is null || tier.effects.Count == 0) return null;
+            var tier = family.Tiers.FirstOrDefault(x => x.TierNumber == tierNumber);
+            if(tier is null || tier.Effects.Count == 0) return null;
 
-            return tier.effects.FirstOrDefault(e => e.afx_rarity == instance.Rarity - 1)
-                ?? tier.effects.FirstOrDefault(e => e.afx_rarity == 0)
-                ?? tier.effects[0];
+            var effect = tier.Effects.FirstOrDefault(e => e.Rarity == instance.Rarity - 1)
+                ?? tier.Effects.FirstOrDefault(e => e.Rarity == 0)
+                ?? tier.Effects[0];
+            return (family, effect);
         }
 
-        // The value the game uses for a "Guaranteed" effect (e.g. T4L Beak/Rainstick). Stored as a large
-        // multiplier so rate maths still work; ArtifactDisplay reads it back to show the "Guaranteed" label
-        // rather than a literal "9999x".
-        public const double GuaranteedSentinel = 9999;
+        private static float StoredValue(ArtifactEffectEntry effect) => effect.Guaranteed ? (float)GuaranteedSentinel : (float)effect.Value;
 
-        // Turns a JSON effect_delta into the multiplier we store on an instance: additive artifacts and the
-        // clarity stone keep the raw delta, "Guaranteed" effects use the sentinel display relies on, and
-        // everything else is a 1 + delta multiplier.
-        private static float ValueFromDelta(EggIncArtifact meta, Effect effect) {
-            if(string.Equals(effect.effect_size?.Trim(), "Guaranteed", StringComparison.OrdinalIgnoreCase)) {
-                return (float)GuaranteedSentinel;
-            }
-            if(meta.Additive || meta.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment) {
-                return (float)effect.effect_delta;
-            }
-            return (float)(1 + effect.effect_delta);
-        }
+        private static bool IsFragment(EggIncArtifactInstance instance) => instance.Artifact.Contains("Fragment", StringComparison.OrdinalIgnoreCase);
 
-        private static ArtifactFamily ResolveFamily(EggIncArtifactInstance instance, bool isFragment) {
-            var data = GetEiAfxData();
+        private static ArtifactFamilyEntry FamilyByName(string name) =>
+            ArtifactFamilies.All.FirstOrDefault(x => x.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+        private static ArtifactFamilyEntry ResolveFamily(EggIncArtifactInstance instance, bool isFragment) {
             var lookupName = isFragment
                 ? instance.Artifact.Replace("Fragment", string.Empty, StringComparison.OrdinalIgnoreCase).TrimEnd()
                 : instance.Artifact;
-            return data.artifact_families.FirstOrDefault(x => x.name.Equals(lookupName, StringComparison.OrdinalIgnoreCase));
+            return FamilyByName(lookupName);
         }
 
 
@@ -258,9 +207,8 @@ namespace EGG9000.Common.Helpers {
                 Id = (byte)artifact.Name
             };
 
-            var effect = ResolveEffect(response);
-            if(effect is not null) {
-                response.Value = ValueFromDelta(artifact, effect);
+            if(ResolveEffect(response) is { } resolved) {
+                response.Value = StoredValue(resolved.Effect);
             }
 
             if(response.Value == 0 && !response.Additive) {
@@ -270,8 +218,6 @@ namespace EGG9000.Common.Helpers {
             return response;
         }
 
-        // Boost type + additive flag per family. Per-tier/per-rarity values come from eiafx-data.json at
-        // lookup time (GetArtifact). Ingredient families carry no boost.
         public static readonly List<EggIncArtifact> GetArtifactsDB = [
            new() { Name = ArtifactNames.AurelianBrooch, Boost = EggIncBoostTypeEnum.DroneRewards },
            new() { Name = ArtifactNames.BeakOfMidas, Boost = EggIncBoostTypeEnum.DroneRewards },
@@ -500,9 +446,6 @@ namespace EGG9000.Common.Helpers {
         }
     }
 
-    // Metadata bridge for an artifact family: the boost type and additive flag the JSON data file does not
-    // carry. Per-tier/per-rarity values are sourced from eiafx-data.json at lookup time (see GetArtifact),
-    // not stored here.
     public class EggIncArtifact {
         public ArtifactNames Name { get; set; }
         public EggIncBoostTypeEnum Boost { get; set; }
