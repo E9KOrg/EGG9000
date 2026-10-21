@@ -127,7 +127,7 @@ namespace EGG9000.Bot.Automated.Coops {
                 //Attempt to fix not started co-op
                 _logger.LogInformation("Attempting to start co-op: {coopName}", ctx.Coop.Name);
 
-                var joinResponse = await EggIncApi.Post<JoinCoopResponse, JoinCoopRequest>(new JoinCoopRequest {
+                var joinResponse = await _eggIncApi.Post<JoinCoopResponse, JoinCoopRequest>(new JoinCoopRequest {
                     ContractIdentifier = ctx.Coop.ContractID,
                     CoopIdentifier = ctx.Coop.Name.ToLower(),
                     UserId = ctx.Coop.CreatorID, ClientVersion = EggIncApi.ClientVersion, Eop = 1, SoulPower = 24, Grade = (Contract.Types.PlayerGrade)ctx.Coop.League, Platform = Platform.Droid, SecondsRemaining = ctx.Coop.Contract.Details.LengthSeconds, PointsReplay = false, UserName = "."
@@ -142,12 +142,12 @@ namespace EGG9000.Bot.Automated.Coops {
                     }
                 };
 
-                var response = await EggIncApi.Post<ContractCoopStatusUpdateResponse, ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, false);
+                var response = await _eggIncApi.Post<ContractCoopStatusUpdateResponse, ContractCoopStatusUpdateRequest>(statusUpdate, statusUpdate.UserId, false);
 
                 await Task.Delay(1000, ctx.Cancellation);
-                var checkStatus = await EggIncApi.GetCoopStatus(ctx.Coop.ContractID, ctx.Coop.Name.ToLower(), ctx.Coop.CreatorID, cancellationToken: ctx.Cancellation);
+                var checkStatus = await _eggIncApi.GetCoopStatus(ctx.Coop.ContractID, ctx.Coop.Name.ToLower(), ctx.Coop.CreatorID, cancellationToken: ctx.Cancellation);
 
-                var kickPlayer = await EggIncApi.Send(new KickPlayerCoopRequest {
+                var kickPlayer = await _eggIncApi.Send(new KickPlayerCoopRequest {
                     ClientVersion = EggIncApi.ClientVersion,
                     ContractIdentifier = ctx.Coop.ContractID,
                     CoopIdentifier = ctx.Coop.Name.ToLower(),
@@ -191,7 +191,7 @@ namespace EGG9000.Bot.Automated.Coops {
 
         private async Task HandleCreatorNotKicked(CoopProcessingContext ctx) {
             if(ctx.CoopDetails.CoopParticipants.Any(x => x.Account?.Id == EggIncApi.UserId) && !ctx.Coop.FinishedOrFailedOrExpired()) {
-                var success = await EggIncApi.Send(new KickPlayerCoopRequest { Reason = KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = EggIncApi.ClientVersion, ContractIdentifier = ctx.Coop.ContractID, CoopIdentifier = ctx.Coop.Name, PlayerIdentifier = EggIncApi.UserId, RequestingUserId = EggIncApi.UserId, Rinfo = EggIncApi.GetInfo(EggIncApi.UserId) }, EggIncApi.UserId);
+                var success = await _eggIncApi.Send(new KickPlayerCoopRequest { Reason = KickPlayerCoopRequest.Types.Reason.Private, ClientVersion = EggIncApi.ClientVersion, ContractIdentifier = ctx.Coop.ContractID, CoopIdentifier = ctx.Coop.Name, PlayerIdentifier = EggIncApi.UserId, RequestingUserId = EggIncApi.UserId, Rinfo = EggIncApi.GetInfo(EggIncApi.UserId) }, EggIncApi.UserId);
                 _logger.LogInformation("Attempted to kick co-op creator to free up spot for {co-op}, it returned {status}", ctx.Coop.Name, success.ToString());
             }
         }

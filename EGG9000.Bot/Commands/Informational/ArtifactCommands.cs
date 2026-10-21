@@ -22,8 +22,8 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class ArtifactCommands {
 
-        public static async Task _viewInventory(SocketInteraction command, ApplicationDbContext db, DBUser user, EggIncAccount account, bool showInChannel = true) {
-            var backup = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
+        public static async Task _viewInventory(SocketInteraction command, ApplicationDbContext db, IEggIncApi api, DBUser user, EggIncAccount account, bool showInChannel = true) {
+            var backup = new CustomBackup((await api.FirstContact(account.Id)).Backup, await db.CachedEiContractsAsync(), account.Backup ?? null);
             if(account.Backup is null) account.Backup = backup;
             else account.Backup.ArtifactHall = backup.ArtifactHall;
             user.UpdateAccounts();
@@ -75,7 +75,7 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public partial class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
+    public partial class ArtifactModule(IDbContextFactory<ApplicationDbContext> dbFactory, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
 
         [SlashCommand("viewinventory", "View your inventory")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
@@ -105,7 +105,7 @@ namespace EGG9000.Bot.Commands {
             try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
             if(account is null) { await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            await ArtifactCommands._viewInventory(command, Db, dbuser, account);
+            await ArtifactCommands._viewInventory(command, Db, eggIncApi, dbuser, account);
         }
 
         [SlashCommand("savedafsets", "Show off your saved Artifact Sets")]
@@ -131,7 +131,7 @@ namespace EGG9000.Bot.Commands {
 
             // Fresh pull, update only the sets. Use the fresh backup as the initial one if the
             // account had none yet (new/failed registration) rather than bailing on usable data.
-            var fresh = new CustomBackup((await EggIncApi.FirstContact(account.Id)).Backup, await Db.CachedEiContractsAsync(), account.Backup ?? null);
+            var fresh = new CustomBackup((await eggIncApi.FirstContact(account.Id)).Backup, await Db.CachedEiContractsAsync(), account.Backup ?? null);
             if(account.Backup is null) account.Backup = fresh;
             else account.Backup.ArtifactSets = fresh.ArtifactSets;
             dbUser.UpdateAccounts();
@@ -316,7 +316,7 @@ namespace EGG9000.Bot.Commands {
             try { account = dbuser.EggIncAccounts[int.Parse(useraccount.Split("|")[1])]; } catch(Exception) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError("Please select an account from the list, instead of typing an input."); }); return; }
             if(account is null) { await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"User account for {userid} could not be found"); }); return; }
 
-            await ArtifactCommands._viewInventory(Context.Interaction, Db, dbuser, account, showinchannel);
+            await ArtifactCommands._viewInventory(Context.Interaction, Db, eggIncApi, dbuser, account, showinchannel);
         }
     }
 }

@@ -5,6 +5,7 @@ using EGG9000.Bot.Automated.Coops;
 using EGG9000.Bot.Interactions;
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,7 @@ namespace EGG9000.Bot.Commands {
     [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
     [StaffOnly(StaffTier.FarmHand)]
 #pragma warning disable CS9113 // jobService/serviceProvider are read by sibling AdminModule partial-class files, not this one
-    public partial class AdminModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<AdminModule> logger, DiscordHostedService client, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater, Bugsnag.IClient bugsnag, JobService jobService, IServiceProvider serviceProvider) : E9KModuleBase(dbFactory) {
+    public partial class AdminModule(IDbContextFactory<ApplicationDbContext> dbFactory, ILogger<AdminModule> logger, DiscordHostedService client, DiscordSocketClient gateway, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, ContractUpdater contractUpdater, Bugsnag.IClient bugsnag, JobService jobService, IServiceProvider serviceProvider, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
         private readonly ILogger<AdminModule> _logger = logger;
     }
 #pragma warning restore CS9113

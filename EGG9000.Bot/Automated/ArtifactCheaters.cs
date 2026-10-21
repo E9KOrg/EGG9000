@@ -131,7 +131,7 @@ namespace EGG9000.Bot.Automated {
                     .Select(async account => {
                         await throttler.WaitAsync(cancellationToken);
                         try {
-                            var firstContact = await EggIncApi.FirstContact(account.Id, _logger);
+                            var firstContact = await _eggIncApi.FirstContact(account.Id, _logger);
                             if(firstContact?.Backup?.ArtifactsDb?.MissionArchive is null) return;
                             var llc = ArtifactHelpers.GetLegendaryLuckCoefficient(account, firstContact.Backup, shipCoefficientTable);
                             lock(llcResults) llcResults[account] = llc;
