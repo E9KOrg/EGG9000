@@ -1,51 +1,51 @@
 ﻿@using EGG9000.Site.Models.Home
 @model Home_EnlightenmentModel
-@inject Discord.WebSocket.DiscordSocketClient discord
 @{
-    ViewData["BodyClass"] = "full-width";
-    ViewData["Title"] = "Enlightenment";
+	Layout = "_LeaderboardLayout";
+	ViewData["Title"] = "Enlightenment";
 
-    var claimsIdentity = (System.Security.Claims.ClaimsIdentity)User.Identity;
-    List<UserSnapShot> snapshots = ViewBag.Snapshots;
-    var isAdmin = User.IsInRole("Admin") || User.IsInRole("GuildAdmin");
-    var accounts = Model.Users.Where(x => x.Backup.Farms.Any(y => y.EggType == Ei.Egg.Enlightenment) ).Select(x => {
-        var farm = x.Backup.Farms.First(y => y.EggType == Ei.Egg.Enlightenment);
-        var stats = farm.WithStats(x.Backup, null, Model.CustomEggs);
-        Console.WriteLine(JsonConvert.SerializeObject(farm, Formatting.Indented));
-        return new {
-            x.Backup,
-            Farm = farm,
-            DisplayName = x.DisplayName,
-            FarmStats = stats,
-            TimeToComplete = stats.InternalHatchery > 0 ?  TimeSpan.FromMinutes((10e9 - farm.NumChickens) / (stats.InternalHatchery * 4 * 3)) : TimeSpan.MaxValue
-        };
-    }).Where(x => x != null).OrderBy(x => x.TimeToComplete);
+	var discordId = User.DiscordId();
+	var isAdmin = User.IsStaff();
+	var accounts = Model.Users.Where(x => x.Backup?.Farms?.Any(y => y.EggType == Ei.Egg.Enlightenment) == true).Select(x => {
+		var farm = x.Backup.Farms.First(y => y.EggType == Ei.Egg.Enlightenment);
+		var stats = farm.WithStats(x.Backup, null, Model.CustomEggs);
+		return new {
+			x.Backup,
+			User = x,
+			Farm = farm,
+			FarmStats = stats,
+			TimeToComplete = stats.InternalHatchery > 0 ? TimeSpan.FromMinutes((10e9 - farm.NumChickens) / (stats.InternalHatchery * 4 * 3)) : TimeSpan.MaxValue
+		};
+	}).OrderBy(x => x.TimeToComplete).ToList();
+
+	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("Enlightenment Progress")
+		.Jump(accounts.Where(x => x.User.DisplayDiscordId.ToString() == discordId).Select(x => LeaderboardLead.JumpLabel(x.User)));
+	var meIndex = 0;
 }
 
-<div>
-    <h2>Enlightenment Progress</h2>
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>EB</th>
-            <th>🐔</th>
-            <th>🐔 Space</th>
-            <th>🐔 Rate</th>
-            <th>📈</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach(var account in accounts) {
-                <tr>
-                    <td id="@(isAdmin ? account.Backup.EggIncId : "")">@account.DisplayName</td>
-                    <td>@account.Backup.EarningsBonus.ToEggString()</td>
-                    <td>@account.Farm.NumChickens.ToEggString()</td>
-                    <td>@account.FarmStats.HabSpace.ToEggString()</td>
-                    <td>@account.FarmStats.InternalHatchery/m/hab</td>
-                    <td>@Math.Round(account.TimeToComplete.TotalDays)d</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
+<table class="table table-striped table-hover lb-table">
+	<thead>
+		<tr>
+			<th class="lb-rank">#</th>
+			<th class="lb-left">Name</th>
+			<th>EB</th>
+			<th>Chickens</th>
+			<th>Hab Space</th>
+			<th>IHR</th>
+			<th class="lb-sorted" title="Estimated days to 10B chickens">To 10B</th>
+		</tr>
+	</thead>
+	<tbody>
+		@foreach (var (account, i) in accounts.Select((x, i) => (x, i))) {
+			var lead = LeaderboardLead.For(account.User, i + 1, discordId, isAdmin);
+			<tr id="@(lead.IsMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(lead.IsMe ? "lb-me" : "")">
+				<partial name="_LeaderboardLead" model="lead" />
+				<td>@account.Backup.EarningsBonus.ToEggString()</td>
+				<td>@account.Farm.NumChickens.ToEggString()</td>
+				<td>@account.FarmStats.HabSpace.ToEggString()</td>
+				<td>@account.FarmStats.InternalHatchery/m/hab</td>
+				<td class="lb-sorted">@(account.TimeToComplete == TimeSpan.MaxValue ? "-" : $"{Math.Round(account.TimeToComplete.TotalDays)}d")</td>
+			</tr>
+		}
+	</tbody>
+</table>

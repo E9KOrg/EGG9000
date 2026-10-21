@@ -40,22 +40,24 @@ namespace EGG9000.Common.Helpers {
                 get {
                     return DiscordUser is not null
                         ? DiscordUser.GetCleanName()
-                        : MyRegex().Replace(User.DiscordUsername ?? "", "").Trim();
+                        : DiscordHelpersExt.CleanUsername(User.DiscordUsername);
                 }
             }
             public bool Elite {
                 get { return Backup.EarningsBonus > 10000000000000; }
             }
             public DateTimeOffset Started { get; set; }
+            public DateTimeOffset FirstContractStarted() => (Backup.ArchivedFarms ?? []).Select(y => y.Started)
+                .Concat((Backup.Farms ?? []).Where(y => !string.IsNullOrEmpty(y.ContractId)).Select(y => y.Started))
+                .Where(y => y > FirstContractDate)
+                .DefaultIfEmpty(DateTimeOffset.MaxValue).Min();
+            private static readonly DateTimeOffset FirstContractDate = new(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
             public List<SimpleXref> RecentXrefs { get; set; }
             public double TotalCS { get; set; }
             public double SeasonCS { get; set; }
 
             public double TotalCraftingXP { get; set; }
             public uint CraftingLevel { get; set; }
-
-            [GeneratedRegex(@"\(.+?\)")]
-            private static partial Regex MyRegex();
         }
 
         public class SimpleXref {
