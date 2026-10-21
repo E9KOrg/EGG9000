@@ -86,17 +86,6 @@ html {
   box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
 }
 
-.lb-name-cell {
-  max-width: 150px;
-  text-overflow: ellipsis;
-  line-break: strict;
-}
-
-.lb-anchor-offset {
-  position: relative;
-  top: -40px;
-}
-
 body {
   /* Margin bottom by footer height */
   margin-bottom: 60px;
@@ -453,7 +442,7 @@ body {
 }
 /* Page-level overrides for layout elements, which a view's isolated .cshtml.css cannot reach.
    A view opts in with ViewData["BodyClass"], rendered on <body> by _Layout.cshtml. */
-body {
+body:not(.lb-page) {
     height: auto !important;
 }
 

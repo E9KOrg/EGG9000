@@ -25,13 +25,9 @@ namespace EGG9000.Common.Helpers {
             return string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
         }
 
-        public static string GetCleanName(this IGuildUser user) {
-            var name = string.IsNullOrEmpty(user.Nickname) ? user.Username : user.Nickname;
-            var ebrgx = MyRegex();
-            name = ebrgx.Replace(name, "").Trim();
+        public static string GetCleanName(this IGuildUser user) => CleanUsername(user.GetName());
 
-            return name;
-        }
+        public static string CleanUsername(string username) => MyRegex().Replace(username ?? "", "").Trim();
 
         public static async Task DeleteMessagesBatchAsync(this ITextChannel channel, IEnumerable<IMessage> messages) {
             if(!messages.Any()) return;

@@ -1,0 +1,9 @@
+@model LeaderboardLead
+<td class="lb-rank"><span class="lb-rank-badge @(Model.Rank <= 3 ? $"lb-rank-{Model.Rank}" : "")">@Model.Rank</span></td>
+<td class="lb-left lb-name" title="@Model.Name">
+	@if (Model.Href is null) {
+		@Model.Name
+	} else {
+		<a href="@Model.Href">@Model.Name</a>
+	}
+</td>
