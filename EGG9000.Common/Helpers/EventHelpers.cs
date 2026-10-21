@@ -62,12 +62,8 @@ namespace EGG9000.Common.Helpers {
         }
 
         private static async Task<byte[]> GenerateEventImageAsync(DBEvent customEvent) {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("authenticationKey", SecretsHelper.BotToken);
-
-            var baseUrl = BuildConfig.IsRelease ? "https://egg9000.com" : "https://localhost:44314";
-
-            var apiUrl = $"{baseUrl}/api/generateeventimage";
+            var client = SiteApiClient.Client;
+            var apiUrl = $"{SiteApiClient.BaseUrl()}/api/generateeventimage";
             var jsonContent = JsonSerializer.Serialize(customEvent);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
