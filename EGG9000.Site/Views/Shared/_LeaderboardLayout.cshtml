@@ -1,0 +1,58 @@
+@{
+	Layout = "_Layout";
+	ViewData["BodyClass"] = $"lb-page {ViewData["BodyClass"]}".Trim();
+	var header = ViewData[nameof(LeaderboardHeader)] as LeaderboardHeader ?? new LeaderboardHeader(ViewData["Title"] as string ?? "");
+}
+
+@section Head {
+	<link rel="stylesheet" href="~/css/leaderboard.css" asp-append-version="true" />
+	@RenderSection("Head", required: false)
+}
+
+<div class="card lb-card">
+	<div class="card-header lb-toolbar">
+		<h4 class="lb-title">@header.Title</h4>
+		<div class="lb-controls">
+			@foreach (var menu in header.Menus) {
+				var active = menu.Choices.FirstOrDefault(x => x.Active);
+				<div class="dropdown">
+					<button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+						@menu.Caption: @(active?.Label ?? "-")
+					</button>
+					<ul class="dropdown-menu dropdown-menu-end">
+						@foreach (var choice in menu.Choices) {
+							<li>
+								<a class="dropdown-item @(choice.Active ? "active" : "")" href="@choice.Href" style="@(choice.Color is null ? "" : $"border-left:4px solid {choice.Color};")">
+									@if (choice.Color is null || choice.Active) {
+										@choice.Label
+									} else {
+										<span style="color:@choice.Color;">@choice.Label</span>
+									}
+								</a>
+							</li>
+						}
+					</ul>
+				</div>
+			}
+			@if (header.Jumps.Count == 1) {
+				<a class="btn btn-sm btn-secondary" href="#@LeaderboardHeader.MeAnchor(0)">Jump to me</a>
+			} else if (header.Jumps.Count > 1) {
+				<div class="dropdown">
+					<button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">Jump to me</button>
+					<ul class="dropdown-menu dropdown-menu-end">
+						@for (var n = 0; n < header.Jumps.Count; n++) {
+							<li><a class="dropdown-item" href="#@LeaderboardHeader.MeAnchor(n)">@header.Jumps[n]</a></li>
+						}
+					</ul>
+				</div>
+			}
+		</div>
+	</div>
+	<div class="lb-scroll">
+		@RenderBody()
+	</div>
+</div>
+
+@section Scripts {
+	@RenderSection("Scripts", required: false)
+}

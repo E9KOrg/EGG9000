@@ -199,7 +199,6 @@ namespace EGG9000.Site.Controllers {
 
         public Task<List<LeaderboardUser>> _getLeaderboard(ulong guildid) => _leaderboards.GetLeaderboardAsync(guildid);
 
-        [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Authorize]
         public async Task<IActionResult> Leaderboard([FromQuery] bool all = false, [FromQuery] bool oldest = false, [FromQuery] string sortby = "", [FromQuery] ulong guildid = 0) {
             if(NewCoopChecker.WaitingOnCoops) {
@@ -222,8 +221,7 @@ namespace EGG9000.Site.Controllers {
                         leaderboard = [.. leaderboard.OrderByDescending(x => x.Backup.EggsOfProphecy)];
                         break;
                     case "start":
-                        var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
-                        leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
+                        leaderboard.ForEach(x => x.Started = x.FirstContractStarted());
                         leaderboard = [.. leaderboard.OrderBy(x => x.Started)];
                         break;
                     case "permit":
@@ -343,9 +341,8 @@ namespace EGG9000.Site.Controllers {
                     return new Home_EggDayResults {
                         UserAccount = user,
                         EBGain = x.EarningsBonus - pre.EarningsBonus,
-                        EBGainPercent = (x.EarningsBonus - pre.EarningsBonus) / pre.EarningsBonus,
                         SEGain = x.SoulEggs - pre.SoulEggs,
-                        SEGainPercent = (x.SoulEggs - pre.SoulEggs) / pre.SoulEggs,
+                        SEGainPercent = pre.SoulEggs > 0 ? (x.SoulEggs - pre.SoulEggs) / pre.SoulEggs : 0,
                         PrestigeCount = x.Prestiges - pre.Prestiges,
                         StartEB = pre.EarningsBonus
                     };
@@ -357,7 +354,6 @@ namespace EGG9000.Site.Controllers {
                 "prestige" => [.. results.OrderByDescending(x => x.PrestigeCount)],
                 "se" => [.. results.OrderByDescending(x => x.SEGain)],
                 "seper" => [.. results.OrderByDescending(x => x.SEGainPercent)],
-                "ebper" => [.. results.OrderByDescending(x => x.EBGainPercent)],
                 _ => [.. results.OrderByDescending(x => x.EBGain)]
             };
 
@@ -406,9 +402,8 @@ namespace EGG9000.Site.Controllers {
                     return new Home_EggDayResults {
                         UserAccount = accountById[post.EggIncID],
                         EBGain = post.EarningsBonus - pre.EarningsBonus,
-                        EBGainPercent = (post.EarningsBonus - pre.EarningsBonus) / pre.EarningsBonus,
                         SEGain = post.SoulEggs - pre.SoulEggs,
-                        SEGainPercent = (post.SoulEggs - pre.SoulEggs) / pre.SoulEggs,
+                        SEGainPercent = pre.SoulEggs > 0 ? (post.SoulEggs - pre.SoulEggs) / pre.SoulEggs : 0,
                         PrestigeCount = post.Prestiges - pre.Prestiges,
                         StartEB = pre.EarningsBonus
                     };
@@ -437,8 +432,7 @@ namespace EGG9000.Site.Controllers {
                             leaderboard = [.. leaderboard.OrderByDescending(x => x.Backup.SoulEggs)];
                             break;
                         case "start":
-                            var firstContract = new DateTimeOffset(2018, 03, 24, 0, 0, 0, TimeSpan.Zero);
-                            leaderboard.ForEach(x => x.Started = (x.Backup.ArchivedFarms?.Count ?? 0) > 0 ? x.Backup.ArchivedFarms.Where(x => x.Started > firstContract).Min(y => y.Started) : x.Backup.Farms.Min(y => y.Started));
+                            leaderboard.ForEach(x => x.Started = x.FirstContractStarted());
                             leaderboard = [.. leaderboard.OrderBy(x => x.Started)];
                             break;
                     }
@@ -449,7 +443,6 @@ namespace EGG9000.Site.Controllers {
             }
         }
 
-        [ResponseCache(Duration = 360, VaryByQueryKeys = new string[] { "*" })]
         [Authorize]
         public async Task<IActionResult> Enlightenment() {
             var user = await GetCurrentDbUserAsync();
@@ -475,7 +468,6 @@ namespace EGG9000.Site.Controllers {
         }
 
         private const string NoLinkedGuildMessage = "Your account is not linked to a Discord server this site knows about.";
-
         private async Task<(DBUser User, ulong Guildid, List<LeaderboardUser> Board)> ResolveGuildLeaderboardAsync(ulong guildid) {
             var user = await GetCurrentDbUserAsync();
             if(guildid == 0 || !User.IsInRole("Admin")) {
@@ -515,7 +507,6 @@ namespace EGG9000.Site.Controllers {
                 u.Backup.EarningsBonus,
                 SIPrefix.GetPrefixFromEB(u.Backup.EarningsBonus).RankWithSubRank));
             if(all is null) return View("Message", NoLinkedGuildMessage);
-
             ViewBag.ListOfEb = all;
             ViewBag.MyEbs = mine;
             ViewBag.MyNames = myNames;
@@ -530,7 +521,6 @@ namespace EGG9000.Site.Controllers {
                 (int)(u?.Account?.LastGrade ?? Ei.Contract.Types.PlayerGrade.GradeUnset),
                 u?.Backup?.TotalCS ?? 0));
             if(all is null) return View("Message", NoLinkedGuildMessage);
-
             ViewBag.MyGradeData = mine;
             ViewBag.MyNames = myNames;
             ViewBag.AllGradeData = all;
@@ -542,11 +532,10 @@ namespace EGG9000.Site.Controllers {
         [Authorize]
         public async Task<IActionResult> CraftingLevelComparison() {
             var (all, mine, myNames) = await BuildComparison(u => new Tuple<int, double>(
-                (int)u?.Account?.Backup.GetCraftingLevel(),
-                (double)(u?.Account?.Backup?.CraftingXP)),
+                (int)(u.Account?.Backup?.GetCraftingLevel() ?? 0),
+                u.Account?.Backup?.CraftingXP ?? 0),
                 leaderboard => leaderboard.Where(x => x.TotalCraftingXP > 0));
             if(all is null) return View("Message", NoLinkedGuildMessage);
-
             ViewBag.MyCraftingData = mine;
             ViewBag.MyNames = myNames;
             ViewBag.AllCraftingData = all;
