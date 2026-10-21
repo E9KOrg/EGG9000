@@ -1,7 +1,7 @@
 @{
 	Layout = "_Layout";
 	ViewData["BodyClass"] = $"lb-page {ViewData["BodyClass"]}".Trim();
-	var header = (LeaderboardHeader)ViewData[nameof(LeaderboardHeader)];
+	var header = ViewData[nameof(LeaderboardHeader)] as LeaderboardHeader ?? new LeaderboardHeader(ViewData["Title"] as string ?? "");
 }
 
 @section Head {
@@ -22,7 +22,13 @@
 					<ul class="dropdown-menu dropdown-menu-end">
 						@foreach (var choice in menu.Choices) {
 							<li>
-								<a class="dropdown-item @(choice.Active ? "active" : "")" href="@choice.Href" style="@(choice.Color is null ? "" : $"border-left:4px solid {choice.Color};color:{choice.Color};")">@choice.Label</a>
+								<a class="dropdown-item @(choice.Active ? "active" : "")" href="@choice.Href" style="@(choice.Color is null ? "" : $"border-left:4px solid {choice.Color};")">
+									@if (choice.Color is null || choice.Active) {
+										@choice.Label
+									} else {
+										<span style="color:@choice.Color;">@choice.Label</span>
+									}
+								</a>
 							</li>
 						}
 					</ul>

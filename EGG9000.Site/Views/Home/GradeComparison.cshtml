@@ -48,7 +48,7 @@
                         </tr>
                         <tr>
                             <td>Median Total CS:</td>
-                            <td>@($"{ArgumentsHelper.Median(allGradeData.Select(o => o.Item2)):n0}")</td>
+                            <td>@($"{ArgumentsHelper.Median(allGradeData.Select(o => o.Item2).DefaultIfEmpty()):n0}")</td>
                         </tr>
                         <tr>
                             <td>Combined Server Total CS:</td>

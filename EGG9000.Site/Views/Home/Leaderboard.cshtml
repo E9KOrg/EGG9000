@@ -6,19 +6,20 @@
 	var discordId = User.DiscordId();
 	var isAdmin = User.IsStaff();
 	bool oldest = ViewBag.Oldest ?? false;
-	string sortby = ViewBag.SortBy ?? "";
+	string rawSort = ViewBag.SortBy ?? "";
+	var sortby = rawSort is "se" or "pe" or "eot" or "eott" or "eov" or "tepershift" or "shifts" or "mer" or "permit" or "start" ? rawSort : "";
 	var showVirtue = sortby is "eott" or "eov" or "tepershift";
 	string q(string value) => Context.Request.WithQuery("sortby", value, "oldest");
 
-	const string soulIcon = "/images/Egg_soul.png";
-	const string prophecyIcon = "/images/Egg_of_Prophecy.png";
-	const string truthIcon = "/images/egg_truth.png";
+	var soulIcon = Url.Content("~/images/Egg_soul.png");
+	var prophecyIcon = Url.Content("~/images/Egg_of_Prophecy.png");
+	var truthIcon = Url.Content("~/images/egg_truth.png");
 
 	var mine = Model.Where(x => x.DisplayDiscordId.ToString() == discordId);
 
 	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("Leaderboard")
 		.Menu("Sort",
-			new LeaderboardChoice("EB", q(""), sortby == ""),
+			new LeaderboardChoice("EB", q(""), sortby == "" && !oldest),
 			new LeaderboardChoice("SE", q("se"), sortby == "se"),
 			new LeaderboardChoice("PE", q("pe"), sortby == "pe"),
 			new LeaderboardChoice("TE", q("eot"), sortby == "eot"),
@@ -28,11 +29,12 @@
 			new LeaderboardChoice("Shifts", q("shifts"), sortby == "shifts"),
 			new LeaderboardChoice("MER", q("mer"), sortby == "mer"),
 			new LeaderboardChoice("Permit", q("permit"), sortby == "permit"),
-			new LeaderboardChoice("First Contract", q("start"), sortby == "start"))
-		.Jump(mine.Select(x => x.Backup.UserName));
+			new LeaderboardChoice("First Contract", q("start"), sortby == "start"),
+			new LeaderboardChoice("Oldest", Context.Request.WithQuery("oldest", "true", "sortby"), oldest))
+		.Jump(mine.Select(LeaderboardLead.JumpLabel));
 	var meIndex = 0;
 
-	string sorted(string key) => sortby == key ? "lb-sorted" : "";
+	string sorted(string key) => sortby == key && !oldest ? "lb-sorted" : "";
 }
 
 <table class="table table-striped table-hover lb-table">
@@ -51,11 +53,11 @@
 				<th class="@sorted("eov")" title="Sum of Eggs of Virtue shipped">EoV</th>
 				<th class="@sorted("tepershift")" title="Eggs of Truth per shift">TE/S</th>
 			}
-			<th>EB</th>
+			<th class="@sorted("")">EB</th>
 			<th class="@sorted("shifts")">Shifts</th>
 			<th class="@sorted("permit")" title="Permit and grade"></th>
 			@if (oldest) {
-				<th>Joined</th>
+				<th class="lb-sorted">Joined</th>
 			}
 			@if (sortby == "start") {
 				<th class="lb-sorted">Started</th>
@@ -64,10 +66,9 @@
 	</thead>
 	<tbody>
 		@foreach (var (account, i) in Model.Select((x, i) => (x, i))) {
-			var isMe = account.DisplayDiscordId.ToString() == discordId;
-			var href = isAdmin ? $"/Home/ViewUser/{account.User.Id}" : isMe ? "/MyFarms" : null;
-			<tr id="@(isMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(isMe ? "lb-me" : "")">
-				<partial name="_LeaderboardLead" model="new LeaderboardLead(i + 1, account.DisplayName, href)" />
+			var lead = LeaderboardLead.For(account, i + 1, discordId, isAdmin);
+			<tr id="@(lead.IsMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(lead.IsMe ? "lb-me" : "")">
+				<partial name="_LeaderboardLead" model="lead" />
 				@if (sortby == "mer") {
 					<td class="lb-sorted">@account.Backup.MER</td>
 				}
@@ -80,7 +81,7 @@
 					<td class="@sorted("eov")">@(eov > 0 ? eov.ToEggStringD(4) : "0")</td>
 					<td class="@sorted("tepershift")">@(account.Backup.ShiftCount > 0 ? ((double)account.Backup.EggsOfTruthTotal / account.Backup.ShiftCount).ToString("0.00") : "")</td>
 				}
-				<td>@account.Backup.EarningsBonus.ToEggString(true, numberOfDecimalPlaces: 2)</td>
+				<td class="@sorted("")">@account.Backup.EarningsBonus.ToEggString(true, numberOfDecimalPlaces: 2)</td>
 				<td class="@sorted("shifts")">@account.Backup.ShiftCount</td>
 				<td>
 					<span class="lb-icons">
@@ -89,7 +90,7 @@
 					</span>
 				</td>
 				@if (oldest) {
-					<td>@account.User.Registered?.ToString("yyyy-MM-dd")</td>
+					<td class="lb-sorted">@account.User.Registered?.ToString("yyyy-MM-dd")</td>
 				}
 				@if (sortby == "start") {
 					<td class="lb-sorted">@(account.Started == DateTimeOffset.MaxValue ? "" : account.Started.ToString("yyyy-MM-dd"))</td>

@@ -10,7 +10,7 @@ html:has(body.lb-page) {
 }
 
 body.lb-page {
-    height: 100dvh !important;
+    height: 100dvh;
     margin-bottom: 0;
     display: flex;
     flex-direction: column;
@@ -42,7 +42,7 @@ body.lb-page > footer {
 
 @media (max-height: 480px) {
     body.lb-page {
-        height: auto !important;
+        height: auto;
         display: block;
         overflow: visible;
     }
@@ -145,8 +145,8 @@ body.lb-page > footer {
     scroll-margin-top: 3rem;
 }
 
-.lb-table > tbody > tr.lb-me > * {
-    --bs-table-bg-state: var(--lb-me-bg);
+.lb-table.table > tbody > tr.lb-me > * {
+    --bs-table-bg-type: var(--lb-me-bg);
 }
 
 .lb-table .lb-rank {

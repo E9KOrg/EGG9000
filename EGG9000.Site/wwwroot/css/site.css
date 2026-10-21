@@ -442,7 +442,7 @@ body {
 }
 /* Page-level overrides for layout elements, which a view's isolated .cshtml.css cannot reach.
    A view opts in with ViewData["BodyClass"], rendered on <body> by _Layout.cshtml. */
-body {
+body:not(.lb-page) {
     height: auto !important;
 }
 

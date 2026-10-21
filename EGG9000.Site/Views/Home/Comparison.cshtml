@@ -53,7 +53,7 @@
                             <td>Median Eb:</td>
                             <td>
                                 @{
-                                    var medianEb = ArgumentsHelper.Median(listOfEb.Select(o => o.Item1));
+                                    var medianEb = ArgumentsHelper.Median(listOfEb.Select(o => o.Item1).DefaultIfEmpty());
                                 }
                                 @ArgumentsHelper.NumberToString(medianEb,true,2)
                             </td>

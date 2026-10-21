@@ -91,7 +91,7 @@ namespace EGG9000.Common.Helpers {
 
         public static double Median(IEnumerable<double> values) {
             var sorted = values.OrderByDescending(x => x).ToList();
-            return sorted.Count == 0 ? 0 : sorted[sorted.Count / 2];
+            return sorted[sorted.Count / 2];
         }
 
         public static string NumberToStringD(double number, int numberOfDigits) {

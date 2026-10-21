@@ -8,7 +8,7 @@
 	var mine = Model.Where(x => x.DisplayDiscordId.ToString() == discordId);
 
 	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("Crafting XP Leaderboard")
-		.Jump(mine.Select(x => x.Backup.UserName));
+		.Jump(mine.Select(LeaderboardLead.JumpLabel));
 	var meIndex = 0;
 }
 
@@ -23,10 +23,9 @@
 	</thead>
 	<tbody>
 		@foreach (var (account, i) in Model.Select((x, i) => (x, i))) {
-			var isMe = account.DisplayDiscordId.ToString() == discordId;
-			var href = isAdmin ? $"/Home/ViewUser/{account.User.Id}" : isMe ? "/MyFarms" : null;
-			<tr id="@(isMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(isMe ? "lb-me" : "")">
-				<partial name="_LeaderboardLead" model="new LeaderboardLead(i + 1, account.DisplayName, href)" />
+			var lead = LeaderboardLead.For(account, i + 1, discordId, isAdmin);
+			<tr id="@(lead.IsMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(lead.IsMe ? "lb-me" : "")">
+				<partial name="_LeaderboardLead" model="lead" />
 				<td>@account.Backup.GetCraftingLevel().ToString("N0")</td>
 				<td class="lb-sorted">@account.Backup.CraftingXP.ToString("N0")</td>
 			</tr>

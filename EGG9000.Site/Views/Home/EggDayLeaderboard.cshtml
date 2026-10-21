@@ -5,6 +5,7 @@
 	ViewData["Title"] = "Egg Day Leaderboard";
 
 	var discordId = User.DiscordId();
+	var isAdmin = User.IsStaff();
 	int year = ViewBag.Year;
 	int prefix = ViewBag.prefix;
 	string rawSort = ViewBag.SortBy ?? "";
@@ -48,9 +49,8 @@
 		</thead>
 		<tbody>
 			@foreach (var (account, i) in rows.Select((x, i) => (x, i))) {
-				var isMe = account.UserAccount.User.DiscordId.ToString() == discordId;
-				var lead = new LeaderboardLead(i + 1, Regex.Replace(account.UserAccount.User.DiscordUsername, @"\(.+?\)", "").Trim());
-				<tr id="@(isMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(isMe ? "lb-me" : "")">
+				var lead = LeaderboardLead.For(account.UserAccount.User, DiscordHelpersExt.CleanUsername(account.UserAccount.User.DiscordUsername), account.UserAccount.User.DiscordId, i + 1, discordId, isAdmin);
+				<tr id="@(lead.IsMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(lead.IsMe ? "lb-me" : "")">
 					<partial name="_LeaderboardLead" model="lead" />
 					<td class="@sorted("eb")">@account.EBGain.ToEggString()</td>
 					<td class="@sorted("se")">@account.SEGain.ToEggString()</td>

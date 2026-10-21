@@ -11,17 +11,15 @@
 		var stats = farm.WithStats(x.Backup, null, Model.CustomEggs);
 		return new {
 			x.Backup,
-			x.User,
-			IsMe = x.DisplayDiscordId.ToString() == discordId,
+			User = x,
 			Farm = farm,
-			x.DisplayName,
 			FarmStats = stats,
 			TimeToComplete = stats.InternalHatchery > 0 ? TimeSpan.FromMinutes((10e9 - farm.NumChickens) / (stats.InternalHatchery * 4 * 3)) : TimeSpan.MaxValue
 		};
 	}).OrderBy(x => x.TimeToComplete).ToList();
 
 	ViewData[nameof(LeaderboardHeader)] = new LeaderboardHeader("Enlightenment Progress")
-		.Jump(accounts.Where(x => x.IsMe).Select(x => x.Backup.UserName));
+		.Jump(accounts.Where(x => x.User.DisplayDiscordId.ToString() == discordId).Select(x => LeaderboardLead.JumpLabel(x.User)));
 	var meIndex = 0;
 }
 
@@ -39,9 +37,9 @@
 	</thead>
 	<tbody>
 		@foreach (var (account, i) in accounts.Select((x, i) => (x, i))) {
-			var href = isAdmin ? $"/Home/ViewUser/{account.User.Id}" : account.IsMe ? "/MyFarms" : null;
-			<tr id="@(account.IsMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(account.IsMe ? "lb-me" : "")">
-				<partial name="_LeaderboardLead" model="new LeaderboardLead(i + 1, account.DisplayName, href)" />
+			var lead = LeaderboardLead.For(account.User, i + 1, discordId, isAdmin);
+			<tr id="@(lead.IsMe ? LeaderboardHeader.MeAnchor(meIndex++) : null)" class="@(lead.IsMe ? "lb-me" : "")">
+				<partial name="_LeaderboardLead" model="lead" />
 				<td>@account.Backup.EarningsBonus.ToEggString()</td>
 				<td>@account.Farm.NumChickens.ToEggString()</td>
 				<td>@account.FarmStats.HabSpace.ToEggString()</td>
