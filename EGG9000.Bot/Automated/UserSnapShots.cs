@@ -46,7 +46,7 @@ namespace EGG9000.Bot.Automated {
                         // per-day guard, so a partial run (cancel/restart) is safe to re-run -
                         // accounts already snapped today are skipped and missed ones get picked
                         // up on the next pass, instead of a single global flag starving the tail.
-                        //if(lastSnapshot?.Date == DateTime.UtcNow.Date) continue;
+                        if(lastSnapshot?.Date == DateTime.UtcNow.Date) continue;
 
                         var newVirtueStats = new VirtueSnapshotStats {
                             CurrentEgg = backup.MaxEggReached,
