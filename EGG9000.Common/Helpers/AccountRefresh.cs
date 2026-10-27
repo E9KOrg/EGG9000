@@ -25,8 +25,8 @@ namespace EGG9000.Common.Helpers {
         // Pulls a fresh backup for one account and assigns it (carry-forward via the prior backup so
         // monotonic data like colleggtible levels is preserved). Returns the new backup, or null if the
         // API failed or returned no farms. In-memory only - caller persists the account blob.
-        public static async Task<CustomBackup> RefreshBackupAsync(EggIncAccount account, FrozenSet<Ei.Contract> cachedContracts, ILogger logger = null) {
-            var firstContact = await EggIncApi.FirstContact(account.Id, logger);
+        public static async Task<CustomBackup> RefreshBackupAsync(IEggIncApi api, EggIncAccount account, FrozenSet<Ei.Contract> cachedContracts, ILogger logger = null) {
+            var firstContact = await api.FirstContact(account.Id, logger);
             if(firstContact?.Backup is null) {
                 logger?.LogWarning("RefreshBackupAsync got no backup for account {Account} ({Id}): Success={Success}, Error={Error}",
                     account.Name, account.Id, firstContact?.Success, firstContact?.Error);
@@ -44,10 +44,10 @@ namespace EGG9000.Common.Helpers {
             return backup;
         }
 
-        public static async Task<CustomBackup> RefreshFullAsync(EggIncAccount account, FrozenSet<Ei.Contract> cachedContracts, DBUser user, ApplicationDbContext db, ILogger logger) {
-            var backup = await RefreshBackupAsync(account, cachedContracts, logger);
+        public static async Task<CustomBackup> RefreshFullAsync(IEggIncApi api, EggIncAccount account, FrozenSet<Ei.Contract> cachedContracts, DBUser user, ApplicationDbContext db, ILogger logger) {
+            var backup = await RefreshBackupAsync(api, account, cachedContracts, logger);
             if(backup is null) return null;
-            await ApplyExtrasAsync(user, account, db, logger);
+            await ApplyExtrasAsync(api, user, account, db, logger);
             return backup;
         }
 
@@ -55,8 +55,8 @@ namespace EGG9000.Common.Helpers {
         // (in memory, repacks the account blob) and UserSeasonProgress upserts staged on `db` (NOT saved).
         // Caller persists the account blob and calls SaveChanges. Returns whether the account blob was
         // mutated (grade changed or PromotionTime re-stamped) and therefore needs persisting.
-        public static async Task<bool> ApplyExtrasAsync(DBUser user, EggIncAccount account, ApplicationDbContext db, ILogger logger, CancellationToken cancellationToken = default) {
-            var info = await FetchExtrasAsync(user, account, logger);
+        public static async Task<bool> ApplyExtrasAsync(IEggIncApi api, DBUser user, EggIncAccount account, ApplicationDbContext db, ILogger logger, CancellationToken cancellationToken = default) {
+            var info = await FetchExtrasAsync(api, user, account, logger);
             if(info is null) return false;
 
             var mutated = ApplyExtras(user, account, info, logger);
@@ -92,8 +92,8 @@ namespace EGG9000.Common.Helpers {
         // Network-only half of ApplyExtrasAsync. Callers that need to avoid holding a DB connection
         // open across the Egg Inc API call (e.g. batch jobs) can call this first, then ApplyExtras +
         // UpsertSeasonProgress against a short-lived scope once the network round-trip is done.
-        public static async Task<Ei.ContractPlayerInfo> FetchExtrasAsync(DBUser user, EggIncAccount account, ILogger logger) {
-            var (info, error) = await EggIncApi.GetContractPlayerInfo(account.Id);
+        public static async Task<Ei.ContractPlayerInfo> FetchExtrasAsync(IEggIncApi api, DBUser user, EggIncAccount account, ILogger logger) {
+            var (info, error) = await api.GetContractPlayerInfo(account.Id);
             if(info is null) {
                 logger.LogWarning("No response getting grade for user {User} ({Account}): {Error}", user.DiscordUsername, account.Name, error);
                 return null;

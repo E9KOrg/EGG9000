@@ -25,9 +25,10 @@ namespace EGG9000.Site.Controllers {
     [Authorize]
     public class MyFarmsController(ILogger<MyFarmsController> logger, UserManager<ApplicationUser> userManager, DiscordSocketClient discord,
         RoleManager<IdentityRole> roleManager, ApplicationDbContext db, Bugsnag.IClient bugsnag, IMemoryCache cache, DatabaseCache databaseCache,
-        IServiceScopeFactory scopeFactory, ArtifactImageRenderer artifactRenderer) : E9KControllerBase {
+        IServiceScopeFactory scopeFactory, ArtifactImageRenderer artifactRenderer, IEggIncApi eggIncApi) : E9KControllerBase {
 
         private readonly ILogger<MyFarmsController> _logger = logger;
+        private readonly IEggIncApi _eggIncApi = eggIncApi;
         private readonly ApplicationDbContext _db = db;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
         private readonly RoleManager<IdentityRole> _roleManager = roleManager;
@@ -164,7 +165,7 @@ namespace EGG9000.Site.Controllers {
             // (the view dereferences account.Backup directly). Fresh backups are refreshed out of band below.
             var accountsNeedingBackup = user.EggIncAccounts.Where(a => a.Backup is null).ToList();
             if(accountsNeedingBackup.Count > 0) {
-                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(a => AccountRefresh.RefreshBackupAsync(a, cachedContracts, _logger)));
+                var fetched = await Task.WhenAll(accountsNeedingBackup.Select(a => AccountRefresh.RefreshBackupAsync(_eggIncApi, a, cachedContracts, _logger)));
                 if(fetched.Any(b => b is not null)) {
                     user.UpdateAccounts();
                 }
@@ -228,7 +229,7 @@ namespace EGG9000.Site.Controllers {
             var results = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
                 var scores = await _cache.GetOrCreateAsync($"{account.Id}-MyContracts", async entry => {
                     entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
-                    return await EggIncApi.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
+                    return await _eggIncApi.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
                 });
                 return (account.Id, scores);
             }));
@@ -255,7 +256,7 @@ namespace EGG9000.Site.Controllers {
                     // Backups are network-only + per-account in memory. Fetch on unattached account objects,
                     // concurrently, without holding a DB connection for the duration of the Egg Inc API calls.
                     var refreshedBackups = await Task.WhenAll(probeAccounts.Select(async account => {
-                        await AccountRefresh.RefreshBackupAsync(account, cachedContracts, _logger);
+                        await AccountRefresh.RefreshBackupAsync(_eggIncApi, account, cachedContracts, _logger);
                         return (account.Id, account.Backup);
                     }));
 
@@ -266,7 +267,7 @@ namespace EGG9000.Site.Controllers {
                     foreach(var account in user.EggIncAccounts) {
                         var refreshed = refreshedBackups.FirstOrDefault(x => x.Id == account.Id);
                         if(refreshed.Backup is not null) account.Backup = refreshed.Backup;
-                        await AccountRefresh.ApplyExtrasAsync(user, account, db, _logger);
+                        await AccountRefresh.ApplyExtrasAsync(_eggIncApi, user, account, db, _logger);
                     }
                     user.UpdateAccounts();
                     await db.SaveChangesAsync();
@@ -282,7 +283,7 @@ namespace EGG9000.Site.Controllers {
             // Get fresh backups concurrently (cachedContracts resolved up front - _db is not thread-safe).
             var cachedContracts = await _db.CachedEiContractsAsync();
             var freshBackups = await Task.WhenAll(user.EggIncAccounts.Select(async account => {
-                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, cachedContracts);
+                var (backup, _) = await _eggIncApi.GetBackupAsync(account.Id, cachedContracts);
                 return (account, backup);
             }));
             foreach(var (account, backup) in freshBackups) {

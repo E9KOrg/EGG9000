@@ -52,7 +52,7 @@ namespace EGG9000.Bot.Automated {
                     foreach(var account in user.EggIncAccounts.Where(x => x.LastGrade != Ei.Contract.Types.PlayerGrade.GradeUnset)) {
                         if(cancellationToken.IsCancellationRequested) break;
                         try {
-                            var scores = await EggIncApi.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
+                            var scores = await _eggIncApi.Post<MyContracts, BasicRequestInfo>(new BasicRequestInfo(), account.Id);
 
                             if(scores?.Contracts is null) {
                                 _logger.LogWarning("Unable to get scores for {user} {account}", user.DiscordUsername, account.Id);

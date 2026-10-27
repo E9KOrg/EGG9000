@@ -5,6 +5,7 @@ using Discord.WebSocket;
 using EGG9000.Bot.Commands;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 
@@ -32,7 +33,8 @@ namespace EGG9000.Bot.Services {
             Bugsnag.IClient bugsnag,
             ILogger<MessageHandlerService> logger,
             IConfiguration configuration,
-            InteractionService interactions
+            InteractionService interactions,
+            IEggIncApi eggIncApi
         ) : IHostedService {
         private readonly DiscordHostedService _discord = discord;
         private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory = dbContextFactory;
@@ -176,7 +178,7 @@ namespace EGG9000.Bot.Services {
                 var mp = new MessageProperties();
                 mut(mp);
                 return message.Channel.SendMessageAsync(mp.Content.IsSpecified ? (mp.Content.Value ?? "") : "", embed: mp.Embed.IsSpecified ? mp.Embed.Value : null);
-            }, db, _discord, _bugsnag, eiidMatch.Value, message.Author, _logger);
+            }, db, _discord, eggIncApi, _bugsnag, eiidMatch.Value, message.Author, _logger);
         }
 
         private async Task HandleMessageReceived(SocketMessage message) {
