@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -15,9 +16,6 @@ namespace EGG9000.Bot.Commands {
 
         private const string DefaultRepoUrl = "https://github.com/E9KOrg/EGG9000";
 
-        // version.txt line 6 is the raw remote.origin.url. Convert ssh/https git URLs to a web URL so the
-        // commit hash links to wherever this build was actually pushed (fork or canonical), not a hardcoded
-        // org. Falls back to the canonical repo when no remote was captured at build time.
         private static string NormalizeRemote(string raw) {
             raw = raw?.Trim() ?? string.Empty;
             if(raw.Length == 0) return DefaultRepoUrl;
@@ -41,26 +39,25 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("ping", "Test to see if bot is alive")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task Ping() {
-            var gitVersion = string.Empty;
-
+            string gitVersion;
             using(var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("EGG9000.Bot.version.txt"))
             using(var reader = new StreamReader(stream)) {
                 gitVersion = reader.ReadToEnd();
             }
 
-            var output = gitVersion.Replace("\r", string.Empty).Trim().Split('\n');
-            string Line(int i) => i < output.Length ? output[i].Trim() : string.Empty;
+            var info = gitVersion.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(line => (Separator: line.IndexOf('='), Line: line))
+                .Where(x => x.Separator > 0)
+                .ToDictionary(x => x.Line[..x.Separator], x => x.Line[(x.Separator + 1)..].Trim());
+            string Value(string key) => info.GetValueOrDefault(key, string.Empty);
 
-            var commitMessage = Line(0);
-            var commitHash = Line(1);
-            var authorLine = Line(2);
-            var commitTimestamp = Line(3);
-            var branch = Line(4);
-            var repoUrl = NormalizeRemote(Line(5));
-
-            var emailStart = authorLine.IndexOf('<');
-            var author = emailStart > 0 ? authorLine[..emailStart].Trim() : authorLine;
-            var email = emailStart > 0 ? authorLine[(emailStart + 1)..].TrimEnd('>').Trim() : string.Empty;
+            var commitMessage = Value("subject");
+            var commitHash = Value("hash");
+            var author = Value("author");
+            var email = Value("email");
+            var commitTimestamp = Value("timestamp");
+            var branch = Value("branch");
+            var repoUrl = NormalizeRemote(Value("remote"));
 
             var githubUser = GitHubUser(author, email);
             var authorText = githubUser is null ? author : $"[{author}](<https://github.com/{githubUser}>)";
