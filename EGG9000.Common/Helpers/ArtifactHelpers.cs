@@ -605,11 +605,8 @@ namespace EGG9000.Common.Helpers {
                 Config = config,
             };
 
-            var siteApi = SiteApiClient.Create();
-            using var client = siteApi.client;
-            var baseUrl = siteApi.baseUrl;
-
-            var apiUrl = $"{baseUrl}/api/generateinventoryb64";
+            var client = SiteApiClient.Client;
+            var apiUrl = $"{SiteApiClient.BaseUrl()}/api/generateinventoryb64";
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(postedObject);
             var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
