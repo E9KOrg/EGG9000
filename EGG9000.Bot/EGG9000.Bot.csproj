@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk;Microsoft.NET.Sdk.Publish">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <StartupObject>
     </StartupObject>
@@ -11,15 +11,11 @@
     <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
   <PropertyGroup>
-    <!-- Forces the build to generate modern, cross-platform Portable PDBs -->
     <DebugType>portable</DebugType>
-
-    <!-- Embeds the actual C# source code directly into the PDB files -->
     <EmbedAllSources>true</EmbedAllSources>
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <PropertyGroup>
-    <NoWarn>$(NoWarn);NU1701</NoWarn>
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
@@ -62,48 +58,46 @@
     <PackageReference Include="CsvHelper" Version="33.1.0" />
     <PackageReference Include="Discord.Net" Version="3.20.2" />
     <PackageReference Include="Google.Protobuf" Version="3.36.2" />
-    <PackageReference Include="Grpc.Tools" Version="2.84.0">
+    <PackageReference Include="Grpc.Tools" Version="2.85.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Humanizer" Version="3.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.14" />
     <PackageReference Include="MessagePack" Version="3.1.12" />
     <PackageReference Include="Microsoft.AspNetCore.Http" Version="2.3.13" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.13">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.14">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <!-- Tools 10.0.9 floors Design at 8.0.0; pin it to 10.0.9 so design-time tooling (migrations) loads the matching assembly. -->
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.14">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.23.0" />
     <PackageReference Include="Nito.AsyncEx" Version="5.1.2" />
     <PackageReference Include="NLog" Version="6.2.2" />
     <PackageReference Include="NLog.Extensions.Logging" Version="6.2.2" />
     <PackageReference Include="NLog.Targets.Network" Version="6.1.6" />
     <PackageReference Include="NLog.Targets.OpenTelemetryProtocol" Version="1.2.10" />
-    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.20.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.20.0" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.0" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.20.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
     <PackageReference Include="NLog.Web.AspNetCore" Version="6.2.2" />
-    <PackageReference Include="Polly" Version="8.8.0" />
+    <PackageReference Include="Polly" Version="8.8.1" />
     <PackageReference Include="prometheus-net" Version="8.2.1" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.14" />
     <PackageReference Include="Sentry" Version="6.12.1" />
     <PackageReference Include="Sentry.Extensions.Logging" Version="6.12.1" />
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.13" />
+    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.14" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\EGG9000.Common\EGG9000.Common.csproj" />
@@ -117,9 +111,20 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent" Condition="'$(DOCKER_BUILD)' != 'true'">
-    <Exec Command="git log -n 1 --format=&quot;%25%25s%25%25n%25%25h%25%25n%25%25an &lt;%25%25ae&gt;%25%25n%25%25ct&quot; > &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
-    <Exec Command="git rev-parse --abbrev-ref HEAD >> &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" />
-    <Exec Command="git config --get remote.origin.url >> &quot;$(ProjectDir)version.txt&quot;" ContinueOnError="WarnAndContinue" IgnoreExitCode="true" />
+  <Target Name="WriteVersionFile" BeforeTargets="PreBuildEvent" Condition="'$(DOCKER_BUILD)' != 'true'">
+    <PropertyGroup>
+      <_Pct>%25</_Pct>
+      <_Pct Condition="$([MSBuild]::IsOSPlatform('Windows'))">%25%25</_Pct>
+    </PropertyGroup>
+    <Exec Command="git log -1 --format=hash=$(_Pct)h$(_Pct)nauthor=$(_Pct)an$(_Pct)nemail=$(_Pct)ae$(_Pct)ntimestamp=$(_Pct)ct$(_Pct)nsubject=$(_Pct)s" ConsoleToMSBuild="true" ContinueOnError="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" ItemName="_VersionLines" />
+    </Exec>
+    <Exec Command="git rev-parse --abbrev-ref HEAD" ConsoleToMSBuild="true" ContinueOnError="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_GitBranch" />
+    </Exec>
+    <Exec Command="git ls-remote --get-url" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low">
+      <Output TaskParameter="ConsoleOutput" PropertyName="_GitRemote" />
+    </Exec>
+    <WriteLinesToFile File="$(ProjectDir)version.txt" Lines="@(_VersionLines);branch=$(_GitBranch);remote=$(_GitRemote)" Overwrite="true" WriteOnlyWhenDifferent="true" />
   </Target>
 </Project>
