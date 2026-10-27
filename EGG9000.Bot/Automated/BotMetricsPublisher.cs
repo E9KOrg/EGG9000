@@ -1,9 +1,7 @@
 using Discord.WebSocket;
 
-using EGG9000.Common.Consumers;
+using EGG9000.Common.Bus;
 using EGG9000.Common.Services;
-
-using MassTransit;
 
 using Microsoft.Extensions.Logging;
 
@@ -20,8 +18,8 @@ namespace EGG9000.Bot.Automated {
     /// rather than an _UpdaterBase job - the latter writes an AutomationLog row and runs watchdog
     /// machinery on every tick, which is wrong for a cheap 15s heartbeat.
     /// </summary>
-    public sealed class BotMetricsPublisher(IPublishEndpoint publish, DiscordSocketClient client, IDiscordQueue queue, ILogger<BotMetricsPublisher> logger) : PeriodicBackgroundService(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), logger) {
-        private readonly IPublishEndpoint _publish = publish;
+    public sealed class BotMetricsPublisher(IMessageBus bus, DiscordSocketClient client, IDiscordQueue queue, ILogger<BotMetricsPublisher> logger) : PeriodicBackgroundService(TimeSpan.FromSeconds(15), TimeSpan.FromSeconds(30), logger) {
+        private readonly IMessageBus _bus = bus;
         private readonly DiscordSocketClient _client = client;
         private readonly IDiscordQueue _queue = queue;
 
@@ -50,7 +48,7 @@ namespace EGG9000.Bot.Automated {
                 CommandFailures = RuntimeMetrics.CommandFailures,
                 DiscordOps = RuntimeMetrics.DiscordOps,
             };
-            await _publish.Publish(msg, cancellationToken);
+            await _bus.PublishAsync(msg, cancellationToken);
         }
     }
 }

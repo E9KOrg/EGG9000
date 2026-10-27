@@ -8,7 +8,6 @@ using EGG9000.Common.Factories;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using Humanizer;
-using MassTransit.Initializers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
