@@ -6,7 +6,6 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Helpers.Discord;
-using EGG9000.Common.JsonData.EiAfxConfig;
 using Ei;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;

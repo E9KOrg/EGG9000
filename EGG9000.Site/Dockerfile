@@ -13,16 +13,18 @@ USER app
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["nuget.config", "Directory.Build.props", "./"]
 COPY ["EGG9000.Site/EGG9000.Site.csproj", "EGG9000.Site/"]
 COPY ["EGG9000.Common/EGG9000.Common.csproj", "EGG9000.Common/"]
+COPY ["EGG9000.Analyzers/EGG9000.Analyzers.csproj", "EGG9000.Analyzers/"]
 RUN dotnet restore "./EGG9000.Site/EGG9000.Site.csproj"
 COPY . .
 WORKDIR "/src/EGG9000.Site"
-RUN dotnet build "./EGG9000.Site.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "./EGG9000.Site.csproj" -c $BUILD_CONFIGURATION -o /app/build --no-restore
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./EGG9000.Site.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./EGG9000.Site.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false --no-restore
 
 FROM base AS final
 WORKDIR /app

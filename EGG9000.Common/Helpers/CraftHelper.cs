@@ -1,13 +1,13 @@
 ﻿using Discord.Interactions;
 using EGG9000.Common.Extensions;
-using EGG9000.Common.JsonData;
+using EggSharp.GameData.Artifacts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace EGG9000.Common.Helpers {
-    public class RequiredIngredient(Tier tier, uint use, uint need, uint shadowNeed, uint timesCrafted) {
-        public Tier Tier { get; set; } = tier;
+    public class RequiredIngredient(ArtifactTierEntry tier, uint use, uint need, uint shadowNeed, uint timesCrafted) {
+        public ArtifactTierEntry Tier { get; set; } = tier;
         public uint Use { get; set; } = use;
         public uint Need { get; set; } = need;
 
@@ -18,7 +18,7 @@ namespace EGG9000.Common.Helpers {
         public uint Cost { get; set; } = 0;
 
         public string GetNeed() {
-            if(Tier.tier_number == 1) {
+            if(Tier.TierNumber == 1) {
                 return Need.Format();
             }
 
@@ -31,22 +31,21 @@ namespace EGG9000.Common.Helpers {
     }
 
     public class Crafter(IList<ArtifactCount> artifactHall) {
-        private readonly EiAfxDataRoot _data = EggIncArtifacts.GetEiAfxData();
         private readonly IList<ArtifactCount> _artifactHall = artifactHall;
 
         public Basket GetCraft(int howMany, int tierNumber, string artifactFamilyId) {
-            var artifactFamily = _data.artifact_families.First(af => af.id == artifactFamilyId);
-            if(artifactFamily.type.Equals("Ingredient", StringComparison.OrdinalIgnoreCase) && tierNumber == 4) {
+            var artifactFamily = ArtifactFamilies.Find(artifactFamilyId) ?? throw new InvalidOperationException($"Unknown artifact family {artifactFamilyId}");
+            if(artifactFamily.IsIngredient && tierNumber == 4) {
                 tierNumber = 3;
             }
-            var artifactTier = artifactFamily?.tiers.First(t => t.tier_number == tierNumber);
+            var artifactTier = artifactFamily.Tiers.First(t => t.TierNumber == tierNumber);
 
-            if(artifactTier?.recipe is not null) {
+            if(artifactTier.InitialCraftingPrice is { } initial) {
                 uint timesCrafted = 0;
                 CheckInventory(artifactTier, 0, ref timesCrafted);
-                var cost = Basket.GetDiscountedPrice(timesCrafted, artifactTier.recipe.crafting_price.initial, howMany);
+                var cost = Basket.GetDiscountedPrice(timesCrafted, initial, howMany);
                 var basket = new Basket(cost);
-                GetIngredients(basket, artifactTier.recipe, howMany);
+                GetIngredients(basket, artifactTier.Recipe, howMany);
                 basket.ComputeCosts();
                 return basket;
             } else {
@@ -54,9 +53,8 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        private int CheckInventory(Tier tier, int quantity, ref uint timesCrafted) {
-
-            var artifactCount = _artifactHall.Where(ac => ac.Artifact.Rarity == 1).FirstOrDefault(ac => EggIncArtifacts.GetTierName(ac.Artifact) == tier.name);
+        private int CheckInventory(ArtifactTierEntry tier, int quantity, ref uint timesCrafted) {
+            var artifactCount = _artifactHall.Where(ac => ac.Artifact.Rarity == 1).FirstOrDefault(ac => EggIncArtifacts.GetTierName(ac.Artifact) == tier.Name);
 
             if(artifactCount is null) {
                 return 0;
@@ -78,24 +76,25 @@ namespace EGG9000.Common.Helpers {
             }
         }
 
-        private void GetIngredients(Basket basket, Recipe recipe, int quantity) {
-            foreach(var ingredient in recipe.ingredients) {
-                var tier = EggIncArtifacts.GetTier(ingredient.afx_id, ingredient.tier_number);
+        private void GetIngredients(Basket basket, IReadOnlyList<ArtifactIngredient> recipe, int quantity) {
+            foreach(var ingredient in recipe) {
+                var tier = ArtifactFamilies.Tier(ingredient.AfxId, ingredient.Level)
+                    ?? throw new InvalidOperationException($"Unknown artifact tier {ingredient.AfxId}-{ingredient.Level}");
                 uint timesCrafted = 0;
-                var count = CheckInventory(tier, quantity * ingredient.count, ref timesCrafted);
+                var count = CheckInventory(tier, quantity * ingredient.Count, ref timesCrafted);
                 if(count != 0) {
                     basket.AddIngredient(tier, count, 0, timesCrafted);
                 }
 
-                var difference = ingredient.count * quantity - count;
-                if(tier.recipe is null) {
+                var difference = ingredient.Count * quantity - count;
+                if(!tier.Craftable) {
                     if(difference != 0) {
                         basket.AddIngredient(tier, 0, difference, timesCrafted);
                     }
                 } else {
                     if(difference != 0) {
                         basket.AddIngredient(tier, 0, 0, timesCrafted, difference);
-                        GetIngredients(basket, tier.recipe, difference);
+                        GetIngredients(basket, tier.Recipe, difference);
                     }
                 }
             }
@@ -106,13 +105,13 @@ namespace EGG9000.Common.Helpers {
         private readonly Dictionary<string, RequiredIngredient> _ingredients = [];
         private uint _totalCost = cost;
 
-        public void AddIngredient(Tier tier, int use, int need, uint timesCrafted, int shadowNeed = 0) {
-            if(_ingredients.TryGetValue(tier.id, out var value)) {
+        public void AddIngredient(ArtifactTierEntry tier, int use, int need, uint timesCrafted, int shadowNeed = 0) {
+            if(_ingredients.TryGetValue(tier.Key, out var value)) {
                 value.Use += (uint)use;
                 value.Need += (uint)need;
                 value.ShadowNeed += (uint)shadowNeed;
             } else {
-                _ingredients.Add(tier.id, new RequiredIngredient(tier, (uint)use, (uint)need, (uint)shadowNeed, timesCrafted));
+                _ingredients.Add(tier.Key, new RequiredIngredient(tier, (uint)use, (uint)need, (uint)shadowNeed, timesCrafted));
             }
         }
 
@@ -146,8 +145,8 @@ namespace EGG9000.Common.Helpers {
 
         public void ComputeCosts() {
             foreach(var ingredient in _ingredients) {
-                if(ingredient.Value.Tier.recipe is not null) {
-                    ingredient.Value.Cost = GetDiscountedPrice(ingredient.Value.TimesCrafted, ingredient.Value.Tier.recipe.crafting_price.initial, ingredient.Value.ShadowNeed);
+                if(ingredient.Value.Tier.InitialCraftingPrice is { } initial) {
+                    ingredient.Value.Cost = GetDiscountedPrice(ingredient.Value.TimesCrafted, initial, ingredient.Value.ShadowNeed);
                     _totalCost += ingredient.Value.Cost;
                 }
             }
