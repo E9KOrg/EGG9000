@@ -13,6 +13,7 @@ namespace EGG9000.Bot.Commands {
     [Group("bot", "Bot status and service management commands")]
     [DefaultMemberPermissions(Discord.GuildPermission.CreatePrivateThreads)]
     [StaffOnly(StaffTier.FarmHand)]
+    [CommandContextType(InteractionContextType.Guild)]
     public partial class BotGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, IServiceProvider serviceProvider, ILogger<BotGroupModule> logger, JobService jobService) : E9KModuleBase(dbFactory) {
         private readonly ILogger<BotGroupModule> _logger = logger;
     }

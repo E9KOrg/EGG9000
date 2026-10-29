@@ -54,6 +54,7 @@ namespace EGG9000.Bot.Commands {
 
     }
 
+    [CommandContextType(InteractionContextType.Guild)]
     public class StaffModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _client = client;
 
