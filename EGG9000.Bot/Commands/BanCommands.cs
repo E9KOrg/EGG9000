@@ -37,6 +37,7 @@ namespace EGG9000.Bot.Commands {
     [Group("b", "Ban management commands")]
     [DefaultMemberPermissions(GuildPermission.Administrator)]
     [StaffOnly(StaffTier.Admin)]
+    [CommandContextType(InteractionContextType.Guild)]
     public partial class BanGroupModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
 
