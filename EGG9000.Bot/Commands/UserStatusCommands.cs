@@ -20,7 +20,7 @@ using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 namespace EGG9000.Bot.Commands {
     public static class UserStatusCommands {
 
-        public static async Task _userstatus(SocketInteraction command, ApplicationDbContext db, DiscordHostedService _client, ILogger logger, IUser user, bool admin = false, bool showInChannel = false, bool pullFreshBackup = false) {
+        public static async Task _userstatus(SocketInteraction command, ApplicationDbContext db, DiscordHostedService _client, IEggIncApi api, ILogger logger, IUser user, bool admin = false, bool showInChannel = false, bool pullFreshBackup = false) {
             await command.DeferAsync(ephemeral: !showInChannel);
             var dbuser = await db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == user.Id);
             if(dbuser == null) {
@@ -39,7 +39,7 @@ namespace EGG9000.Bot.Commands {
                 var cachedContracts = await db.CachedEiContractsAsync();
                 foreach(var account in dbuser.EggIncAccounts) {
                     var oldLevel = account.SubscriptionLevel;
-                    var backup = await AccountRefresh.RefreshFullAsync(account, cachedContracts, dbuser, db, logger);
+                    var backup = await AccountRefresh.RefreshFullAsync(api, account, cachedContracts, dbuser, db, logger);
                     if(backup is null) {
                         await command.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedError($"Backup for account `{account?.Backup?.UserName ?? account.Id}` returned as null from the API"); });
                         return;
@@ -57,7 +57,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var guild = dbGuild;
-            var builders = await AccountsString(db, dbuser, admin);
+            var builders = await AccountsString(db, api, dbuser, admin);
             var lastBuilder = builders.LastOrDefault();
             if(lastBuilder.Footer == null) lastBuilder.WithFooter("");
 
@@ -93,7 +93,7 @@ namespace EGG9000.Bot.Commands {
             await SubscriptionHelper.SubscriptionLevelChanged(_client.Gateway, socketGuild, dbGuild, dbuser, account, logger, oldLevel);
         }
 
-        static async internal Task<List<EmbedBuilder>> AccountsString(ApplicationDbContext db, DBUser user, bool admin) {
+        static async internal Task<List<EmbedBuilder>> AccountsString(ApplicationDbContext db, IEggIncApi api, DBUser user, bool admin) {
             var dbguild = await db.Guilds.FirstOrDefaultAsync(x => x.Id == user.GuildId);
             var cachedContracts = await db.CachedEiContractsAsync();
             var builderList = new List<EmbedBuilder>();
@@ -111,7 +111,7 @@ namespace EGG9000.Bot.Commands {
                     builder = new EmbedBuilder();
                 }
 
-                var (backup, _) = await EggIncApi.GetBackupAsync(account.Id, cachedContracts);
+                var backup = api is null ? account.Backup : (await api.GetBackupAsync(account.Id, cachedContracts)).Value;
                 if(backup == null)
                     continue;
 
@@ -222,15 +222,16 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class UserStatusModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<UserStatusModule> logger) : E9KModuleBase(dbFactory) {
+    public class UserStatusModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordHostedService client, ILogger<UserStatusModule> logger, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
         private readonly DiscordHostedService _client = client;
+        private readonly IEggIncApi _eggIncApi = eggIncApi;
         private readonly ILogger<UserStatusModule> _logger = logger;
 
         [SlashCommand("userstatus", "Get your status")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public Task UserStatus() {
             var command = Context.Interaction;
-            return UserStatusCommands._userstatus(command, Db, _client, _logger, Context.User);
+            return UserStatusCommands._userstatus(command, Db, _client, _eggIncApi, _logger, Context.User);
         }
     }
 
@@ -238,7 +239,7 @@ namespace EGG9000.Bot.Commands {
         [SlashCommand("userstatus", "Get a users status")]
         public Task UserStatus([Summary("user")] SocketUser user, [Summary("showinchannel")] bool showinchannel = false,
             [Summary("pullfreshbackup", "Pull a fresh backup for all accounts of this user before reporting their status")] bool pullfreshbackup = false) {
-            return UserStatusCommands._userstatus(Context.Interaction, Db, client, _logger, user, true, showinchannel, pullfreshbackup);
+            return UserStatusCommands._userstatus(Context.Interaction, Db, client, eggIncApi, _logger, user, true, showinchannel, pullfreshbackup);
         }
     }
 }

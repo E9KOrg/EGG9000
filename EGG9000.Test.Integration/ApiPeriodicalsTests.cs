@@ -7,7 +7,7 @@ namespace EGG9000.Test.Integration;
 public class ApiPeriodicalsTests {
     [TestMethod]
     public async Task Periodicals_ReturnsContractsForShippedVersions() {
-        var resp = await EggIncApi.GetPeriodicalsAsync();
+        var resp = await TestEggIncApi.Create().GetPeriodicalsAsync();
         Assert.IsTrue(EggIncApi.IsValidPeriodicalsResponse(resp),
             "Periodicals returned no contracts. Shipped ClientVersion/AppVersion/AppBuild may be stale, "
             + "or auxbrain rejected the request.");

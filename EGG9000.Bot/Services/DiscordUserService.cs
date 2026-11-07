@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Bot.Services {
 
-    public class DiscordUserService(DiscordHostedService discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger) : IHostedService {
+    public class DiscordUserService(DiscordHostedService discord, Bugsnag.IClient bugsnag, IServiceProvider provider, ILogger<DiscordUserService> logger, IEggIncApi eggIncApi) : IHostedService {
 
         private readonly DiscordHostedService _discord = discord;
         private readonly Bugsnag.IClient _bugsnag = bugsnag;
@@ -163,7 +163,7 @@ namespace EGG9000.Bot.Services {
                 }
                 var eiContracts = await db.CachedEiContractsAsync();
                 foreach(var account in dbuser.EggIncAccounts) {
-                    var rawBackup = await EggIncApi.FirstContact(account.Id);
+                    var rawBackup = await eggIncApi.FirstContact(account.Id);
                     if(rawBackup is null || rawBackup.Backup is null) continue;
                     var customBackup = new CustomBackup(rawBackup.Backup, eiContracts, account?.Backup ?? null);
                     account.Backup = customBackup?.Farms is not null ? customBackup : account.Backup;

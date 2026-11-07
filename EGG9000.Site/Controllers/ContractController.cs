@@ -20,7 +20,7 @@ using static EGG9000.Common.Helpers.Prefarm;
 
 namespace EGG9000.Site.Controllers {
     [Authorize]
-    public class ContractController(ApplicationDbContext _db, DiscordSocketClient _discord, Bugsnag.IClient _bugsnag, IServiceProvider _provider, ILogger<ContractController> _logger) : E9KControllerBase {
+    public class ContractController(ApplicationDbContext _db, DiscordSocketClient _discord, Bugsnag.IClient _bugsnag, IServiceProvider _provider, ILogger<ContractController> _logger, IEggIncApi _eggIncApi) : E9KControllerBase {
         public async Task<IActionResult> Index() {
             var guildId = GetGuildId();
             var contracts = await _db.GuildContracts.Include(x => x.Contract).Where(x => x.GuildID == guildId && x.Contract.Created > DateTimeOffset.UtcNow.AddMonths(-2)).OrderByDescending(x => x.Contract.Created).ToListAsync();
@@ -34,7 +34,7 @@ namespace EGG9000.Site.Controllers {
 
         [Produces("application/json")]
         public async Task<IActionResult> CoopStatusJson(string coopid, string contractid) {
-            var status = await EggIncApi.GetCoopStatus(contractid, coopid);
+            var status = await _eggIncApi.GetCoopStatus(contractid, coopid);
             return new ObjectResult(status);
         }
 

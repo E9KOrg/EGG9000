@@ -4,6 +4,7 @@ using Discord;
 using Discord.WebSocket;
 using EGG9000.Common.Bus;
 using EGG9000.Common.Database;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Helpers;
 using EGG9000.Common.Services;
 using EGG9000.Site.Auth;
@@ -250,6 +251,7 @@ void ConfigureServices(IServiceCollection services, IConfiguration Configuration
     services.AddControllersWithViews().AddXmlSerializerFormatters().AddXmlDataContractSerializerFormatters();
     services.AddRazorPages();
     services.AddHttpClient();
+    services.AddEggIncApi();
     services.AddTransient<IEmailSender, EmailSenderBlank>();
     services.AddSingleton<ArtifactImageRenderer>();
     // Scoped, not singleton: it holds the request's ApplicationDbContext.

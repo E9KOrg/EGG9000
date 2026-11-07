@@ -22,7 +22,7 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Bot.Commands.Informational {
     [Group("formulae", "Game formula calculators (MER, LLC, EB)")]
     [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
-    public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger) : E9KModuleBase(dbFactory) {
+    public class FormulaeModule(IDbContextFactory<ApplicationDbContext> dbFactory, IMemoryCache cache, ILogger<FormulaeModule> logger, IEggIncApi eggIncApi) : E9KModuleBase(dbFactory) {
         private readonly IMemoryCache _cache = cache;
         private readonly ILogger<FormulaeModule> _logger = logger;
 
@@ -104,7 +104,7 @@ namespace EGG9000.Bot.Commands.Informational {
 
             var embeds = new List<Embed>();
             foreach(var account in dbUser.EggIncAccounts.Where(x => x.Backup is not null)) {
-                var embed = await LLCCalculate(account, dbUser.DiscordUsername, _cache, _logger);
+                var embed = await LLCCalculate(eggIncApi, account, dbUser.DiscordUsername, _cache, _logger);
                 var newBuilder = embed.ToEmbedBuilder();
                 newBuilder.Title = $"**{account.Backup.UserName} ({account.Backup.EarningsBonus.ToEggString()})** {(string.IsNullOrWhiteSpace(embed.Title) ? "" : " ")}" + embed.Title;
                 embed = newBuilder.Build();
@@ -114,8 +114,8 @@ namespace EGG9000.Bot.Commands.Informational {
             await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
-        private static async Task<Embed> LLCCalculate(EggIncAccount account, string userName, IMemoryCache _cache, ILogger _logger) {
-            var backup = await EggIncApi.FirstContact(account.Id);
+        private static async Task<Embed> LLCCalculate(IEggIncApi api, EggIncAccount account, string userName, IMemoryCache _cache, ILogger _logger) {
+            var backup = await api.FirstContact(account.Id);
 
             if(backup?.Backup?.ArtifactsDb?.MissionArchive is null || account?.Backup?.ArtifactHall is null) {
                 return EmbedError($"Unable to retrieve backup, please try again later.");

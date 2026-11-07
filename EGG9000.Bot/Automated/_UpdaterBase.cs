@@ -3,6 +3,7 @@
 using EGG9000.Bot.Services;
 using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
+using EGG9000.Common.EggIncAPI;
 using EGG9000.Common.Services;
 
 using Humanizer;
@@ -57,6 +58,7 @@ namespace EGG9000.Bot.Automated {
         protected ILogger<T> _logger;
         protected IDiscordQueue _queue;
         protected IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+        protected IEggIncApi _eggIncApi;
 
         protected ulong _CPGuildId;
         protected CoopsBeingCreatedService _coopsBeingCreatedService {
@@ -87,6 +89,7 @@ namespace EGG9000.Bot.Automated {
             _configuration = provider.GetService<IConfiguration>();
             _client = provider.GetService<DiscordHostedService>();
             _dbContextFactory = provider.GetService<IDbContextFactory<ApplicationDbContext>>();
+            _eggIncApi = provider.GetRequiredService<IEggIncApi>();
             Instance = this;
             _bugSnag = provider.GetService<Bugsnag.IClient>();
             _queue = provider.GetRequiredService<IDiscordQueue>();

@@ -1,7 +1,9 @@
-﻿using Ei;
-
+using Ei;
 using Google.Protobuf;
-
+using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.Retry;
+using Polly.Timeout;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,9 +18,12 @@ using System.Threading.Tasks;
 
 namespace EGG9000.Common.EggIncAPI {
 
-    public static partial class EggIncApi {
+    public sealed partial class EggIncApi(IHttpClientFactory httpClientFactory, ILogger<EggIncApi> logger) : IEggIncApi {
+        private readonly ILogger<EggIncApi> _logger = logger;
         public const string BaseAddressNew = "https://www.auxbrain.com/";
         public const string UserId = "EI6145601714651136";
+        public const string PeriodicalsReferenceUserId = "EI5482515761594368";
+        private const string PeriodicalsPostUserId = "EI4765194876354560";
 
         public static readonly List<(string EggIncId, Contract.Types.PlayerGrade Grade, string Name)> CoopCreatorIds = [];
 
@@ -26,8 +31,6 @@ namespace EGG9000.Common.EggIncAPI {
         public static string AppVersion { get; set; } = "1.35.6";
         public static string AppBuild { get; set; } = "1.35.6.3";
 
-        // Single mutation point for the Egg Inc API version triple. Updated at runtime by the
-        // /a setversions staff command and the UpdateApiVersions broadcast; not persisted across restarts.
         public static void SetVersions(uint clientVersion, string appVersion, string appBuild) {
             ClientVersion = clientVersion;
             AppVersion = appVersion;
@@ -38,115 +41,21 @@ namespace EGG9000.Common.EggIncAPI {
         private const string IosUserAgent = "egginc/1.26.1.3 CFNetwork/1335.0.3 Darwin/21.6.0";
         private const string CoopStatusUserAgent = "egginc/1.35.3.1 CFNetwork/1410.1 Darwin/22.6.0";
 
-        public static BasicRequestInfo GetInfo(string UserId, bool noUserID = false) {
-            var info = new BasicRequestInfo {
-                ClientVersion = ClientVersion,
-                Version = AppVersion,
-                Build = AppBuild,
-                Platform = "IOS",
-                Country = "US",
-                Language = "en",
-                Debug = false
-            };
-            if(!noUserID) {
-                info.EiUserId = UserId;
-            }
-            return info;
-        }
+        public const string AndroidClient = "EggInc.Android";
+        public const string IosClient = "EggInc.Ios";
+        public const string CoopStatusClient = "EggInc.CoopStatus";
 
-        public static string GetEncodedMessage(IMessage message) {
-            var ms1 = new MemoryStream();
-            message.WriteTo(ms1);
-            var base64 = Convert.ToBase64String(ms1.ToArray());
-            return base64;
-        }
-
-        public static async Task<ByteArrayContent> GetBAC(string base64) {
-            var content = new FormUrlEncodedContent([
-                new KeyValuePair<string, string>("data", base64)
-            ]);
-            var bytes = await content.ReadAsByteArrayAsync();
-
-            return new ByteArrayContent(bytes) { Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded") } };
-        }
-
-        private enum HeaderProfile { Android, Ios, CoopStatus }
-        private enum RinfoMode { None, WithUser, WithoutUser }
-
-        /// <param name="Path">Endpoint path under the base address.</param>
-        /// <param name="Headers">Which User-Agent/header set the live endpoint expects.</param>
-        /// <param name="Rinfo">How to populate the request's <c>Rinfo</c> field (None = leave as sent).</param>
-        /// <param name="SignRequest">Wrap the request in an <c>AuthenticatedMessage</c> (needs the salt).</param>
-        /// <param name="AuthenticatedResponse">Decode the response via <see cref="GetFromAuthenticatedMessage{T}"/>.</param>
-        private sealed record EndpointDescriptor(string Path, HeaderProfile Headers, RinfoMode Rinfo, bool SignRequest, bool AuthenticatedResponse);
-
-        private static readonly Dictionary<Type, EndpointDescriptor> Endpoints = new() {
-            // Post endpoints (iOS headers, Rinfo carried in the payload)
-            [typeof(JoinCoopRequest)] = new("ei/join_coop", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
-            [typeof(GetPeriodicalsRequest)] = new("ei/get_periodicals", HeaderProfile.Ios, RinfoMode.WithoutUser, false, true),
-            [typeof(ContractsInfoRequest)] = new("ei_ctx/get_contracts_info", HeaderProfile.Ios, RinfoMode.WithUser, true, true),
-            [typeof(CreateCoopRequest)] = new("ei/create_coop", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
-            [typeof(UpdateCoopPermissionsRequest)] = new("ei/update_coop_permissions", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
-            [typeof(ContractCoopStatusUpdateRequest)] = new("ei/update_coop_status_secure", HeaderProfile.Ios, RinfoMode.WithUser, true, false),
-            [typeof(ConfigRequest)] = new("ei/get_config", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
-            // Send (fire-and-forget) endpoints (Android headers; legacy behavior sent no Rinfo in the payload)
-            [typeof(KickPlayerCoopRequest)] = new("ei/kick_player_coop", HeaderProfile.Android, RinfoMode.None, false, false),
-        };
-
-        // BasicRequestInfo is the request body itself and resolves by response type.
-        private static EndpointDescriptor ResolveEndpoint(Type requestType, Type responseType) {
-            if(requestType == typeof(BasicRequestInfo)) {
-                if(responseType == typeof(ContractPlayerInfo))
-                    return new("ei_ctx/get_contract_player_info", HeaderProfile.Ios, RinfoMode.None, true, true);
-                if(responseType == typeof(MyContracts))
-                    return new("ei_ctx/get_contracts_archive", HeaderProfile.Ios, RinfoMode.None, false, true);
-                return null;
-            }
-            return Endpoints.GetValueOrDefault(requestType);
-        }
-
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, System.Reflection.PropertyInfo> _rinfoProps = new();
-
-        private static void SetRinfo(IMessage data, BasicRequestInfo info) {
-            var prop = _rinfoProps.GetOrAdd(data.GetType(), t => t.GetProperty("Rinfo"));
-            prop?.SetValue(data, info);
-        }
-
-        private static int _saltWarned;
-        private static void WarnSaltUnavailableOnce(string path) {
-            if(Interlocked.Exchange(ref _saltWarned, 1) == 0) {
-                Console.Error.WriteLine(
-                    $"[EggIncAPI] Salt not configured; authenticated endpoint '{path}' is disabled and will return no data. " +
-                    "Set the 'egg_inc_api_salt' Docker secret or the 'ConnectionStrings:ApiSalt' configuration key to enable it.");
-            }
-        }
-
-        // Egg Inc occasionally accepts a connection on an endpoint and never responds (seen on
-        // create_coop / update_coop_status / coop_status_bot). Without an explicit timeout HttpClient
-        // waits the full 100s default, holding throttle permits and pool threads, which starves
-        // command handling. Cap it well above the <2s a healthy call takes so real calls are unaffected.
         private const int DefaultApiTimeoutSeconds = 30;
 
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(HeaderProfile Profile, bool Http2), HttpClient> _clients = new();
+        internal static void ConfigureAndroidClient(HttpClient client) => Configure(client, HeaderProfile.Android, false);
+        internal static void ConfigureIosClient(HttpClient client) => Configure(client, HeaderProfile.Ios, false);
+        internal static void ConfigureCoopStatusClient(HttpClient client) => Configure(client, HeaderProfile.CoopStatus, true);
 
-        private static HttpClient ClientFor(HeaderProfile profile, bool http2 = false) =>
-            _clients.GetOrAdd((profile, http2), key => {
-                var handler = new SocketsHttpHandler {
-                    AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-                    PooledConnectionLifetime = TimeSpan.FromMinutes(2)
-                };
-                var client = new HttpClient(handler) {
-                    BaseAddress = new Uri(BaseAddressNew),
-                    Timeout = TimeSpan.FromSeconds(DefaultApiTimeoutSeconds)
-                };
-                if(key.Http2) {
-                    client.DefaultRequestVersion = HttpVersion.Version20;
-                }
-                ApplyHeaders(client, key.Profile);
-                return client;
-            });
-
-        private static void ApplyHeaders(HttpClient client, HeaderProfile profile) {
+        private static void Configure(HttpClient client, HeaderProfile profile, bool http2) {
+            client.BaseAddress = new Uri(BaseAddressNew);
+            client.Timeout = TimeSpan.FromSeconds(DefaultApiTimeoutSeconds);
+            if(http2)
+                client.DefaultRequestVersion = HttpVersion.Version20;
             switch(profile) {
                 case HeaderProfile.Android:
                     client.DefaultRequestHeaders.Add("User-Agent", AndroidUserAgent);
@@ -168,46 +77,121 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
-        // Wraps HttpClient.PostAsync so every outbound Egg Inc API call is counted for runtime reporting.
-        private static Task<HttpResponseMessage> PostCounted(this HttpClient client, string url, HttpContent content) {
+        private static readonly ResiliencePipeline<HttpResponseMessage> _pipeline = new ResiliencePipelineBuilder<HttpResponseMessage>()
+            .AddRetry(new RetryStrategyOptions<HttpResponseMessage> {
+                MaxRetryAttempts = 2,
+                Delay = TimeSpan.FromSeconds(1),
+                BackoffType = DelayBackoffType.Exponential,
+                UseJitter = true,
+                ShouldHandle = new PredicateBuilder<HttpResponseMessage>()
+                    .Handle<HttpRequestException>()
+                    .Handle<TimeoutRejectedException>()
+                    .HandleResult(r => (int)r.StatusCode >= 500 || r.StatusCode == HttpStatusCode.TooManyRequests)
+            })
+            .AddTimeout(TimeSpan.FromSeconds(DefaultApiTimeoutSeconds))
+            .Build();
+
+        private HttpClient ClientFor(HeaderProfile profile) => httpClientFactory.CreateClient(profile switch {
+            HeaderProfile.Android => AndroidClient,
+            HeaderProfile.CoopStatus => CoopStatusClient,
+            _ => IosClient
+        });
+
+        private async Task<HttpResponseMessage> PostCounted(HeaderProfile profile, string path, HttpContent body, CancellationToken cancellationToken) {
             Services.RuntimeMetrics.AddApiCalls();
-            return client.PostAsync(url, content);
-        }
-        private static Task<HttpResponseMessage> PostCounted(this HttpClient client, string url, HttpContent content, CancellationToken ct) {
-            Services.RuntimeMetrics.AddApiCalls();
-            return client.PostAsync(url, content, ct);
+            try {
+                return await _pipeline.ExecuteAsync(async ct => await ClientFor(profile).PostAsync(path, body, ct), cancellationToken);
+            } catch(Exception e) when(e is not OperationCanceledException || !cancellationToken.IsCancellationRequested) {
+                Services.RuntimeMetrics.AddApiFailures();
+                _logger.LogWarning(e, "Egg Inc API call to {Path} failed after retries", path);
+                throw;
+            }
         }
 
-        // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
-        // base64-decode the body. Returns null on a non-success status. body may be null.
-        private static async Task<byte[]> PostRaw(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
-            using var response = await ClientFor(profile, http2).PostCounted(path, body, cancellationToken);
-            if(!response.IsSuccessStatusCode) {
+        private async Task<byte[]> PostRaw(string path, ByteArrayContent body, HeaderProfile profile, CancellationToken cancellationToken = default) {
+            using var response = await PostCounted(profile, path, body, cancellationToken);
+            if(!response.IsSuccessStatusCode)
                 return null;
-            }
             return Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken));
         }
 
-        // The single HTTP path for every Egg Inc call: new client, header profile, POST, and
-        // base64-decode the body. Returns null on a non-success status. body may be null.
-        private static async Task<(byte[], string Error)> PostRawWithError(string path, ByteArrayContent body, HeaderProfile profile, bool http2 = false, CancellationToken cancellationToken = default) {
-            using var response = await ClientFor(profile, http2).PostCounted(path, body, cancellationToken);
-            if(!response.IsSuccessStatusCode) {
+        private async Task<(byte[] Bytes, string Error)> PostRawWithError(string path, ByteArrayContent body, HeaderProfile profile, CancellationToken cancellationToken = default) {
+            using var response = await PostCounted(profile, path, body, cancellationToken);
+            if(!response.IsSuccessStatusCode)
                 return (null, $"HTTP Error: {response.StatusCode}");
-            }
             return (Convert.FromBase64String(await response.Content.ReadAsStringAsync(cancellationToken)), null);
         }
 
-        // Builds the base64 form payload: populates Rinfo (or replaces a BasicRequestInfo body with
-        // GetInfo), then signs into an AuthenticatedMessage when the endpoint requires it.
+        public static BasicRequestInfo GetInfo(string userId, bool noUserId = false) {
+            var info = new BasicRequestInfo {
+                ClientVersion = ClientVersion,
+                Version = AppVersion,
+                Build = AppBuild,
+                Platform = "IOS",
+                Country = "US",
+                Language = "en",
+                Debug = false
+            };
+            if(!noUserId)
+                info.EiUserId = userId;
+            return info;
+        }
+
+        public static string GetEncodedMessage(IMessage message) => Convert.ToBase64String(message.ToByteArray());
+
+        public static async Task<ByteArrayContent> GetBAC(string base64) {
+            var content = new FormUrlEncodedContent([new KeyValuePair<string, string>("data", base64)]);
+            var bytes = await content.ReadAsByteArrayAsync();
+            return new ByteArrayContent(bytes) { Headers = { ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/x-www-form-urlencoded") } };
+        }
+
+        private enum HeaderProfile { Android, Ios, CoopStatus }
+        private enum RinfoMode { None, WithUser, WithoutUser }
+
+        private sealed record EndpointDescriptor(string Path, HeaderProfile Headers, RinfoMode Rinfo, bool SignRequest, bool AuthenticatedResponse);
+
+        private static readonly Dictionary<Type, EndpointDescriptor> Endpoints = new() {
+            [typeof(JoinCoopRequest)] = new("ei/join_coop", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
+            [typeof(GetPeriodicalsRequest)] = new("ei/get_periodicals", HeaderProfile.Ios, RinfoMode.WithoutUser, false, true),
+            [typeof(ContractsInfoRequest)] = new("ei_ctx/get_contracts_info", HeaderProfile.Ios, RinfoMode.WithUser, true, true),
+            [typeof(CreateCoopRequest)] = new("ei/create_coop", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
+            [typeof(UpdateCoopPermissionsRequest)] = new("ei/update_coop_permissions", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
+            [typeof(ContractCoopStatusUpdateRequest)] = new("ei/update_coop_status_secure", HeaderProfile.Ios, RinfoMode.WithUser, true, false),
+            [typeof(ConfigRequest)] = new("ei/get_config", HeaderProfile.Ios, RinfoMode.WithUser, false, false),
+            [typeof(KickPlayerCoopRequest)] = new("ei/kick_player_coop", HeaderProfile.Android, RinfoMode.None, false, false),
+        };
+
+        private static EndpointDescriptor ResolveEndpoint(Type requestType, Type responseType) {
+            if(requestType == typeof(BasicRequestInfo)) {
+                if(responseType == typeof(ContractPlayerInfo))
+                    return new("ei_ctx/get_contract_player_info", HeaderProfile.Ios, RinfoMode.None, true, true);
+                if(responseType == typeof(MyContracts))
+                    return new("ei_ctx/get_contracts_archive", HeaderProfile.Ios, RinfoMode.None, false, true);
+                return null;
+            }
+            return Endpoints.GetValueOrDefault(requestType);
+        }
+
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, System.Reflection.PropertyInfo> _rinfoProps = new();
+
+        private static void SetRinfo(IMessage data, BasicRequestInfo info) {
+            var prop = _rinfoProps.GetOrAdd(data.GetType(), t => t.GetProperty("Rinfo"));
+            prop?.SetValue(data, info);
+        }
+
+        private int _saltWarned;
+        private void WarnSaltUnavailableOnce(string path) {
+            if(Interlocked.Exchange(ref _saltWarned, 1) == 0)
+                _logger.LogError("Salt not configured; authenticated endpoint {Path} is disabled. Set the egg_inc_api_salt Docker secret or ConnectionStrings:ApiSalt.", path);
+        }
+
         private static string BuildPayload(IMessage data, string userId, EndpointDescriptor d) {
             byte[] inner;
             if(data is BasicRequestInfo) {
                 inner = GetInfo(userId).ToByteArray();
             } else {
-                if(d.Rinfo != RinfoMode.None) {
+                if(d.Rinfo != RinfoMode.None)
                     SetRinfo(data, GetInfo(userId, d.Rinfo == RinfoMode.WithoutUser));
-                }
                 inner = data.ToByteArray();
             }
             if(d.SignRequest) {
@@ -217,57 +201,52 @@ namespace EGG9000.Common.EggIncAPI {
             return Convert.ToBase64String(inner);
         }
 
-        public static async Task<bool> Send<T2>(T2 data, string UserId) where T2 : IMessage {
-            var descriptor = ResolveEndpoint(typeof(T2), null) ?? throw new Exception($"Missing Info for {typeof(T2).Name}");
+        public async Task<bool> Send<TRequest>(TRequest data, string userId) where TRequest : IMessage {
+            var descriptor = ResolveEndpoint(typeof(TRequest), null) ?? throw new InvalidOperationException($"Missing endpoint for {typeof(TRequest).Name}");
             if(descriptor.SignRequest && !EggIncApiSecrets.IsSaltAvailable) {
                 WarnSaltUnavailableOnce(descriptor.Path);
                 return false;
             }
             try {
-                var bac = await GetBAC(BuildPayload(data, UserId, descriptor));
-                using var response = await ClientFor(descriptor.Headers).PostCounted(descriptor.Path, bac);
+                var bac = await GetBAC(BuildPayload(data, userId, descriptor));
+                using var response = await PostCounted(descriptor.Headers, descriptor.Path, bac, CancellationToken.None);
                 return response.IsSuccessStatusCode;
             } catch(Exception) {
                 return false;
             }
         }
 
-        public static async Task<TResponse> Post<TResponse, TRequest>(TRequest data, string UserId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage {
-            var descriptor = ResolveEndpoint(typeof(TRequest), typeof(TResponse)) ?? throw new Exception($"Missing Info for {typeof(TRequest).Name}");
+        public async Task<TResponse> Post<TResponse, TRequest>(TRequest data, string userId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage {
+            var descriptor = ResolveEndpoint(typeof(TRequest), typeof(TResponse)) ?? throw new InvalidOperationException($"Missing endpoint for {typeof(TRequest).Name}");
             if(descriptor.SignRequest && !EggIncApiSecrets.IsSaltAvailable) {
                 WarnSaltUnavailableOnce(descriptor.Path);
                 return default;
             }
             try {
-                var body = await GetBAC(BuildPayload(data, UserId, descriptor));
+                var body = await GetBAC(BuildPayload(data, userId, descriptor));
                 var responseBytes = await PostRaw(descriptor.Path, body, descriptor.Headers);
-                if(responseBytes == null) {
+                if(responseBytes == null)
                     return default;
-                }
-                if(descriptor.AuthenticatedResponse || authenticated) {
-                    return GetFromAuthenticatedMessage<TResponse>(responseBytes);
-                }
-                return ParseTolerant<TResponse>(responseBytes);
+                return descriptor.AuthenticatedResponse || authenticated
+                    ? GetFromAuthenticatedMessage<TResponse>(responseBytes)
+                    : ParseTolerant<TResponse>(responseBytes);
             } catch(Exception) {
                 return default;
             }
         }
 
-        // Like Post, but returns the error message on failure instead of swallowing it to default.
-        public static async Task<ApiResult<TResponse>> PostResult<TResponse, TRequest>(TRequest data, string UserId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage {
-            var descriptor = ResolveEndpoint(typeof(TRequest), typeof(TResponse)) ?? throw new Exception($"Missing Info for {typeof(TRequest).Name}");
+        public async Task<ApiResult<TResponse>> PostResult<TResponse, TRequest>(TRequest data, string userId, bool authenticated = false) where TResponse : IMessage<TResponse>, new() where TRequest : IMessage {
+            var descriptor = ResolveEndpoint(typeof(TRequest), typeof(TResponse)) ?? throw new InvalidOperationException($"Missing endpoint for {typeof(TRequest).Name}");
             if(descriptor.SignRequest && !EggIncApiSecrets.IsSaltAvailable) {
                 WarnSaltUnavailableOnce(descriptor.Path);
                 return ApiResult<TResponse>.Fail($"API salt not configured for {descriptor.Path}");
             }
             try {
-                var body = await GetBAC(BuildPayload(data, UserId, descriptor));
+                var body = await GetBAC(BuildPayload(data, userId, descriptor));
                 var (responseBytes, error) = await PostRawWithError(descriptor.Path, body, descriptor.Headers);
-                if(responseBytes == null) {
+                if(responseBytes == null)
                     return ApiResult<TResponse>.Fail(error ?? "No response");
-                }
-                var base64 = Convert.ToBase64String(responseBytes);
-                return (descriptor.AuthenticatedResponse || authenticated)
+                return descriptor.AuthenticatedResponse || authenticated
                     ? GetFromAuthenticatedMessage<TResponse>(responseBytes)
                     : ParseTolerant<TResponse>(responseBytes);
             } catch(Exception e) {
@@ -275,9 +254,6 @@ namespace EGG9000.Common.EggIncAPI {
             }
         }
 
-        // Parse response bytes, retrying once through the UTF-8 sanitizer when the payload carries
-        // invalid UTF-8 in a string field (some backups do). The sanitized retry recovers the backup
-        // with the offending bytes replaced by '?' instead of losing the whole response.
         public static TResponse ParseTolerant<TResponse>(byte[] responseBytes) where TResponse : IMessage<TResponse>, new() {
             var parser = new MessageParser<TResponse>(() => new TResponse());
             try {
@@ -297,7 +273,6 @@ namespace EGG9000.Common.EggIncAPI {
 
         public static T GetFromAuthenticatedMessage<T>(byte[] authenticatedMessage) where T : IMessage, new() {
             var authMessageDecoded = AuthenticatedMessage.Parser.ParseFrom(authenticatedMessage);
-
             var message = new T();
             if(authMessageDecoded.Compressed) {
                 using var outMemoryStream = new MemoryStream();
@@ -313,23 +288,12 @@ namespace EGG9000.Common.EggIncAPI {
 
         public static string GetHash(byte[] byteArray) {
             var phrase = EggIncApiSecrets.Salt;
-            if(string.IsNullOrEmpty(phrase)) {
-                throw new InvalidOperationException(
-                    "Egg Inc API salt is not configured (set the 'egg_inc_api_salt' Docker secret or the " +
-                    "'ConnectionStrings:ApiSalt' configuration key). Authenticated requests are disabled.");
-            }
-            var _magic = 0x3b9af419;
-            var _salt = Encoding.ASCII.GetBytes(ByteArrayToString(SHA256.HashData(Encoding.ASCII.GetBytes(phrase))));
-            byteArray[_magic % byteArray.Length] = 0x1b;
-            return ByteArrayToString(SHA256.HashData([.. byteArray.Concat(_salt)]));
+            if(string.IsNullOrEmpty(phrase))
+                throw new InvalidOperationException("Egg Inc API salt is not configured (set the egg_inc_api_salt Docker secret or ConnectionStrings:ApiSalt). Authenticated requests are disabled.");
+            var magic = 0x3b9af419;
+            var salt = Encoding.ASCII.GetBytes(Convert.ToHexStringLower(SHA256.HashData(Encoding.ASCII.GetBytes(phrase))));
+            byteArray[magic % byteArray.Length] = 0x1b;
+            return Convert.ToHexStringLower(SHA256.HashData([.. byteArray.Concat(salt)]));
         }
-
-        private static string ByteArrayToString(byte[] ba) {
-            var hex = new StringBuilder(ba.Length * 2);
-            foreach(var b in ba)
-                hex.AppendFormat("{0:x2}", b);
-            return hex.ToString();
-        }
-
     }
 }

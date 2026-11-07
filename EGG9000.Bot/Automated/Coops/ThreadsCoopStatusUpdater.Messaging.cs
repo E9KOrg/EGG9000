@@ -76,12 +76,12 @@ namespace EGG9000.Bot.Automated.Coops {
             Task<ContractCoopStatusResponse> statusTask;
 
             if(!coop.UserCoopsXrefs.Any(x => x.JoinedCoop && !x.Removed)) {
-                statusTask = policy.Execute(async () => await EggIncApi.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
+                statusTask = policy.Execute(async () => await _eggIncApi.GetCoopStatusBot(coop.ContractID, coop.Name, logger: _logger, cancellationToken: cancellationToken));
             } else if(coop.LastUpdateToChannel is null || coop.LastUpdateToChannel < DateTimeOffset.UtcNow.AddHours(-4)) {
-                statusTask = policy.Execute(async () => await EggIncApi.GetCoopStatusBot(coop.ContractID, coop.Name, _logger: _logger, cancellationToken: cancellationToken));
+                statusTask = policy.Execute(async () => await _eggIncApi.GetCoopStatusBot(coop.ContractID, coop.Name, logger: _logger, cancellationToken: cancellationToken));
             } else {
                 var joinedUsers = coop.UserCoopsXrefs.Where(x => x.JoinedCoop && !x.Removed).ToList();
-                statusTask = policy.Execute(async () => await EggIncApi.GetCoopStatus(coop.ContractID, coop.Name, EIID: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, _logger: _logger, cancellationToken: cancellationToken));
+                statusTask = policy.Execute(async () => await _eggIncApi.GetCoopStatus(coop.ContractID, coop.Name, eiid: joinedUsers.ElementAt(rand.Next(joinedUsers.Count)).EggIncId, logger: _logger, cancellationToken: cancellationToken));
             }
             var messageTask = GetDiscordMessages(channel, coop, cancellationToken);
 
