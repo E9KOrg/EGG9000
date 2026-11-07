@@ -109,5 +109,139 @@ namespace EGG9000.Test {
             Assert.IsFalse(ids.Contains("12"));
             Assert.IsTrue(ids.Contains("112"));
         }
+
+        [TestMethod]
+        [DataRow("")]
+        [DataRow("   ")]
+        [DataRow(",")]
+        [DataRow(" , ,, ")]
+        public void ParseRoleIds_BlankOrSeparatorOnlyYieldsNothing(string raw) {
+            Assert.AreEqual(0, OverflowSyncing.ParseRoleIds(new Guild { RolesToSync = raw }).Length);
+        }
+
+        [TestMethod]
+        public void ParseRoleIds_GarbageIsKeptVerbatimAndNeverMatchesARoleId() {
+            var ids = OverflowSyncing.ParseRoleIds(new Guild { RolesToSync = "abc, 11 ,-5,11x" });
+
+            CollectionAssert.AreEqual(new[] { "abc", "11", "-5", "11x" }, ids);
+            Assert.AreEqual(1, ids.Count(x => x == MainRole.ToString()));
+        }
+
+        [TestMethod]
+        public void ParseRoleIds_SingleIdWithoutSeparator() {
+            CollectionAssert.AreEqual(new[] { "11" }, OverflowSyncing.ParseRoleIds(new Guild { RolesToSync = "11" }));
+        }
+
+        [TestMethod]
+        public void MapPermissions_EmptyInputYieldsEmptyList() {
+            var mapped = OverflowSyncing.MapPermissionsToOverflow([], MainGuild, OverflowGuild, Maps());
+            Assert.IsNotNull(mapped);
+            Assert.AreEqual(0, mapped.Count);
+        }
+
+        [TestMethod]
+        public void MapPermissions_EmptyRoleMapsStillMapsEveryoneAndUsers() {
+            var mapped = OverflowSyncing.MapPermissionsToOverflow([Perm(MainGuild, 1), Perm(MainRole, 1), Perm(SomeUser, 2, false)], MainGuild, OverflowGuild, []);
+
+            Assert.AreEqual(2, mapped.Count);
+            Assert.IsTrue(mapped.Any(x => x.Id == OverflowGuild && x.Type == 1 && x.Permission));
+            Assert.IsTrue(mapped.Any(x => x.Id == SomeUser && x.Type == 2 && !x.Permission));
+        }
+
+        [TestMethod]
+        public void MapPermissions_ZeroOverflowRoleIdIsDropped() {
+            var maps = new List<RoleMap> { new() { RoleID = MainRole, Values = [(OverflowGuild, 0)] } };
+            var mapped = OverflowSyncing.MapPermissionsToOverflow([Perm(MainRole, 1)], MainGuild, OverflowGuild, maps);
+            Assert.AreEqual(0, mapped.Count);
+        }
+
+        [TestMethod]
+        [DataRow(true)]
+        [DataRow(false)]
+        public void MapPermissions_PreservesAllowAndDenyForEveryKind(bool allow) {
+            var mapped = OverflowSyncing.MapPermissionsToOverflow([Perm(MainGuild, 1, allow), Perm(MainRole, 1, allow), Perm(SomeUser, 2, allow)], MainGuild, OverflowGuild, Maps());
+
+            Assert.AreEqual(3, mapped.Count);
+            Assert.IsTrue(mapped.All(x => x.Permission == allow));
+        }
+
+        [TestMethod]
+        public void MapPermissions_PicksTheMappingForTheTargetOverflow() {
+            const ulong otherOverflow = 300;
+            const ulong otherOverflowRole = 44;
+            var maps = new List<RoleMap> { new() { RoleID = MainRole, Values = [(otherOverflow, otherOverflowRole), (OverflowGuild, OverflowRole)] } };
+
+            var first = OverflowSyncing.MapPermissionsToOverflow([Perm(MainRole, 1)], MainGuild, OverflowGuild, maps);
+            var second = OverflowSyncing.MapPermissionsToOverflow([Perm(MainRole, 1)], MainGuild, otherOverflow, maps);
+
+            Assert.AreEqual(OverflowRole, first.Single().Id);
+            Assert.AreEqual(otherOverflowRole, second.Single().Id);
+        }
+
+        [TestMethod]
+        public void MapPermissions_UnknownTypeIsDropped() {
+            var mapped = OverflowSyncing.MapPermissionsToOverflow([Perm(SomeUser, 9)], MainGuild, OverflowGuild, Maps());
+            Assert.AreEqual(0, mapped.Count);
+        }
+
+        [TestMethod]
+        public void MapPermissions_MixedSetKeepsOrderOfSurvivors() {
+            var mapped = OverflowSyncing.MapPermissionsToOverflow(
+                [Perm(SomeChannel, 3), Perm(MainRole, 1), Perm(UnmappedRole, 1), Perm(MainGuild, 1, false), Perm(SomeUser, 2)],
+                MainGuild,
+                OverflowGuild,
+                Maps());
+
+            CollectionAssert.AreEqual(new[] { OverflowRole, OverflowGuild, SomeUser }, mapped.Select(x => x.Id).ToArray());
+        }
+
+        [TestMethod]
+        public void MapPermissions_MappedResultMatchesItselfSoASecondSyncIsANoOp() {
+            var source = new[] { Perm(MainGuild, 1, false), Perm(MainRole, 1), Perm(SomeUser, 2) };
+            var first = OverflowSyncing.MapPermissionsToOverflow(source, MainGuild, OverflowGuild, Maps());
+            var second = OverflowSyncing.MapPermissionsToOverflow(source, MainGuild, OverflowGuild, Maps());
+
+            Assert.IsTrue(OverflowSyncing.PermissionsMatch(first, second));
+        }
+
+        [TestMethod]
+        public void PermissionsMatch_EmptyMatchesEmpty() {
+            Assert.IsTrue(OverflowSyncing.PermissionsMatch([], []));
+        }
+
+        [TestMethod]
+        public void PermissionsMatch_DistinguishesTypeWithSameId() {
+            Assert.IsFalse(OverflowSyncing.PermissionsMatch([Perm(SomeUser, 1)], [Perm(SomeUser, 2)]));
+        }
+
+        [TestMethod]
+        public void PermissionsMatch_DistinguishesId() {
+            Assert.IsFalse(OverflowSyncing.PermissionsMatch([Perm(MainRole, 1)], [Perm(OverflowRole, 1)]));
+        }
+
+        [TestMethod]
+        public void PermissionsMatch_MappedEmptyAgainstMissingOverflowEntryIsAChange() {
+            var mapped = OverflowSyncing.MapPermissionsToOverflow([Perm(SomeChannel, 3)], MainGuild, OverflowGuild, Maps());
+            Assert.IsFalse(OverflowSyncing.PermissionsMatch(mapped, null));
+        }
+
+        [TestMethod]
+        public void OverwritesMatch_InheritEverywhereMatchesInherit() {
+            Assert.IsTrue(OverflowSyncing.OverwritesMatch(OverwritePermissions.InheritAll, new OverwritePermissions()));
+        }
+
+        [TestMethod]
+        public void OverwritesMatch_InheritDiffersFromExplicitDeny() {
+            Assert.IsFalse(OverflowSyncing.OverwritesMatch(OverwritePermissions.InheritAll, new OverwritePermissions(sendMessages: PermValue.Deny)));
+        }
+
+        [TestMethod]
+        public void OverwritesMatch_IsSymmetric() {
+            var a = new OverwritePermissions(viewChannel: PermValue.Allow, sendMessages: PermValue.Deny);
+            var b = new OverwritePermissions(viewChannel: PermValue.Allow);
+
+            Assert.AreEqual(OverflowSyncing.OverwritesMatch(a, b), OverflowSyncing.OverwritesMatch(b, a));
+            Assert.IsTrue(OverflowSyncing.OverwritesMatch(a, new OverwritePermissions(a.AllowValue, a.DenyValue)));
+        }
     }
 }

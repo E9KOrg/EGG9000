@@ -34,11 +34,6 @@ namespace EGG9000.Test {
             Assert.IsNotEmpty(EiEpicResearch.Get().epicResearchItems);
             Assert.IsNotEmpty(Root.Get().eggIncEggs);
             Assert.IsNotEmpty(EiResearch.Get());
-            Assert.IsNotEmpty(EiAfxDataRoot.Get().artifact_families);
-
-            var afx = Common.JsonData.EiAfxConfig.Root.Get();
-            Assert.IsNotEmpty(afx.craftingLevelXpThresholds, "post-process populated XP thresholds");
-            Assert.IsNotEmpty(afx.baseCraftingCoefficients, "post-process populated coefficients");
         }
 
         [TestMethod]

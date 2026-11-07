@@ -1,6 +1,5 @@
 ﻿using EGG9000.Common.Database;
 using EGG9000.Common.Database.Entities;
-using EGG9000.Common.JsonData.EiAfxConfig;
 using Ei;
 using Humanizer;
 using Microsoft.Extensions.Caching.Memory;
@@ -64,7 +63,7 @@ namespace EGG9000.Common.Helpers {
 
         public static uint GetCraftingLevel(double CraftingXP) {
             uint currentLevel = 1;
-            var xpThresholds = Root.Get().craftingLevelXpThresholds;
+            var xpThresholds = ArtifactCrafting.CraftingLevelXpThresholds;
             for(var i = xpThresholds.Count - 1; i >= 0; i--) {
                 if(CraftingXP >= xpThresholds[i]) {
                     currentLevel = (uint)i + 1;
@@ -168,7 +167,7 @@ namespace EGG9000.Common.Helpers {
         // craft). LLC = owned - expected; large positive LLC without a matching launch/craft history is
         // the cheat signal, unlike the raw fairness score which just measures rare-artifact ownership.
         public static LegendaryLuckResult GetLegendaryLuckCoefficient(EggIncAccount account, Backup freshBackup, List<(Spaceship ship, DurationType type, List<double> legendaryDropRates)> shipCoefficientTable) {
-            var baseCraftingCoefficients = Root.Get().baseCraftingCoefficients;
+            var baseCraftingCoefficients = ArtifactCrafting.BaseCraftingCoefficients;
             var shipsSent = new ShipsSentByLevel(freshBackup);
 
             var sumOfRatios = 0.0;
@@ -202,7 +201,7 @@ namespace EGG9000.Common.Helpers {
                     var baseLegRate = craftType.Value[2];
 
                     var simulatedCraftingLevel = GetCraftingLevel(assumedXpPerCraft * i);
-                    var simulatedMultiplier = Root.Get().craftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
+                    var simulatedMultiplier = ArtifactCrafting.CraftingLevelMultipliers[(int)simulatedCraftingLevel - 1];
 
                     var simulatedRate = Math.Max(10.0, baseLegRate / simulatedMultiplier);
                     var simulatedRatio = 1.0 / simulatedRate;
@@ -292,40 +291,10 @@ namespace EGG9000.Common.Helpers {
         }
 
         public static long[] GetFairness(EggIncArtifactInstance instance) {
-            return (instance is null || instance.Artifact is null || instance.Tier < 0) ? [0, 0, 0, 0] : instance.Artifact.Replace(" Fragement", "") switch {
-                "Aurelian Brooch" => [0, 1186, 13827, 58753],
-                "Beak of Midas" => [0, 6075, 23885, 86083],
-                "Book of Basan" => [0, 114405, 360427, 934701],
-                "Carved Rainstick" => [0, 10082, 39572, 168121],
-                "Clarity Stone" => [0, 36603, 185026, 774986],
-                "Demeters Necklace" => [0, 383, 7628, 41267],
-                "Dilithium Monocle" => [0, 24487, 80590, 271970],
-                "Dilithium Stone" => [0, 19671, 82572, 459362],
-                "Gusset" => [0, 5167, 28986, 163774],
-                "Interstellar Compass" => [0, 9425, 37923, 226570],
-                "Life Stone" => [0, 10507, 63177, 325027],
-                "Light of Eggendil" => [0, 67892, 168121, 330068],
-                "Lunar Stone" => [0, 406, 12447, 155125],
-                "Lunar Totem" => [1, 1, 4749, 28986],
-                "Mercury's Lens" => [0, 7084, 30365, 295510],
-                "Neodymium Medallion" => [0, 3982, 16466, 58753],
-                "Phoenix Feather" => [0, 16466, 50473, 237296],
-                "Prophecy Stone" => [0, 50259, 246536, 731674],
-                "Puzzle Cube" => [0, 90, 14672, 110353],
-                "Quantum Metronome" => [0, 18400, 67892, 306621],
-                "Quantum Stone" => [0, 7252, 25118, 228278],
-                "Shell Stone" => [0, 262, 18048, 183125],
-                "Ship in a Bottle" => [0, 36322, 113895, 442510],
-                "Soul Stone" => [0, 5196, 64770, 250022],
-                "Tachyon Deflector" => [0, 77412, 259516, 1220591],
-                "Tachyon Stone" => [0, 495, 18048, 236946],
-                "Terra Stone" => [0, 5196, 29988, 303837],
-                "The Chalice" => [0, 8798, 30365, 139253],
-                "Titanium Actuator" => [0, 26353, 88920, 215900],
-                "Tungsten Ankh" => [0, 3982, 25099, 110546],
-                "Vial of Martian Dust" => [0, 3302, 26353, 139253],
-                _ => [0, 0, 0, 0]
-            };
+            if(instance?.Artifact is null) return [0, 0, 0, 0];
+            var family = ArtifactFamilies.All.FirstOrDefault(f => f.Name.Equals(instance.Artifact, StringComparison.OrdinalIgnoreCase));
+            if(family is null) return [0, 0, 0, 0];
+            return [.. Enumerable.Range(1, 4).Select(n => (long)(family.Tiers.FirstOrDefault(t => t.TierNumber == n)?.InitialCraftingPrice ?? 0))];
         }
 
         public static string GetRarityEmoji(EggIncArtifactInstance instance) {

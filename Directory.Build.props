@@ -2,4 +2,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="5.9.0" PrivateAssets="all" />
   </ItemGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'EGG9000.Analyzers' and '$(MSBuildProjectName)' != 'EGG9000.Analyzers.Test'">
+    <Using Include="EggSharp.Core" />
+    <Using Include="EggSharp.Storage" />
+  </ItemGroup>
 </Project>

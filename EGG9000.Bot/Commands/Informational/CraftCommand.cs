@@ -28,7 +28,7 @@ namespace EGG9000.Bot.Commands.Informational {
         [SlashCommand("craftedcount", "Show you how many times you have crafted the requested artifact.")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task CraftedCount([Autocomplete(typeof(ArtifactNameAutoComplete))][Summary("artifact")] string artifact) {
-            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
+            var requestedArtifact = ArtifactFamilies.Find(artifact);
 
             if(requestedArtifact is null) {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to locate an artifact with the name {artifact}"), ephemeral: true);
@@ -75,13 +75,13 @@ namespace EGG9000.Bot.Commands.Informational {
             var user = await Db.DBUsers.FirstOrDefaultAsync(x => x.DiscordId == component.User.Id);
             if(user is null) { await component.RejectAsync("Could not find your record. Are you registered?"); return; }
             var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
-            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[1]);
+            var requestedArtifact = ArtifactFamilies.Find(dataObjs[1]);
 
             var embed = await CraftedCountEmbedBuilder(account, requestedArtifact, await Db.CachedEiContractsAsync());
             await component.ModifyOriginalResponseAsync(x => { x.Components = null; x.Embed = embed; x.Content = null; });
         }
 
-        private async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamily requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
+        private async Task<Embed> CraftedCountEmbedBuilder(EggIncAccount account, ArtifactFamilyEntry requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
             if(backup == null) {
@@ -90,7 +90,7 @@ namespace EGG9000.Bot.Commands.Informational {
 
             backup = new CustomBackup((await eggIncApi.FirstContact(account.Id)).Backup, cachedContracts, backup);
 
-            var artifacts = backup.ArtifactHall.Where(x => requestedArtifact.child_afx_ids.Contains(x.Artifact.Id));
+            var artifacts = backup.ArtifactHall.Where(x => requestedArtifact.ChildAfxIds.Contains(x.Artifact.Id));
 
             var counts = artifacts.GroupBy(x => x.Artifact.Tier).Select(x => new { Tier = x.Key, Count = x.Sum(y => y.NumberCrafted) }).OrderBy(x => x.Tier).ToList();
             var emojis = ArtifactEmoji.Get();
@@ -99,7 +99,7 @@ namespace EGG9000.Bot.Commands.Informational {
                 if(counts.Count > 1 && counts.IndexOf(childIds) == 0 && childIds.Count == 0 && counts.Any(x => x.Count > 1)) {
                     continue;
                 }
-                var emoji = emojis.FirstOrDefault(x => x.Id == requestedArtifact.afx_id && x.Tier == childIds.Tier);
+                var emoji = emojis.FirstOrDefault(x => x.Id == requestedArtifact.AfxId && x.Tier == childIds.Tier);
                 stringBuilder.AppendLine($"{emoji?.Emoji} {childIds.Count}");
             }
 
@@ -107,7 +107,7 @@ namespace EGG9000.Bot.Commands.Informational {
                .WithColor(Color.Blue)
                .WithDescription(stringBuilder.ToString())
                .WithAuthor(new EmbedAuthorBuilder()
-                   .WithName($"{requestedArtifact.name} Craft Counts")
+                   .WithName($"{requestedArtifact.Name} Craft Counts")
                    .WithIconUrl("https://cdn.discordapp.com/avatars/514257192803893272/47be266c55cab32eacfb33c9affc82dd.webp")
                 )
                .WithTitle($"**{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}**")
@@ -119,7 +119,7 @@ namespace EGG9000.Bot.Commands.Informational {
         [SlashCommand("craft", "Show you required artifacts to craft the requested artifact.")]
         [CommandContextType(InteractionContextType.Guild, InteractionContextType.BotDm)]
         public async Task Craft([Summary("quantity", "Quantity")] int quantity, [Summary("quality")] TierInput quality, [Autocomplete(typeof(ArtifactNameAutoComplete))][Summary("artifact")] string artifact) {
-            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == artifact);
+            var requestedArtifact = ArtifactFamilies.Find(artifact);
 
             if(requestedArtifact is null) {
                 await Context.Interaction.RespondAsyncGettingMessage(content: "", embed: EmbedError($"Unable to locate an artifact with the name {artifact}"), ephemeral: true);
@@ -168,13 +168,13 @@ namespace EGG9000.Bot.Commands.Informational {
             var account = user.EggIncAccounts.FirstOrDefault(x => x.Id == dataObjs[0]);
             var quality = (TierInput)int.Parse(dataObjs[1]);
             var quantity = int.Parse(dataObjs[2]);
-            var requestedArtifact = EggIncArtifacts.GetEiAfxData().artifact_families.FirstOrDefault(x => x.id == dataObjs[3]);
+            var requestedArtifact = ArtifactFamilies.Find(dataObjs[3]);
 
             var embeds = await CraftStringBuilder(account, quantity, quality, requestedArtifact, await Db.CachedEiContractsAsync());
             await component.ModifyOriginalResponseAsync(x => { x.Components = null; x.Content = ""; x.Embeds = embeds.ToArray(); });
         }
 
-        private async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamily requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
+        private async Task<List<Embed>> CraftStringBuilder(EggIncAccount account, int quantity, TierInput quality, ArtifactFamilyEntry requestedArtifact, FrozenSet<Ei.Contract> cachedContracts) {
             var embeds = new List<Embed>();
             var stringBuilder = new StringBuilder();
             var backup = account.Backup;
@@ -183,17 +183,17 @@ namespace EGG9000.Bot.Commands.Informational {
             }
 
             backup = new CustomBackup((await eggIncApi.FirstContact(account.Id)).Backup, cachedContracts, backup);
-            stringBuilder.Append($"For **{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}** to craft {quantity} T{(int)quality} {requestedArtifact.id}:");
+            stringBuilder.Append($"For **{(string.IsNullOrWhiteSpace(backup.UserName) ? $"Blank account with {backup.EarningsBonus.ToEggString()} EB" : backup.UserName)}** to craft {quantity} T{(int)quality} {requestedArtifact.Id}:");
             stringBuilder.AppendLine();
 
             var crafter = new Crafter(backup.ArtifactHall);
-            var basket = crafter.GetCraft(quantity, (int)quality, requestedArtifact.id);
+            var basket = crafter.GetCraft(quantity, (int)quality, requestedArtifact.Id);
 
             var ingredients = from kvp in basket.GetIngredients()
-                              orderby EggIncArtifacts.GetFamilyShorthand(kvp.Value.Tier.family) ascending, kvp.Value.Tier.tier_number descending
+                              orderby EggIncArtifacts.GetFamilyShorthand(kvp.Value.Tier.Family) ascending, kvp.Value.Tier.TierNumber descending
                               select kvp;
 
-            var longestIngredientLength = ingredients.Max(i => $"T{i.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(i.Value.Tier.family)}".Length) + 3;
+            var longestIngredientLength = ingredients.Max(i => $"T{i.Value.Tier.TierNumber} {EggIncArtifacts.GetFamilyShorthand(i.Value.Tier.Family)}".Length) + 3;
             stringBuilder.AppendLine($"```");
             stringBuilder.AppendFormat("{0,-" + longestIngredientLength + "}", "Name");
             stringBuilder.AppendFormat("{0,-9}", "In Inv");
@@ -202,7 +202,7 @@ namespace EGG9000.Bot.Commands.Informational {
             stringBuilder.AppendLine(new string('―', longestIngredientLength + 22));
 
             foreach(var ingredient in ingredients) {
-                var formattedIngredient = $"T{ingredient.Value.Tier.tier_number} {EggIncArtifacts.GetFamilyShorthand(ingredient.Value.Tier.family)}";
+                var formattedIngredient = $"T{ingredient.Value.Tier.TierNumber} {EggIncArtifacts.GetFamilyShorthand(ingredient.Value.Tier.Family)}";
                 stringBuilder.AppendFormat("{0,-" + longestIngredientLength + "}", formattedIngredient);
                 stringBuilder.AppendFormat("{0,-9}", ingredient.Value.Use.Format());
                 stringBuilder.AppendFormat("{0,-8}", ingredient.Value.GetNeed());
@@ -225,8 +225,8 @@ namespace EGG9000.Bot.Commands.Informational {
             var goldenEggs = backup.GoldenEggsEarned - backup.GoldenEggsSpent;
             stringBuilder.Append(goldenEggs >= basket.GetTotalCost() ? "_You have enough <:Golden_Egg_GE:692439755798872075>!_" : "_You do not have enough <:Golden_Egg_GE:692439755798872075>!_");
 
-            var baseCraftingCoefficients = Common.JsonData.EiAfxConfig.Root.Get().baseCraftingCoefficients;
-            var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.Equals(requestedArtifact.name, StringComparison.CurrentCultureIgnoreCase) && a.Key.Tier == (int)quality);
+            var baseCraftingCoefficients = ArtifactCrafting.BaseCraftingCoefficients;
+            var coefficientPair = baseCraftingCoefficients.FirstOrDefault(a => a.Key.Artifact.Equals(requestedArtifact.Name, StringComparison.CurrentCultureIgnoreCase) && a.Key.Tier == (int)quality);
             if(!coefficientPair.Equals(default(KeyValuePair<EggIncArtifactInstance, List<double>>))) {
                 var secondStringBuilder = new StringBuilder();
                 var keyAf = coefficientPair.Key;
@@ -295,7 +295,7 @@ namespace EGG9000.Bot.Commands.Informational {
 
         private static Dictionary<Rarity, List<double>> GetCraftPercentages(uint numCrafted, uint craftingLevel, List<double> baseRates) {
             var numCraftedScalar = Math.Min(1.0, (double)(numCrafted / 400.0));
-            var craftingScalar = Common.JsonData.EiAfxConfig.Root.Get().craftingLevelMultipliers[(int)craftingLevel - 1];
+            var craftingScalar = ArtifactCrafting.CraftingLevelMultipliers[(int)craftingLevel - 1];
 
             var baseRareRate = baseRates[0];
             var baseEpicRate = baseRates[1];

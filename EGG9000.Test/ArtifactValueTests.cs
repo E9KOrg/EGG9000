@@ -1,88 +1,64 @@
 using EGG9000.Common.Helpers;
-using EGG9000.Common.JsonData;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Linq;
+using System.Collections.Generic;
 
 namespace EGG9000.Test {
-    // Guards that artifact Values come from eiafx-data.json (effect_delta) rather than hand-typed numbers.
-    // The regression case is the Neodymium Medallion T4 Legendary, which used to read 2.29x instead of the
-    // correct 2.3x (effect_delta 1.3 -> 1 + 1.3).
     [TestClass]
     [TestCategory("Unit")]
     public class ArtifactValueTests {
-        private static Ei.ArtifactSpec Spec(Ei.ArtifactSpec.Types.Name name, int level, int rarity) {
-            return new() {
-                Name = name,
-                Level = (Ei.ArtifactSpec.Types.Level)level,
-                Rarity = (Ei.ArtifactSpec.Types.Rarity)rarity
-            };
+        private static Ei.ArtifactSpec Spec(int name, int level, int rarity) => new() {
+            Name = (Ei.ArtifactSpec.Types.Name)name,
+            Level = (Ei.ArtifactSpec.Types.Level)level,
+            Rarity = (Ei.ArtifactSpec.Types.Rarity)rarity
+        };
+
+        public static IEnumerable<object[]> Values => [
+            [0, 0, 0, 2.0], [0, 1, 0, 4.0], [0, 1, 1, 8.0], [0, 2, 0, 20.0], [0, 2, 1, 40.0], [0, 3, 0, 50.0],
+            [0, 3, 1, 100.0], [0, 3, 2, 150.0], [0, 3, 3, 200.0], [3, 0, 0, 1.1], [3, 1, 0, 1.25], [3, 1, 1, 1.3],
+            [3, 2, 0, 1.5], [3, 2, 2, 1.6], [3, 3, 0, 2.0], [3, 3, 1, 2.1], [3, 3, 2, 2.2], [3, 3, 3, 2.3],
+            [4, 0, 0, 1.2], [4, 1, 0, 1.5], [4, 2, 0, 2.0], [4, 2, 1, 3.0], [4, 3, 0, 6.0], [4, 3, 1, 11.0],
+            [4, 3, 3, 9999.0], [5, 0, 0, 1.5], [5, 1, 0, 2.0], [5, 1, 1, 2.2], [5, 2, 0, 10.0], [5, 2, 1, 15.0],
+            [5, 3, 0, 100.0], [5, 3, 2, 150.0], [5, 3, 3, 250.0], [6, 0, 0, 1.1], [6, 1, 0, 1.25], [6, 1, 1, 1.35],
+            [6, 2, 0, 1.5], [6, 2, 1, 1.6], [6, 2, 2, 1.75], [6, 3, 0, 2.0], [6, 3, 1, 2.25], [6, 3, 2, 2.5],
+            [6, 3, 3, 3.0], [7, 0, 0, 10.0], [7, 1, 0, 50.0], [7, 1, 1, 60.0], [7, 2, 0, 100.0], [7, 2, 2, 150.0],
+            [7, 3, 0, 200.0], [7, 3, 1, 300.0], [7, 3, 3, 500.0], [8, 0, 0, 1.05], [8, 1, 0, 1.1], [8, 1, 2, 1.12],
+            [8, 2, 0, 1.15], [8, 2, 1, 1.16], [8, 3, 0, 1.2], [8, 3, 2, 1.22], [8, 3, 3, 1.25], [9, 0, 0, 1.05],
+            [9, 1, 0, 1.1], [9, 1, 2, 1.15], [9, 2, 0, 1.2], [9, 2, 1, 1.23], [9, 2, 2, 1.25], [9, 3, 0, 1.3],
+            [9, 3, 2, 1.35], [9, 3, 3, 1.4], [10, 0, 0, 1.0025], [10, 1, 0, 1.005], [10, 2, 0, 1.0075], [10, 2, 2, 1.008],
+            [10, 3, 0, 1.01], [10, 3, 2, 1.011], [10, 3, 3, 1.012], [11, 0, 0, 1.25], [11, 1, 0, 2.0], [11, 2, 0, 5.0],
+            [11, 2, 1, 6.0], [11, 3, 0, 10.0], [11, 3, 1, 12.0], [11, 3, 3, 15.0], [12, 0, 0, 1.1], [12, 1, 0, 1.25],
+            [12, 1, 1, 1.28], [12, 2, 0, 1.5], [12, 2, 1, 1.75], [12, 2, 3, 2.0], [12, 3, 0, 2.0], [12, 3, 1, 2.25],
+            [12, 3, 3, 2.5], [21, 0, 0, 1.1], [21, 1, 0, 1.25], [21, 2, 0, 1.5], [21, 2, 1, 1.6], [21, 2, 2, 1.7],
+            [21, 3, 0, 2.0], [21, 3, 1, 2.25], [21, 3, 2, 2.5], [21, 3, 3, 3.0], [22, 0, 0, 1.2], [22, 1, 0, 1.5],
+            [22, 2, 0, 2.0], [22, 3, 0, 5.0], [22, 3, 2, 10.0], [22, 3, 3, 9999.0], [23, 0, 0, 0.95], [23, 1, 0, 0.9],
+            [23, 1, 2, 0.85], [23, 2, 0, 0.8], [23, 2, 1, 0.78], [23, 3, 0, 0.5], [23, 3, 1, 0.47], [23, 3, 2, 0.45],
+            [23, 3, 3, 0.4], [24, 0, 0, 1.05], [24, 1, 0, 1.1], [24, 1, 1, 1.12], [24, 2, 0, 1.15], [24, 2, 1, 1.17],
+            [24, 2, 2, 1.2], [24, 3, 0, 1.25], [24, 3, 1, 1.27], [24, 3, 2, 1.3], [24, 3, 3, 1.35], [25, 0, 0, 1.2],
+            [25, 1, 0, 1.3], [25, 2, 0, 1.5], [25, 2, 1, 1.6], [25, 3, 0, 1.7], [25, 3, 1, 1.8], [25, 3, 2, 1.9],
+            [25, 3, 3, 2.0], [26, 0, 0, 1.05], [26, 1, 0, 1.08], [26, 2, 0, 1.12], [26, 2, 1, 1.13], [26, 3, 0, 1.15],
+            [26, 3, 1, 1.17], [26, 3, 2, 1.19], [26, 3, 3, 1.2], [27, 0, 0, 1.05], [27, 1, 0, 1.1], [27, 2, 0, 1.2],
+            [27, 2, 1, 1.22], [27, 3, 0, 1.3], [27, 3, 1, 1.35], [27, 3, 2, 1.4], [27, 3, 3, 1.5], [28, 0, 0, 1.05],
+            [28, 1, 0, 1.1], [28, 2, 0, 1.15], [28, 3, 0, 1.2], [28, 3, 2, 1.25], [28, 3, 3, 1.3], [29, 0, 0, 1.0],
+            [29, 1, 0, 4.0], [29, 2, 0, 6.0], [29, 2, 1, 7.0], [29, 3, 0, 10.0], [29, 3, 2, 12.0], [29, 3, 3, 15.0],
+            [30, 0, 0, 1.1], [30, 1, 0, 1.2], [30, 1, 1, 1.22], [30, 2, 0, 1.5], [30, 2, 1, 1.55], [30, 3, 0, 2.0],
+            [30, 3, 1, 2.25], [30, 3, 2, 2.5], [30, 3, 3, 3.0], [1, 0, 0, 1.02], [1, 1, 0, 1.04], [1, 2, 0, 1.05],
+            [31, 0, 0, 1.03], [31, 1, 0, 1.06], [31, 2, 0, 1.08], [32, 0, 0, 1.05], [32, 1, 0, 1.08], [32, 2, 0, 1.1],
+            [33, 0, 0, 1.2], [33, 1, 0, 1.3], [33, 2, 0, 1.4], [34, 0, 0, 1.05], [34, 1, 0, 1.1], [34, 2, 0, 1.25],
+            [36, 0, 0, 1.02], [36, 1, 0, 1.04], [36, 2, 0, 1.05], [37, 0, 0, 10.0], [37, 1, 0, 50.0], [37, 2, 0, 100.0],
+            [38, 0, 0, 1.02], [38, 1, 0, 1.03], [38, 2, 0, 1.04], [39, 0, 0, 1.0005], [39, 1, 0, 1.001], [39, 2, 0, 1.0015],
+            [40, 0, 0, 0.25], [40, 1, 0, 0.5], [40, 2, 0, 1.0],
+        ];
+
+        [TestMethod]
+        [DynamicData(nameof(Values))]
+        public void GetArtifact_value_matches_EggSharp(int name, int level, int rarity, double expected) {
+            var value = EggIncArtifacts.GetArtifact(Spec(name, level, rarity)).Value;
+            Assert.AreEqual((float)expected, value, $"{(Ei.ArtifactSpec.Types.Name)name} L{level}R{rarity}");
         }
 
         [TestMethod]
-        public void Medallion_T4Legendary_is_2point3_not_2point29() {
-            var value = EggIncArtifacts.GetArtifact(Spec(Ei.ArtifactSpec.Types.Name.NeodymiumMedallion, 3, 3)).Value;
-            Assert.AreEqual(2.3, value, 1e-4, "T4L medallion is +130% -> 2.3x");
-        }
-
-        [TestMethod]
-        public void SpotChecks_matchInGameValues() {
-            // Multiplier: necklace T4L +200% -> 3x.
-            Assert.AreEqual(3.0, EggIncArtifacts.GetArtifact(Spec(Ei.ArtifactSpec.Types.Name.DemetersNecklace, 3, 3)).Value, 1e-4);
-            // Additive: vial T4L +500 -> 500.
-            Assert.AreEqual(500.0, EggIncArtifacts.GetArtifact(Spec(Ei.ArtifactSpec.Types.Name.VialMartianDust, 3, 3)).Value, 1e-4);
-            // Guaranteed sentinel: beak T4L.
-            Assert.AreEqual(EggIncArtifacts.GuaranteedSentinel, EggIncArtifacts.GetArtifact(Spec(Ei.ArtifactSpec.Types.Name.BeakOfMidas, 3, 3)).Value, 1e-4);
-            // Clarity stone T1 stores raw delta 0.25.
-            Assert.AreEqual(0.25, EggIncArtifacts.GetArtifact(Spec(Ei.ArtifactSpec.Types.Name.ClarityStone, 0, 0)).Value, 1e-4);
-        }
-
-        // Sweep every boost-bearing family x tier x rarity present in eiafx-data and assert GetArtifact
-        // reproduces the JSON effect_delta via the documented formula. Makes the mapping self-checking
-        // against future data updates.
-        [TestMethod]
-        public void EveryArtifactValue_derivesFromJsonDelta() {
-            var data = EiAfxDataRoot.Get();
-
-            foreach(var meta in EggIncArtifacts.GetArtifactsDB) {
-                // Ingredients and anything not modelled by ArtifactSpec.Name are skipped.
-                if(!Enum.TryParse<Ei.ArtifactSpec.Types.Name>(meta.Name.ToString(), out var specName)) continue;
-                // Fragments share an afx_id with their stone but have no GetArtifact values; skip them.
-                if(meta.Name.ToString().Contains("Fragment", StringComparison.OrdinalIgnoreCase)) continue;
-
-                // Match the family by its own afx_id (the family header), not a child tier's afx_id, so a
-                // fragment family with the same tier afx_id can't shadow the real artifact.
-                var family = data.artifact_families.FirstOrDefault(f => f.afx_id == (int)specName);
-                if(family is null) continue;
-
-                foreach(var tier in family.tiers) {
-                    if(tier.effects is null) continue;
-                    var isStone = family.type.Equals("Stone", StringComparison.OrdinalIgnoreCase);
-                    // Stone tier_number is one ahead of the stored 0-based level; artifacts line up directly.
-                    var level = tier.tier_number - 1 - (isStone ? 1 : 0);
-                    if(level < 0 || level > 3) continue;
-
-                    foreach(var effect in tier.effects) {
-                        var rarity = effect.afx_rarity;
-                        if(rarity < 0 || rarity > 3) continue;
-
-                        var expected = ExpectedValue(meta, effect);
-                        var actual = EggIncArtifacts.GetArtifact(Spec(specName, level, rarity)).Value;
-                        Assert.AreEqual(expected, actual, 1e-4,
-                            $"{meta.Name} L{level}R{rarity}: delta {effect.effect_delta}, size '{effect.effect_size}'");
-                    }
-                }
-            }
-        }
-
-        private static double ExpectedValue(EggIncArtifact meta, Effect effect) {
-            if(string.Equals(effect.effect_size?.Trim(), "Guaranteed", StringComparison.OrdinalIgnoreCase)) return EggIncArtifacts.GuaranteedSentinel;
-            var raw = meta.Additive
-                || meta.Boost == EggIncBoostTypeEnum.HostArtifactsOnElightenment;
-            var value = raw ? effect.effect_delta : 1 + effect.effect_delta;
-            // GetArtifact coerces an unresolved 0 multiplier up to 1 for non-additive artifacts.
-            if(value == 0 && !meta.Additive) value = 1;
-            return value;
+        public void Missing_rarity_falls_back_to_common_row() {
+            Assert.AreEqual(1.1f, EggIncArtifacts.GetArtifact(Spec(3, 0, 3)).Value);
         }
     }
 }

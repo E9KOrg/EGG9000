@@ -3,6 +3,8 @@
 using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 
+using EggSharp.GameData;
+
 using Newtonsoft.Json;
 
 using System;
@@ -16,8 +18,28 @@ namespace EGG9000.Common.JsonData {
 
     public class EiResearch {
         private static readonly EmbeddedResource<List<EiResearchItem>> _res =
-            EmbeddedResource.Json<List<EiResearchItem>>("researches.json");
+            EmbeddedResource.Json<List<EiResearchItem>>("researches.json", ApplyGameData);
         public static List<EiResearchItem> Get() => _res.Value;
+
+        private static List<EiResearchItem> ApplyGameData(List<EiResearchItem> data) {
+            foreach(var item in data) {
+                var bucket = Research.CommonResearchList.Concat(Research.EpicResearchList).FirstOrDefault(x => x.id == item.Id);
+                var effect = Research.FindGameData(item.Id, bucket is null ? null : Research.TargetOf(bucket.Type));
+                if(effect is null)
+                    continue;
+                item.Levels = effect.MaxLevel ?? item.Levels;
+                item.PerLevel = effect.Target switch {
+                    EffectTarget.SiloTime => effect.Magnitude / 60,
+                    EffectTarget.VideoDoublerTime => effect.Magnitude * 60,
+                    _ => effect.Magnitude
+                };
+                if(!effect.MetaBool("epic") && effect.TryMeta("tier", out var tier))
+                    item.Tier = Convert.ToInt32(tier) + 1;
+                if(effect.TryMeta("prices", out _))
+                    item.Prices = [.. effect.MetaDoubles("prices")];
+            }
+            return data;
+        }
 
         public static List<EiResearchItem> Get(List<ResearchCostSubmission> researchCostSubmissions) {
             var assembly = Assembly.GetExecutingAssembly();
@@ -28,7 +50,7 @@ namespace EGG9000.Common.JsonData {
             using var stream = assembly.GetManifestResourceStream(resourceName);
             using var reader = new StreamReader(stream);
             var json = reader.ReadToEnd();
-            var data = JsonConvert.DeserializeObject<List<EiResearchItem>>(json);
+            var data = ApplyGameData(JsonConvert.DeserializeObject<List<EiResearchItem>>(json));
 
 
             resourceName = assembly.GetManifestResourceNames()

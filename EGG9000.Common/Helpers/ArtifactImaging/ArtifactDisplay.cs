@@ -119,15 +119,12 @@ namespace EGG9000.Common.Helpers.ArtifactImaging {
             }
         }
 
-        // Site-relative sprite path, matching the image folders (e.g. /images/artifacts/CLARITY_STONE/
-        // CLARITY_STONE_2.png). Stones use a +1 tier offset, the same convention the renderer uses.
-        // Returns null when the family can't be resolved so the caller just omits the icon.
         public static string IconUrl(EggIncArtifactInstance artifact, bool stone) {
             if(artifact is null) return null;
             try {
-                var name = EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper();
+                var key = EggSharp.GameData.Artifacts.ArtifactAssets.KeyFor(EggIncArtifacts.GetNameFromJson(artifact).Replace("-", "_").ToUpper());
                 var tier = artifact.Tier + (stone ? 1 : 0);
-                return $"/images/artifacts/{name}/{name}_{tier}.png";
+                return "/" + EggSharp.GameData.Artifacts.ArtifactAssets.IconPath(key, tier);
             } catch {
                 return null;
             }

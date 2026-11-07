@@ -1,6 +1,8 @@
-﻿using System;
+﻿using EggSharp.GameData;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 
 namespace EGG9000.Common.JsonData {
 
@@ -83,7 +85,33 @@ namespace EGG9000.Common.JsonData {
         public List<EggIncBoost> eggIncBoosts { get; set; }
         public List<EggIncEgg> eggIncEggs { get; set; }
         private static readonly EmbeddedResource<Root> _res =
-            EmbeddedResource.Json<Root>("ei-statics.json");
+            EmbeddedResource.Json<Root>("ei-statics.json", ApplyGameData);
         public static Root Get() => _res.Value;
+
+        private static Root ApplyGameData(Root root) {
+            var provider = EGG9000.Common.Helpers.GameDataSource.Provider;
+            var eggValues = provider.EggCatalog.Eggs
+                .Where(e => e.Name is not null)
+                .ToDictionary(e => NormalizeEggName(e.Name), e => e.BaseValue);
+            foreach(var egg in root.eggIncEggs) {
+                if(eggValues.TryGetValue(NormalizeEggName(egg.name), out var value))
+                    egg.value = value;
+            }
+            foreach(var boost in root.eggIncBoosts) {
+                if(provider.Resolve(Families.Boost, boost.id) is { } effect) {
+                    boost.timeMinutesInt = effect.MetaInt("durationSeconds") / 60;
+                    var multiplier = effect.TryMeta("multiplier", out var m) ? Convert.ToDouble(m) : effect.Magnitude;
+                    boost.value = (int)Math.Round(boost.type == EggIncBoostTypeEnum.FarmValue ? multiplier * 100 : multiplier);
+                }
+                if(provider.BoostCatalog.Find(boost.id) is { } entry) {
+                    boost.costGoldenEggs = entry.Price ?? boost.costGoldenEggs;
+                    boost.costTokens = entry.TokenPrice ?? boost.costTokens;
+                }
+            }
+            return root;
+        }
+
+        private static string NormalizeEggName(string name) =>
+            new([.. name.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant)]);
     }
 }

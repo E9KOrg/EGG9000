@@ -1,5 +1,4 @@
 ﻿using EGG9000.Common.Database;
-using EGG9000.Common.JsonData.EiAfxConfig;
 
 using System;
 using System.Collections.Generic;
@@ -9,36 +8,45 @@ using static Ei.MissionInfo.Types;
 namespace EGG9000.Common.Helpers {
     public static class MissionHelpers {
 
+        public static Spaceship ParseShip(string ship) {
+            if(Enum.TryParse<Spaceship>(ship, ignoreCase: true, out var parsed)) return parsed;
+            if(Enum.TryParse<Spaceship>(ship.Replace("_", ""), ignoreCase: true, out var parsed2)) return parsed2;
+            return Spaceship.ChickenOne;
+        }
+
+        public static DurationType ParseDurationType(string durationType)
+            => Enum.TryParse<DurationType>(durationType, ignoreCase: true, out var parsed) ? parsed : DurationType.Tutorial;
+
         public static readonly Dictionary<Spaceship, uint> MaxShipLevels
-            = Root.Get().missionParameters.ToDictionary(
-                mp => mp.shipEnum,
-                mp => (uint)mp.levelMissionRequirements.Count
+            = GameDataSource.MissionShips.Ships.ToDictionary(
+                s => ParseShip(s.Ship),
+                s => (uint)s.LevelMissionRequirements.Count
             );
 
         public static readonly Dictionary<Spaceship, Dictionary<DurationType, List<int>>> NominalShipCapacities
-            = Root.Get().missionParameters.ToDictionary(
-                mp => mp.shipEnum,
-                mp => mp.durations.ToDictionary(
-                    dur => dur.durationTypeEnum,
-                    dur => Enumerable.Range(0, mp.levelMissionRequirements.Count + 1)
-                                     .Select(i => dur.capacity + i * dur.levelCapacityBump)
-                                     .ToList()
+            = GameDataSource.MissionShips.Ships.ToDictionary(
+                s => ParseShip(s.Ship),
+                s => s.Durations.ToDictionary(
+                    d => ParseDurationType(d.Type),
+                    d => Enumerable.Range(0, s.LevelMissionRequirements.Count + 1)
+                                   .Select(i => d.Capacity + i * d.LevelCapacityBump)
+                                   .ToList()
                 )
             );
 
-        private static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes
-            = Root.Get().missionParameters.ToDictionary(
-                mp => mp.shipEnum,
-                mp => mp.durations.ToDictionary(
-                    dur => dur.durationTypeEnum,
-                    dur => dur.seconds / 60
+        public static readonly Dictionary<Spaceship, Dictionary<DurationType, int>> ShipBaseTimesMinutes
+            = GameDataSource.MissionShips.Ships.ToDictionary(
+                s => ParseShip(s.Ship),
+                s => s.Durations.ToDictionary(
+                    d => ParseDurationType(d.Type),
+                    d => (int)d.Seconds / 60
                 )
             );
 
-        private static readonly Dictionary<Spaceship, List<int>> LevelRequirements
-            = Root.Get().missionParameters.ToDictionary(
-                mp => mp.shipEnum,
-                mp => mp.levelMissionRequirements
+        public static readonly Dictionary<Spaceship, List<int>> LevelRequirements
+            = GameDataSource.MissionShips.Ships.ToDictionary(
+                s => ParseShip(s.Ship),
+                s => s.LevelMissionRequirements.ToList()
             );
 
         public static int GetNominalCapacity(this CustomBackup backup, SpaceMission mission) {
@@ -148,7 +156,7 @@ namespace EGG9000.Common.Helpers {
 
             var points = backup.ShipsSent.Where(x => x.ship == ship).ToList().Sum(s => s.count * ((int)s.type < 3 ? (1 + ((int)s.type * .4)) : 0));
 
-            var levelMissionRequirements = Root.Get().missionParameters.First(x => x.shipEnum == ship).levelMissionRequirements;
+            var levelMissionRequirements = LevelRequirements[ship];
 
             for(var i = levelMissionRequirements.Count; i > 0; i--) {
                 var sum = levelMissionRequirements.Take(i).Sum();

@@ -376,14 +376,12 @@ namespace EGG9000.Bot.Commands.CommonTypes {
 
         #region AFXAutoCompletes
         public class ArtifactNameAutoComplete() : AutocompleteHandler {
-            private readonly EiAfxDataRoot _eiAfxData = EggIncArtifacts.GetEiAfxData();
-
             private Task<List<AutocompleteResult>> ComputeResults(SocketAutocompleteInteraction arg, List<Guild> guilds) {
-                IEnumerable<ArtifactFamily> artifactFamilies = [.. _eiAfxData.artifact_families];
+                IEnumerable<ArtifactFamilyEntry> artifactFamilies = ArtifactFamilies.All;
                 if(!string.IsNullOrWhiteSpace((string)arg.Data.Current.Value)) {
-                    artifactFamilies = artifactFamilies.Where(x => x.name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
+                    artifactFamilies = artifactFamilies.Where(x => x.Name.Contains((string)arg.Data.Current.Value, StringComparison.OrdinalIgnoreCase));
                 }
-                return Task.FromResult(artifactFamilies.Select(c => new AutocompleteResult($"{c.name}", c.id)).Take(25).ToList());
+                return Task.FromResult(artifactFamilies.Select(c => new AutocompleteResult(c.Name, c.Id)).Take(25).ToList());
             }
 
             public async override Task<AutocompletionResult> GenerateSuggestionsAsync(IInteractionContext context, IAutocompleteInteraction autocompleteInteraction, IParameterInfo parameter, IServiceProvider services) {
