@@ -147,6 +147,7 @@ public static class BotHostFactory {
             services.AddHostedService(provider => provider.GetRequiredService<SignalRMessageBus>());
 
             services.AddSingleton<DiscordHostedService>();
+            services.AddSingleton<Interactions.CommandPermissionOverrides>();
             services.AddSingleton(provider => provider.GetRequiredService<DiscordHostedService>().Gateway);
             services.AddSingleton(provider => new InteractionService(
                 provider.GetRequiredService<DiscordHostedService>().Gateway,

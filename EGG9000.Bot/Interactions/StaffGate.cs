@@ -2,6 +2,7 @@ using Discord;
 using Discord.Interactions;
 using Discord.WebSocket;
 using EGG9000.Common.Helpers;
+using Microsoft.Extensions.DependencyInjection;
 
 using System;
 using System.Threading.Tasks;
@@ -24,9 +25,9 @@ namespace EGG9000.Bot.Interactions {
     public sealed class StaffOnlyAttribute(StaffTier tier) : PreconditionAttribute {
         public StaffTier Tier { get; } = tier;
 
-        public override Task<PreconditionResult> CheckRequirementsAsync(IInteractionContext context, ICommandInfo commandInfo, IServiceProvider services) {
+        public override async Task<PreconditionResult> CheckRequirementsAsync(IInteractionContext context, ICommandInfo commandInfo, IServiceProvider services) {
             if(context.User is not SocketGuildUser gu)
-                return Task.FromResult(PreconditionResult.FromError("Staff-only commands cannot be used in DMs."));
+                return PreconditionResult.FromError("Staff-only commands cannot be used in DMs.");
             var required = Tier switch {
                 StaffTier.Admin => GuildPermission.Administrator,
                 StaffTier.CluckingCoordinator => GuildPermission.ManageChannels,
@@ -34,9 +35,11 @@ namespace EGG9000.Bot.Interactions {
                 StaffTier.ChickenTender => GuildPermission.ModerateMembers,
                 _ => GuildPermission.UseApplicationCommands,
             };
-            return Task.FromResult(gu.GuildPermissions.Has(required)
-                ? PreconditionResult.FromSuccess()
-                : PreconditionResult.FromError("You don't have permission to do that."));
+            if(gu.GuildPermissions.Has(required)) return PreconditionResult.FromSuccess();
+            if(context.Interaction is IApplicationCommandInteraction command
+                && await services.GetRequiredService<CommandPermissionOverrides>().AllowsAsync(gu, command.Data.Id))
+                return PreconditionResult.FromSuccess();
+            return PreconditionResult.FromError("You don't have permission to do that.");
         }
     }
 }
