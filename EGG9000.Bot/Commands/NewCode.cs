@@ -6,30 +6,19 @@ using EGG9000.Common.Database.Entities;
 using EGG9000.Common.Helpers;
 using Microsoft.EntityFrameworkCore;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using static EGG9000.Common.Helpers.Discord.EmbedHelpers;
 
 namespace EGG9000.Bot.Commands {
-    public class NewCodeModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient client) : E9KModuleBase(dbFactory) {
-        private readonly DiscordSocketClient _client = client;
-
-        [SlashCommand("newcoopcode", "Generate a new co-op code, a channel will be created for the co-op")]
+    public class NewCodeModule(IDbContextFactory<ApplicationDbContext> dbFactory) : E9KModuleBase(dbFactory) {
+        [SlashCommand("newcoopcode", "Generate a new co-op code that has never been used for any contract")]
         [DefaultMemberPermissions(Discord.GuildPermission.ManageChannels)]
         [StaffOnly(StaffTier.CluckingCoordinator)]
         public async Task NewCoopCode() {
             await Context.Interaction.DeferAsync();
-            var words = new Words();
-            var wordOne = words.GetRandomWord();
-            var wordTwo = words.GetRandomSecondWord(wordOne);
-            var code = wordOne + wordTwo + words.GetRandomNumber();
-
-            var guild = _client.Guilds.FirstOrDefault(g => g.Id == Context.Interaction.GuildId);
-
-            var coop = new Coop { Name = code, Created = DateTimeOffset.UtcNow, GuildId = guild.Id };
-            Db.Coops.Add(coop);
+            var code = await CoopNames.GenerateUnusedAsync(Db, null);
+            Db.Coops.Add(new Coop { Name = code, Created = DateTimeOffset.UtcNow, GuildId = Context.Interaction.GuildId.Value });
             await Db.SaveChangesAsync();
-
             await Context.Interaction.ModifyOriginalResponseAsync(x => x.Content = code);
         }
 

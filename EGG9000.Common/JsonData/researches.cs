@@ -35,35 +35,35 @@ namespace EGG9000.Common.JsonData {
                 .Single(str => str.EndsWith("curiosity_research.csv"));
             using var stream2 = assembly.GetManifestResourceStream(resourceName);
             using(var reader2 = new StreamReader(stream2)) {
-                using(var csv = new CsvReader(reader2, CultureInfo.InvariantCulture)) {
-                    var records = csv.GetRecords<dynamic>();
-                    foreach(var record in records) {
-                        if(int.TryParse(record.Tier, out int tier)) {
-                            var researchItem = data.FirstOrDefault(r => r.Tier == tier && r.Name.Equals(record.Name, StringComparison.OrdinalIgnoreCase));
-                            if(researchItem != null) {
-                                if(researchItem.EoVPrices == null) researchItem.EoVPrices = [];
-                                while(researchItem.EoVPrices.Count < int.Parse(record.Level)) {
-                                    researchItem.EoVPrices.Add(0);
-                                }
-                                var existing = researchCostSubmissions.OrderByDescending(x => x.SubmittedAt).FirstOrDefault(x => x.ID == researchItem.Id && x.Level == int.Parse(record.Level));
-                                if(existing != null) {
-                                    researchItem.EoVPrices[int.Parse(record.Level) - 1] = existing.Cost;
-                                    continue;
-                                }
-                                if(record.CostRaw == "") {
+                using var csv = new CsvReader(reader2, CultureInfo.InvariantCulture);
+                var records = csv.GetRecords<dynamic>();
+                foreach(var record in records) {
+                    if(int.TryParse(record.Tier, out int tier)) {
+                        var researchItem = data.FirstOrDefault(r => r.Tier == tier && r.Name.Equals(record.Name, StringComparison.OrdinalIgnoreCase));
+                        if(researchItem != null) {
+                            if(researchItem.EoVPrices == null) researchItem.EoVPrices = [];
+                            while(researchItem.EoVPrices.Count < int.Parse(record.Level)) {
+                                researchItem.EoVPrices.Add(0);
+                            }
+                            var existing = researchCostSubmissions.OrderByDescending(x => x.SubmittedAt).FirstOrDefault(x => x.ID == researchItem.Id && x.Level == int.Parse(record.Level));
+                            if(existing != null) {
+                                researchItem.EoVPrices[int.Parse(record.Level) - 1] = existing.Cost;
+                                continue;
+                            }
+                            if(record.CostRaw == "") {
+                                researchItem.EoVPrices[int.Parse(record.Level) - 1] = -1;
+                            } else {
+                                try {
+                                    researchItem.EoVPrices[int.Parse(record.Level) - 1] = ((string)record.CostRaw).FromEggString() * 2;
+                                } catch(UnableToParseNumberExecption) {
                                     researchItem.EoVPrices[int.Parse(record.Level) - 1] = -1;
-                                } else {
-                                    try {
-                                        researchItem.EoVPrices[int.Parse(record.Level) - 1] = ((string)record.CostRaw).FromEggString() * 2;
-                                    } catch(UnableToParseNumberExecption) {
-                                        researchItem.EoVPrices[int.Parse(record.Level) - 1] = -1;
-                                    }
                                 }
                             }
-                        } else {
-
                         }
+                    } else {
+
                     }
+
                 }
             }
 

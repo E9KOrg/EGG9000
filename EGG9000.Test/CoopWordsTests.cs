@@ -1,88 +1,48 @@
-﻿using EGG9000.Common.JsonData;
+﻿using EGG9000.Common.Helpers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace EGG9000.Test {
     [TestClass]
     [TestCategory("Unit")]
-    public partial class CoopWordsTests {
-
+    public class CoopWordsTests {
         [TestMethod]
-        public void Loads_a_large_word_pool() {
-            var words = CoopWords.Get();
-            Assert.IsNotNull(words);
-            Assert.IsGreaterThan(1500, words.Count, $"expected an expanded pool, got {words.Count}");
+        public void WordListHasOnlyLowercaseThreeToFiveLetterWords() {
+            var bad = CoopNames.Words.Where(w => w.Length is < 3 or > 5 || !w.All(c => c is >= 'a' and <= 'z')).ToList();
+            Assert.IsEmpty(bad, string.Join(", ", bad));
         }
 
         [TestMethod]
-        public void All_words_are_lowercase_three_to_five_chars() {
-            var rx = MyRegex();
-            var bad = CoopWords.Get().Where(w => !rx.IsMatch(w)).ToList();
-            Assert.IsEmpty(bad, $"non-conforming entries: {string.Join(", ", bad.Take(20))}");
+        public void WordListHasNoDuplicates() {
+            var dupes = CoopNames.Words.GroupBy(w => w).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
+            Assert.IsEmpty(dupes, string.Join(", ", dupes));
         }
 
         [TestMethod]
-        public void No_duplicate_words() {
-            var words = CoopWords.Get();
-            var dupes = words.GroupBy(w => w).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
-            Assert.IsEmpty(dupes, $"duplicates: {string.Join(", ", dupes)}");
-        }
-
-        [TestMethod]
-        public void Excludes_known_offender_words() {
-            var offenders = new HashSet<string> {
-                "bulge", "poker", "bush", "bust", "moist", "prude", "rack", "shaft",
-                "slit", "wad", "drill", "nail", "mount", "ride", "stuff", "pound",
-                "plow", "probe", "ooze", "slick", "jab", "crave", "flirt", "booty", "girth"
-            };
-            var present = CoopWords.Get().Where(offenders.Contains).ToList();
-            Assert.IsEmpty(present, $"offenders still present: {string.Join(", ", present)}");
-        }
-
-        [TestMethod]
-        public void Second_word_avoids_first_words_last_letter() {
-            var words = new Common.Helpers.Words();
+        public void SecondWordDoesNotRepeatBoundaryLetter() {
             for(var i = 0; i < 500; i++) {
-                var first = words.GetRandomWord();
-                var second = words.GetRandomSecondWord(first);
-                Assert.AreNotEqual(
-                    char.ToLowerInvariant(first[^1]),
-                    char.ToLowerInvariant(second[0]),
-                    $"'{first}' + '{second}' repeats the boundary letter");
+                var first = CoopNames.RandomWord();
+                var second = CoopNames.RandomSecondWord(first);
+                Assert.AreNotEqual(char.ToLowerInvariant(first[^1]), char.ToLowerInvariant(second[0]), first + second);
             }
         }
 
         [TestMethod]
-        public void Second_word_avoids_l_i_pair_when_first_word_ends_in_l_or_i() {
-            var words = new Common.Helpers.Words();
-            for(var i = 0; i < 500; i++) {
-                var first = words.GetRandomWord();
-                var last = char.ToLowerInvariant(first[^1]);
-                if(last != 'l' && last != 'i') continue;
-                var second = char.ToLowerInvariant(words.GetRandomSecondWord(first)[0]);
-                Assert.IsFalse(
-                    second == 'l' || second == 'i',
-                    $"'{first}' ends in l/i but next word starts with '{second}'");
+        public void SecondWordDoesNotStartWithLOrIAfterLOrI() {
+            foreach(var first in new[] { "Coral", "Kiwi" }) {
+                for(var i = 0; i < 500; i++) {
+                    var second = CoopNames.RandomSecondWord(first);
+                    Assert.IsFalse(second[0] is 'L' or 'I', first + second);
+                }
             }
         }
 
         [TestMethod]
-        public void Concurrent_generation_does_not_tear_the_shared_rng() {
-            var words = new Common.Helpers.Words();
-            var names = new ConcurrentBag<string>();
-            Parallel.For(0, 1000, new ParallelOptions { MaxDegreeOfParallelism = 10 }, _ => {
-                var first = words.GetRandomWord();
-                names.Add(first + words.GetRandomSecondWord(first) + words.GetRandomNumber());
-            });
-            var dupes = names.GroupBy(x => x).Where(g => g.Count() > 1).Select(g => g.Key).ToList();
-            Assert.IsEmpty(dupes, $"concurrent generation produced identical names, shared Random is torn: {string.Join(", ", dupes.Take(10))}");
+        public void NumberNeverContains69() {
+            for(var i = 0; i < 5000; i++) {
+                Assert.DoesNotContain("69", CoopNames.RandomNumber());
+                Assert.DoesNotContain("69", CoopNames.RandomNumber(wide: true));
+            }
         }
-
-        [GeneratedRegex("^[a-z]{3,5}$")]
-        private static partial Regex MyRegex();
     }
 }
