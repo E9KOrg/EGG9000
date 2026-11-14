@@ -19,9 +19,8 @@ using static EGG9000.Common.Helpers.Prefarm;
 using static EGG9000.Common.Services.DiscordExtensions;
 
 namespace EGG9000.Bot.Automated {
-    public class NewContracts(IServiceProvider provider, Words words, ContractUpdater contractUpdater, BotLogger botLogger) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
+    public class NewContracts(IServiceProvider provider, ContractUpdater contractUpdater, BotLogger botLogger) : _UpdaterBase<NewContracts>(TimeSpan.FromMinutes(1), TimeSpan.Zero, provider) {
 
-        private readonly Words _words = words;
         private readonly ContractUpdater _contractUpdater = contractUpdater;
         private readonly BotLogger _botLogger = botLogger;
 
@@ -333,7 +332,7 @@ namespace EGG9000.Bot.Automated {
                 await _db.Database.CloseConnectionAsync();
                 await Parallel.ForEachAsync(coopsToCreate, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coop, token) => {
                     try {
-                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _words, _provider, dbguild, (uint)skipbg + 1, contract.cc_only);
+                        await CreateCoopsV2.Start(coop.Users, contract, group.Grade, guild, _provider, dbguild, (uint)skipbg + 1, contract.cc_only);
                     } catch(Exception e) {
                         _logger.LogError(e, "⚠️ERROR staring co-op");
                         _bugSnag.Notify(e);

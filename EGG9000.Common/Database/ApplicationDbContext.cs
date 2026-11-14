@@ -133,6 +133,7 @@ namespace EGG9000.Common.Database {
         public DbSet<ApiKeyDailyUsage> ApiKeyDailyUsages { get; set; }
         public DbSet<StorageDictionaryRow> StorageDictionaries { get; set; }
         public DbSet<RemovedAccount> RemovedAccounts { get; set; }
+        public DbSet<UsedCoopName> UsedCoopNames { get; set; }
 
         public FrozenSet<Guild> CachedGuilds {
             get {
@@ -257,14 +258,42 @@ namespace EGG9000.Common.Database {
             }
         }
 
+        private List<UsedCoopName> PendingUsedCoopNames() {
+            return [.. ChangeTracker.Entries<Coop>()
+                .Where(e => e.State == EntityState.Added
+                    || (e.State == EntityState.Modified && (e.Property(c => c.Name).IsModified || e.Property(c => c.ContractID).IsModified)))
+                .Where(e => !string.IsNullOrWhiteSpace(e.Entity.Name) && e.Entity.CreatorID != Coop.TestSeedCreatorId)
+                .Select(e => new UsedCoopName {
+                    ContractID = e.Entity.ContractID ?? UsedCoopName.AnyContract,
+                    Name = Helpers.CoopNames.Normalize(e.Entity.Name),
+                    FirstUsed = DateTimeOffset.UtcNow
+                })];
+        }
+
+        private IQueryable<UsedCoopName> RecordedMatches(List<UsedCoopName> pending) {
+            var names = pending.Select(u => u.Name).Distinct().ToList();
+            return UsedCoopNames.AsNoTracking().Where(u => names.Contains(u.Name));
+        }
+
+        private void TrackUsedCoopNames(List<UsedCoopName> pending, List<UsedCoopName> recorded) {
+            var known = recorded.Concat(UsedCoopNames.Local).Select(u => (u.ContractID, u.Name)).ToHashSet();
+            UsedCoopNames.AddRange(pending.Where(u => known.Add((u.ContractID, u.Name))));
+        }
+
         public override int SaveChanges(bool acceptAllChangesOnSuccess) {
             NormalizeAdminUserIds();
+            var pending = PendingUsedCoopNames();
+            if(pending.Count > 0)
+                TrackUsedCoopNames(pending, [.. RecordedMatches(pending)]);
             return base.SaveChanges(acceptAllChangesOnSuccess);
         }
 
-        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) {
+        public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default) {
             NormalizeAdminUserIds();
-            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+            var pending = PendingUsedCoopNames();
+            if(pending.Count > 0)
+                TrackUsedCoopNames(pending, await RecordedMatches(pending).ToListAsync(cancellationToken));
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
         }
 
 

@@ -146,7 +146,6 @@ namespace EGG9000.Site.Controllers {
                 Account = y
             })).ToList();
             var contract = await GetLatestContractAsync(ContractID);
-            var _words = new Words();
 
             await Parallel.ForEachAsync(coops, new ParallelOptions { MaxDegreeOfParallelism = 10 }, async (coopStart, token) => {
 
@@ -158,7 +157,7 @@ namespace EGG9000.Site.Controllers {
                         user.Group = useRoles ? ulong.Parse(roles[coopUser.Group]) : coopUser.Group;
                         userByAccount.Add(user);
                     }
-                    await CreateCoopsV2.Start(userByAccount, contract, Grade, _discord.GetGuild(GuildId), _words, _provider, dbguild, (uint)bg, contract.cc_only);
+                    await CreateCoopsV2.Start(userByAccount, contract, Grade, _discord.GetGuild(GuildId), _provider, dbguild, (uint)bg, contract.cc_only);
                 } catch(Exception e) {
                     var frame = new StackTrace(e, true).GetFrame(0);
                     Console.WriteLine($"⚠️ERROR: {e}  {frame.GetFileName()} {frame.GetFileLineNumber()}");

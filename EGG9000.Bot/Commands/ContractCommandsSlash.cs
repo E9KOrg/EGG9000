@@ -187,10 +187,9 @@ namespace EGG9000.Bot.Commands {
         }
     }
 
-    public class ContractModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, DiscordHostedService client, Words words, IServiceProvider provider, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, CoopAssignmentLookup lookup, ILogger<ContractModule> logger) : E9KModuleBase(dbFactory) {
+    public class ContractModule(IDbContextFactory<ApplicationDbContext> dbFactory, DiscordSocketClient gateway, DiscordHostedService client, IServiceProvider provider, ThreadsCoopStatusUpdater coopStatusUpdaterThreads, CoopAssignmentLookup lookup, ILogger<ContractModule> logger) : E9KModuleBase(dbFactory) {
         private readonly DiscordSocketClient _gateway = gateway;
         private readonly DiscordHostedService _client = client;
-        private readonly Words _words = words;
         private readonly IServiceProvider _provider = provider;
         private readonly ThreadsCoopStatusUpdater _coopStatusUpdaterThreads = coopStatusUpdaterThreads;
         private readonly CoopAssignmentLookup _lookup = lookup;
@@ -660,7 +659,7 @@ namespace EGG9000.Bot.Commands {
                 }
 
                 var guild = _gateway.GetGuild(Context.Interaction.GuildId.Value);
-                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades
+                var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades
                 await Context.Interaction.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {Context.User.Mention}"); });
             } else {
                 var builder = new ComponentBuilder();
@@ -773,7 +772,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var guild = _gateway.GetGuild(Context.Interaction.GuildId.Value);
-            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades
+            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _provider, dbguild, uint.MaxValue, accountHasUltra); //Allow all grades
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Embed = EmbedSuccess($"Co-op created (`{coop.Name}` - {PlayerGradeDetails.GetEmoji(coop.League)}) for {Context.User.Mention}"); });
         }
 
@@ -1065,7 +1064,7 @@ namespace EGG9000.Bot.Commands {
             }
 
             var guild = _gateway.GetGuild(Context.Interaction.GuildId.Value);
-            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _words, _provider, dbguild, uint.MaxValue, true); //Allow all grades
+            var coop = await CreateCoopsV2.Start(userList, contract, userList.First().Account.LastGrade, guild, _provider, dbguild, uint.MaxValue, true); //Allow all grades
             await component.ModifyOriginalResponseAsync(x => { x.Content = ""; x.Components = null; x.Embed = EmbedSuccess($"Co-op `{coop.Name}` {PlayerGradeDetails.GetEmoji(coop.League)} created for <#{Context.Interaction.ChannelId}>"); });
         }
 

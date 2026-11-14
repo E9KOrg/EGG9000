@@ -89,7 +89,6 @@ public static class BotHostFactory {
             services.AddSingleton<CoopStatsCache>();
             services.AddSingleton<CoopAssignmentLookup>();
             services.AddHostedService<CoopAssignmentLookupRefreshService>();
-            services.AddSingleton<Words>();
             services.AddSingleton<BotLogger>();
 
             var release = BuildConfig.IsRelease;

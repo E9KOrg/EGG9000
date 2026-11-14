@@ -17,7 +17,7 @@ namespace EGG9000.Common.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.11")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -1247,6 +1247,24 @@ namespace EGG9000.Common.Migrations
                     b.HasIndex("ContractId");
 
                     b.ToTable("UpcomingContracts");
+                });
+
+            modelBuilder.Entity("EGG9000.Common.Database.Entities.UsedCoopName", b =>
+                {
+                    b.Property<string>("ContractID")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("FirstUsed")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("ContractID", "Name");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("UsedCoopNames");
                 });
 
             modelBuilder.Entity("EGG9000.Common.Database.Entities.UserCoopStatus", b =>
