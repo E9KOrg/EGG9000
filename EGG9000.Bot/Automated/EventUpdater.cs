@@ -233,7 +233,7 @@ namespace EGG9000.Bot.Automated {
                 RestUserMessage message = null;
                 var notification = customization?.Settings?.Notifications?
                     .OrderByDescending(x => x.MinValue)
-                    .FirstOrDefault(x => (decimal)newEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId) ?? null;
+                    .FirstOrDefault(x => Math.Round((decimal)newEvent.Multiplier, 6) >= x.MinValue && x.GuildID == dbguild.DiscordSeverId) ?? null;
 
                 if(newEvent.CcOnly) {
                     if(eventChannel != null) {
@@ -299,7 +299,7 @@ namespace EGG9000.Bot.Automated {
 
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
-                                    .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
+                                    .FirstOrDefault(x => Math.Round((decimal)currentEvent.Multiplier, 6) >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
                                 var capturedMessage = message;
                                 var capturedEmbed = embed;
                                 var capturedEmbedImage = embedImageBytes != null ? new FileAttachment(new MemoryStream(embedImageBytes), embedImageFileName, embedImageDescription) : (FileAttachment?)null;
@@ -326,7 +326,7 @@ namespace EGG9000.Bot.Automated {
                             if(message != null) {
                                 var notification = customization.Settings.Notifications?
                                     .OrderByDescending(x => x.MinValue)
-                                    .FirstOrDefault(x => (decimal)currentEvent.Multiplier >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
+                                    .FirstOrDefault(x => Math.Round((decimal)currentEvent.Multiplier, 6) >= x.MinValue && x.GuildID == dbguild.DiscordSeverId);
                                 var capturedMessage = message;
                                 var capturedEmbed = embed;
                                 var capturedEmbedImage = embedImageBytes != null ? new FileAttachment(new MemoryStream(embedImageBytes), embedImageFileName, embedImageDescription) : (FileAttachment?)null;

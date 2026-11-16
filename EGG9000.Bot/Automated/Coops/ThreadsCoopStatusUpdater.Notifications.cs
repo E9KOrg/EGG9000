@@ -113,7 +113,7 @@ namespace EGG9000.Bot.Automated.Coops {
         private static decimal GetTachyonAmount(IEnumerable<ContractCoopStatusResponse.Types.ContributionInfo> contributions, string currentUserUuid) {
             var matches = contributions.Where(x => x.Uuid != currentUserUuid && x.BuffHistory.Count > 0);
             var histories = matches.Select(x => x.BuffHistory.Last());
-            return histories.Sum(x => (decimal)x.EggLayingRate - 1);
+            return Math.Round(histories.Sum(x => (decimal)x.EggLayingRate - 1), 6);
         }
     }
 }

@@ -7,14 +7,13 @@ using Newtonsoft.Json;
 
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 
 namespace EGG9000.Common.JsonData {
 
-    public class EiResearch {
+    public static class EiResearch {
         private static readonly EmbeddedResource<List<EiResearchItem>> _res =
             EmbeddedResource.Json<List<EiResearchItem>>("researches.json");
         public static List<EiResearchItem> Get() => _res.Value;
@@ -34,14 +33,14 @@ namespace EGG9000.Common.JsonData {
             resourceName = assembly.GetManifestResourceNames()
                 .Single(str => str.EndsWith("curiosity_research.csv"));
             using var stream2 = assembly.GetManifestResourceStream(resourceName);
-            using(var reader2 = new StreamReader(stream2)) {
-                using var csv = new CsvReader(reader2, CultureInfo.InvariantCulture);
+            using(var csv = CsvReader.Create(stream2)) {
+                // CsvReaderOptions defaults to `CultureInfo.InvariantCulture` reading.
                 var records = csv.GetRecords<dynamic>();
                 foreach(var record in records) {
                     if(int.TryParse(record.Tier, out int tier)) {
                         var researchItem = data.FirstOrDefault(r => r.Tier == tier && r.Name.Equals(record.Name, StringComparison.OrdinalIgnoreCase));
                         if(researchItem != null) {
-                            if(researchItem.EoVPrices == null) researchItem.EoVPrices = [];
+                            researchItem.EoVPrices ??= [];
                             while(researchItem.EoVPrices.Count < int.Parse(record.Level)) {
                                 researchItem.EoVPrices.Add(0);
                             }
@@ -60,8 +59,6 @@ namespace EGG9000.Common.JsonData {
                                 }
                             }
                         }
-                    } else {
-
                     }
 
                 }

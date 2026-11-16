@@ -1,5 +1,9 @@
 <Project>
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Net.Compilers.Toolset" Version="5.9.0" PrivateAssets="all" />
+  <PropertyGroup Condition="!$(MSBuildProjectName.Contains('Analyzers'))">
+    <NoWarn>$(NoWarn);NU1608</NoWarn>
+  </PropertyGroup>
+  <ItemGroup Condition="!$(MSBuildProjectName.Contains('Analyzers'))">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="11.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="11.0.0" />
   </ItemGroup>
 </Project>
