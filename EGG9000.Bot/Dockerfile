@@ -1,10 +1,9 @@
-# Multi-stage build for .NET 10 worker
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:11.0.0-rc.1 AS base
 WORKDIR /app
 
 USER app
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
+FROM mcr.microsoft.com/dotnet/sdk:11.0.100-rc.1 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["EGG9000.Bot/EGG9000.Bot.csproj", "EGG9000.Bot/"]
@@ -17,7 +16,10 @@ ARG GIT_AUTHOR="Docker"
 ARG GIT_TIMESTAMP="0"
 ARG GIT_BRANCH=""
 ARG GIT_REMOTE=""
-RUN printf '%s\n%s\n%s\n%s\n%s\n%s' "$GIT_MESSAGE" "$GIT_HASH" "$GIT_AUTHOR" "$GIT_TIMESTAMP" "$GIT_BRANCH" "$GIT_REMOTE" > /src/EGG9000.Bot/version.txt
+ARG GIT_EMAIL=""
+RUN printf 'hash=%s\nauthor=%s\nemail=%s\ntimestamp=%s\nsubject=%s\nbranch=%s\nremote=%s\n' \
+    "$GIT_HASH" "$GIT_AUTHOR" "$GIT_EMAIL" "$GIT_TIMESTAMP" "$GIT_MESSAGE" "$GIT_BRANCH" "$GIT_REMOTE" \
+    > /src/EGG9000.Bot/version.txt
 ENV DOCKER_BUILD=true
 WORKDIR "/src/EGG9000.Bot"
 RUN dotnet publish "./EGG9000.Bot.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
