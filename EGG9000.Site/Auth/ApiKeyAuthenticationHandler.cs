@@ -77,7 +77,7 @@ namespace EGG9000.Site.Auth {
 
         private static async Task IncrementDailyUsageAsync(ApplicationDbContext db, Guid apiKeyId, DateTime today) {
             if(db.Database.IsNpgsql()) {
-                await db.Database.ExecuteSqlInterpolatedAsync($"""
+                await db.Database.ExecuteSqlAsync($"""
                     INSERT INTO "ApiKeyDailyUsages" ("ApiKeyId", "Date", "RequestCount")
                     VALUES ({apiKeyId}, {today}, 1)
                     ON CONFLICT ("ApiKeyId", "Date") DO UPDATE SET "RequestCount" = "ApiKeyDailyUsages"."RequestCount" + 1
